@@ -1,0 +1,143 @@
+<resources>
+    <string name="app_name">Enterprise</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+    <string name="speak_button">Start speaking</string>
+    <!-- Strings related to Navigation -->
+    <string name="action_settings">Settings</string>
+    <string name="create">Add</string>
+    <string name="add_medium">Add Medium</string>
+    <string name="add_list">Add List</string>
+    <string name="lists">Lists</string>
+    <string name="settings">Settings</string>
+    <string name="news">News</string>
+    <string name="logout">Logout</string>
+    <string name="user_related">User</string>
+    <string name="register">Register</string>
+    <string name="login">Login</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <!-- Strings related to login -->
+    <string name="title_activity_login">Sign in</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="error_invalid_email">This email address is invalid</string>
+    <string name="error_invalid_password">This password is too short</string>
+    <string name="error_incorrect_password">This password is incorrect</string>
+    <string name="error_not_matching">This password is does not match the previous one.</string>
+    <string name="error_field_required">This field is required</string>
+    <string name="permission_rationale">"Contacts permissions are needed for providing email
+        completions."
+    </string>
+    <string name="title_activity_list">ListActivity</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- Example General settings -->
+    <string name="pref_header_general">General</string>
+
+    <string name="pref_title_social_recommendations">Enable social recommendations</string>
+    <string name="pref_description_social_recommendations">Recommendations for people to contact
+        based on your message history
+    </string>
+
+    <string name="pref_title_display_name">Display name</string>
+    <string name="pref_default_display_name">John Smith</string>
+
+    <string name="pref_title_add_friends_to_messages">Add friends to messages</string>
+    <string-array name="pref_example_list_titles">
+        <item>Always</item>
+        <item>When possible</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_example_list_values">
+        <item>1</item>
+        <item>0</item>
+        <item>-1</item>
+    </string-array>
+
+    <!-- Example settings for Data & Sync -->
+    <string name="pref_header_data_sync">Data &amp; sync</string>
+
+    <string name="pref_title_sync_frequency">Sync frequency</string>
+    <string-array name="pref_sync_frequency_titles">
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>1 hour</item>
+        <item>3 hours</item>
+        <item>6 hours</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_sync_frequency_values">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>180</item>
+        <item>360</item>
+        <item>-1</item>
+    </string-array>
+
+    <string-array name="list_preference_entries">
+        <item>Entry 1</item>
+        <item>Entry 2</item>
+        <item>Entry 3</item>
+    </string-array>
+
+    <string-array name="list_preference_entry_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string-array name="multi_select_list_preference_default_value" />
+
+    <string name="pref_title_system_sync_settings">System sync settings</string>
+
+    <!-- Example settings for Notifications -->
+    <string name="pref_header_notifications">Notifications</string>
+
+    <string name="pref_title_new_message_notifications">New message notifications</string>
+
+    <string name="pref_title_ringtone">Ringtone</string>
+    <string name="pref_ringtone_silent">Silent</string>
+
+    <string name="pref_title_vibrate">Vibrate</string>
+    <string name="title">Title</string>
+    <string name="author">Author</string>
+    <string name="medium">Medium</string>
+    <string name="text">Text</string>
+    <string name="video">Video</string>
+    <string name="image">Image</string>
+    <string name="audio">Audio</string>
+    <string name="artist">Artist</string>
+    <string name="series">Series</string>
+    <string name="universe">Universe</string>
+    <string name="language">Language</string>
+    <string name="language_of_origin">Language of Origin</string>
+    <string name="country_of_origin">Country of Origin</string>
+    <string name="status_of_translator">Status of Translator</string>
+    <string name="status_in_country_of_origin">Status in Country of Origin</string>
+    <string name="select_list_to_add_medium_to">Select List to add Medium to</string>
+    <string name="finish">Finish</string>
+    <string name="cancel">Cancel</string>
+    <string name="name">Name</string>
+    <string name="title_activity_login_register">LoginRegister</string>
+    <string name="tab_text_1">Tab 1</string>
+    <string name="tab_text_2">Tab 2</string>
+    <string name="tab_text_3">Tab 3</string>
+    <string name="repeat_password">Repeat Password</string>
+    <string name="unread_chapter">Unread Chapter</string>
+    <string name="unread_news">Unread News</string>
+    <string name="read_history">Read History</string>
+    <string name="statistics">Statistics</string>
+    <string name="error_register_failed">Registration failed</string>
+    <string name="home">Home</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="unread_chapter_value">%d Unread Chapter</string>
+    <string name="unread_news_value">%d Unread News</string>
+    <string name="current_read">%d read today</string>
+</resources>
