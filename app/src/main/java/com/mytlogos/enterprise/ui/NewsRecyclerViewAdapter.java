@@ -29,7 +29,7 @@ public class NewsRecyclerViewAdapter extends RecyclerView.Adapter<NewsRecyclerVi
     private final Context context;
     private List<News> news;
 
-    NewsRecyclerViewAdapter(List<News> items, NewsClickListener listener, Context context) {
+    public NewsRecyclerViewAdapter(List<News> items, NewsClickListener listener, Context context) {
         this.news = items;
         this.mListener = listener;
         this.context = context;
@@ -73,7 +73,7 @@ public class NewsRecyclerViewAdapter extends RecyclerView.Adapter<NewsRecyclerVi
             if (null != mListener) {
                 // Notify the active callbacks interface (the activity, if the
                 // fragment is attached to one) that an item has been selected.
-                mListener.onListFragmentInteraction(holder.mItem);
+                mListener.onNewsFragmentInteraction(holder.mItem);
             }
         });
     }

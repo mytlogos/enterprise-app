@@ -206,7 +206,7 @@ public class MainActivity extends AppCompatActivity implements
                 // todo show verification popup
                 break;
             case R.id.lists:
-                // todo
+                activityClass = ListActivity.class;
                 break;
             case R.id.add_medium:
                 fragment = new AddMedium();
@@ -274,7 +274,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onListFragmentInteraction(News item) {
+    public void onNewsFragmentInteraction(News item) {
 
     }
 }

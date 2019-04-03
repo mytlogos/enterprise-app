@@ -31,7 +31,6 @@ import com.mytlogos.enterprise.background.room.model.RoomMedium;
 import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
-import com.mytlogos.enterprise.background.room.modelImpl.NewsImpl;
 import com.mytlogos.enterprise.background.room.modelImpl.UserImpl;
 import com.mytlogos.enterprise.model.News;
 import com.mytlogos.enterprise.model.User;
@@ -127,7 +126,7 @@ public class RoomStorage implements DatabaseStorage {
                 this.newsDao.getNews(),
                 input -> input
                         .stream()
-                        .map(roomNews -> new NewsImpl(roomNews.getTitle(), roomNews.getTimeStamp(), roomNews.getNewsId(), roomNews.isRead()))
+                        .map(roomNews -> new News(roomNews.getTitle(), roomNews.getTimeStamp(), roomNews.getNewsId(), roomNews.isRead(), roomNews.getLink()))
                         .collect(Collectors.toList())
         );
     }
@@ -607,7 +606,8 @@ public class RoomStorage implements DatabaseStorage {
                 }
                 RoomNews roomNews = new RoomNews(
                         clientNews.getId(), clientNews.isRead(),
-                        clientNews.getTitle(), clientNews.getDate()
+                        clientNews.getTitle(), clientNews.getDate(),
+                        clientNews.getLink()
                 );
                 if (!this.isNewsLoaded(clientNews.getId())) {
                     list.add(roomNews);

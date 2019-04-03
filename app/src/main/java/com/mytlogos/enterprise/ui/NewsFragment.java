@@ -155,6 +155,6 @@ public class NewsFragment extends Fragment {
      */
     public interface NewsClickListener {
         // TODO: Update argument type and name
-        void onListFragmentInteraction(News item);
+        void onNewsFragmentInteraction(News item);
     }
 }
