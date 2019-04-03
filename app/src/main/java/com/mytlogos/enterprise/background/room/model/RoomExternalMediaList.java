@@ -35,6 +35,41 @@ public class RoomExternalMediaList implements ExternalMediaList {
         this.url = url;
     }
 
+    @Override
+    public String toString() {
+        return "RoomExternalMediaList{" +
+                "uuid='" + uuid + '\'' +
+                ", externalListId=" + externalListId +
+                ", name='" + name + '\'' +
+                ", medium=" + medium +
+                ", url='" + url + '\'' +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        RoomExternalMediaList that = (RoomExternalMediaList) o;
+
+        if (externalListId != that.externalListId) return false;
+        if (medium != that.medium) return false;
+        if (uuid != null ? !uuid.equals(that.uuid) : that.uuid != null) return false;
+        if (name != null ? !name.equals(that.name) : that.name != null) return false;
+        return url != null ? url.equals(that.url) : that.url == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = uuid != null ? uuid.hashCode() : 0;
+        result = 31 * result + externalListId;
+        result = 31 * result + (name != null ? name.hashCode() : 0);
+        result = 31 * result + medium;
+        result = 31 * result + (url != null ? url.hashCode() : 0);
+        return result;
+    }
+
     @Entity(
             primaryKeys = {"listId", "mediumId"},
             foreignKeys = {
@@ -63,6 +98,32 @@ public class RoomExternalMediaList implements ExternalMediaList {
         public ExternalListMediaJoin(int listId, int mediumId) {
             this.listId = listId;
             this.mediumId = mediumId;
+        }
+
+        @Override
+        public String toString() {
+            return "ExternalListMediaJoin{" +
+                    "listId=" + listId +
+                    ", mediumId=" + mediumId +
+                    '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            ExternalListMediaJoin that = (ExternalListMediaJoin) o;
+
+            if (listId != that.listId) return false;
+            return mediumId == that.mediumId;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = listId;
+            result = 31 * result + mediumId;
+            return result;
         }
     }
 

@@ -56,15 +56,15 @@ public class UnreadChapterRecyclerViewAdapter extends RecyclerView.Adapter<Unrea
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
-        public final View mView;
-        public final TextView mIdView;
-        public final TextView mContentView;
-        public Object mItem;
+        final View mView;
+        final TextView mIdView;
+        final TextView mContentView;
+        Object mItem;
 
-        public ViewHolder(View view) {
+        ViewHolder(View view) {
             super(view);
             mView = view;
-            mIdView = view.findViewById(R.id.item_number);
+            mIdView = view.findViewById(R.id.item_meta);
             mContentView = view.findViewById(R.id.content);
         }
 

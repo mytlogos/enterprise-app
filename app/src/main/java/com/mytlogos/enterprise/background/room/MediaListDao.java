@@ -19,6 +19,15 @@ public interface MediaListDao extends MultiBaseDao<RoomMediaList> {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void addJoin(Collection<RoomMediaList.MediaListMediaJoin> collection);
 
+    default void clearJoins(Collection<Integer> collection) {
+        for (Integer integer : collection) {
+            this.clearJoin(integer);
+        }
+    }
+
+    @Query("DELETE FROM MediaListMediaJoin WHERE listId=:listId")
+    void clearJoin(Integer listId);
+
     @Delete
     void removeJoin(RoomMediaList.MediaListMediaJoin listMediaJoin);
 

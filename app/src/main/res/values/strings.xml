@@ -140,4 +140,6 @@
     <string name="unread_chapter_value">%d Unread Chapter</string>
     <string name="unread_news_value">%d Unread News</string>
     <string name="current_read">%d read today</string>
+    <string name="no_data_is_available">No Data is available</string>
+    <string name="read_status">Read Status</string>
 </resources>

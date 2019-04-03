@@ -44,8 +44,8 @@ public class Home extends Fragment {
             int unReadChapterCount = user == null ? 0 : user.unreadChapterCount();
             int readTodayCount = user == null ? 0 : user.readTodayCount();
 
-            unreadChapter.setText(getString(R.string.unread_chapter_value, unReadNewsCount));
-            unreadNews.setText(getString(R.string.unread_news_value, unReadChapterCount));
+            unreadChapter.setText(getString(R.string.unread_chapter_value, unReadChapterCount));
+            unreadNews.setText(getString(R.string.unread_news_value, unReadNewsCount));
             readHistory.setText(getString(R.string.current_read, readTodayCount));
         });
         return view;

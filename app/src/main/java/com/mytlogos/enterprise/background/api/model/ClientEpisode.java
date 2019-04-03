@@ -61,4 +61,54 @@ public class ClientEpisode {
     public DateTime getReadDate() {
         return readDate;
     }
+
+    @Override
+    public String toString() {
+        return "ClientEpisode{" +
+                "id=" + id +
+                ", progress=" + progress +
+                ", readDate=" + readDate +
+                ", partId=" + partId +
+                ", title='" + title + '\'' +
+                ", totalIndex=" + totalIndex +
+                ", partialIndex=" + partialIndex +
+                ", url='" + url + '\'' +
+                ", releaseDate=" + releaseDate +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ClientEpisode that = (ClientEpisode) o;
+
+        if (getId() != that.getId()) return false;
+        if (Float.compare(that.getProgress(), getProgress()) != 0) return false;
+        if (getPartId() != that.getPartId()) return false;
+        if (getTotalIndex() != that.getTotalIndex()) return false;
+        if (getPartialIndex() != that.getPartialIndex()) return false;
+        if (getReadDate() != null ? !getReadDate().equals(that.getReadDate()) : that.getReadDate() != null)
+            return false;
+        if (getTitle() != null ? !getTitle().equals(that.getTitle()) : that.getTitle() != null)
+            return false;
+        if (getUrl() != null ? !getUrl().equals(that.getUrl()) : that.getUrl() != null)
+            return false;
+        return getReleaseDate() != null ? getReleaseDate().equals(that.getReleaseDate()) : that.getReleaseDate() == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getId();
+        result = 31 * result + (getProgress() != +0.0f ? Float.floatToIntBits(getProgress()) : 0);
+        result = 31 * result + (getReadDate() != null ? getReadDate().hashCode() : 0);
+        result = 31 * result + getPartId();
+        result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
+        result = 31 * result + getTotalIndex();
+        result = 31 * result + getPartialIndex();
+        result = 31 * result + (getUrl() != null ? getUrl().hashCode() : 0);
+        result = 31 * result + (getReleaseDate() != null ? getReleaseDate().hashCode() : 0);
+        return result;
+    }
 }

@@ -19,6 +19,15 @@ public interface ExternalMediaListDao extends MultiBaseDao<RoomExternalMediaList
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void addJoin(Collection<RoomExternalMediaList.ExternalListMediaJoin> collection);
 
+    default void clearJoins(Collection<Integer> collection) {
+        for (Integer integer : collection) {
+            this.clearJoin(integer);
+        }
+    }
+
+    @Query("DELETE FROM ExternalListMediaJoin WHERE listId=:listId")
+    void clearJoin(Integer listId);
+
     @Delete
     void removeJoin(RoomExternalMediaList.ExternalListMediaJoin listMediaJoin);
 

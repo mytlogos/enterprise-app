@@ -19,11 +19,11 @@ interface BasicApi {
 
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/login")
-    Call<ClientUser> login(@Path("start") String url, @Body Map<String, Object> body);
+    Call<ClientUser> login(@Path(value="start",encoded=true) String url, @Body Map<String, Object> body);
 
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/register")
-    Call<ClientUser> register(@Path("start") String url, @Body Map<String, Object> body);
+    Call<ClientUser> register(@Path(value="start",encoded=true) String url, @Body Map<String, Object> body);
 
 
 }

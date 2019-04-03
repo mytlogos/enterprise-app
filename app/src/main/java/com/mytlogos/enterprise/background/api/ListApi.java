@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.api;
 
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
+import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 
 import java.util.Map;
 
@@ -18,6 +19,9 @@ interface ListApi {
 
     @GET
     Call<ClientListQuery> getList(@Url String url, @QueryMap Map<String, Object> body);
+
+    @GET
+    Call<ClientMultiListQuery> getLists(@Url String url, @QueryMap Map<String, Object> body);
 
     @POST
     Call<ClientMediaList> addList(@Url String url, @Body Map<String, Object> body);

@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.api;
 
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 
+import java.util.List;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -16,6 +17,9 @@ interface ExternalUserApi {
 
     @GET
     Call<ClientExternalUser> getExternalUser(@Url String url, @QueryMap Map<String, Object> body);
+
+    @GET
+    Call<List<ClientExternalUser>> getExternalUsers(@Url String url, @QueryMap Map<String, Object> body);
 
     @POST
     Call<ClientExternalUser> addExternalUser(@Url String url, @Body Map<String, Object> body);

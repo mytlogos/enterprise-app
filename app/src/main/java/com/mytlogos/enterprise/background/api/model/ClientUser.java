@@ -1,5 +1,7 @@
 package com.mytlogos.enterprise.background.api.model;
 
+import java.util.Arrays;
+
 public class ClientUser {
     private String uuid;
     private String session;
@@ -21,6 +23,42 @@ public class ClientUser {
         this.readToday = readToday;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ClientUser that = (ClientUser) o;
+
+        if (getUuid() != null ? !getUuid().equals(that.getUuid()) : that.getUuid() != null)
+            return false;
+        if (getSession() != null ? !getSession().equals(that.getSession()) : that.getSession() != null)
+            return false;
+        if (getName() != null ? !getName().equals(that.getName()) : that.getName() != null)
+            return false;
+        // Probably incorrect - comparing Object[] arrays with Arrays.equals
+        if (!Arrays.equals(getExternalUser(), that.getExternalUser())) return false;
+        // Probably incorrect - comparing Object[] arrays with Arrays.equals
+        if (!Arrays.equals(getLists(), that.getLists())) return false;
+        // Probably incorrect - comparing Object[] arrays with Arrays.equals
+        if (!Arrays.equals(getUnreadNews(), that.getUnreadNews())) return false;
+        if (!Arrays.equals(getUnreadChapter(), that.getUnreadChapter())) return false;
+        // Probably incorrect - comparing Object[] arrays with Arrays.equals
+        return Arrays.equals(getReadToday(), that.getReadToday());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getUuid() != null ? getUuid().hashCode() : 0;
+        result = 31 * result + (getSession() != null ? getSession().hashCode() : 0);
+        result = 31 * result + (getName() != null ? getName().hashCode() : 0);
+        result = 31 * result + Arrays.hashCode(getExternalUser());
+        result = 31 * result + Arrays.hashCode(getLists());
+        result = 31 * result + Arrays.hashCode(getUnreadNews());
+        result = 31 * result + Arrays.hashCode(getUnreadChapter());
+        result = 31 * result + Arrays.hashCode(getReadToday());
+        return result;
+    }
 
     public String getUuid() {
         return uuid;

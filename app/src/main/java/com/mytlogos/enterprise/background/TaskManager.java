@@ -21,19 +21,19 @@ public class TaskManager {
         return INSTANCE;
     }
 
-    public void runTask(Runnable task) {
+    public static <T> Future<T> runAsyncTask(Callable<T> callable) {
+        return INSTANCE.service.submit(callable);
+    }
+
+    public static void runTask(Runnable task) {
         if (Looper.getMainLooper().isCurrentThread()) {
-            this.service.execute(task);
+            INSTANCE.service.execute(task);
         } else {
             task.run();
         }
     }
 
-    public Future<?> runAsyncTask(Runnable runnable) {
-        return service.submit(runnable);
-    }
-
-    public <T> Future<T> runAsyncTask(Callable<T> callable) {
-        return service.submit(callable);
+    public static Future<?> runAsyncTask(Runnable runnable) {
+        return INSTANCE.service.submit(runnable);
     }
 }

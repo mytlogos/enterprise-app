@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -74,11 +73,13 @@ public class MainActivity extends AppCompatActivity implements
         // the progress spinner.
         int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
+        // fixme does not show any animation
         this.container.setVisibility(show ? View.GONE : View.VISIBLE);
         this.container.animate().setDuration(shortAnimTime).alpha(
                 show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
+                System.out.println("animation ended");
                 container.setVisibility(show ? View.GONE : View.VISIBLE);
             }
         });
@@ -88,16 +89,17 @@ public class MainActivity extends AppCompatActivity implements
                 show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
+                System.out.println("animation ended");
                 progressView.setVisibility(show ? View.VISIBLE : View.GONE);
             }
         });
     }
 
-    private void handleUserChanges(User roomUser) {
-        UserPreferences.putLoggedStatus(this, roomUser != null);
-        System.out.println("roomUser changed to: " + roomUser);
+    private void handleUserChanges(User userImpl) {
+        UserPreferences.putLoggedStatus(this, userImpl != null);
+        System.out.println("roomUser changed to: " + userImpl);
         this.showLoading(false);
-        this.checkLogin(roomUser);
+        this.checkLogin(userImpl);
     }
 
     private void checkLogin(@Nullable User roomUser) {
@@ -197,10 +199,11 @@ public class MainActivity extends AppCompatActivity implements
                 fragment = new Home();
                 break;
             case R.id.news:
-                // todo
+                fragment = new NewsFragment();
+                addToBackStack = true;
                 break;
             case R.id.logout:
-                // todo
+                // todo show verification popup
                 break;
             case R.id.lists:
                 // todo
@@ -238,8 +241,9 @@ public class MainActivity extends AppCompatActivity implements
     public void onBackPressed() {
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        // fixme on addList Fragment, id.drawer_layout gives an frameLayout
-        if (drawer.isDrawerOpen(drawer)) {
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        // check if the navigationView drawer is open
+        if (drawer.isDrawerOpen(navigationView)) {
             drawer.closeDrawers();
             return;
         }
@@ -273,13 +277,4 @@ public class MainActivity extends AppCompatActivity implements
     public void onListFragmentInteraction(News item) {
 
     }
-
-    private static class LoginTask extends AsyncTask<Void, Void, Void> {
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-            return null;
-        }
-    }
-
 }

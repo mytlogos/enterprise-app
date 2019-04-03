@@ -6,6 +6,7 @@ import android.arch.lifecycle.LiveData;
 import android.support.annotation.NonNull;
 
 import com.mytlogos.enterprise.background.Repository;
+import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
 
 import java.io.IOException;
@@ -29,8 +30,8 @@ public class UserViewModel extends AndroidViewModel {
         return repository.isLoading();
     }
 
-    public void updateUser(@NonNull User roomUser) {
-        repository.updateUser(roomUser);
+    public void updateUser(@NonNull UpdateUser updateUser) {
+        repository.updateUser(updateUser);
     }
 
     public void login(String user, String password) throws IOException {

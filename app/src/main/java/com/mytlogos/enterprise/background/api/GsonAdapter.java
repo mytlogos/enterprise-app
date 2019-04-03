@@ -13,8 +13,23 @@ import org.joda.time.DateTime;
 
 import java.lang.reflect.Type;
 
-public class GsonAdapter {
+class GsonAdapter {
     public static class DateTimeAdapter implements JsonDeserializer<DateTime>,
+            JsonSerializer<DateTime> {
+
+        @Override
+        public DateTime deserialize(JsonElement json, Type typeOfT,
+                                    JsonDeserializationContext context) throws JsonParseException {
+            return json == null ? null : Formatter.parseDateTime(json.getAsString());
+        }
+
+        @Override
+        public JsonElement serialize(DateTime src, Type typeOfSrc, JsonSerializationContext context) {
+            return src == null ? null : new JsonPrimitive(Formatter.formatDateTime(src));
+        }
+    }
+
+    public static class ArrayAdapter implements JsonDeserializer<DateTime>,
             JsonSerializer<DateTime> {
 
         @Override

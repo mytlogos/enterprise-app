@@ -4,6 +4,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * A container for synchronized Sets.
+ */
 public class LoadData {
     private Set<Integer> media = Collections.synchronizedSet(new HashSet<>());
     private Set<Integer> part = Collections.synchronizedSet(new HashSet<>());

@@ -19,17 +19,17 @@ import retrofit2.http.Url;
 interface UserApi {
 
     @POST("{start}/logout")
-    Call<Boolean> logout(@Path("start") String url, @QueryMap Map<String, Object> body);
+    Call<Boolean> logout(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
 
     @PUT
     Call<Boolean> updateUser(@Url String url, @Body Map<String, Object> body);
 
     @GET("{start}/news")
-    Call<List<ClientNews>> getNews(@Path("start") String url, @QueryMap Map<String, Object> body);
+    Call<List<ClientNews>> getNews(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
 
     @GET("{start}/lists")
-    Call<List<ClientMediaList>> getLists(@Path("start") String url, @QueryMap Map<String, Object> body);
+    Call<List<ClientMediaList>> getLists(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
 
     @GET("{start}/invalidated")
-    Call<List<InvalidatedData>> getInvalidated(@Path("start") String url, @QueryMap Map<String, Object> body);
+    Call<List<InvalidatedData>> getInvalidated(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
 }

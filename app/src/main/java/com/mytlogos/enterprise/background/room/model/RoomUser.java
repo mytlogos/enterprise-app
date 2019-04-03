@@ -73,8 +73,8 @@ public class RoomUser {
             },
             primaryKeys = {"uuid", "id"},
             indices = {
-                    @Index(value="uuid"),
-                    @Index(value="id"),
+                    @Index(value = "uuid"),
+                    @Index(value = "id"),
             }
     )
     public static class UserUnReadNewsJoin {
@@ -85,6 +85,14 @@ public class RoomUser {
         public UserUnReadNewsJoin(@NonNull String uuid, int id) {
             this.uuid = uuid;
             this.id = id;
+        }
+
+        @Override
+        public String toString() {
+            return "UserUnReadNewsJoin{" +
+                    "uuid='" + uuid + '\'' +
+                    ", id=" + id +
+                    '}';
         }
 
         @Override
@@ -114,8 +122,8 @@ public class RoomUser {
             },
             primaryKeys = {"uuid", "id"},
             indices = {
-                    @Index(value="uuid"),
-                    @Index(value="id"),
+                    @Index(value = "uuid"),
+                    @Index(value = "id"),
             }
     )
     public static class UserUnReadChapterJoin {
@@ -126,6 +134,14 @@ public class RoomUser {
         public UserUnReadChapterJoin(@NonNull String uuid, int id) {
             this.uuid = uuid;
             this.id = id;
+        }
+
+        @Override
+        public String toString() {
+            return "UserUnReadChapterJoin{" +
+                    "uuid='" + uuid + '\'' +
+                    ", id=" + id +
+                    '}';
         }
 
         @Override
@@ -155,8 +171,8 @@ public class RoomUser {
             },
             primaryKeys = {"uuid", "id"},
             indices = {
-                    @Index(value="uuid"),
-                    @Index(value="id"),
+                    @Index(value = "uuid"),
+                    @Index(value = "id"),
             }
     )
     public static class UserReadTodayJoin {
@@ -170,6 +186,14 @@ public class RoomUser {
         }
 
         @Override
+        public String toString() {
+            return "UserReadTodayJoin{" +
+                    "uuid='" + uuid + '\'' +
+                    ", id=" + id +
+                    '}';
+        }
+
+        @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
@@ -179,6 +203,7 @@ public class RoomUser {
             if (id != that.id) return false;
             return uuid.equals(that.uuid);
         }
+
 
         @Override
         public int hashCode() {

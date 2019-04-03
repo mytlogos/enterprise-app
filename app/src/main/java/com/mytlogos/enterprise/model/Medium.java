@@ -1,7 +1,7 @@
 package com.mytlogos.enterprise.model;
 
 public interface Medium {
-    int getCurrentRead();
+    Integer getCurrentRead();
 
     int getMediumId();
 

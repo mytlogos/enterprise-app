@@ -24,7 +24,7 @@ import com.mytlogos.enterprise.background.room.model.RoomUser;
                 RoomEpisode.class, RoomPart.class, RoomMedium.class, RoomExternalMediaList.class,
                 RoomExternalMediaList.ExternalListMediaJoin.class,
         },
-        version = 5,
+        version = 7,
         exportSchema = false)
 @TypeConverters({Converters.class})
 public abstract class AbstractDatabase extends RoomDatabase {

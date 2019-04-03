@@ -10,5 +10,7 @@ public interface News {
 
     int getNewsId();
 
+    boolean isRead();
+
     DateTime getTimeStamp();
 }

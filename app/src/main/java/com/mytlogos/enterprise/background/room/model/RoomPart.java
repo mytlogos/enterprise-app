@@ -45,6 +45,44 @@ public class RoomPart implements Part {
         this.episodes = new ArrayList<>();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        RoomPart roomPart = (RoomPart) o;
+
+        if (getPartId() != roomPart.getPartId()) return false;
+        if (getMediumId() != roomPart.getMediumId()) return false;
+        if (getTotalIndex() != roomPart.getTotalIndex()) return false;
+        if (getPartialIndex() != roomPart.getPartialIndex()) return false;
+        if (getTitle() != null ? !getTitle().equals(roomPart.getTitle()) : roomPart.getTitle() != null)
+            return false;
+        return getEpisodes() != null ? getEpisodes().equals(roomPart.getEpisodes()) : roomPart.getEpisodes() == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getPartId();
+        result = 31 * result + getMediumId();
+        result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
+        result = 31 * result + getTotalIndex();
+        result = 31 * result + getPartialIndex();
+        result = 31 * result + (getEpisodes() != null ? getEpisodes().hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "RoomPart{" +
+                "partId=" + partId +
+                ", mediumId=" + mediumId +
+                ", title='" + title + '\'' +
+                ", totalIndex=" + totalIndex +
+                ", partialIndex=" + partialIndex +
+                ", episodes=" + episodes +
+                '}';
+    }
 
     @Override
     public int getPartId() {

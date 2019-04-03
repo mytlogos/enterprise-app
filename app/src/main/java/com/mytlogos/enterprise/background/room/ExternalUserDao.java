@@ -9,6 +9,7 @@ import java.util.List;
 
 @Dao
 public interface ExternalUserDao extends MultiBaseDao<RoomExternalUser> {
+
     @Query("SELECT uuid FROM RoomExternalUser;")
     List<String> loaded();
 }

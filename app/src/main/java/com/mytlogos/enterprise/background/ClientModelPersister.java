@@ -6,32 +6,74 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
-import com.mytlogos.enterprise.model.User;
+
+import java.util.Arrays;
+import java.util.Collection;
 
 public interface ClientModelPersister {
-    void persist(ClientEpisode... episode);
+    Collection<ClientConsumer<?>> getConsumer();
 
-    void persist(String uuid, ClientMediaList... mediaLists);
+    default ClientModelPersister persist(ClientEpisode... episode) {
+        return this.persistEpisodes(Arrays.asList(episode));
+    }
 
-    void persist(String externalUuid, ClientExternalMediaList... externalMediaLists);
+    ClientModelPersister persistEpisodes(Collection<ClientEpisode> episode);
 
-    void persist(String uuid, ClientExternalUser... externalUsers);
+    default ClientModelPersister persist(ClientMediaList... mediaLists) {
+        return this.persistMediaLists(Arrays.asList(mediaLists));
+    }
 
-    void persist(String uuid, ClientListQuery... listQueries);
+    ClientModelPersister persistMediaLists(Collection<ClientMediaList> mediaLists);
 
-    void persist(ClientMedium... media);
+    default ClientModelPersister persist(ClientExternalMediaList... externalMediaLists) {
+        return this.persistExternalMediaLists(Arrays.asList(externalMediaLists));
+    }
 
-    void persist(ClientNews... news);
+    ClientModelPersister persistExternalMediaLists(Collection<ClientExternalMediaList> externalMediaLists);
 
-    void persist(int mediumId, ClientPart... parts);
+    default ClientModelPersister persist(ClientExternalUser... externalUsers) {
+        return this.persistExternalUsers(Arrays.asList(externalUsers));
+    }
 
-    User persist(ClientUser user);
+    ClientModelPersister persistExternalUsers(Collection<ClientExternalUser> externalUsers);
 
-    void persist(ClientReadEpisode[] readMedia);
+    default ClientModelPersister persist(ClientMedium... media) {
+        return this.persistMedia(Arrays.asList(media));
+    }
+
+    ClientModelPersister persistMedia(Collection<ClientMedium> media);
+
+    default ClientModelPersister persist(ClientNews... news) {
+        return this.persistNews(Arrays.asList(news));
+    }
+
+    ClientModelPersister persistNews(Collection<ClientNews> news);
+
+    default ClientModelPersister persist(ClientPart... parts) {
+        return this.persistParts(Arrays.asList(parts));
+    }
+
+    ClientModelPersister persistParts(Collection<ClientPart> parts);
+
+    ClientModelPersister persist(ClientListQuery query);
+
+    ClientModelPersister persist(ClientMultiListQuery query);
+
+    ClientModelPersister persist(ClientUser user);
+
+    ClientModelPersister persist(ClientUpdateUser user);
+
+    default ClientModelPersister persist(ClientReadEpisode... readEpisodes) {
+        return this.persistReadEpisodes(Arrays.asList(readEpisodes));
+    }
+
+    ClientModelPersister persistReadEpisodes(Collection<ClientReadEpisode> readMedia);
 
     void finish();
 }

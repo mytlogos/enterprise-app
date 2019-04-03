@@ -15,14 +15,20 @@ import java.util.List;
 @Dao
 public interface NewsDao {
 
-    @Query("SELECT * FROM roomnews")
+    @Query("SELECT * FROM RoomNews ORDER BY timeStamp DESC LIMIT 100 ")
     LiveData<List<RoomNews>> getNews();
 
-    @Query("DELETE FROM roomnews WHERE timeStamp >= :from AND timeStamp <= :to")
+    @Query("SELECT * FROM RoomNews  ORDER BY timeStamp DESC  LIMIT 100")
+    List<RoomNews> getCurrentNews();
+
+    @Query("DELETE FROM RoomNews WHERE timeStamp >= :from AND timeStamp <= :to")
     void deleteNews(DateTime from, DateTime to);
 
-    @Query("DELETE FROM roomnews")
+    @Query("DELETE FROM RoomNews")
     void deleteOldNews();
+
+    @Query("SELECT * FROM RoomNews WHERE read=0  ORDER BY timeStamp DESC")
+    LiveData<List<RoomNews>> geUnreadNews();
 
     @Insert
     void insertNews(RoomNews user);

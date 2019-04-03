@@ -1,27 +1,31 @@
 package com.mytlogos.enterprise.background;
 
 import android.arch.lifecycle.LiveData;
-import android.support.annotation.NonNull;
 
+import com.mytlogos.enterprise.model.News;
 import com.mytlogos.enterprise.model.User;
 
 import org.joda.time.DateTime;
 
+import java.util.List;
 
+
+/**
+ * Interface for querying and deleting data.
+ * It models a server-driven database.
+ * <p>
+ * To insert or update data, {@link #getPersister(Repository, LoadData, LoadData)} is used to persist data
+ * from the server.
+ * </p>
+ */
 public interface DatabaseStorage {
     LiveData<? extends User> getUser();
 
-    void updateUser(@NonNull User user);
-
-    void insertUser(@NonNull User user);
-
     void deleteAllUser();
 
-    ClientModelPersister getPersister(LoadData unLoadedData, LoadData loadedData);
+    ClientModelPersister getPersister(Repository repository, LoadData unLoadedData, LoadData loadedData);
 
     void deleteOldNews();
-
-    void changeUser(User newUser);
 
     boolean isLoading();
 
@@ -30,4 +34,6 @@ public interface DatabaseStorage {
     void setNewsInterval(DateTime from, DateTime to);
 
     LoadData getLoadData();
+
+    LiveData<List<News>> getNews();
 }

@@ -33,6 +33,38 @@ public class RoomMediaList implements MediaList {
         this.medium = medium;
     }
 
+    @Override
+    public String toString() {
+        return "RoomMediaList{" +
+                "listId=" + listId +
+                ", uuid='" + uuid + '\'' +
+                ", name='" + name + '\'' +
+                ", medium=" + medium +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        RoomMediaList that = (RoomMediaList) o;
+
+        if (listId != that.listId) return false;
+        if (medium != that.medium) return false;
+        if (uuid != null ? !uuid.equals(that.uuid) : that.uuid != null) return false;
+        return name != null ? name.equals(that.name) : that.name == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = listId;
+        result = 31 * result + (uuid != null ? uuid.hashCode() : 0);
+        result = 31 * result + (name != null ? name.hashCode() : 0);
+        result = 31 * result + medium;
+        return result;
+    }
+
     @Entity(
             primaryKeys = {"listId", "mediumId"},
             foreignKeys = {
@@ -61,6 +93,32 @@ public class RoomMediaList implements MediaList {
         public MediaListMediaJoin(int listId, int mediumId) {
             this.listId = listId;
             this.mediumId = mediumId;
+        }
+
+        @Override
+        public String toString() {
+            return "MediaListMediaJoin{" +
+                    "listId=" + listId +
+                    ", mediumId=" + mediumId +
+                    '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            MediaListMediaJoin that = (MediaListMediaJoin) o;
+
+            if (listId != that.listId) return false;
+            return mediumId == that.mediumId;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = listId;
+            result = 31 * result + mediumId;
+            return result;
         }
     }
 }

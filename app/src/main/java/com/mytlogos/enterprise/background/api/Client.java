@@ -9,8 +9,10 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 
@@ -36,7 +38,7 @@ public class Client {
     private Authentication authentication;
 
     public Client() {
-
+//        InetAddress.getByName("").isReachable(100);
     }
 
     private static void buildPathMap() {
@@ -49,7 +51,6 @@ public class Client {
         classPathMap.put(ExternalUserApi.class, "externalUser");
         classPathMap.put(ListApi.class, "list");
         classPathMap.put(ListMediaApi.class, "medium");
-        classPathMap.put(NewsApi.class, "news");
         classPathMap.put(MediumApi.class, "medium");
         classPathMap.put(PartApi.class, "part");
         classPathMap.put(EpisodeApi.class, "episode");
@@ -59,7 +60,6 @@ public class Client {
         parentClassMap.put(ExternalUserApi.class, UserApi.class);
         parentClassMap.put(ListApi.class, UserApi.class);
         parentClassMap.put(ListMediaApi.class, ListApi.class);
-        parentClassMap.put(NewsApi.class, UserApi.class);
         parentClassMap.put(MediumApi.class, UserApi.class);
         parentClassMap.put(PartApi.class, MediumApi.class);
         parentClassMap.put(EpisodeApi.class, PartApi.class);
@@ -135,15 +135,28 @@ public class Client {
         return build(UserApi.class, (apiImpl, url) -> apiImpl.logout(url, body));
     }
 
-    public Call<Boolean> updateUser() {
+    public Call<Boolean> updateUser(ClientUpdateUser updateUser) {
         Map<String, Object> body = this.userAuthenticationMap();
+        body.put("user", updateUser);
         return build(UserApi.class, (apiImpl, url) -> apiImpl.updateUser(url, body));
     }
 
     public Call<List<ClientNews>> getNews(DateTime from, DateTime to) {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("from", from);
-        body.put("to", to);
+        if (from != null) {
+            body.put("from", from);
+        }
+        if (to != null) {
+            body.put("to", to);
+        }
+        return build(UserApi.class, (apiImpl, url) -> apiImpl.getNews(url, body));
+    }
+
+    public Call<List<ClientNews>> getNews(Collection<Integer> newsIds) {
+        Map<String, Object> body = this.userAuthenticationMap();
+        if (newsIds != null) {
+            body.put("newsId", newsIds);
+        }
         return build(UserApi.class, (apiImpl, url) -> apiImpl.getNews(url, body));
     }
 
@@ -163,6 +176,12 @@ public class Client {
         return build(ExternalUserApi.class, (apiImpl, url) -> apiImpl.getExternalUser(url, body));
     }
 
+    public Call<List<ClientExternalUser>> getExternalUser(Collection<String> externalUuid) {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("externalUuid", externalUuid);
+        return build(ExternalUserApi.class, (apiImpl, url) -> apiImpl.getExternalUsers(url, body));
+    }
+
     public Call<ClientExternalUser> addExternalUser(AddClientExternalUser externalUser) {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("externalUser", externalUser);
@@ -175,10 +194,16 @@ public class Client {
         return build(ExternalUserApi.class, (apiImpl, url) -> apiImpl.deleteExternalUser(url, body));
     }
 
-    public Call<ClientListQuery> getList(ClientMediaList mediaList) {
+    public Call<ClientListQuery> getList(int listId) {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("list", mediaList);
+        body.put("listId", listId);
         return build(ListApi.class, (apiImpl, url) -> apiImpl.getList(url, body));
+    }
+
+    public Call<ClientMultiListQuery> getLists(Collection<Integer> listIds) {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("listId", listIds);
+        return build(ListApi.class, (apiImpl, url) -> apiImpl.getLists(url, body));
     }
 
     public Call<ClientMediaList> addList(ClientMediaList mediaList) {
@@ -201,7 +226,7 @@ public class Client {
 
     public Call<List<ClientMedium>> getListMedia(Collection<Integer> loadedMedia, int listId) {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("media", loadedMedia.toArray(new Integer[0]));
+        body.put("media", loadedMedia);
         body.put("listId", listId);
         return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.getListMedia(url, body));
     }
@@ -230,7 +255,7 @@ public class Client {
 
     public Call<List<ClientMedium>> getMedia(Collection<Integer> mediumIds) {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("mediumId", mediumIds.toArray(new Integer[0]));
+        body.put("mediumId", mediumIds);
         return build(MediumApi.class, (apiImpl, url) -> apiImpl.getMedia(url, body));
     }
 
@@ -249,6 +274,12 @@ public class Client {
     public Call<List<ClientPart>> getParts(int mediumId) {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("mediumId", mediumId);
+        return build(PartApi.class, (apiImpl, url) -> apiImpl.getPart(url, body));
+    }
+
+    public Call<List<ClientPart>> getParts(Collection<Integer> partIds) {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("partId", partIds);
         return build(PartApi.class, (apiImpl, url) -> apiImpl.getPart(url, body));
     }
 
@@ -278,7 +309,7 @@ public class Client {
 
     public Call<List<ClientEpisode>> getEpisodes(Collection<Integer> episodeIds) {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("episodeId", episodeIds.toArray(new Integer[0]));
+        body.put("episodeId", episodeIds);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.getEpisodes(url, body));
     }
 
@@ -341,7 +372,7 @@ public class Client {
                     .create();
             retrofit = new Retrofit.Builder()
                     // todo: change url to online server url
-                    .baseUrl("http://192.168.1.6:3000/")
+                    .baseUrl("http://192.168.1.5:3000/")
                     .addConverterFactory(GsonConverterFactory.create(gson))
                     .build();
             Client.retrofitMap.put(api, retrofit);
@@ -356,3 +387,4 @@ public class Client {
         R call(T apiImpl, String url);
     }
 }
+// todo check if server is online or not

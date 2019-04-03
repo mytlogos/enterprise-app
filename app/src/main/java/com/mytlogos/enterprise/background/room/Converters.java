@@ -15,6 +15,6 @@ public class Converters {
 
     @TypeConverter
     public static String fromDateTime(DateTime dateTime) {
-        return dateTime.toInstant().toString();
+        return dateTime == null ? null : dateTime.toInstant().toString();
     }
 }

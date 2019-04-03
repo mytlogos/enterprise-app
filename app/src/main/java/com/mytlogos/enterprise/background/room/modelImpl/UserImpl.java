@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class UserImpl implements User {
+
     @NonNull
     private final String name;
 

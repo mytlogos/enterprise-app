@@ -1,22 +1,30 @@
 package com.mytlogos.enterprise.ui;
 
+import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.News;
 import com.mytlogos.enterprise.viewmodel.NewsViewModel;
 
+import org.joda.time.DateTime;
+
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * A fragment representing a list of Items.
@@ -61,23 +69,59 @@ public class NewsFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_news_list, container, false);
+        View view = inflater.inflate(R.layout.fragment_news, container, false);
 
         // Set the adapter
-        if (view instanceof RecyclerView) {
-            Context context = view.getContext();
-            RecyclerView recyclerView = (RecyclerView) view;
-            if (mColumnCount <= 1) {
-                recyclerView.setLayoutManager(new LinearLayoutManager(context));
-            } else {
-                recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
-            }
-            NewsRecyclerViewAdapter adapter = new NewsRecyclerViewAdapter(new ArrayList<>(), mListener);
+        Context context = view.getContext();
 
-            NewsViewModel newsViewModel = ViewModelProviders.of(this).get(NewsViewModel.class);
-            newsViewModel.getNews().observe(this, adapter::setValue);
-            recyclerView.setAdapter(adapter);
+        RecyclerView recyclerView = view.findViewById(R.id.list);
+
+        if (mColumnCount <= 1) {
+            LinearLayoutManager layoutManager = new LinearLayoutManager(context);
+            recyclerView.setLayoutManager(layoutManager);
+
+            DividerItemDecoration decoration = new DividerItemDecoration(context, layoutManager.getOrientation());
+            recyclerView.addItemDecoration(decoration);
+        } else {
+            recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
         }
+
+        NewsRecyclerViewAdapter adapter = new NewsRecyclerViewAdapter(new ArrayList<>(), mListener, this.getContext());
+        recyclerView.setAdapter(adapter);
+
+        NewsViewModel newsViewModel = ViewModelProviders.of(this).get(NewsViewModel.class);
+        LiveData<List<News>> newsLiveData = newsViewModel.getNews();
+
+        SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swiper);
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            List<News> news = newsLiveData.getValue();
+            DateTime latest = null;
+
+            if (news != null) {
+                News latestNews = Collections.max(news, (o1, o2) -> o1.getTimeStamp().compareTo(o2.getTimeStamp()));
+                latest = latestNews == null ? null : latestNews.getTimeStamp();
+            }
+            newsViewModel.refresh(latest).observe(this, loadingComplete -> {
+                if (loadingComplete != null && loadingComplete) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+            });
+        });
+
+        newsLiveData.observe(this, news -> {
+
+            TextView textView = view.findViewById(R.id.empty_view);
+
+            if (news == null || news.isEmpty()) {
+                recyclerView.setVisibility(View.GONE);
+                textView.setVisibility(View.VISIBLE);
+            } else {
+                recyclerView.setVisibility(View.VISIBLE);
+                textView.setVisibility(View.GONE);
+            }
+            adapter.setValue(news);
+        });
+
         return view;
     }
 

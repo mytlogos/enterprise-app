@@ -3,13 +3,10 @@ package com.mytlogos.enterprise.background.room.model;
 import android.arch.persistence.room.Entity;
 import android.arch.persistence.room.PrimaryKey;
 
-import com.mytlogos.enterprise.Formatter;
-import com.mytlogos.enterprise.model.News;
-
 import org.joda.time.DateTime;
 
 @Entity
-public class RoomNews implements News {
+public class RoomNews  {
 
     private String title;
     private DateTime timeStamp;
@@ -22,10 +19,6 @@ public class RoomNews implements News {
         this.read = read;
         this.title = title;
         this.timeStamp = timeStamp;
-    }
-
-    public String getTimeStampString() {
-        return Formatter.formatDateTime(getTimeStamp());
     }
 
     public String getTitle() {
@@ -42,5 +35,38 @@ public class RoomNews implements News {
 
     public boolean isRead() {
         return read;
+    }
+
+    @Override
+    public String toString() {
+        return "RoomNews{" +
+                "title='" + title + '\'' +
+                ", timeStamp=" + timeStamp +
+                ", newsId=" + newsId +
+                ", read=" + read +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        RoomNews roomNews = (RoomNews) o;
+
+        if (getNewsId() != roomNews.getNewsId()) return false;
+        if (isRead() != roomNews.isRead()) return false;
+        if (getTitle() != null ? !getTitle().equals(roomNews.getTitle()) : roomNews.getTitle() != null)
+            return false;
+        return getTimeStamp() != null ? getTimeStamp().equals(roomNews.getTimeStamp()) : roomNews.getTimeStamp() == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getTitle() != null ? getTitle().hashCode() : 0;
+        result = 31 * result + (getTimeStamp() != null ? getTimeStamp().hashCode() : 0);
+        result = 31 * result + getNewsId();
+        result = 31 * result + (isRead() ? 1 : 0);
+        return result;
     }
 }
