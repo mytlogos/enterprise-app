@@ -1,15 +1,11 @@
 package com.mytlogos.enterprise.background.room.model;
 
-import android.arch.persistence.room.Entity;
-import android.arch.persistence.room.ForeignKey;
-import android.arch.persistence.room.Ignore;
-import android.arch.persistence.room.Index;
-import android.arch.persistence.room.PrimaryKey;
+import androidx.room.Entity;
+import androidx.room.ForeignKey;
+import androidx.room.Index;
+import androidx.room.PrimaryKey;
 
 import com.mytlogos.enterprise.model.Medium;
-
-import java.util.List;
-import java.util.Objects;
 
 @Entity(
         foreignKeys = @ForeignKey(
@@ -24,12 +20,6 @@ import java.util.Objects;
         }
 )
 public class RoomMedium implements Medium {
-    @Ignore
-    private List<Integer> parts;
-    @Ignore
-    private List<Integer> latestReleased;
-    @Ignore
-    private List<Integer> unreadEpisodes;
     @PrimaryKey
     private int mediumId;
     private Integer currentRead;
@@ -64,9 +54,6 @@ public class RoomMedium implements Medium {
     @Override
     public String toString() {
         return "RoomMedium{" +
-                "parts=" + parts +
-                ", latestReleased=" + latestReleased +
-                ", unreadEpisodes=" + unreadEpisodes +
                 ", mediumId=" + mediumId +
                 ", currentRead=" + currentRead +
                 ", countryOfOrigin='" + countryOfOrigin + '\'' +
@@ -90,52 +77,12 @@ public class RoomMedium implements Medium {
 
         RoomMedium that = (RoomMedium) o;
 
-        if (getMediumId() != that.getMediumId()) return false;
-        if (!Objects.equals(getCurrentRead(), that.getCurrentRead())) return false;
-        if (getMedium() != that.getMedium()) return false;
-        if (getStateOrigin() != that.getStateOrigin()) return false;
-        if (getStateTL() != that.getStateTL()) return false;
-        if (parts != null ? !parts.equals(that.parts) : that.parts != null) return false;
-        if (latestReleased != null ? !latestReleased.equals(that.latestReleased) : that.latestReleased != null)
-            return false;
-        if (unreadEpisodes != null ? !unreadEpisodes.equals(that.unreadEpisodes) : that.unreadEpisodes != null)
-            return false;
-        if (getCountryOfOrigin() != null ? !getCountryOfOrigin().equals(that.getCountryOfOrigin()) : that.getCountryOfOrigin() != null)
-            return false;
-        if (getLanguageOfOrigin() != null ? !getLanguageOfOrigin().equals(that.getLanguageOfOrigin()) : that.getLanguageOfOrigin() != null)
-            return false;
-        if (getAuthor() != null ? !getAuthor().equals(that.getAuthor()) : that.getAuthor() != null)
-            return false;
-        if (getTitle() != null ? !getTitle().equals(that.getTitle()) : that.getTitle() != null)
-            return false;
-        if (getArtist() != null ? !getArtist().equals(that.getArtist()) : that.getArtist() != null)
-            return false;
-        if (getLang() != null ? !getLang().equals(that.getLang()) : that.getLang() != null)
-            return false;
-        if (getSeries() != null ? !getSeries().equals(that.getSeries()) : that.getSeries() != null)
-            return false;
-        return getUniverse() != null ? getUniverse().equals(that.getUniverse()) : that.getUniverse() == null;
+        return mediumId == that.mediumId;
     }
 
     @Override
     public int hashCode() {
-        int result = parts != null ? parts.hashCode() : 0;
-        result = 31 * result + (latestReleased != null ? latestReleased.hashCode() : 0);
-        result = 31 * result + (unreadEpisodes != null ? unreadEpisodes.hashCode() : 0);
-        result = 31 * result + getMediumId();
-        result = 31 * result + getCurrentRead();
-        result = 31 * result + (getCountryOfOrigin() != null ? getCountryOfOrigin().hashCode() : 0);
-        result = 31 * result + (getLanguageOfOrigin() != null ? getLanguageOfOrigin().hashCode() : 0);
-        result = 31 * result + (getAuthor() != null ? getAuthor().hashCode() : 0);
-        result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
-        result = 31 * result + getMedium();
-        result = 31 * result + (getArtist() != null ? getArtist().hashCode() : 0);
-        result = 31 * result + (getLang() != null ? getLang().hashCode() : 0);
-        result = 31 * result + getStateOrigin();
-        result = 31 * result + getStateTL();
-        result = 31 * result + (getSeries() != null ? getSeries().hashCode() : 0);
-        result = 31 * result + (getUniverse() != null ? getUniverse().hashCode() : 0);
-        return result;
+        return mediumId;
     }
 
     @Override

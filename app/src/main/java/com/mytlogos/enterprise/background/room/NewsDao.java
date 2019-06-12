@@ -1,10 +1,11 @@
 package com.mytlogos.enterprise.background.room;
 
-import android.arch.lifecycle.LiveData;
-import android.arch.persistence.room.Dao;
-import android.arch.persistence.room.Insert;
-import android.arch.persistence.room.OnConflictStrategy;
-import android.arch.persistence.room.Query;
+import androidx.lifecycle.LiveData;
+import androidx.room.Dao;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
+import androidx.room.Query;
+import androidx.room.Update;
 
 import com.mytlogos.enterprise.background.room.model.RoomNews;
 
@@ -24,7 +25,8 @@ public interface NewsDao {
     @Query("DELETE FROM RoomNews WHERE timeStamp >= :from AND timeStamp <= :to")
     void deleteNews(DateTime from, DateTime to);
 
-    @Query("DELETE FROM RoomNews")
+    // todo test this
+    @Query("DELETE FROM RoomNews WHERE timeStamp < strftime('%y-%m-%dT%H:%M:%f', datetime('now','-30 day'))")
     void deleteOldNews();
 
     @Query("SELECT * FROM RoomNews WHERE read=0  ORDER BY timeStamp DESC")
@@ -35,6 +37,12 @@ public interface NewsDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertNews(List<RoomNews> user);
+
+    @Update
+    void updateNews(RoomNews user);
+
+    @Update
+    void updateNews(List<RoomNews> user);
 
     @Query("SELECT newsId FROM RoomNews;")
     List<Integer> loaded();

@@ -1,21 +1,22 @@
 package com.mytlogos.enterprise.viewmodel;
 
 import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.LiveData;
-import android.arch.lifecycle.MutableLiveData;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.support.annotation.NonNull;
+
+import androidx.annotation.NonNull;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 
 import com.mytlogos.enterprise.background.Repository;
+import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.TaskManager;
 import com.mytlogos.enterprise.model.News;
 
 import org.joda.time.DateTime;
 
-import java.io.IOException;
 import java.util.List;
 
 public class NewsViewModel extends AndroidViewModel {
@@ -27,7 +28,7 @@ public class NewsViewModel extends AndroidViewModel {
 
     public NewsViewModel(@NonNull Application application) {
         super(application);
-        repository = Repository.getInstance(application);
+        repository = RepositoryImpl.getInstance(application);
         repository.getNews();
         handler = new Handler(Looper.getMainLooper()) {
             @Override
@@ -49,7 +50,7 @@ public class NewsViewModel extends AndroidViewModel {
         TaskManager.runTask(() -> {
             try {
                 repository.refreshNews(latest);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             } finally {
                 Message message = this.handler.obtainMessage(this.LOADING_COMPLETE);

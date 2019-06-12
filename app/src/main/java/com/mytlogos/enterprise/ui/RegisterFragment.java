@@ -1,9 +1,6 @@
 package com.mytlogos.enterprise.ui;
 
-import android.arch.lifecycle.ViewModelProviders;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.v4.app.FragmentActivity;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,6 +8,10 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
+
+import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.ViewModelProviders;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.viewmodel.UserViewModel;
@@ -35,7 +36,7 @@ public class RegisterFragment extends LoginFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View fragment = inflater.inflate(R.layout.fragment_register, container, false);
+        View fragment = inflater.inflate(R.layout.register, container, false);
         // Set up the login form.
         this.emailUserNameView = fragment.findViewById(R.id.email);
         populateAutoComplete();

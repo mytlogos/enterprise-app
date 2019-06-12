@@ -1,11 +1,11 @@
 package com.mytlogos.enterprise.background.room.model;
 
-import android.arch.persistence.room.Entity;
-import android.arch.persistence.room.ForeignKey;
-import android.arch.persistence.room.Index;
-import android.arch.persistence.room.PrimaryKey;
+import androidx.room.Entity;
+import androidx.room.ForeignKey;
+import androidx.room.Index;
+import androidx.room.PrimaryKey;
 
-import com.mytlogos.enterprise.model.MediaList;
+import java.util.Objects;
 
 @Entity(
         foreignKeys = @ForeignKey(
@@ -19,7 +19,7 @@ import com.mytlogos.enterprise.model.MediaList;
                 @Index(value = "listId"),
         }
 )
-public class RoomMediaList implements MediaList {
+public class RoomMediaList {
     @PrimaryKey
     public final int listId;
     public final String uuid;
@@ -52,8 +52,8 @@ public class RoomMediaList implements MediaList {
 
         if (listId != that.listId) return false;
         if (medium != that.medium) return false;
-        if (uuid != null ? !uuid.equals(that.uuid) : that.uuid != null) return false;
-        return name != null ? name.equals(that.name) : that.name == null;
+        if (!Objects.equals(uuid, that.uuid)) return false;
+        return Objects.equals(name, that.name);
     }
 
     @Override

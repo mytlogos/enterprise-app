@@ -1,8 +1,8 @@
 package com.mytlogos.enterprise.background.room.modelImpl;
 
-import android.arch.persistence.room.Ignore;
-import android.arch.persistence.room.Relation;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
+import androidx.room.Ignore;
+import androidx.room.Relation;
 
 import com.mytlogos.enterprise.background.room.model.RoomUser;
 import com.mytlogos.enterprise.model.User;

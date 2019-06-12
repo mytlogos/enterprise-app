@@ -63,25 +63,11 @@ public class ClientExternalMediaList {
 
         ClientExternalMediaList that = (ClientExternalMediaList) o;
 
-        if (getId() != that.getId()) return false;
-        if (getMedium() != that.getMedium()) return false;
-        if (getUuid() != null ? !getUuid().equals(that.getUuid()) : that.getUuid() != null)
-            return false;
-        if (getName() != null ? !getName().equals(that.getName()) : that.getName() != null)
-            return false;
-        if (getUrl() != null ? !getUrl().equals(that.getUrl()) : that.getUrl() != null)
-            return false;
-        return Arrays.equals(getItems(), that.getItems());
+        return getId() == that.getId();
     }
 
     @Override
     public int hashCode() {
-        int result = getUuid() != null ? getUuid().hashCode() : 0;
-        result = 31 * result + getId();
-        result = 31 * result + (getName() != null ? getName().hashCode() : 0);
-        result = 31 * result + getMedium();
-        result = 31 * result + (getUrl() != null ? getUrl().hashCode() : 0);
-        result = 31 * result + Arrays.hashCode(getItems());
-        return result;
+        return getId();
     }
 }

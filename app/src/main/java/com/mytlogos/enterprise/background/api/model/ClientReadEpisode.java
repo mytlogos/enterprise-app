@@ -20,23 +20,18 @@ public class ClientReadEpisode {
 
         ClientReadEpisode that = (ClientReadEpisode) o;
 
-        if (getEpisodeId() != that.getEpisodeId()) return false;
-        if (Float.compare(that.getProgress(), getProgress()) != 0) return false;
-        return getReadDate() != null ? getReadDate().equals(that.getReadDate()) : that.getReadDate() == null;
+        return getEpisodeId() == that.getEpisodeId();
     }
 
     @Override
     public int hashCode() {
-        int result = getEpisodeId();
-        result = 31 * result + (getReadDate() != null ? getReadDate().hashCode() : 0);
-        result = 31 * result + (getProgress() != +0.0f ? Float.floatToIntBits(getProgress()) : 0);
-        return result;
+        return getEpisodeId();
     }
 
     @Override
     public String toString() {
         return "ClientReadEpisode{" +
-                "episodeId=" + episodeId +
+                "id=" + episodeId +
                 ", readDate=" + readDate +
                 ", progress=" + progress +
                 '}';

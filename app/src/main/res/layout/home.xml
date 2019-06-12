@@ -38,7 +38,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/unread_news" />
+                android:text="@string/news" />
 
             <TextView
                 android:id="@+id/unread_news"
@@ -73,14 +73,27 @@
         <LinearLayout
             android:id="@+id/list"
             style="@style/HomeContainer"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
             android:orientation="vertical">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/lists" />
+        </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/small_vertical_spacing" />
+
+        <LinearLayout
+            android:id="@+id/medium"
+            style="@style/HomeContainer"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/medium" />
         </LinearLayout>
 
         <Space

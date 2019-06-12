@@ -25,6 +25,7 @@
         android:layout_height="wrap_content">
 
         <CheckBox
+            android:id="@+id/text_medium"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/text" />
@@ -35,6 +36,7 @@
             android:layout_weight="1" />
 
         <CheckBox
+            android:id="@+id/video_medium"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/video" />
@@ -45,6 +47,7 @@
             android:layout_weight="1" />
 
         <CheckBox
+            android:id="@+id/image_medium"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/image" />
@@ -55,6 +58,7 @@
             android:layout_weight="1" />
 
         <CheckBox
+            android:id="@+id/audio_medium"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/audio" />

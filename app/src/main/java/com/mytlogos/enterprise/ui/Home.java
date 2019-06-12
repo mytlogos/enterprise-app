@@ -1,15 +1,16 @@
 package com.mytlogos.enterprise.ui;
 
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProviders;
 
 import com.mytlogos.enterprise.MainActivity;
 import com.mytlogos.enterprise.R;
@@ -18,17 +19,18 @@ import com.mytlogos.enterprise.viewmodel.UserViewModel;
 
 import java.util.Objects;
 
-public class Home extends Fragment {
-
+public class Home extends BaseFragment {
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.home, container, false);
 
-        this.addClickListener(view, R.id.chapter, new UnreadChapterFragment());
+        this.addClickListener(view, R.id.chapter, new UnreadEpisodeFragment());
         this.addClickListener(view, R.id.news, new NewsFragment());
         this.addClickListener(view, R.id.history, new ReadHistoryFragment());
+        this.addClickListener(view, R.id.list, new ListsFragment());
+        this.addClickListener(view, R.id.medium, new MediumFragment());
         this.addClickListener(view, R.id.statistics, new Statistics());
         this.addClickListener(view, R.id.settings, SettingsActivity.class);
         this.addClickListener(view, R.id.logout, MainActivity::logout);
@@ -48,6 +50,8 @@ public class Home extends Fragment {
             unreadNews.setText(getString(R.string.unread_news_value, unReadNewsCount));
             readHistory.setText(getString(R.string.current_read, readTodayCount));
         });
+
+        this.setTitle("Home");
         return view;
     }
 

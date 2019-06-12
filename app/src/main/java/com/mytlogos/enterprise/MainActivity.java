@@ -3,32 +3,38 @@ package com.mytlogos.enterprise;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.design.widget.NavigationView;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.preference.PreferenceManager;
+
+import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.tabs.TabLayout;
 import com.mytlogos.enterprise.background.UserPreferences;
-import com.mytlogos.enterprise.model.News;
 import com.mytlogos.enterprise.model.User;
-import com.mytlogos.enterprise.ui.AddMedium;
+import com.mytlogos.enterprise.service.BootReceiver;
 import com.mytlogos.enterprise.ui.Home;
+import com.mytlogos.enterprise.ui.ListsFragment;
+import com.mytlogos.enterprise.ui.MediumFragment;
 import com.mytlogos.enterprise.ui.NewsFragment;
 import com.mytlogos.enterprise.ui.ReadHistoryFragment;
-import com.mytlogos.enterprise.ui.UnreadChapterFragment;
+import com.mytlogos.enterprise.ui.UnreadEpisodeFragment;
 import com.mytlogos.enterprise.viewmodel.UserViewModel;
 
 import java.util.Objects;
@@ -36,22 +42,25 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity implements
         NavigationView.OnNavigationItemSelectedListener,
         ReadHistoryFragment.ReadHistoryClickListener,
-        NewsFragment.NewsClickListener,
-        UnreadChapterFragment.UnreadChapterClickListener {
+        UnreadEpisodeFragment.UnreadChapterClickListener {
 
+    private final SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener = this::handlePreferences;
     private UserViewModel viewModel;
     private View container;
     private View progressView;
+    private BaseLayout baseLayout;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        // start periodic worker if it isn't running yet
+        BootReceiver.startWorker();
         checkToolbar();
 
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.trial_activity_main);
 
-        this.container = findViewById(R.id.main_content);
+        this.container = findViewById(R.id.base_content);
         this.progressView = findViewById(R.id.load_progress);
+        this.baseLayout = findViewById(R.id.BASE_ID);
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
@@ -59,8 +68,25 @@ public class MainActivity extends AppCompatActivity implements
         this.viewModel = ViewModelProviders.of(this).get(UserViewModel.class);
         this.viewModel.getUser().observe(this, this::handleUserChanges);
 
+        this.getSupportFragmentManager().addOnBackStackChangedListener(() -> {
+            boolean showHomeAsUp = this.getSupportFragmentManager().getBackStackEntryCount() > 0;
+            Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(showHomeAsUp);
+        });
+
         System.out.println(this.viewModel.isLoading());
         this.checkLogin(null);
+    }
+
+    public TabLayout getTabLayout() {
+        return this.baseLayout.activateTabs();
+    }
+
+    public void setTitle(String title) {
+        Objects.requireNonNull(this.getSupportActionBar()).setTitle(title);
+    }
+
+    public void setTitle(@StringRes int title) {
+        Objects.requireNonNull(this.getSupportActionBar()).setTitle(title);
     }
 
     /**
@@ -73,13 +99,14 @@ public class MainActivity extends AppCompatActivity implements
         // the progress spinner.
         int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
+
         // fixme does not show any animation
+
         this.container.setVisibility(show ? View.GONE : View.VISIBLE);
         this.container.animate().setDuration(shortAnimTime).alpha(
                 show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                System.out.println("animation ended");
                 container.setVisibility(show ? View.GONE : View.VISIBLE);
             }
         });
@@ -87,6 +114,12 @@ public class MainActivity extends AppCompatActivity implements
         this.progressView.setVisibility(show ? View.VISIBLE : View.GONE);
         this.progressView.animate().setDuration(shortAnimTime).alpha(
                 show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationStart(Animator animation) {
+                System.out.println("animation start");
+                super.onAnimationStart(animation);
+            }
+
             @Override
             public void onAnimationEnd(Animator animation) {
                 System.out.println("animation ended");
@@ -96,10 +129,11 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void handleUserChanges(User userImpl) {
+        this.checkLogin(userImpl);
         UserPreferences.putLoggedStatus(this, userImpl != null);
+        UserPreferences.putLoggedUuid(this, userImpl == null ? null : userImpl.getUuid());
         System.out.println("roomUser changed to: " + userImpl);
         this.showLoading(false);
-        this.checkLogin(userImpl);
     }
 
     private void checkLogin(@Nullable User roomUser) {
@@ -107,7 +141,9 @@ public class MainActivity extends AppCompatActivity implements
             roomUser = this.viewModel.getUser().getValue();
         }
         if (roomUser != null) {
-            this.switchWindow(new Home(), false);
+            if (this.getSupportFragmentManager().getBackStackEntryCount() == 0) {
+                this.switchWindow(new Home(), false);
+            }
         } else if (UserPreferences.getLoggedStatus(this) || this.viewModel.isLoading()) {
             this.showLoading(true);
         } else {
@@ -117,7 +153,12 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void logout() {
-        viewModel.logout();
+        new AlertDialog.Builder(this)
+                .setTitle("Confirm Logout")
+                .setMessage("Are you sure you want to log out?")
+                .setPositiveButton(android.R.string.yes, (dialog, which) -> viewModel.logout())
+                .setNegativeButton(android.R.string.no, null)
+                .show();
     }
 
     private void checkToolbar() {
@@ -128,15 +169,16 @@ public class MainActivity extends AppCompatActivity implements
 
         if (toolbar != null) {
             setSupportActionBar(toolbar);
-            Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
-
             // Create the adapter that will return a fragment for each of the three
             // primary sections of the activity.
-            DrawerLayout drawer = findViewById(R.id.drawer_layout);
-            ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                    this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-            drawer.addDrawerListener(toggle);
-            toggle.syncState();
+            /*DrawerLayout drawer = findViewById(R.id.BASE_ID);
+            // fixme remove this from this activity?
+            if (drawer != null) {
+                ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                        this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                drawer.addDrawerListener(toggle);
+                toggle.syncState();
+            }*/
         }
     }
 
@@ -152,6 +194,23 @@ public class MainActivity extends AppCompatActivity implements
 
         checkToolbar();
         checkLogin(null);
+
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        sharedPreferences.registerOnSharedPreferenceChangeListener(preferenceChangeListener);
+
+        for (String key : sharedPreferences.getAll().keySet()) {
+            this.handlePreferences(sharedPreferences, key);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        PreferenceManager
+                .getDefaultSharedPreferences(this)
+                .unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
     }
 
     @Override
@@ -166,15 +225,22 @@ public class MainActivity extends AppCompatActivity implements
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
         Class<?> activityClass = null;
 
         boolean selected = false;
-        if (id == R.id.action_settings) {
-            activityClass = SettingsActivity.class;
-            selected = true;
-        } else if (id == R.id.logout) {
-            this.logout();
+
+        switch (item.getItemId()) {
+            case R.id.action_settings:
+                activityClass = SettingsActivity.class;
+                selected = true;
+                break;
+            case R.id.logout:
+                this.logout();
+                selected = true;
+                break;
+            case android.R.id.home:
+                onBackPressed();
+                return true;
         }
 
         if (activityClass != null) {
@@ -192,28 +258,30 @@ public class MainActivity extends AppCompatActivity implements
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         Class<?> activityClass = null;
         Fragment fragment = null;
-        boolean addToBackStack = false;
+        boolean addToBackStack = true;
 
         switch (item.getItemId()) {
             case R.id.home:
                 fragment = new Home();
+                addToBackStack = false;
                 break;
             case R.id.news:
                 fragment = new NewsFragment();
-                addToBackStack = true;
                 break;
             case R.id.logout:
-                // todo show verification popup
+                this.logout();
                 break;
             case R.id.lists:
-                activityClass = ListActivity.class;
+                fragment = new ListsFragment();
+                break;
+            case R.id.medium:
+                fragment = new MediumFragment();
                 break;
             case R.id.add_medium:
-                fragment = new AddMedium();
-                addToBackStack = true;
+                activityClass = AddMediumActivity.class;
                 break;
             case R.id.add_list:
-                // todo
+                activityClass = AddListActivity.class;
                 break;
             case R.id.settings:
                 activityClass = SettingsActivity.class;
@@ -230,17 +298,18 @@ public class MainActivity extends AppCompatActivity implements
             selected = true;
         }
         if (selected) {
-            DrawerLayout drawer = findViewById(R.id.drawer_layout);
+            DrawerLayout drawer = findViewById(R.id.BASE_ID);
             drawer.closeDrawers();
             return true;
         }
+        this.baseLayout.deactivateTabs();
         return false;
     }
 
     @Override
     public void onBackPressed() {
+        DrawerLayout drawer = findViewById(R.id.BASE_ID);
 
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
         // check if the navigationView drawer is open
         if (drawer.isDrawerOpen(navigationView)) {
@@ -253,9 +322,16 @@ public class MainActivity extends AppCompatActivity implements
         if (!manager.popBackStackImmediate()) {
             super.onBackPressed();
         }
+        this.baseLayout.deactivateTabs();
     }
 
-    public void switchWindow(Fragment fragment, boolean addToBackStack) {
+    public void switchWindow(@NonNull Fragment fragment, boolean addToBackStack) {
+        this.switchWindow(fragment, null, addToBackStack);
+    }
+
+    public void switchWindow(@NonNull Fragment fragment, @Nullable Bundle bundle, boolean addToBackStack) {
+        fragment.setArguments(bundle);
+
         FragmentManager manager = getSupportFragmentManager();
         FragmentTransaction transaction = manager.beginTransaction();
         //replace your current container being most of the time as FrameLayout
@@ -263,9 +339,19 @@ public class MainActivity extends AppCompatActivity implements
 
         if (addToBackStack) {
             transaction.addToBackStack(null);
+            Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
         }
-
         transaction.commit();
+        this.baseLayout.deactivateTabs();
+    }
+
+    private void handlePreferences(SharedPreferences preferences, String key) {
+        String downloadKey = "auto-download";
+        if (key.equals(downloadKey)) {
+            if (preferences.getBoolean(downloadKey, false)) {
+
+            }
+        }
     }
 
     @Override
@@ -273,8 +359,4 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
-    @Override
-    public void onNewsFragmentInteraction(News item) {
-
-    }
 }

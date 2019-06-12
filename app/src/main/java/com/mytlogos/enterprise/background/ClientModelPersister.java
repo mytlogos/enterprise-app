@@ -12,6 +12,8 @@ import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
+import com.mytlogos.enterprise.model.ToDownload;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -29,11 +31,15 @@ public interface ClientModelPersister {
         return this.persistMediaLists(Arrays.asList(mediaLists));
     }
 
+    ClientModelPersister persist(LoadWorkGenerator.FilteredEpisodes filteredEpisodes);
+
     ClientModelPersister persistMediaLists(Collection<ClientMediaList> mediaLists);
 
     default ClientModelPersister persist(ClientExternalMediaList... externalMediaLists) {
         return this.persistExternalMediaLists(Arrays.asList(externalMediaLists));
     }
+
+    ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList);
 
     ClientModelPersister persistExternalMediaLists(Collection<ClientExternalMediaList> externalMediaLists);
 
@@ -41,17 +47,23 @@ public interface ClientModelPersister {
         return this.persistExternalUsers(Arrays.asList(externalUsers));
     }
 
+    ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList);
+
     ClientModelPersister persistExternalUsers(Collection<ClientExternalUser> externalUsers);
 
     default ClientModelPersister persist(ClientMedium... media) {
         return this.persistMedia(Arrays.asList(media));
     }
 
+    ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser);
+
     ClientModelPersister persistMedia(Collection<ClientMedium> media);
 
     default ClientModelPersister persist(ClientNews... news) {
         return this.persistNews(Arrays.asList(news));
     }
+
+    ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia);
 
     ClientModelPersister persistNews(Collection<ClientNews> news);
 
@@ -61,6 +73,8 @@ public interface ClientModelPersister {
 
     ClientModelPersister persistParts(Collection<ClientPart> parts);
 
+    ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes);
+
     ClientModelPersister persist(ClientListQuery query);
 
     ClientModelPersister persist(ClientMultiListQuery query);
@@ -69,11 +83,17 @@ public interface ClientModelPersister {
 
     ClientModelPersister persist(ClientUpdateUser user);
 
+    ClientModelPersister persistToDownloads(Collection<ToDownload> toDownloads);
+
     default ClientModelPersister persist(ClientReadEpisode... readEpisodes) {
         return this.persistReadEpisodes(Arrays.asList(readEpisodes));
     }
 
+    ClientModelPersister persist(LoadWorkGenerator.FilteredParts filteredParts);
+
     ClientModelPersister persistReadEpisodes(Collection<ClientReadEpisode> readMedia);
 
     void finish();
+
+    ClientModelPersister persist(ToDownload toDownload);
 }

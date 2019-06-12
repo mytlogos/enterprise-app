@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mytlogos.enterprise.background.api.model.AddClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.Authentication;
+import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
@@ -18,6 +19,9 @@ import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 
 import org.joda.time.DateTime;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -36,9 +40,10 @@ public class Client {
     }
 
     private Authentication authentication;
+    private final String serverIp = "192.168.1.4";
 
     public Client() {
-//        InetAddress.getByName("").isReachable(100);
+
     }
 
     private static void buildPathMap() {
@@ -90,7 +95,15 @@ public class Client {
         this.authentication = new Authentication(uuid, session);
     }
 
-    public Call<ClientUser> checkLogin() {
+    public boolean isAuthenticated() {
+        return this.authentication != null;
+    }
+
+    public void clearAuthentication() {
+        this.authentication = null;
+    }
+
+    public Call<ClientUser> checkLogin() throws IOException {
         return build(BasicApi.class, BasicApi::checkLogin);
     }
 
@@ -114,7 +127,7 @@ public class Client {
         return body;
     }
 
-    public Call<ClientUser> login(String mailName, String password) {
+    public Call<ClientUser> login(String mailName, String password) throws IOException {
         return build(BasicApi.class, (apiImpl, url) ->
                 apiImpl.login(
                         url,
@@ -122,7 +135,7 @@ public class Client {
                 ));
     }
 
-    public Call<ClientUser> register(String mailName, String password) {
+    public Call<ClientUser> register(String mailName, String password) throws IOException {
         return build(BasicApi.class, (apiImpl, url) ->
                 apiImpl.register(
                         url,
@@ -130,18 +143,18 @@ public class Client {
                 ));
     }
 
-    public Call<Boolean> logout() {
+    public Call<Boolean> logout() throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         return build(UserApi.class, (apiImpl, url) -> apiImpl.logout(url, body));
     }
 
-    public Call<Boolean> updateUser(ClientUpdateUser updateUser) {
+    public Call<Boolean> updateUser(ClientUpdateUser updateUser) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("user", updateUser);
         return build(UserApi.class, (apiImpl, url) -> apiImpl.updateUser(url, body));
     }
 
-    public Call<List<ClientNews>> getNews(DateTime from, DateTime to) {
+    public Call<List<ClientNews>> getNews(DateTime from, DateTime to) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         if (from != null) {
             body.put("from", from);
@@ -152,7 +165,7 @@ public class Client {
         return build(UserApi.class, (apiImpl, url) -> apiImpl.getNews(url, body));
     }
 
-    public Call<List<ClientNews>> getNews(Collection<Integer> newsIds) {
+    public Call<List<ClientNews>> getNews(Collection<Integer> newsIds) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         if (newsIds != null) {
             body.put("newsId", newsIds);
@@ -160,92 +173,98 @@ public class Client {
         return build(UserApi.class, (apiImpl, url) -> apiImpl.getNews(url, body));
     }
 
-    public Call<List<ClientMediaList>> getLists() {
+    public Call<List<ClientMediaList>> getLists() throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         return build(UserApi.class, (apiImpl, url) -> apiImpl.getLists(url, body));
     }
 
-    public Call<List<InvalidatedData>> getInvalidated() {
+    public Call<List<InvalidatedData>> getInvalidated() throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         return build(UserApi.class, (apiImpl, url) -> apiImpl.getInvalidated(url, body));
     }
 
-    public Call<ClientExternalUser> getExternalUser(String externalUuid) {
+    public Call<List<ClientDownloadedEpisode>> downloadEpisodes(Collection<Integer> episodeIds) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("episode", episodeIds);
+        return build(UserApi.class, (apiImpl, url) -> apiImpl.downloadEpisodes(url, body));
+    }
+
+    public Call<ClientExternalUser> getExternalUser(String externalUuid) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("externalUuid", externalUuid);
         return build(ExternalUserApi.class, (apiImpl, url) -> apiImpl.getExternalUser(url, body));
     }
 
-    public Call<List<ClientExternalUser>> getExternalUser(Collection<String> externalUuid) {
+    public Call<List<ClientExternalUser>> getExternalUser(Collection<String> externalUuid) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("externalUuid", externalUuid);
         return build(ExternalUserApi.class, (apiImpl, url) -> apiImpl.getExternalUsers(url, body));
     }
 
-    public Call<ClientExternalUser> addExternalUser(AddClientExternalUser externalUser) {
+    public Call<ClientExternalUser> addExternalUser(AddClientExternalUser externalUser) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("externalUser", externalUser);
         return build(ExternalUserApi.class, (apiImpl, url) -> apiImpl.addExternalUser(url, body));
     }
 
-    public Call<Boolean> deleteExternalUser(String externalUuid) {
+    public Call<Boolean> deleteExternalUser(String externalUuid) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("externalUuid", externalUuid);
         return build(ExternalUserApi.class, (apiImpl, url) -> apiImpl.deleteExternalUser(url, body));
     }
 
-    public Call<ClientListQuery> getList(int listId) {
+    public Call<ClientListQuery> getList(int listId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("listId", listId);
         return build(ListApi.class, (apiImpl, url) -> apiImpl.getList(url, body));
     }
 
-    public Call<ClientMultiListQuery> getLists(Collection<Integer> listIds) {
+    public Call<ClientMultiListQuery> getLists(Collection<Integer> listIds) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("listId", listIds);
         return build(ListApi.class, (apiImpl, url) -> apiImpl.getLists(url, body));
     }
 
-    public Call<ClientMediaList> addList(ClientMediaList mediaList) {
+    public Call<ClientMediaList> addList(ClientMediaList mediaList) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("list", mediaList);
         return build(ListApi.class, (apiImpl, url) -> apiImpl.addList(url, body));
     }
 
-    public Call<Boolean> deleteList(int listId) {
+    public Call<Boolean> deleteList(int listId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("listId", listId);
         return build(ListApi.class, (apiImpl, url) -> apiImpl.deleteList(url, body));
     }
 
-    public Call<Boolean> updateList(ClientMediaList mediaList) {
+    public Call<Boolean> updateList(ClientMediaList mediaList) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("list", mediaList);
         return build(ListApi.class, (apiImpl, url) -> apiImpl.updateList(url, body));
     }
 
-    public Call<List<ClientMedium>> getListMedia(Collection<Integer> loadedMedia, int listId) {
+    public Call<List<ClientMedium>> getListMedia(Collection<Integer> loadedMedia, int listId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("media", loadedMedia);
         body.put("listId", listId);
         return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.getListMedia(url, body));
     }
 
-    public Call<Boolean> addListMedia(int listId, int mediumId) {
+    public Call<Boolean> addListMedia(int listId, int mediumId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("listId", listId);
         body.put("mediumId", mediumId);
         return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.addListMedia(url, body));
     }
 
-    public Call<Boolean> deleteListMedia(int listId, int mediumId) {
+    public Call<Boolean> deleteListMedia(int listId, int mediumId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("listId", listId);
         body.put("mediumId", mediumId);
         return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.deleteListMedia(url, body));
     }
 
-    public Call<Boolean> updateListMedia(int oldListId, int newListId, int mediumId) {
+    public Call<Boolean> updateListMedia(int oldListId, int newListId, int mediumId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("oldListId", oldListId);
         body.put("newListId", newListId);
@@ -253,117 +272,127 @@ public class Client {
         return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.updateListMedia(url, body));
     }
 
-    public Call<List<ClientMedium>> getMedia(Collection<Integer> mediumIds) {
+    public Call<List<ClientMedium>> getMedia(Collection<Integer> mediumIds) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("mediumId", mediumIds);
         return build(MediumApi.class, (apiImpl, url) -> apiImpl.getMedia(url, body));
     }
 
-    public Call<ClientMedium> addMedia(ClientMedium clientMedium) {
+    public Call<ClientMedium> getMedium(int mediumId) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("mediumId", mediumId);
+        return build(MediumApi.class, (apiImpl, url) -> apiImpl.getMedium(url, body));
+    }
+
+    public Call<ClientMedium> addMedia(ClientMedium clientMedium) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("medium", clientMedium);
         return build(MediumApi.class, (apiImpl, url) -> apiImpl.addMedia(url, body));
     }
 
-    public Call<Boolean> updateMedia(ClientMedium medium) {
+    public Call<Boolean> updateMedia(ClientMedium medium) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("medium", medium);
         return build(MediumApi.class, (apiImpl, url) -> apiImpl.updateMedia(url, body));
     }
 
-    public Call<List<ClientPart>> getParts(int mediumId) {
+    public Call<List<ClientPart>> getParts(int mediumId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("mediumId", mediumId);
         return build(PartApi.class, (apiImpl, url) -> apiImpl.getPart(url, body));
     }
 
-    public Call<List<ClientPart>> getParts(Collection<Integer> partIds) {
+    public Call<List<ClientPart>> getParts(Collection<Integer> partIds) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("partId", partIds);
         return build(PartApi.class, (apiImpl, url) -> apiImpl.getPart(url, body));
     }
 
-    public Call<ClientPart> addPart(ClientPart part) {
+    public Call<ClientPart> addPart(ClientPart part) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("part", part);
         return build(PartApi.class, (apiImpl, url) -> apiImpl.addPart(url, body));
     }
 
-    public Call<Boolean> deletePart(int partId) {
+    public Call<Boolean> deletePart(int partId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("partId", partId);
         return build(PartApi.class, (apiImpl, url) -> apiImpl.deletePart(url, body));
     }
 
-    public Call<Boolean> updatePart(ClientPart part) {
+    public Call<Boolean> updatePart(ClientPart part) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("part", part);
         return build(PartApi.class, (apiImpl, url) -> apiImpl.updatePart(url, body));
     }
 
-    public Call<ClientEpisode> getEpisode(int episodeId) {
+    public Call<ClientEpisode> getEpisode(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("episodeId", episodeId);
+        body.put("id", episodeId);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.getEpisode(url, body));
     }
 
-    public Call<List<ClientEpisode>> getEpisodes(Collection<Integer> episodeIds) {
+    public Call<List<ClientEpisode>> getEpisodes(Collection<Integer> episodeIds) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("episodeId", episodeIds);
+        body.put("id", episodeIds);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.getEpisodes(url, body));
     }
 
-    public Call<ClientEpisode> addEpisode(int partId, ClientEpisode episode) {
+    public Call<ClientEpisode> addEpisode(int partId, ClientEpisode episode) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("partId", partId);
         body.put("episode", episode);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.addEpisode(url, body));
     }
 
-    public Call<Boolean> deleteEpisode(int episodeId) {
+    public Call<Boolean> deleteEpisode(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("episodeId", episodeId);
+        body.put("id", episodeId);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.deleteEpisode(url, body));
     }
 
-    public Call<Boolean> updateEpisode(ClientEpisode episode) {
+    public Call<Boolean> updateEpisode(ClientEpisode episode) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("episode", episode);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.updateEpisode(url, body));
     }
 
-    public Call<Float> getProgress(int episodeId) {
+    public Call<Float> getProgress(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("episodeId", episodeId);
+        body.put("id", episodeId);
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.getProgress(url, body));
     }
 
-    public Call<Boolean> addProgress(int episodeId, float progress) {
+    public Call<Boolean> addProgress(int episodeId, float progress) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("episodeId", episodeId);
+        body.put("id", episodeId);
         body.put("progress", progress);
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.addProgress(url, body));
     }
 
-    public Call<Boolean> deleteProgress(int episodeId) {
+    public Call<Boolean> deleteProgress(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("episodeId", episodeId);
+        body.put("id", episodeId);
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.deleteProgress(url, body));
     }
 
-    public Call<Boolean> updateProgress(int episodeId, float progress) {
+    public Call<Boolean> updateProgress(int episodeId, float progress) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("episodeId", episodeId);
+        body.put("id", episodeId);
         body.put("progress", progress);
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.updateProgress(url, body));
     }
 
-    private <T, R> R build(Class<T> api, BuildCall<T, R> buildCall) {
+    private <T, R> R build(Class<T> api, BuildCall<T, R> buildCall) throws IOException {
         Retrofit retrofit = Client.retrofitMap.get(api);
         String path = Client.fullClassPathMap.get(api);
 
         if (path == null) {
             throw new IllegalArgumentException("Unknown api class: " + api.getCanonicalName());
+        }
+
+        if (!this.isPortReachable()) {
+            throw new IOException("Server out of reach");
         }
 
         if (retrofit == null) {
@@ -372,7 +401,7 @@ public class Client {
                     .create();
             retrofit = new Retrofit.Builder()
                     // todo: change url to online server url
-                    .baseUrl("http://192.168.1.5:3000/")
+                    .baseUrl("http://" + serverIp + ":3000/")
                     .addConverterFactory(GsonConverterFactory.create(gson))
                     .build();
             Client.retrofitMap.put(api, retrofit);
@@ -381,6 +410,17 @@ public class Client {
 
         T apiImpl = retrofit.create(api);
         return buildCall.call(apiImpl, path);
+    }
+
+    private boolean isPortReachable() {
+        boolean retVal = false;
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(serverIp, 3000), 2000);
+            retVal = true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return retVal;
     }
 
     private interface BuildCall<T, R> {

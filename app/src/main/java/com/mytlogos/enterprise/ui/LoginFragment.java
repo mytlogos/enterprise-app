@@ -3,7 +3,6 @@ package com.mytlogos.enterprise.ui;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -11,13 +10,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.CursorLoader;
-import android.support.v4.content.Loader;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,6 +20,15 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.loader.app.LoaderManager;
+import androidx.loader.content.CursorLoader;
+import androidx.loader.content.Loader;
+
+import com.google.android.material.snackbar.Snackbar;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.viewmodel.UserViewModel;
 
@@ -73,12 +74,12 @@ public class LoginFragment extends Fragment implements LoaderManager.LoaderCallb
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View fragment = inflater.inflate(R.layout.fragment_login, container, false);
+        View fragmentView = inflater.inflate(R.layout.login, container, false);
         // Set up the login form.
-        this.emailUserNameView = fragment.findViewById(R.id.email);
+        this.emailUserNameView = fragmentView.findViewById(R.id.email);
         populateAutoComplete();
 
-        this.passwordView = fragment.findViewById(R.id.password);
+        this.passwordView = fragmentView.findViewById(R.id.password);
         this.passwordView.setOnEditorActionListener((textView, id, keyEvent) -> {
             if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
                 attemptLogin();
@@ -87,15 +88,16 @@ public class LoginFragment extends Fragment implements LoaderManager.LoaderCallb
             return false;
         });
 
-        Button mEmailSignInButton = fragment.findViewById(R.id.email_sign_in_button);
+        Button mEmailSignInButton = fragmentView.findViewById(R.id.email_sign_in_button);
         mEmailSignInButton.setOnClickListener(view -> attemptLogin());
 
-        this.loginFormView = fragment.findViewById(R.id.login_form);
-        this.progressView = fragment.findViewById(R.id.login_progress);
+        this.loginFormView = fragmentView.findViewById(R.id.login_form);
+        this.progressView = fragmentView.findViewById(R.id.login_progress);
 
         FragmentActivity activity = Objects.requireNonNull(getActivity());
         this.userViewModel = ViewModelProviders.of(activity).get(UserViewModel.class);
-        return fragment;
+
+        return fragmentView;
     }
 
     void populateAutoComplete() {
@@ -103,7 +105,7 @@ public class LoginFragment extends Fragment implements LoaderManager.LoaderCallb
             return;
         }
 
-        getLoaderManager().initLoader(0, null, this);
+        LoaderManager.getInstance(this).initLoader(0, null, this);
     }
 
     private boolean mayRequestContacts() {
@@ -315,12 +317,19 @@ public class LoginFragment extends Fragment implements LoaderManager.LoaderCallb
         @Override
         protected void onPostExecute(final Boolean success) {
             authTask = null;
-            showProgress(false);
+
+            FragmentActivity activity = LoginFragment.this.getActivity();
+
+            if (activity != null) {
+                showProgress(false);
+
+                if (success) {
+                    activity.finish();
+                }
+            }
             System.out.println("finished login");
 
-            if (success) {
-                Objects.requireNonNull(getActivity()).finish();
-            } else {
+            if (!success) {
                 passwordView.setError(getString(R.string.error_incorrect_password));
                 passwordView.requestFocus();
             }

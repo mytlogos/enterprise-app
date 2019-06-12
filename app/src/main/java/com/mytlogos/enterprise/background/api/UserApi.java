@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.background.api;
 
+import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
@@ -32,4 +33,7 @@ interface UserApi {
 
     @GET("{start}/invalidated")
     Call<List<InvalidatedData>> getInvalidated(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+
+    @GET("{start}/download")
+    Call<List<ClientDownloadedEpisode>> downloadEpisodes(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
 }

@@ -1,16 +1,19 @@
 package com.mytlogos.enterprise;
 
 import android.os.Bundle;
-import android.support.design.widget.TabLayout;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.view.ViewPager;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentPagerAdapter;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.viewpager.widget.ViewPager;
+
+import com.google.android.material.tabs.TabLayout;
 import com.mytlogos.enterprise.ui.LoginFragment;
 import com.mytlogos.enterprise.ui.RegisterFragment;
+import com.mytlogos.enterprise.viewmodel.UserViewModel;
 
 public class LoginRegisterActivity extends AppCompatActivity {
 
@@ -42,6 +45,15 @@ public class LoginRegisterActivity extends AppCompatActivity {
 
         mViewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));
         tabLayout.addOnTabSelectedListener(new TabLayout.ViewPagerOnTabSelectedListener(mViewPager));
+
+        ViewModelProviders.of(this)
+                .get(UserViewModel.class)
+                .getUser()
+                .observe(this, user -> {
+                    if (user != null) {
+                        this.finish();
+                    }
+                });
     }
 
 

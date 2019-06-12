@@ -1,5 +1,7 @@
 package com.mytlogos.enterprise.background.api.model;
 
+import androidx.annotation.NonNull;
+
 import java.util.Arrays;
 
 public class ClientMedium {
@@ -20,6 +22,10 @@ public class ClientMedium {
     private String series;
     private String universe;
 
+    public ClientMedium() {
+
+    }
+
     public ClientMedium(int[] parts, int[] latestReleased, int currentRead, int[] unreadEpisodes, int id,
                         String countryOfOrigin, String languageOfOrigin, String author,
                         String title, int medium, String artist, String lang, int stateOrigin,
@@ -28,7 +34,6 @@ public class ClientMedium {
         this.latestReleased = latestReleased;
         this.currentRead = currentRead;
         this.unreadEpisodes = unreadEpisodes;
-
         this.id = id;
         this.countryOfOrigin = countryOfOrigin;
         this.languageOfOrigin = languageOfOrigin;
@@ -49,6 +54,7 @@ public class ClientMedium {
         this.medium = medium;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "ClientMedium{" +
@@ -78,50 +84,12 @@ public class ClientMedium {
 
         ClientMedium that = (ClientMedium) o;
 
-        if (getCurrentRead() != that.getCurrentRead()) return false;
-        if (getId() != that.getId()) return false;
-        if (getMedium() != that.getMedium()) return false;
-        if (getStateOrigin() != that.getStateOrigin()) return false;
-        if (getStateTL() != that.getStateTL()) return false;
-        if (!Arrays.equals(getParts(), that.getParts())) return false;
-        if (!Arrays.equals(getLatestReleased(), that.getLatestReleased())) return false;
-        if (!Arrays.equals(getUnreadEpisodes(), that.getUnreadEpisodes())) return false;
-        if (getCountryOfOrigin() != null ? !getCountryOfOrigin().equals(that.getCountryOfOrigin()) : that.getCountryOfOrigin() != null)
-            return false;
-        if (getLanguageOfOrigin() != null ? !getLanguageOfOrigin().equals(that.getLanguageOfOrigin()) : that.getLanguageOfOrigin() != null)
-            return false;
-        if (getAuthor() != null ? !getAuthor().equals(that.getAuthor()) : that.getAuthor() != null)
-            return false;
-        if (getTitle() != null ? !getTitle().equals(that.getTitle()) : that.getTitle() != null)
-            return false;
-        if (getArtist() != null ? !getArtist().equals(that.getArtist()) : that.getArtist() != null)
-            return false;
-        if (getLang() != null ? !getLang().equals(that.getLang()) : that.getLang() != null)
-            return false;
-        if (getSeries() != null ? !getSeries().equals(that.getSeries()) : that.getSeries() != null)
-            return false;
-        return getUniverse() != null ? getUniverse().equals(that.getUniverse()) : that.getUniverse() == null;
+        return getId() == that.getId();
     }
 
     @Override
     public int hashCode() {
-        int result = Arrays.hashCode(getParts());
-        result = 31 * result + Arrays.hashCode(getLatestReleased());
-        result = 31 * result + getCurrentRead();
-        result = 31 * result + Arrays.hashCode(getUnreadEpisodes());
-        result = 31 * result + getId();
-        result = 31 * result + (getCountryOfOrigin() != null ? getCountryOfOrigin().hashCode() : 0);
-        result = 31 * result + (getLanguageOfOrigin() != null ? getLanguageOfOrigin().hashCode() : 0);
-        result = 31 * result + (getAuthor() != null ? getAuthor().hashCode() : 0);
-        result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
-        result = 31 * result + getMedium();
-        result = 31 * result + (getArtist() != null ? getArtist().hashCode() : 0);
-        result = 31 * result + (getLang() != null ? getLang().hashCode() : 0);
-        result = 31 * result + getStateOrigin();
-        result = 31 * result + getStateTL();
-        result = 31 * result + (getSeries() != null ? getSeries().hashCode() : 0);
-        result = 31 * result + (getUniverse() != null ? getUniverse().hashCode() : 0);
-        return result;
+        return getId();
     }
 
     public int getId() {

@@ -13,16 +13,10 @@ public class AddClientExternalUser extends ClientExternalUser {
     }
 
     @Override
-    public String toString() {
-        return "AddClientExternalUser{" +
-                "pwd='" + pwd + '\'' +
-                '}';
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
 
         AddClientExternalUser that = (AddClientExternalUser) o;
 
@@ -31,6 +25,8 @@ public class AddClientExternalUser extends ClientExternalUser {
 
     @Override
     public int hashCode() {
-        return getPwd() != null ? getPwd().hashCode() : 0;
+        int result = super.hashCode();
+        result = 31 * result + (getPwd() != null ? getPwd().hashCode() : 0);
+        return result;
     }
 }

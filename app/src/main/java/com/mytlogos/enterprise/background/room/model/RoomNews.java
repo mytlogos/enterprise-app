@@ -1,8 +1,7 @@
 package com.mytlogos.enterprise.background.room.model;
 
-import android.arch.persistence.room.Entity;
-import android.arch.persistence.room.Ignore;
-import android.arch.persistence.room.PrimaryKey;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
 
 import org.joda.time.DateTime;
 
@@ -14,8 +13,6 @@ public class RoomNews {
     @PrimaryKey
     private int newsId;
     private boolean read;
-    // fixme remove the ignore as soon as i have internet again
-    @Ignore
     private String link;
 
     public RoomNews(int newsId, boolean read, String title, DateTime timeStamp, String link) {

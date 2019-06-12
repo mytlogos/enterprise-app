@@ -10,15 +10,24 @@ public class News {
     private final int id;
     private final boolean read;
     private final String url;
+    private final int mediumType;
 
     public News(String title, DateTime timeStamp, int id, boolean read, String url) {
+        this(title, timeStamp, id, read, url, MediumType.ALL);
+    }
+
+    public News(String title, DateTime timeStamp, int id, boolean read, String url, int mediumType) {
         this.title = title;
         this.timeStamp = timeStamp;
         this.id = id;
         this.read = read;
         this.url = url;
+        this.mediumType = mediumType;
     }
 
+    public int getMediumType() {
+        return mediumType;
+    }
 
     public String getTimeStampString() {
         return Formatter.formatDateTime(this.getTimeStamp());

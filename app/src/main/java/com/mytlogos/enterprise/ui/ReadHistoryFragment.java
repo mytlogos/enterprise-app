@@ -2,13 +2,14 @@ package com.mytlogos.enterprise.ui;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.mytlogos.enterprise.R;
 
@@ -18,7 +19,7 @@ import java.util.ArrayList;
  * A fragment representing a list of Items.
  * <p/>
  */
-public class ReadHistoryFragment extends Fragment {
+public class ReadHistoryFragment extends BaseFragment {
 
     // TODO: Customize parameter argument names
     private static final String ARG_COLUMN_COUNT = "column-count";
@@ -53,9 +54,9 @@ public class ReadHistoryFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_readhistory_list, container, false);
+        View view = inflater.inflate(R.layout.readhistory_list, container, false);
 
         // Set the adapter
         if (view instanceof RecyclerView) {
@@ -68,12 +69,13 @@ public class ReadHistoryFragment extends Fragment {
             }
             recyclerView.setAdapter(new ReadHistoryRecyclerViewAdapter(new ArrayList<>(), mListener));
         }
+        this.setTitle("Read History");
         return view;
     }
 
 
     @Override
-    public void onAttach(Context context) {
+    public void onAttach(@NonNull Context context) {
         super.onAttach(context);
         if (context instanceof ReadHistoryClickListener) {
             mListener = (ReadHistoryClickListener) context;

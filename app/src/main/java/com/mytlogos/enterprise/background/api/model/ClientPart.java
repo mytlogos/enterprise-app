@@ -26,25 +26,12 @@ public class ClientPart {
 
         ClientPart that = (ClientPart) o;
 
-        if (getMediumId() != that.getMediumId()) return false;
-        if (getId() != that.getId()) return false;
-        if (getTotalIndex() != that.getTotalIndex()) return false;
-        if (getPartialIndex() != that.getPartialIndex()) return false;
-        if (getTitle() != null ? !getTitle().equals(that.getTitle()) : that.getTitle() != null)
-            return false;
-        // Probably incorrect - comparing Object[] arrays with Arrays.equals
-        return Arrays.equals(getEpisodes(), that.getEpisodes());
+        return getId() == that.getId();
     }
 
     @Override
     public int hashCode() {
-        int result = getMediumId();
-        result = 31 * result + getId();
-        result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
-        result = 31 * result + getTotalIndex();
-        result = 31 * result + getPartialIndex();
-        result = 31 * result + Arrays.hashCode(getEpisodes());
-        return result;
+        return getId();
     }
 
     @Override

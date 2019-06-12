@@ -9,15 +9,11 @@ public interface Episode {
 
     int getPartId();
 
-    String getTitle();
-
     int getTotalIndex();
 
     int getPartialIndex();
 
-    String getUrl();
-
-    DateTime getReleaseDate();
-
     DateTime getReadDate();
+
+    boolean isSaved();
 }

@@ -1,10 +1,11 @@
 package com.mytlogos.enterprise.background.room;
 
-import android.arch.persistence.room.Database;
-import android.arch.persistence.room.Room;
-import android.arch.persistence.room.RoomDatabase;
-import android.arch.persistence.room.TypeConverters;
 import android.content.Context;
+
+import androidx.room.Database;
+import androidx.room.Room;
+import androidx.room.RoomDatabase;
+import androidx.room.TypeConverters;
 
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
@@ -13,6 +14,8 @@ import com.mytlogos.enterprise.background.room.model.RoomMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomMedium;
 import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
+import com.mytlogos.enterprise.background.room.model.RoomRelease;
+import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
 
 
@@ -21,10 +24,10 @@ import com.mytlogos.enterprise.background.room.model.RoomUser;
                 RoomUser.class, RoomNews.class, RoomUser.UserReadTodayJoin.class,
                 RoomUser.UserUnReadChapterJoin.class, RoomUser.UserUnReadNewsJoin.class,
                 RoomExternalUser.class, RoomMediaList.class, RoomMediaList.MediaListMediaJoin.class,
-                RoomEpisode.class, RoomPart.class, RoomMedium.class, RoomExternalMediaList.class,
-                RoomExternalMediaList.ExternalListMediaJoin.class,
+                RoomEpisode.class, RoomRelease.class, RoomPart.class, RoomMedium.class, RoomExternalMediaList.class,
+                RoomExternalMediaList.ExternalListMediaJoin.class, RoomToDownload.class
         },
-        version = 7,
+        version = 4,
         exportSchema = false)
 @TypeConverters({Converters.class})
 public abstract class AbstractDatabase extends RoomDatabase {
@@ -64,4 +67,6 @@ public abstract class AbstractDatabase extends RoomDatabase {
     public abstract PartDao partDao();
 
     public abstract EpisodeDao episodeDao();
+
+    public abstract ToDownloadDao toDownloadDao();
 }

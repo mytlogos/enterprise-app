@@ -142,4 +142,28 @@
     <string name="current_read">%d read today</string>
     <string name="no_data_is_available">No Data is available</string>
     <string name="read_status">Read Status</string>
+    <string name="title_activity_test">Test</string>
+    <string name="title_activity_test2">Test2</string>
+    <string name="title_activity_list_settings">Settings</string>
+
+    <!-- Preference Titles -->
+    <string name="messages_header">Messages</string>
+    <string name="sync_header">Sync</string>
+
+    <!-- Messages Preferences -->
+    <string name="signature_title">Your signature</string>
+    <string name="reply_title">Default reply action</string>
+
+    <!-- Sync Preferences -->
+    <string name="sync_title">Sync email periodically</string>
+    <string name="attachment_title">Download incoming attachments</string>
+    <string name="attachment_summary_on">Automatically download attachments for incoming emails
+    </string>
+    <string name="attachment_summary_off">Only download attachments when manually requested</string>
+    <string name="auto_download_title">Download unread Chapters automatically</string>
+    <string name="list_settings">List Settings</string>
+    <string name="medium_settings">Medium Settings</string>
+    <string name="item_options">Item Options</string>
+    <string name="open_items">Open Items</string>
+    <string name="open_toc">Open Toc</string>
 </resources>

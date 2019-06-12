@@ -7,4 +7,5 @@
     <dimen name="small_vertical_spacing">10dp</dimen>
     <dimen name="text_margin">16dp</dimen>
     <dimen name="small_margin">2dp</dimen>
+    <dimen name="fab_margin">16dp</dimen>
 </resources>

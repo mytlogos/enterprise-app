@@ -1,17 +1,17 @@
 package com.mytlogos.enterprise.ui;
 
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.viewmodel.AddMediumViewModel;
 
-public class AddMedium extends Fragment {
+public class AddMedium extends BaseFragment {
 
     private AddMediumViewModel mViewModel;
 
@@ -22,6 +22,9 @@ public class AddMedium extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+
+        this.setTitle("Add Medium");
+
         return inflater.inflate(R.layout.add_medium_fragment, container, false);
     }
 

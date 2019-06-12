@@ -24,23 +24,12 @@ public class ClientNews {
 
         ClientNews that = (ClientNews) o;
 
-        if (getId() != that.getId()) return false;
-        if (isRead() != that.isRead()) return false;
-        if (getTitle() != null ? !getTitle().equals(that.getTitle()) : that.getTitle() != null)
-            return false;
-        if (getLink() != null ? !getLink().equals(that.getLink()) : that.getLink() != null)
-            return false;
-        return getDate() != null ? getDate().equals(that.getDate()) : that.getDate() == null;
+        return getId() == that.getId();
     }
 
     @Override
     public int hashCode() {
-        int result = getTitle() != null ? getTitle().hashCode() : 0;
-        result = 31 * result + (getLink() != null ? getLink().hashCode() : 0);
-        result = 31 * result + (getDate() != null ? getDate().hashCode() : 0);
-        result = 31 * result + getId();
-        result = 31 * result + (isRead() ? 1 : 0);
-        return result;
+        return getId();
     }
 
     @Override

@@ -55,24 +55,11 @@ public class ClientExternalUser {
 
         ClientExternalUser that = (ClientExternalUser) o;
 
-        if (getType() != that.getType()) return false;
-        if (getLocalUuid() != null ? !getLocalUuid().equals(that.getLocalUuid()) : that.getLocalUuid() != null)
-            return false;
-        if (getUuid() != null ? !getUuid().equals(that.getUuid()) : that.getUuid() != null)
-            return false;
-        if (getIdentifier() != null ? !getIdentifier().equals(that.getIdentifier()) : that.getIdentifier() != null)
-            return false;
-        // Probably incorrect - comparing Object[] arrays with Arrays.equals
-        return Arrays.equals(getLists(), that.getLists());
+        return getUuid() != null ? getUuid().equals(that.getUuid()) : that.getUuid() == null;
     }
 
     @Override
     public int hashCode() {
-        int result = getLocalUuid() != null ? getLocalUuid().hashCode() : 0;
-        result = 31 * result + (getUuid() != null ? getUuid().hashCode() : 0);
-        result = 31 * result + (getIdentifier() != null ? getIdentifier().hashCode() : 0);
-        result = 31 * result + getType();
-        result = 31 * result + Arrays.hashCode(getLists());
-        return result;
+        return getUuid() != null ? getUuid().hashCode() : 0;
     }
 }

@@ -16,6 +16,9 @@
         android:id="@+id/settings"
         android:title="@string/settings" />
     <item
+        android:id="@+id/media"
+        android:title="@string/medium" />
+    <item
         android:id="@+id/add_medium"
         android:title="@string/add_medium" />
     <item

@@ -1,8 +1,8 @@
 package com.mytlogos.enterprise.model;
 
-import android.support.annotation.NonNull;
-
 import java.util.List;
+
+import androidx.annotation.NonNull;
 
 public interface User {
     @NonNull

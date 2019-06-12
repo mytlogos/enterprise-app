@@ -1,15 +1,17 @@
 package com.mytlogos.enterprise.viewmodel;
 
 import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.LiveData;
-import android.support.annotation.NonNull;
 
 import com.mytlogos.enterprise.background.Repository;
+import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
 
 import java.io.IOException;
+
+import androidx.annotation.NonNull;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
 
 public class UserViewModel extends AndroidViewModel {
 
@@ -18,7 +20,7 @@ public class UserViewModel extends AndroidViewModel {
 
     public UserViewModel(@NonNull Application application) {
         super(application);
-        repository = Repository.getInstance(application);
+        repository = RepositoryImpl.getInstance(application);
         user = repository.getUser();
     }
 

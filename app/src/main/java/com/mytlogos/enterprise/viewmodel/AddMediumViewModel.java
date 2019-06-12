@@ -1,6 +1,6 @@
 package com.mytlogos.enterprise.viewmodel;
 
-import android.arch.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModel;
 
 public class AddMediumViewModel extends ViewModel {
     // TODO: Implement the ViewModel

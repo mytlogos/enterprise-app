@@ -1,6 +1,6 @@
 package com.mytlogos.enterprise.background.room;
 
-import android.arch.persistence.room.TypeConverter;
+import androidx.room.TypeConverter;
 
 import com.mytlogos.enterprise.Formatter;
 
@@ -10,7 +10,7 @@ public class Converters {
 
     @TypeConverter
     public static DateTime fromTimeStamp(String s) {
-        return Formatter.parseDateTime(s);
+        return s == null ? null : Formatter.parseDateTime(s);
     }
 
     @TypeConverter
