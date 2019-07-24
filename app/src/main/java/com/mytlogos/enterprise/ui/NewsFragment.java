@@ -2,15 +2,11 @@ package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -40,11 +36,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
 import eu.davidea.flexibleadapter.items.AbstractHeaderItem;
 import eu.davidea.flexibleadapter.items.AbstractSectionableItem;
 import eu.davidea.flexibleadapter.items.IFlexible;
+import eu.davidea.flexibleadapter.utils.LayoutUtils;
 import eu.davidea.viewholders.FlexibleViewHolder;
 
 /**
@@ -133,14 +134,21 @@ public class NewsFragment extends BaseFragment {
         }
     }
 
+    @FunctionalInterface
+    private interface AttachedListener {
+        void handle();
+    }
+
     private static class NewsItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
         private final News news;
-        private final Fragment newsFragment;
+        private final BaseFragment fragment;
+        private DateTime attached;
+        private AttachedListener listener;
 
-        NewsItem(@NonNull News news, Fragment newsFragment) {
+        NewsItem(@NonNull News news, BaseFragment fragment) {
             super(new HeaderItem(news.getTimeStamp().toLocalDate()));
             this.news = news;
-            this.newsFragment = newsFragment;
+            this.fragment = fragment;
             this.setDraggable(false);
             this.setSwipeable(false);
             this.setSelectable(false);
@@ -181,36 +189,39 @@ public class NewsFragment extends BaseFragment {
             holder.contentView.setText(this.news.getTitle());
             holder.mView.setOnClickListener(v -> {
                 String url = this.news.getUrl();
-                if (url == null || url.isEmpty()) {
-                    Toast
-                            .makeText(this.newsFragment.getContext(), "No Link available", Toast.LENGTH_SHORT)
-                            .show();
-                }
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-
-                PackageManager manager = Objects.requireNonNull(this.newsFragment.getActivity()).getPackageManager();
-
-                if (intent.resolveActivity(manager) != null) {
-                    this.newsFragment.startActivity(intent);
-                } else {
-                    Toast
-                            .makeText(this.newsFragment.getContext(), "No Browser available", Toast.LENGTH_SHORT)
-                            .show();
-                }
+                Context context = this.fragment.getContext();
+                this.fragment.openInBrowser(url, context);
             });
         }
 
+        @Override
+        public void onViewAttached(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position) {
+            super.onViewAttached(adapter, holder, position);
+            this.attached = DateTime.now();
+        }
+
+        @Override
+        public void onViewDetached(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position) {
+            super.onViewDetached(adapter, holder, position);
+            this.attached = null;
+
+            if (this.listener != null) {
+                this.listener.handle();
+            }
+        }
     }
 
     /**
      * A placeholder fragment containing a simple view.
      */
-    public static class PlaceholderFragment extends Fragment {
+    public static class PlaceholderFragment extends BaseFragment {
 
         private LiveData<List<News>> newsLiveData;
         private int typeFilter = MediumType.ALL;
         private NewsViewModel newsViewModel;
         private Observer<List<News>> listObserver;
+        private AttachedListener attachedListener;
+        private ScheduledFuture<?> attachedFuture;
 
         @Override
         public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
@@ -233,23 +244,76 @@ public class NewsFragment extends BaseFragment {
 
             recyclerView.setAdapter(flexibleAdapter);
 
-            this.listObserver = news -> {
-                TextView textView = view.findViewById(R.id.empty_view);
-
-                if (news == null || news.isEmpty()) {
-                    recyclerView.setVisibility(View.GONE);
-                    textView.setVisibility(View.VISIBLE);
-                } else {
-                    recyclerView.setVisibility(View.VISIBLE);
-                    textView.setVisibility(View.GONE);
+            ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+            Runnable attachedTask = new Runnable() {
+                @Override
+                public void run() {
+                    if (attachedListener == null) {
+                        attachedFuture = service.schedule(this, 2, TimeUnit.SECONDS);
+                        return;
+                    }
+                    attachedListener.handle();
                 }
+            };
+            attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS);
+            recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                    if (attachedFuture != null) {
+                        attachedFuture.cancel(true);
+                    }
+
+                    if (RecyclerView.SCROLL_STATE_IDLE == newState) {
+                        attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS);
+                    }
+                }
+            });
+
+            // FIXME: 22.07.2019 does not work quite correctly:
+            //  -when one does not scroll it
+            //  -one switches to one news page a second time
+            //  it does not get the correct newsItems
+            this.attachedListener = () -> {
+                int firstPosition = LayoutUtils.findFirstCompletelyVisibleItemPosition(recyclerView);
+                int lastPosition = LayoutUtils.findLastCompletelyVisibleItemPosition(recyclerView);
+
+                if (firstPosition == RecyclerView.NO_POSITION || lastPosition == RecyclerView.NO_POSITION) {
+                    return;
+                }
+                DateTime minimumVisible = DateTime.now().minusSeconds(2);
+                List<Integer> readNews = new ArrayList<>();
+
+                for (int i = firstPosition; i <= lastPosition; i++) {
+                    IFlexible item = flexibleAdapter.getItem(i);
+
+                    if (!(item instanceof NewsItem)) {
+                        continue;
+                    }
+                    NewsItem newsItem = (NewsItem) item;
+                    if (newsItem.attached == null) {
+                        System.err.println("Completely visible attached item has no attached time");
+                        continue;
+                    }
+                    if (newsItem.attached.isBefore(minimumVisible) && !newsItem.news.isRead()) {
+                        readNews.add(newsItem.news.getNewsId());
+                    }
+                }
+                this.newsViewModel.markNewsRead(readNews);
+            };
+            SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swiper);
+
+            this.listObserver = news -> {
+
+                if (checkEmptyList(news, view, swipeRefreshLayout)) {
+                    return;
+                }
+
                 flexibleAdapter.updateDataSet(this.transformNews(news));
             };
 
             this.newsViewModel = ViewModelProviders.of(this).get(NewsViewModel.class);
             this.loadNews();
 
-            SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swiper);
             swipeRefreshLayout.setOnRefreshListener(() -> {
                 List<News> news = this.newsLiveData.getValue();
                 DateTime latest = null;
@@ -276,7 +340,9 @@ public class NewsFragment extends BaseFragment {
             List<IFlexible> items = new ArrayList<>();
             for (News news : newsList) {
                 if ((news.getMediumType() & this.typeFilter) == this.typeFilter) {
-                    items.add(new NewsItem(news, this));
+                    NewsItem item = new NewsItem(news, this);
+                    item.listener = this.attachedListener;
+                    items.add(item);
                 }
             }
             return items;
@@ -374,7 +440,7 @@ public class NewsFragment extends BaseFragment {
         ViewHolder(@NonNull View view) {
             super(view);
             mView = view;
-            metaView = view.findViewById(R.id.item_meta);
+            metaView = view.findViewById(R.id.item_top_left);
             contentView = view.findViewById(R.id.content);
         }
 
@@ -384,16 +450,4 @@ public class NewsFragment extends BaseFragment {
             return super.toString() + " '" + contentView.getText() + "'";
         }
     }
-
-
-    @Override
-    public void onAttach(@NonNull Context context) {
-        super.onAttach(context);
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-    }
-
 }

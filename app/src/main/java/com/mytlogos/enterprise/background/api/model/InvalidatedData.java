@@ -5,7 +5,7 @@ import androidx.annotation.NonNull;
 import java.util.Objects;
 
 public class InvalidatedData {
-    private int mediaId;
+    private int mediumId;
     private int partId;
     private int newsId;
     private int episodeId;
@@ -15,8 +15,8 @@ public class InvalidatedData {
     private int listId;
     private String uuid;
 
-    public InvalidatedData(int mediaId, int partId, int newsId, int episodeId, boolean userUuid, String externalUuid, int externalListId, int listId, String uuid) {
-        this.mediaId = mediaId;
+    public InvalidatedData(int mediumId, int partId, int newsId, int episodeId, boolean userUuid, String externalUuid, int externalListId, int listId, String uuid) {
+        this.mediumId = mediumId;
         this.partId = partId;
         this.newsId = newsId;
         this.episodeId = episodeId;
@@ -31,7 +31,7 @@ public class InvalidatedData {
     @Override
     public String toString() {
         return "InvalidatedData{" +
-                "mediaId=" + mediaId +
+                "mediumId=" + mediumId +
                 ", partId=" + partId +
                 ", id=" + episodeId +
                 ", userUuid=" + userUuid +
@@ -47,7 +47,7 @@ public class InvalidatedData {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         InvalidatedData that = (InvalidatedData) o;
-        return mediaId == that.mediaId &&
+        return mediumId == that.mediumId &&
                 partId == that.partId &&
                 newsId == that.newsId &&
                 episodeId == that.episodeId &&
@@ -60,7 +60,7 @@ public class InvalidatedData {
 
     @Override
     public int hashCode() {
-        return Objects.hash(mediaId, partId, newsId, episodeId, userUuid, externalUuid, externalListId, listId, uuid);
+        return Objects.hash(mediumId, partId, newsId, episodeId, userUuid, externalUuid, externalListId, listId, uuid);
     }
 
     public int getNewsId() {
@@ -71,8 +71,8 @@ public class InvalidatedData {
         return uuid;
     }
 
-    public int getMediaId() {
-        return mediaId;
+    public int getMediumId() {
+        return mediumId;
     }
 
     public int getPartId() {

@@ -37,8 +37,8 @@ public class ListSettings extends BaseFragment {
     private CheckBox videoMedium;
     private CheckBox audioMedium;
     private Switch autoDownload;
-    public static final String ID = "id";
-    public static final String EXTERNAL = "external";
+    static final String ID = "id";
+    static final String EXTERNAL = "external";
 
     @Nullable
     @Override
@@ -63,10 +63,15 @@ public class ListSettings extends BaseFragment {
         this.autoDownload = view.findViewById(R.id.auto_download);
 
         this.openItemsButton.setOnClickListener(v -> {
-            if (this.listSettings() == null) {
+            MediaListSetting listSetting = this.listSettings();
+            if (listSetting == null) {
                 return;
             }
-            // todo add new fragment with only these mediaItems
+            Bundle bundle = new Bundle();
+            bundle.putInt(ListMediumFragment.ID, listId);
+            bundle.putString(ListMediumFragment.TITLE, listSetting.getName());
+            bundle.putBoolean(ListMediumFragment.EXTERNAL, isExternal);
+            this.getMainActivity().switchWindow(new ListMediumFragment(), bundle, true);
         });
 
         this.editName.setOnEditorActionListener((v, actionId, event) -> handleEditorEvent(editName, actionId, event));

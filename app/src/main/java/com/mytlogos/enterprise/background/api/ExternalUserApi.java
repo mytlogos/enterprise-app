@@ -10,10 +10,14 @@ import retrofit2.http.Body;
 import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
+import retrofit2.http.Path;
 import retrofit2.http.QueryMap;
 import retrofit2.http.Url;
 
 interface ExternalUserApi {
+
+    @GET("{start}/refresh")
+    Call<ClientExternalUser> refreshExternalUser(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
 
     @GET
     Call<ClientExternalUser> getExternalUser(@Url String url, @QueryMap Map<String, Object> body);

@@ -8,8 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.RadioButton;
 import android.widget.Switch;
 import android.widget.Toast;
 
@@ -24,26 +24,36 @@ import com.mytlogos.enterprise.model.MediumType;
 import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.viewmodel.ListsViewModel;
 
-import java.util.Objects;
-
 public class MediumSettings extends BaseFragment {
     private ListsViewModel mediumViewModel;
     private LiveData<MediumSetting> liveMediumSettings;
     private Button openTocButton;
     private EditText editName;
-    private CheckBox textMedium;
-    private CheckBox imageMedium;
-    private CheckBox videoMedium;
-    private CheckBox audioMedium;
+    private RadioButton textMedium;
+    private RadioButton imageMedium;
+    private RadioButton videoMedium;
+    private RadioButton audioMedium;
     private Switch autoDownload;
-    public static final String ID = "id";
+    private static final String ID = "mediumId";
+
+    static MediumSettings newInstance(int id) {
+        MediumSettings settings = new MediumSettings();
+        Bundle bundle = new Bundle();
+        bundle.putInt(ID, id);
+        settings.setArguments(bundle);
+        return settings;
+    }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.list_settings, container, false);
+        View view = inflater.inflate(R.layout.medium_settings, container, false);
 
-        Bundle arguments = Objects.requireNonNull(this.getArguments());
+        Bundle arguments = this.getArguments();
+
+        if (arguments == null) {
+            return view;
+        }
         int mediumId = arguments.getInt(ID);
 
         this.mediumViewModel = ViewModelProviders.of(this).get(ListsViewModel.class);
@@ -63,10 +73,10 @@ public class MediumSettings extends BaseFragment {
             if (this.mediumSettings() == null) {
                 return;
             }
-            // todo add new fragment with only these mediaItems
+            this.getMainActivity().switchWindow(TocFragment.newInstance(mediumId), true);
         });
 
-        this.editName.setOnEditorActionListener((v, actionId, event) -> handleEditorEvent(editName, actionId, event));
+        this.editName.setOnEditorActionListener((v, actionId, event) -> handleEditorEvent(this.editName, actionId, event));
 
         addMediumListener(this.textMedium, MediumType.TEXT);
         addMediumListener(this.imageMedium, MediumType.IMAGE);
@@ -126,8 +136,8 @@ public class MediumSettings extends BaseFragment {
         }
     }
 
-    private void addMediumListener(CheckBox box, int mediumType) {
-        box.setOnCheckedChangeListener((buttonView, isChecked) -> {
+    private void addMediumListener(RadioButton button, int mediumType) {
+        button.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (this.mediumSettings() == null) {
                 return;
             }
@@ -140,7 +150,6 @@ public class MediumSettings extends BaseFragment {
 
                 this.mediumViewModel.updateMedium(setting);
             }
-
         });
 
     }

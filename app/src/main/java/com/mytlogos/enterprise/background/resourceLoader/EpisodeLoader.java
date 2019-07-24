@@ -12,7 +12,7 @@ class EpisodeLoader implements NetworkLoader<Integer> {
 
     private LoadWorker loadWorker;
 
-    public EpisodeLoader(LoadWorker loadWorker) {
+    EpisodeLoader(LoadWorker loadWorker) {
         this.loadWorker = loadWorker;
     }
 
@@ -31,9 +31,9 @@ class EpisodeLoader implements NetworkLoader<Integer> {
             this.loadWorker.persister.persist(filteredEpisodes);
             return this.loadWorker.generator.generateEpisodesDependant(filteredEpisodes);
         }
-
         return Collections.emptyList();
     }
+
 
     private void process(List<ClientEpisode> episodes) {
         if (episodes != null) {

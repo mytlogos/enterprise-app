@@ -36,4 +36,6 @@ interface UserApi {
 
     @GET("{start}/download")
     Call<List<ClientDownloadedEpisode>> downloadEpisodes(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+
+    // TODO: 22.07.2019 add toc {uuid, toc: string, mediumId} ?
 }

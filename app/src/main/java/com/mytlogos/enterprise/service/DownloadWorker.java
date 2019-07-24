@@ -81,50 +81,53 @@ public class DownloadWorker extends Worker {
                 if (!repository.isClientAuthenticated()) {
                     return Result.retry();
                 }
-
-                List<ToDownload> toDownloadList = repository.getToDownload();
-
-                List<Integer> prohibitedMedia = new ArrayList<>();
-                Set<Integer> toDownloadMedia = new HashSet<>();
-
-                for (ToDownload toDownload : toDownloadList) {
-                    if (toDownload.getMediumId() != null) {
-                        if (toDownload.isProhibited()) {
-                            prohibitedMedia.add(toDownload.getMediumId());
-                        } else {
-                            toDownloadMedia.add(toDownload.getMediumId());
-                        }
-                    }
-
-                    if (toDownload.getExternalListId() != null) {
-                        toDownloadMedia.addAll(repository.getExternalListItems(toDownload.getExternalListId()));
-                    }
-
-                    if (toDownload.getListId() != null) {
-                        toDownloadMedia.addAll(repository.getListItems(toDownload.getListId()));
-                    }
-                }
-
-                toDownloadMedia.removeAll(prohibitedMedia);
-
-                SparseArray<List<Integer>> mediaEpisodes = new SparseArray<>();
-
-                for (Integer mediumId : toDownloadMedia) {
-                    List<Integer> unReadEpisodes = repository.getDownloadableEpisodes(mediumId);
-
-                    if (!unReadEpisodes.isEmpty()) {
-                        mediaEpisodes.put(mediumId, unReadEpisodes);
-                    }
-                }
-                if (mediaEpisodes.size() > 0) {
-                    this.downloadEpisodes(mediaEpisodes, application, repository);
-                }
+                download(repository, application);
             }
         } catch (Exception e) {
             e.printStackTrace();
             return Result.failure();
         }
         return Result.success();
+    }
+
+    private void download(Repository repository, Application application) {
+        List<ToDownload> toDownloadList = repository.getToDownload();
+
+        List<Integer> prohibitedMedia = new ArrayList<>();
+        Set<Integer> toDownloadMedia = new HashSet<>();
+
+        for (ToDownload toDownload : toDownloadList) {
+            if (toDownload.getMediumId() != null) {
+                if (toDownload.isProhibited()) {
+                    prohibitedMedia.add(toDownload.getMediumId());
+                } else {
+                    toDownloadMedia.add(toDownload.getMediumId());
+                }
+            }
+
+            if (toDownload.getExternalListId() != null) {
+                toDownloadMedia.addAll(repository.getExternalListItems(toDownload.getExternalListId()));
+            }
+
+            if (toDownload.getListId() != null) {
+                toDownloadMedia.addAll(repository.getListItems(toDownload.getListId()));
+            }
+        }
+
+        toDownloadMedia.removeAll(prohibitedMedia);
+
+        SparseArray<List<Integer>> mediaEpisodes = new SparseArray<>();
+
+        for (Integer mediumId : toDownloadMedia) {
+            List<Integer> unReadEpisodes = repository.getDownloadableEpisodes(mediumId);
+
+            if (!unReadEpisodes.isEmpty()) {
+                mediaEpisodes.put(mediumId, unReadEpisodes);
+            }
+        }
+        if (mediaEpisodes.size() > 0) {
+            this.downloadEpisodes(mediaEpisodes, application, repository);
+        }
     }
 
     private static final int maxEpisodeLimit = 50;
@@ -234,13 +237,16 @@ public class DownloadWorker extends Worker {
             } else {
                 String fileName = key + ".epub";
 
+                File dir;
+
                 if (writeInternal) {
-                    file = new File(internalAppDir, fileName);
+                    dir = internalAppDir;
                 } else if (writeExternal) {
-                    file = new File(externalAppDir, fileName);
+                    dir = externalAppDir;
                 } else {
                     throw new IOException("Out of Storage Space: Less than 100 MB available");
                 }
+                file = new File(dir, fileName);
                 book = new Book();
             }
 

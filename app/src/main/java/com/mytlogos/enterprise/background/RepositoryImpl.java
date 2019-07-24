@@ -16,6 +16,7 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
@@ -25,13 +26,15 @@ import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 import com.mytlogos.enterprise.background.resourceLoader.BlockingLoadWorker;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.background.room.RoomStorage;
+import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
+import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.News;
 import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.UnreadEpisode;
+import com.mytlogos.enterprise.model.TocPart;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.service.DownloadWorker;
@@ -424,8 +427,8 @@ public class RepositoryImpl implements Repository {
             } else if (datum.getPartId() > 0) {
                 loadWorker.addIntegerIdTask(datum.getPartId(), null, loadWorker.PART_LOADER);
 
-            } else if (datum.getMediaId() > 0) {
-                loadWorker.addIntegerIdTask(datum.getMediaId(), null, loadWorker.MEDIUM_LOADER);
+            } else if (datum.getMediumId() > 0) {
+                loadWorker.addIntegerIdTask(datum.getMediumId(), null, loadWorker.MEDIUM_LOADER);
 
             } else if (datum.getListId() > 0) {
                 loadWorker.addIntegerIdTask(datum.getListId(), null, loadWorker.MEDIALIST_LOADER);
@@ -511,7 +514,7 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public LiveData<List<UnreadEpisode>> getUnReadEpisodes() {
+    public LiveData<List<DisplayUnreadEpisode>> getUnReadEpisodes() {
         return this.storage.getUnreadEpisodes();
     }
 
@@ -585,6 +588,11 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
+    public LiveData<List<MediumInWait>> getAllMediaInWait() {
+        return this.storage.getAllMediaInWait();
+    }
+
+    @Override
     public LiveData<List<MediumItem>> getAllMedia() {
         return this.storage.getAllMedia();
     }
@@ -624,6 +632,26 @@ public class RepositoryImpl implements Repository {
             }
             return "";
         });
+    }
+
+    @Override
+    public LiveData<List<TocPart>> getToc(int mediumId) {
+        return this.storage.getToc(mediumId);
+    }
+
+    @Override
+    public LiveData<List<MediumItem>> getMediumItems(int listId, boolean isExternal) {
+        return this.storage.getMediumItems(listId, isExternal);
+    }
+
+    @Override
+    public void loadMediaInWaitSync() throws IOException {
+        Response<List<ClientMediumInWait>> response = this.client.getMediumInWait().execute();
+        List<ClientMediumInWait> medium = response.body();
+
+        if (medium != null && !medium.isEmpty()) {
+            this.persister.persistMediaInWait(medium);
+        }
     }
 }
 

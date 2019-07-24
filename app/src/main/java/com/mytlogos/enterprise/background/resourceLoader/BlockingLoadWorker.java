@@ -217,7 +217,7 @@ public class BlockingLoadWorker extends LoadWorker {
             return getResolvedNodes(manager, freeIds);
         }
 
-        Collection<DependencyTask<?>> tasks = manager.getLoader().loadItemsSync(freeIds);
+        Collection<DependencyTask<?>> tasks = manager.getLoader().loadItemsSyncIncremental(freeIds);
 
         for (DependencyTask<?> task : tasks) {
             if (task.idValue instanceof Integer) {
@@ -276,7 +276,7 @@ public class BlockingLoadWorker extends LoadWorker {
 
             if (!manager.isLoaded(id)) {
                 System.out
-                        .printf("Rejecting Dependencies for Id '%s' with loader '%s'", id, manager.getLoader())
+                        .printf("Rejecting Dependencies for Id '%s' with loader '%s'", id, manager.getLoader().getClass().getSimpleName())
                         .println();
                 node.rejectNode();
                 continue;
@@ -530,7 +530,7 @@ public class BlockingLoadWorker extends LoadWorker {
             if (manager.loaded.containsAll(freeIds)) {
                 nodes.addAll(getResolvedNodes(manager, freeIds));
             }
-            Future<Collection<DependencyTask<?>>> future = this.loadingService.submit(() -> manager.getLoader().loadItemsSync(freeIds));
+            Future<Collection<DependencyTask<?>>> future = this.loadingService.submit(() -> manager.getLoader().loadItemsSyncIncremental(freeIds));
             ProcessTasks processTasks = tasks -> this.processTasks(manager, freeIds, tasks);
             futureProcessTasksMap.put(future, processTasks);
         }

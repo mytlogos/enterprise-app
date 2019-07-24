@@ -19,6 +19,9 @@
         android:id="@+id/media"
         android:title="@string/medium" />
     <item
+        android:id="@+id/mediaInWait"
+        android:title="@string/browse_unused_media" />
+    <item
         android:id="@+id/add_medium"
         android:title="@string/add_medium" />
     <item

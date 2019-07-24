@@ -21,9 +21,10 @@ import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.UnreadEpisode;
+import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.viewmodel.UnreadEpisodeViewModel;
 
 import java.util.ArrayList;
@@ -43,7 +44,7 @@ import eu.davidea.viewholders.FlexibleViewHolder;
 public class UnreadEpisodeFragment extends BaseFragment {
 
     private UnreadEpisodeViewModel viewModel;
-    private LiveData<List<UnreadEpisode>> liveUnreadEpisodes;
+    private LiveData<List<DisplayUnreadEpisode>> liveUnreadEpisodes;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -78,32 +79,36 @@ public class UnreadEpisodeFragment extends BaseFragment {
                 .setDisplayHeadersAtStartUp(true);
 
         recyclerView.setAdapter(flexibleAdapter);
+        SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swiper);
 
         this.viewModel = ViewModelProviders.of(this).get(UnreadEpisodeViewModel.class);
 
         this.liveUnreadEpisodes = this.viewModel.getUnreadEpisodes();
         this.liveUnreadEpisodes.observe(this, unreadEpisodes -> {
-            if (unreadEpisodes != null) {
-                List<IFlexible> items = new ArrayList<>();
 
-                for (UnreadEpisode episode : unreadEpisodes) {
-                    items.add(new UnreadEpisodeItem(episode, this));
-                }
-
-                flexibleAdapter.updateDataSet(items);
+            if (checkEmptyList(unreadEpisodes, view, swipeRefreshLayout)) {
+                return;
             }
+
+            List<IFlexible> items = new ArrayList<>();
+
+            for (DisplayUnreadEpisode episode : unreadEpisodes) {
+                items.add(new UnreadEpisodeItem(episode, this));
+            }
+
+            flexibleAdapter.updateDataSet(items);
         });
         this.setTitle("Unread Chapters");
         return view;
     }
 
     private static class SectionableUnreadEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
-        private final UnreadEpisode unreadEpisode;
+        private final DisplayUnreadEpisode displayUnreadEpisode;
         private final Fragment fragment;
 
-        SectionableUnreadEpisodeItem(@NonNull UnreadEpisode unreadEpisode, Fragment fragment) {
-            super(new HeaderItem(unreadEpisode.getTitle(), unreadEpisode.getMediumId()));
-            this.unreadEpisode = unreadEpisode;
+        SectionableUnreadEpisodeItem(@NonNull DisplayUnreadEpisode displayUnreadEpisode, Fragment fragment) {
+            super(new HeaderItem(displayUnreadEpisode.getTitle(), displayUnreadEpisode.getMediumId()));
+            this.displayUnreadEpisode = displayUnreadEpisode;
             this.fragment = fragment;
             this.setDraggable(false);
             this.setSwipeable(false);
@@ -116,12 +121,12 @@ public class UnreadEpisodeFragment extends BaseFragment {
             if (!(o instanceof SectionableUnreadEpisodeItem)) return false;
 
             SectionableUnreadEpisodeItem other = (SectionableUnreadEpisodeItem) o;
-            return this.unreadEpisode.getEpisodeId() == other.unreadEpisode.getEpisodeId();
+            return this.displayUnreadEpisode.getEpisodeId() == other.displayUnreadEpisode.getEpisodeId();
         }
 
         @Override
         public int hashCode() {
-            return this.unreadEpisode.getEpisodeId();
+            return this.displayUnreadEpisode.getEpisodeId();
         }
 
         @Override
@@ -137,12 +142,12 @@ public class UnreadEpisodeFragment extends BaseFragment {
         @SuppressLint("DefaultLocale")
         @Override
         public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.mItem = this.unreadEpisode;
+            holder.mItem = this.displayUnreadEpisode;
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            holder.metaView.setText(this.unreadEpisode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
-            holder.novelView.setText(this.unreadEpisode.getMediumTitle());
-            holder.contentView.setText(this.unreadEpisode.getTitle());
+            holder.metaView.setText(this.displayUnreadEpisode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
+            holder.novelView.setText(this.displayUnreadEpisode.getMediumTitle());
+            holder.contentView.setText(this.displayUnreadEpisode.getTitle());
             holder.optionsButtonView.setOnClickListener(v -> {
                 PopupMenu popupMenu = new PopupMenu(this.fragment.getContext(), holder.optionsButtonView);
 
@@ -159,7 +164,7 @@ public class UnreadEpisodeFragment extends BaseFragment {
                         .getMenu()
                         .add("Open in Browser")
                         .setOnMenuItemClickListener(item -> {
-                            String url = this.unreadEpisode.getUrl();
+                            String url = this.displayUnreadEpisode.getUrl();
 
                             if (url == null || url.isEmpty()) {
                                 Toast
@@ -194,11 +199,11 @@ public class UnreadEpisodeFragment extends BaseFragment {
     }
 
     private static class UnreadEpisodeItem extends AbstractFlexibleItem<ViewHolder> {
-        private final UnreadEpisode unreadEpisode;
+        private final DisplayUnreadEpisode displayUnreadEpisode;
         private final Fragment fragment;
 
-        UnreadEpisodeItem(@NonNull UnreadEpisode unreadEpisode, Fragment fragment) {
-            this.unreadEpisode = unreadEpisode;
+        UnreadEpisodeItem(@NonNull DisplayUnreadEpisode displayUnreadEpisode, Fragment fragment) {
+            this.displayUnreadEpisode = displayUnreadEpisode;
             this.fragment = fragment;
             this.setDraggable(false);
             this.setSwipeable(false);
@@ -211,12 +216,12 @@ public class UnreadEpisodeFragment extends BaseFragment {
             if (!(o instanceof SectionableUnreadEpisodeItem)) return false;
 
             SectionableUnreadEpisodeItem other = (SectionableUnreadEpisodeItem) o;
-            return this.unreadEpisode.getEpisodeId() == other.unreadEpisode.getEpisodeId();
+            return this.displayUnreadEpisode.getEpisodeId() == other.displayUnreadEpisode.getEpisodeId();
         }
 
         @Override
         public int hashCode() {
-            return this.unreadEpisode.getEpisodeId();
+            return this.displayUnreadEpisode.getEpisodeId();
         }
 
         @Override
@@ -232,12 +237,21 @@ public class UnreadEpisodeFragment extends BaseFragment {
         @SuppressLint("DefaultLocale")
         @Override
         public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.mItem = this.unreadEpisode;
+            DisplayUnreadEpisode episode = this.displayUnreadEpisode;
+            holder.mItem = episode;
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            holder.metaView.setText(this.unreadEpisode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
-            holder.novelView.setText(this.unreadEpisode.getMediumTitle());
-            holder.contentView.setText(this.unreadEpisode.getTitle());
+            holder.metaView.setText(episode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
+            holder.novelView.setText(episode.getMediumTitle());
+
+            String title;
+
+            if (episode.getPartialIndex() > 0) {
+                title = String.format("#%d.%d - %s", episode.getTotalIndex(), episode.getPartialIndex(), episode.getTitle());
+            } else {
+                title = String.format("#%d - %s", episode.getTotalIndex(), episode.getTitle());
+            }
+            holder.contentView.setText(title);
 
             holder.optionsButtonView.setOnClickListener(v -> {
                 PopupMenu popupMenu = new PopupMenu(this.fragment.getContext(), holder.optionsButtonView);
@@ -255,7 +269,7 @@ public class UnreadEpisodeFragment extends BaseFragment {
                         .getMenu()
                         .add("Open in Browser")
                         .setOnMenuItemClickListener(item -> {
-                            String url = this.unreadEpisode.getUrl();
+                            String url = episode.getUrl();
 
                             if (url == null || url.isEmpty()) {
                                 Toast
@@ -344,13 +358,13 @@ public class UnreadEpisodeFragment extends BaseFragment {
         private final TextView metaView;
         private final TextView novelView;
         private final ImageButton optionsButtonView;
-        UnreadEpisode mItem;
+        DisplayUnreadEpisode mItem;
 
         ViewHolder(@NonNull View view) {
             super(view);
             mView = view;
-            metaView = view.findViewById(R.id.item_meta);
-            novelView = view.findViewById(R.id.item_novel);
+            metaView = view.findViewById(R.id.item_top_left);
+            novelView = view.findViewById(R.id.item_top_right);
             contentView = view.findViewById(R.id.content);
             optionsButtonView = view.findViewById(R.id.item_options_button);
         }

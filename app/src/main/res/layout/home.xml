@@ -101,6 +101,22 @@
             android:layout_height="@dimen/small_vertical_spacing" />
 
         <LinearLayout
+            android:id="@+id/mediaInWait"
+            style="@style/HomeContainer"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/browse_unused_media" />
+
+        </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/small_vertical_spacing" />
+
+        <LinearLayout
             android:id="@+id/statistics"
             style="@style/HomeContainer"
             android:orientation="vertical">

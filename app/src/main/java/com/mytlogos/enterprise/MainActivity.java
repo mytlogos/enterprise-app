@@ -31,6 +31,7 @@ import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.service.BootReceiver;
 import com.mytlogos.enterprise.ui.Home;
 import com.mytlogos.enterprise.ui.ListsFragment;
+import com.mytlogos.enterprise.ui.MediaInWaitListFragment;
 import com.mytlogos.enterprise.ui.MediumFragment;
 import com.mytlogos.enterprise.ui.NewsFragment;
 import com.mytlogos.enterprise.ui.ReadHistoryFragment;
@@ -277,6 +278,9 @@ public class MainActivity extends AppCompatActivity implements
             case R.id.medium:
                 fragment = new MediumFragment();
                 break;
+            case R.id.mediaInWait:
+                fragment = new MediaInWaitListFragment();
+                break;
             case R.id.add_medium:
                 activityClass = AddMediumActivity.class;
                 break;
@@ -329,8 +333,14 @@ public class MainActivity extends AppCompatActivity implements
         this.switchWindow(fragment, null, addToBackStack);
     }
 
+    public void switchWindow(@NonNull Fragment fragment) {
+        this.switchWindow(fragment, null, true);
+    }
+
     public void switchWindow(@NonNull Fragment fragment, @Nullable Bundle bundle, boolean addToBackStack) {
-        fragment.setArguments(bundle);
+        if (bundle != null) {
+            fragment.setArguments(bundle);
+        }
 
         FragmentManager manager = getSupportFragmentManager();
         FragmentTransaction transaction = manager.beginTransaction();

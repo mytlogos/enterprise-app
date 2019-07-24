@@ -64,7 +64,7 @@ public class ReadHistoryRecyclerViewAdapter extends RecyclerView.Adapter<ReadHis
         public ViewHolder(View view) {
             super(view);
             mView = view;
-            mIdView = view.findViewById(R.id.item_meta);
+            mIdView = view.findViewById(R.id.item_top_left);
             mContentView = view.findViewById(R.id.content);
         }
 

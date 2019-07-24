@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.background.room;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 
 import androidx.lifecycle.LiveData;
@@ -20,6 +21,7 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
@@ -41,15 +43,18 @@ import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
+import com.mytlogos.enterprise.background.room.model.RoomUnReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
+import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.ExternalMediaList;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
+import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.News;
 import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.UnreadEpisode;
+import com.mytlogos.enterprise.model.TocPart;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.service.DownloadWorker;
 
@@ -57,8 +62,11 @@ import org.joda.time.DateTime;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -73,6 +81,7 @@ public class RoomStorage implements DatabaseStorage {
     private final ExternalMediaListDao externalMediaListDao;
     private final ExternalUserDao externalUserDao;
     private final LiveData<? extends User> storageUserLiveData;
+    private final RoomMediumInWaitDao mediumInWaitDao;
     private boolean loading = false;
     private final ToDownloadDao toDownloadDao;
 
@@ -88,6 +97,21 @@ public class RoomStorage implements DatabaseStorage {
         episodeDao = database.episodeDao();
         toDownloadDao = database.toDownloadDao();
         storageUserLiveData = userDao.getUser();
+        mediumInWaitDao = database.roomMediumInWaitDao();
+    }
+
+    @Override
+    public LiveData<List<MediumInWait>> getAllMediaInWait() {
+        return Transformations.map(
+                this.mediumInWaitDao.getAll(),
+                input -> input
+                        .stream()
+                        .map(medium -> new MediumInWait(
+                                medium.getTitle(),
+                                medium.getMedium(),
+                                medium.getLink()
+                        ))
+                        .collect(Collectors.toList()));
     }
 
     @Override
@@ -225,22 +249,13 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public LiveData<List<UnreadEpisode>> getUnreadEpisodes() {
+    public LiveData<List<DisplayUnreadEpisode>> getUnreadEpisodes() {
+        RoomConverter converter = new RoomConverter();
         return Transformations.map(
                 this.episodeDao.getUnreadEpisodes(),
                 input -> input
                         .stream()
-                        .map(episode -> new UnreadEpisode(
-                                episode.getEpisodeId(),
-                                episode.getMediumId(),
-                                episode.getMediumTitle(),
-                                episode.getTitle(),
-                                episode.getTotalIndex(),
-                                episode.getPartialIndex(),
-                                episode.getUrl(),
-                                episode.getReleaseDate(),
-                                episode.isSaved()
-                        ))
+                        .map(converter::convertRoomEpisode)
                         .collect(Collectors.toList())
         );
     }
@@ -330,6 +345,58 @@ public class RoomStorage implements DatabaseStorage {
     @Override
     public LiveData<MediumSetting> getMediumSettings(int mediumId) {
         return this.mediumDao.getMediumSettings(mediumId);
+    }
+
+    @Override
+    public LiveData<List<TocPart>> getToc(int mediumId) {
+        MediatorLiveData<List<TocPart>> data = new MediatorLiveData<>();
+        LiveData<List<RoomPart>> parts = this.partDao.getParts(mediumId);
+        LiveData<List<RoomUnReadEpisode>> episodes = this.episodeDao.getEpisodes(mediumId);
+
+        data.addSource(parts, roomParts -> convertToTocPart(data, episodes.getValue(), roomParts));
+        data.addSource(episodes, roomUnReadEpisodes -> convertToTocPart(data, roomUnReadEpisodes, parts.getValue()));
+
+        return data;
+    }
+
+    @Override
+    public LiveData<List<MediumItem>> getMediumItems(int listId, boolean isExternal) {
+        if (isExternal) {
+            return this.mediumDao.getExternalListMedia(listId);
+        } else {
+            return this.mediumDao.getListMedia(listId);
+        }
+    }
+
+    private void convertToTocPart(MediatorLiveData<List<TocPart>> data, List<RoomUnReadEpisode> episodes, List<RoomPart> roomParts) {
+        if (roomParts == null) {
+            data.postValue(null);
+            return;
+        }
+
+        @SuppressLint("UseSparseArrays")
+        Map<Integer, List<DisplayUnreadEpisode>> idEpisodeMap = new HashMap<>();
+
+        if (episodes != null) {
+            RoomConverter converter = new RoomConverter();
+
+            for (RoomUnReadEpisode roomEpisode : episodes) {
+                DisplayUnreadEpisode episode = converter.convertRoomEpisode(roomEpisode);
+                idEpisodeMap
+                        .computeIfAbsent(roomEpisode.getPartId(), integer -> new ArrayList<>())
+                        .add(episode);
+            }
+        }
+
+        List<TocPart> tocParts = new ArrayList<>(roomParts.size());
+
+        for (RoomPart part : roomParts) {
+            List<DisplayUnreadEpisode> partEpisodes = idEpisodeMap.getOrDefault(part.getPartId(), Collections.emptyList());
+            TocPart tocPart = new TocPart(part.getPartialIndex(), part.getTotalIndex(), part.getTitle(), part.getPartId(), partEpisodes);
+            tocParts.add(tocPart);
+        }
+
+        data.postValue(tocParts);
     }
 
     private class RoomDependantGenerator implements DependantGenerator {
@@ -1051,6 +1118,11 @@ public class RoomStorage implements DatabaseStorage {
         public ClientModelPersister persist(ToDownload toDownload) {
             RoomStorage.this.toDownloadDao.insert(new RoomConverter().convert(toDownload));
             return this;
+        }
+
+        @Override
+        public void persistMediaInWait(List<ClientMediumInWait> medium) {
+            RoomStorage.this.mediumInWaitDao.insertBulk(new RoomConverter().convert(medium));
         }
 
         @Override

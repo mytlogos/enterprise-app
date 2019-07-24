@@ -166,4 +166,6 @@
     <string name="item_options">Item Options</string>
     <string name="open_items">Open Items</string>
     <string name="open_toc">Open Toc</string>
+    <string name="open_in_browser">Open in Browser</string>
+    <string name="browse_unused_media">Browse unused Media</string>
 </resources>

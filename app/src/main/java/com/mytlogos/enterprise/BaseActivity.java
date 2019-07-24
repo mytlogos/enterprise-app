@@ -32,7 +32,7 @@ public abstract class BaseActivity extends AppCompatActivity implements Navigati
 
         checkToolbar();
         setContentView(this.getContent());
-        this.progressView = findViewById(R.id.load_progress);
+        this.progressView = this.findViewById(R.id.load_progress);
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);

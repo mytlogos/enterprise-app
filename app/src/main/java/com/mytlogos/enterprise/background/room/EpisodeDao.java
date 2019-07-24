@@ -54,17 +54,33 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
 
     @Query("SELECT RoomEpisode.episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
-            "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomPart.mediumId " +
-            "WHERE progress < 1 AND saved = 0 AND RoomMedium.mediumId IN (:mediaIds)")
+            "WHERE progress < 1 AND saved = 0 AND RoomPart.mediumId IN (:mediaIds)")
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediaIds);
 
     @Query("SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex," +
-            "RoomMedium.mediumId,RoomMedium.title as mediumTitle, RoomRelease.releaseDate, RoomRelease.url, RoomRelease.title " +
+            "RoomMedium.mediumId,RoomMedium.title as mediumTitle, RoomRelease.releaseDate, " +
+            "RoomRelease.url, RoomRelease.title,RoomPart.partId, " +
+            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read " +
             "FROM RoomEpisode " +
             "INNER JOIN (SELECT * FROM RoomRelease GROUP BY episodeId,releaseDate ORDER BY releaseDate DESC) " +
             "as RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
             "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
-            "WHERE progress=0")
+            "WHERE progress=0 " +
+            "ORDER BY releaseDate DESC")
     LiveData<List<RoomUnReadEpisode>> getUnreadEpisodes();
+
+    @Query("SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex," +
+            "RoomMedium.mediumId,RoomMedium.title as mediumTitle,RoomRelease.releaseDate, " +
+            "RoomRelease.url, RoomRelease.title, RoomPart.partId, " +
+            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read " +
+            "FROM RoomEpisode " +
+            "INNER JOIN (SELECT * FROM RoomRelease GROUP BY episodeId,releaseDate ORDER BY releaseDate DESC) " +
+            "as RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
+            "WHERE RoomMedium.mediumId=:mediumId " +
+            "ORDER BY RoomEpisode.totalIndex DESC, RoomEpisode.partialIndex DESC")
+    LiveData<List<RoomUnReadEpisode>> getEpisodes(int mediumId);
+
 }

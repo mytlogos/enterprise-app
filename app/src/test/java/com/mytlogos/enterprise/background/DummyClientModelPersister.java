@@ -6,6 +6,7 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
@@ -521,6 +522,11 @@ public class DummyClientModelPersister implements ClientModelPersister {
     public ClientModelPersister persist(ToDownload toDownload) {
         this.savedToDownloads.add(new RoomConverter().convert(toDownload));
         return this;
+    }
+
+    @Override
+    public void persistMediaInWait(List<ClientMediumInWait> medium) {
+
     }
 
     @Override

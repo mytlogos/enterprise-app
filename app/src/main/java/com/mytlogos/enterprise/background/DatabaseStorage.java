@@ -2,13 +2,15 @@ package com.mytlogos.enterprise.background;
 
 import androidx.lifecycle.LiveData;
 
+import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
+import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.News;
 import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.UnreadEpisode;
+import com.mytlogos.enterprise.model.TocPart;
 import com.mytlogos.enterprise.model.User;
 
 import org.joda.time.DateTime;
@@ -70,7 +72,7 @@ public interface DatabaseStorage {
 
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediumId);
 
-    LiveData<List<UnreadEpisode>> getUnreadEpisodes();
+    LiveData<List<DisplayUnreadEpisode>> getUnreadEpisodes();
 
     LiveData<List<MediaList>> getLists();
 
@@ -78,7 +80,13 @@ public interface DatabaseStorage {
 
     void updateToDownload(boolean add, ToDownload toDownload);
 
+    LiveData<List<MediumInWait>> getAllMediaInWait();
+
     LiveData<List<MediumItem>> getAllMedia();
 
     LiveData<MediumSetting> getMediumSettings(int mediumId);
+
+    LiveData<List<TocPart>> getToc(int mediumId);
+
+    LiveData<List<MediumItem>> getMediumItems(int listId, boolean isExternal);
 }

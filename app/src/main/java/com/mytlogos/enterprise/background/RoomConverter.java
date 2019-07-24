@@ -5,6 +5,7 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
@@ -15,16 +16,20 @@ import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
 import com.mytlogos.enterprise.background.room.model.RoomMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomMedium;
+import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
 import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
+import com.mytlogos.enterprise.background.room.model.RoomUnReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
+import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.ToDownload;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 
 public class RoomConverter {
 
@@ -39,69 +44,31 @@ public class RoomConverter {
     }
 
     public List<RoomExternalMediaList> convertExternalMediaList(Collection<ClientExternalMediaList> mediaLists) {
-        List<RoomExternalMediaList> externalMediaLists = new ArrayList<>(mediaLists.size());
-
-        for (ClientExternalMediaList mediaList : mediaLists) {
-            RoomExternalMediaList externalMediaList = this.convert(mediaList);
-            externalMediaLists.add(externalMediaList);
-        }
-
-        return externalMediaLists;
+        return this.convert(mediaLists, this::convert);
     }
 
     public List<RoomMediaList> convertMediaList(Collection<ClientMediaList> mediaLists) {
-        List<RoomMediaList> lists = new ArrayList<>(mediaLists.size());
-
-        for (ClientMediaList mediaList : mediaLists) {
-            lists.add(this.convert(mediaList));
-        }
-
-        return lists;
+        return this.convert(mediaLists, this::convert);
     }
 
     public List<RoomExternalUser> convertExternalUser(Collection<ClientExternalUser> mediaLists) {
-        List<RoomExternalUser> externalUsers = new ArrayList<>(mediaLists.size());
-
-        for (ClientExternalUser user : mediaLists) {
-            externalUsers.add(this.convert(user));
-        }
-
-        return externalUsers;
+        return this.convert(mediaLists, this::convert);
     }
 
     public List<RoomExternalMediaList.ExternalListMediaJoin> convertExListJoin(Collection<LoadWorkGenerator.ListJoin> mediaLists) {
-        List<RoomExternalMediaList.ExternalListMediaJoin> mediaJoins = new ArrayList<>(mediaLists.size());
-
-        for (LoadWorkGenerator.ListJoin listJoin : mediaLists) {
-            mediaJoins.add(this.convertToExtListJoin(listJoin));
-        }
-
-        return mediaJoins;
+        return this.convert(mediaLists, this::convertToExtListJoin);
     }
 
     public List<RoomMediaList.MediaListMediaJoin> convertListJoin(Collection<LoadWorkGenerator.ListJoin> joins) {
-        List<RoomMediaList.MediaListMediaJoin> externalMediaLists = new ArrayList<>(joins.size());
-
-        for (LoadWorkGenerator.ListJoin mediaList : joins) {
-            externalMediaLists.add(this.convertToListJoin(mediaList));
-        }
-        return externalMediaLists;
+        return this.convert(joins, this::convertToListJoin);
     }
 
     public List<RoomEpisode> convertEpisodes(Collection<ClientEpisode> episodes) {
-        List<RoomEpisode> roomEpisodes = new ArrayList<>(episodes.size());
-        for (ClientEpisode episode : episodes) {
-            roomEpisodes.add(this.convert(episode));
-        }
-        return roomEpisodes;
+        return this.convert(episodes, this::convert);
     }
 
     public List<RoomRelease> convertReleases(Collection<ClientRelease> releases) {
-        List<RoomRelease> roomEpisodes = new ArrayList<>(releases.size());
-        for (ClientRelease release : releases) {
-            roomEpisodes.add(this.convert(release));
-        }
-        return roomEpisodes;
+        return this.convert(releases, this::convert);
     }
 
     public List<RoomMedium> convertMedia(Collection<ClientMedium> media) {
@@ -115,30 +82,43 @@ public class RoomConverter {
     }
 
     public List<RoomPart> convertParts(Collection<ClientPart> parts) {
-        List<RoomPart> roomParts = new ArrayList<>();
-
-        for (ClientPart part : parts) {
-            roomParts.add(this.convert(part));
-        }
-        return roomParts;
+        return this.convert(parts, this::convert);
     }
 
     public List<RoomToDownload> convertToDownload(Collection<ToDownload> toDownloads) {
-        List<RoomToDownload> roomToDownloads = new ArrayList<>();
-
-        for (ToDownload toDownload : toDownloads) {
-            roomToDownloads.add(this.convert(toDownload));
-        }
-        return roomToDownloads;
+        return this.convert(toDownloads, this::convert);
     }
 
     public List<ToDownload> convertRoomToDownload(Collection<RoomToDownload> roomToDownloads) {
-        List<ToDownload> toDownloads = new ArrayList<>();
+        return this.convert(roomToDownloads, this::convert);
+    }
 
-        for (RoomToDownload roomToDownload : roomToDownloads) {
-            toDownloads.add(this.convert(roomToDownload));
+    public Collection<RoomMediumInWait> convert(List<ClientMediumInWait> medium) {
+        return this.convert(medium, this::convert);
+    }
+
+    private <R, T> List<R> convert(Collection<T> values, Function<T, R> converter) {
+        List<R> list = new ArrayList<>();
+
+        for (T t : values) {
+            list.add(converter.apply(t));
         }
-        return toDownloads;
+        return list;
+    }
+
+    public DisplayUnreadEpisode convertRoomEpisode(RoomUnReadEpisode episode) {
+        return episode == null ? null : new DisplayUnreadEpisode(
+                episode.getEpisodeId(),
+                episode.getMediumId(),
+                episode.getMediumTitle(),
+                episode.getTitle(),
+                episode.getTotalIndex(),
+                episode.getPartialIndex(),
+                episode.getUrl(),
+                episode.getReleaseDate(),
+                episode.isSaved(),
+                episode.isRead()
+        );
     }
 
     public RoomExternalMediaList.ExternalListMediaJoin convertToExtListJoin(LoadWorkGenerator.ListJoin join) {
@@ -238,6 +218,14 @@ public class RoomConverter {
                 user.getName(),
                 user.getUuid(),
                 user.getSession()
+        );
+    }
+
+    public RoomMediumInWait convert(ClientMediumInWait medium) {
+        return new RoomMediumInWait(
+                medium.getTitle(),
+                medium.getMedium(),
+                medium.getLink()
         );
     }
 }

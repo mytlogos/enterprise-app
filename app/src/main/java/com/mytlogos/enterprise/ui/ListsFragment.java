@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.ExternalMediaList;
@@ -114,20 +115,24 @@ public class ListsFragment extends BaseFragment {
                 .setDisplayHeadersAtStartUp(true);
 
         recyclerView.setAdapter(flexibleAdapter);
+        SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swiper);
 
         this.viewModel = ViewModelProviders.of(this).get(ListsViewModel.class);
 
         this.liveLists = this.viewModel.getLists();
         this.liveLists.observe(this, lists -> {
-            if (lists != null) {
-                List<IFlexible> items = new ArrayList<>();
 
-                for (MediaList mediaList : lists) {
-                    items.add(new ListItem(mediaList, this));
-                }
-
-                flexibleAdapter.updateDataSet(items);
+            if (checkEmptyList(lists, view, swipeRefreshLayout)) {
+                return;
             }
+
+            List<IFlexible> items = new ArrayList<>();
+
+            for (MediaList mediaList : lists) {
+                items.add(new ListItem(mediaList, this));
+            }
+
+            flexibleAdapter.updateDataSet(items);
         });
         this.setTitle("Lists");
         return view;
@@ -182,9 +187,10 @@ public class ListsFragment extends BaseFragment {
 
             holder.mView.setOnClickListener(v -> {
                 Bundle bundle = new Bundle();
-                bundle.putInt(ListSettings.ID, this.list.getListId());
-                bundle.putBoolean(ListSettings.EXTERNAL, this.list instanceof ExternalMediaList);
-                fragment.getMainActivity().switchWindow(new ListSettings(), bundle, true);
+                bundle.putInt(ListMediumFragment.ID, this.list.getListId());
+                bundle.putString(ListMediumFragment.TITLE, this.list.getName());
+                bundle.putBoolean(ListMediumFragment.EXTERNAL, this.list instanceof ExternalMediaList);
+                fragment.getMainActivity().switchWindow(new ListMediumFragment(), bundle, true);
             });
         }
 
@@ -238,9 +244,10 @@ public class ListsFragment extends BaseFragment {
 
             holder.mView.setOnClickListener(v -> {
                 Bundle bundle = new Bundle();
-                bundle.putInt(ListSettings.ID, this.list.getListId());
-                bundle.putBoolean(ListSettings.EXTERNAL, this.list instanceof ExternalMediaList);
-                fragment.getMainActivity().switchWindow(new ListSettings(), bundle, true);
+                bundle.putInt(ListMediumFragment.ID, this.list.getListId());
+                bundle.putString(ListMediumFragment.TITLE, this.list.getName());
+                bundle.putBoolean(ListMediumFragment.EXTERNAL, this.list instanceof ExternalMediaList);
+                fragment.getMainActivity().switchWindow(new ListMediumFragment(), bundle, true);
             });
 
             /*
@@ -326,8 +333,8 @@ public class ListsFragment extends BaseFragment {
         ViewHolder(@NonNull View view) {
             super(view);
             mView = view;
-            metaView = view.findViewById(R.id.item_meta);
-            denominatorView = view.findViewById(R.id.item_novel);
+            metaView = view.findViewById(R.id.item_top_left);
+            denominatorView = view.findViewById(R.id.item_top_right);
             contentView = view.findViewById(R.id.content);
         }
 

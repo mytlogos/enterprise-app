@@ -54,7 +54,6 @@ public class RoomRelease implements Release {
         return url;
     }
 
-    @NonNull
     @Override
     public int getEpisodeId() {
         return episodeId;

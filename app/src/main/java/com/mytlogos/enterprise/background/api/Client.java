@@ -10,6 +10,7 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
@@ -40,7 +41,7 @@ public class Client {
     }
 
     private Authentication authentication;
-    private final String serverIp = "192.168.1.4";
+    private final String serverIp = "192.168.1.6";
 
     public Client() {
 
@@ -284,6 +285,11 @@ public class Client {
         return build(MediumApi.class, (apiImpl, url) -> apiImpl.getMedium(url, body));
     }
 
+    public Call<List<ClientMediumInWait>> getMediumInWait() throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        return build(MediumApi.class, (apiImpl, url) -> apiImpl.getMediumInWait(url, body));
+    }
+
     public Call<ClientMedium> addMedia(ClientMedium clientMedium) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("medium", clientMedium);
@@ -311,6 +317,7 @@ public class Client {
     public Call<ClientPart> addPart(ClientPart part) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("part", part);
+        body.put("mediumId", part.getMediumId());
         return build(PartApi.class, (apiImpl, url) -> apiImpl.addPart(url, body));
     }
 
@@ -328,13 +335,13 @@ public class Client {
 
     public Call<ClientEpisode> getEpisode(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("id", episodeId);
+        body.put("episodeId", episodeId);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.getEpisode(url, body));
     }
 
     public Call<List<ClientEpisode>> getEpisodes(Collection<Integer> episodeIds) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("id", episodeIds);
+        body.put("episodeId", episodeIds);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.getEpisodes(url, body));
     }
 
@@ -347,7 +354,7 @@ public class Client {
 
     public Call<Boolean> deleteEpisode(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("id", episodeId);
+        body.put("episodeId", episodeId);
         return build(EpisodeApi.class, (apiImpl, url) -> apiImpl.deleteEpisode(url, body));
     }
 
@@ -359,26 +366,26 @@ public class Client {
 
     public Call<Float> getProgress(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("id", episodeId);
+        body.put("episodeId", episodeId);
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.getProgress(url, body));
     }
 
     public Call<Boolean> addProgress(int episodeId, float progress) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("id", episodeId);
+        body.put("episodeId", episodeId);
         body.put("progress", progress);
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.addProgress(url, body));
     }
 
     public Call<Boolean> deleteProgress(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("id", episodeId);
+        body.put("episodeId", episodeId);
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.deleteProgress(url, body));
     }
 
     public Call<Boolean> updateProgress(int episodeId, float progress) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("id", episodeId);
+        body.put("episodeId", episodeId);
         body.put("progress", progress);
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.updateProgress(url, body));
     }

@@ -4,6 +4,7 @@ import org.joda.time.DateTime;
 
 public class RoomUnReadEpisode {
     private final int episodeId;
+    private final int partId;
     private final int mediumId;
     private final String mediumTitle;
     private final String title;
@@ -12,9 +13,11 @@ public class RoomUnReadEpisode {
     private final String url;
     private final DateTime releaseDate;
     private final boolean saved;
+    private final boolean read;
 
-    public RoomUnReadEpisode(int episodeId, int mediumId, String mediumTitle, String title, int totalIndex, int partialIndex, String url, DateTime releaseDate, boolean saved) {
+    public RoomUnReadEpisode(int episodeId, int partId, int mediumId, String mediumTitle, String title, int totalIndex, int partialIndex, String url, DateTime releaseDate, boolean saved, boolean read) {
         this.episodeId = episodeId;
+        this.partId = partId;
         this.mediumId = mediumId;
         this.mediumTitle = mediumTitle;
         this.title = title;
@@ -23,6 +26,15 @@ public class RoomUnReadEpisode {
         this.url = url;
         this.releaseDate = releaseDate;
         this.saved = saved;
+        this.read = read;
+    }
+
+    public boolean isRead() {
+        return read;
+    }
+
+    public int getPartId() {
+        return partId;
     }
 
     public String getMediumTitle() {

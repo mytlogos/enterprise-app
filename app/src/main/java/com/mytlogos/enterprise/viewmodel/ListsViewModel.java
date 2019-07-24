@@ -3,11 +3,8 @@ package com.mytlogos.enterprise.viewmodel;
 import android.app.Application;
 
 import androidx.annotation.NonNull;
-import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 
-import com.mytlogos.enterprise.background.Repository;
-import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.TaskManager;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
@@ -17,12 +14,10 @@ import com.mytlogos.enterprise.model.ToDownload;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public class ListsViewModel extends AndroidViewModel {
-    private final Repository repository;
+public class ListsViewModel extends RepoViewModel {
 
     public ListsViewModel(@NonNull Application application) {
         super(application);
-        repository = RepositoryImpl.getInstance(application);
     }
 
     public LiveData<List<MediaList>> getLists() {

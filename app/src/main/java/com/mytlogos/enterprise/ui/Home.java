@@ -31,6 +31,7 @@ public class Home extends BaseFragment {
         this.addClickListener(view, R.id.history, new ReadHistoryFragment());
         this.addClickListener(view, R.id.list, new ListsFragment());
         this.addClickListener(view, R.id.medium, new MediumFragment());
+        this.addClickListener(view, R.id.mediaInWait, new MediaInWaitListFragment());
         this.addClickListener(view, R.id.statistics, new Statistics());
         this.addClickListener(view, R.id.settings, SettingsActivity.class);
         this.addClickListener(view, R.id.logout, MainActivity::logout);

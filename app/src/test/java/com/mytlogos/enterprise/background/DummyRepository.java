@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background;
 
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
@@ -13,11 +14,13 @@ import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
+import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.News;
 import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.UnreadEpisode;
+import com.mytlogos.enterprise.model.TocPart;
+import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
 
@@ -242,7 +245,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public LiveData<List<UnreadEpisode>> getUnReadEpisodes() {
+    public LiveData<List<DisplayUnreadEpisode>> getUnReadEpisodes() {
         return null;
     }
 
@@ -272,6 +275,11 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
+    public LiveData<List<MediumInWait>> getAllMediaInWait() {
+        return new MutableLiveData<>();
+    }
+
+    @Override
     public LiveData<List<MediumItem>> getAllMedia() {
         return null;
     }
@@ -284,5 +292,20 @@ public final class DummyRepository implements Repository {
     @Override
     public CompletableFuture<String> updateMediumType(MediumSetting mediumSettings) {
         return null;
+    }
+
+    @Override
+    public LiveData<List<TocPart>> getToc(int mediumId) {
+        return new MutableLiveData<>();
+    }
+
+    @Override
+    public LiveData<List<MediumItem>> getMediumItems(int listId, boolean isExternal) {
+        return new MutableLiveData<>();
+    }
+
+    @Override
+    public void loadMediaInWaitSync() {
+
     }
 }

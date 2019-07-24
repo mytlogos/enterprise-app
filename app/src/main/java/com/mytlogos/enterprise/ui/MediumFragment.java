@@ -45,7 +45,7 @@ public class MediumFragment extends BaseFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.swipe_list, container, false);
+        View view = inflater.inflate(R.layout.normal_list, container, false);
 
         RecyclerView recyclerView = view.findViewById(R.id.list);
 
@@ -68,15 +68,18 @@ public class MediumFragment extends BaseFragment {
 
         this.liveMedia = this.viewModel.getAllMedia();
         this.liveMedia.observe(this, mediumItems -> {
-            if (mediumItems != null) {
-                List<IFlexible> items = new ArrayList<>();
 
-                for (MediumItem item : mediumItems) {
-                    items.add(new ListItem(item, this));
-                }
-
-                flexibleAdapter.updateDataSet(items);
+            if (checkEmptyList(mediumItems, view, recyclerView)) {
+                return;
             }
+
+            List<IFlexible> items = new ArrayList<>();
+
+            for (MediumItem item : mediumItems) {
+                items.add(new FlexibleMediumItem(item, this));
+            }
+
+            flexibleAdapter.updateDataSet(items);
         });
         this.setTitle("Media");
         return view;
@@ -140,19 +143,18 @@ public class MediumFragment extends BaseFragment {
             holder.contentView.setText(this.item.getTitle());
 
             holder.mView.setOnClickListener(v -> {
-                Bundle bundle = new Bundle();
-                bundle.putInt(MediumSettings.ID, this.item.getMediumId());
-                fragment.getMainActivity().switchWindow(new MediumSettings(), bundle, true);
+                MediumSettings fragment = MediumSettings.newInstance(this.item.getMediumId());
+                this.fragment.getMainActivity().switchWindow(fragment, true);
             });
         }
 
     }
 
-    private static class ListItem extends AbstractFlexibleItem<ViewHolder> {
+    public static class FlexibleMediumItem extends AbstractFlexibleItem<ViewHolder> {
         private final MediumItem item;
         private final BaseFragment fragment;
 
-        ListItem(@NonNull MediumItem item, BaseFragment fragment) {
+        FlexibleMediumItem(@NonNull MediumItem item, BaseFragment fragment) {
             this.item = item;
             this.fragment = fragment;
             this.setDraggable(false);
@@ -163,9 +165,9 @@ public class MediumFragment extends BaseFragment {
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (!(o instanceof SectionableListItem)) return false;
+            if (!(o instanceof FlexibleMediumItem)) return false;
 
-            SectionableListItem other = (SectionableListItem) o;
+            FlexibleMediumItem other = (FlexibleMediumItem) o;
             return this.item.getMediumId() == other.item.getMediumId();
         }
 
@@ -207,9 +209,8 @@ public class MediumFragment extends BaseFragment {
             holder.contentView.setText(this.item.getTitle());
 
             holder.mView.setOnClickListener(v -> {
-                Bundle bundle = new Bundle();
-                bundle.putInt(MediumSettings.ID, this.item.getMediumId());
-                fragment.getMainActivity().switchWindow(new MediumSettings(), bundle, true);
+                TocFragment fragment = TocFragment.newInstance(this.item.getMediumId());
+                this.fragment.getMainActivity().switchWindow(fragment, true);
             });
         }
 
@@ -273,8 +274,8 @@ public class MediumFragment extends BaseFragment {
         ViewHolder(@NonNull View view) {
             super(view);
             mView = view;
-            metaView = view.findViewById(R.id.item_meta);
-            denominatorView = view.findViewById(R.id.item_novel);
+            metaView = view.findViewById(R.id.item_top_left);
+            denominatorView = view.findViewById(R.id.item_top_right);
             contentView = view.findViewById(R.id.content);
         }
 

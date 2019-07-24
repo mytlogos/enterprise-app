@@ -5,7 +5,8 @@ android {
     defaultConfig {
         applicationId "com.mytlogos.enterprise"
         minSdkVersion 24
-        targetSdkVersion 28
+        //noinspection ExpiredTargetSdkVersion
+        targetSdkVersion 26
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -40,6 +41,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0-alpha04'
     //noinspection GradleDependency
     implementation "androidx.room:room-runtime:$room_version"
+    implementation 'androidx.recyclerview:recyclerview:1.0.0'
     annotationProcessor "androidx.room:room-compiler:$room_version"
 
     def work_version = "2.0.1"

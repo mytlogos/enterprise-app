@@ -6,6 +6,7 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
@@ -17,6 +18,7 @@ import com.mytlogos.enterprise.model.ToDownload;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 public interface ClientModelPersister {
     Collection<ClientConsumer<?>> getConsumer();
@@ -96,4 +98,6 @@ public interface ClientModelPersister {
     void finish();
 
     ClientModelPersister persist(ToDownload toDownload);
+
+    void persistMediaInWait(List<ClientMediumInWait> medium);
 }

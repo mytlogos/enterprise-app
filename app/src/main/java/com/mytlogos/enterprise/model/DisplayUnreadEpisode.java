@@ -2,7 +2,7 @@ package com.mytlogos.enterprise.model;
 
 import org.joda.time.DateTime;
 
-public class UnreadEpisode {
+public class DisplayUnreadEpisode {
     private final int episodeId;
     private final int mediumId;
     private final String mediumTitle;
@@ -12,8 +12,9 @@ public class UnreadEpisode {
     private final String url;
     private final DateTime releaseDate;
     private final boolean saved;
+    private final boolean read;
 
-    public UnreadEpisode(int episodeId, int mediumId, String mediumTitle, String title, int totalIndex, int partialIndex, String url, DateTime releaseDate, boolean saved) {
+    public DisplayUnreadEpisode(int episodeId, int mediumId, String mediumTitle, String title, int totalIndex, int partialIndex, String url, DateTime releaseDate, boolean saved, boolean read) {
         this.episodeId = episodeId;
         this.mediumId = mediumId;
         this.mediumTitle = mediumTitle;
@@ -23,6 +24,11 @@ public class UnreadEpisode {
         this.url = url;
         this.releaseDate = releaseDate;
         this.saved = saved;
+        this.read = read;
+    }
+
+    public boolean isRead() {
+        return read;
     }
 
     public String getMediumTitle() {
@@ -59,5 +65,20 @@ public class UnreadEpisode {
 
     public boolean isSaved() {
         return saved;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        DisplayUnreadEpisode that = (DisplayUnreadEpisode) o;
+
+        return getEpisodeId() == that.getEpisodeId();
+    }
+
+    @Override
+    public int hashCode() {
+        return getEpisodeId();
     }
 }

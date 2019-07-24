@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -56,19 +57,29 @@ public class ReadHistoryFragment extends BaseFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.readhistory_list, container, false);
+        View view = inflater.inflate(R.layout.normal_list, container, false);
 
-        // Set the adapter
-        if (view instanceof RecyclerView) {
-            Context context = view.getContext();
-            RecyclerView recyclerView = (RecyclerView) view;
-            if (mColumnCount <= 1) {
-                recyclerView.setLayoutManager(new LinearLayoutManager(context));
-            } else {
-                recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
-            }
-            recyclerView.setAdapter(new ReadHistoryRecyclerViewAdapter(new ArrayList<>(), mListener));
+        Context context = view.getContext();
+        RecyclerView recyclerView = view.findViewById(R.id.list);
+        if (mColumnCount <= 1) {
+            recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        } else {
+            recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
         }
+        recyclerView.setAdapter(new ReadHistoryRecyclerViewAdapter(new ArrayList<>(), mListener));
+
+        // TODO: 22.07.2019 implement functionality and remove this block
+        //  as soon as there is a livedata observer, paste the commented block as empty list guard
+        TextView textView = view.findViewById(R.id.empty_view);
+        recyclerView.setVisibility(View.GONE);
+        textView.setVisibility(View.VISIBLE);
+
+/*
+            if (checkEmptyList(unreadEpisodes, view, recyclerView)) {
+                return;
+            }
+*/
+
         this.setTitle("Read History");
         return view;
     }

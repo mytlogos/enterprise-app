@@ -12,6 +12,7 @@ import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
 import com.mytlogos.enterprise.background.room.model.RoomMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomMedium;
+import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
 import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
@@ -25,9 +26,10 @@ import com.mytlogos.enterprise.background.room.model.RoomUser;
                 RoomUser.UserUnReadChapterJoin.class, RoomUser.UserUnReadNewsJoin.class,
                 RoomExternalUser.class, RoomMediaList.class, RoomMediaList.MediaListMediaJoin.class,
                 RoomEpisode.class, RoomRelease.class, RoomPart.class, RoomMedium.class, RoomExternalMediaList.class,
-                RoomExternalMediaList.ExternalListMediaJoin.class, RoomToDownload.class
+                RoomExternalMediaList.ExternalListMediaJoin.class, RoomToDownload.class,
+                RoomMediumInWait.class
         },
-        version = 4,
+        version = 5,
         exportSchema = false)
 @TypeConverters({Converters.class})
 public abstract class AbstractDatabase extends RoomDatabase {
@@ -69,4 +71,6 @@ public abstract class AbstractDatabase extends RoomDatabase {
     public abstract EpisodeDao episodeDao();
 
     public abstract ToDownloadDao toDownloadDao();
+
+    public abstract RoomMediumInWaitDao roomMediumInWaitDao();
 }
