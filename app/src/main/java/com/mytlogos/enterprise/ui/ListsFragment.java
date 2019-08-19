@@ -1,53 +1,128 @@
 package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProviders;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.paging.PagedList;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.ExternalMediaList;
 import com.mytlogos.enterprise.model.MediaList;
-import com.mytlogos.enterprise.ui.dummy.DummyContent.DummyItem;
+import com.mytlogos.enterprise.tools.Utils;
 import com.mytlogos.enterprise.viewmodel.ListsViewModel;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
+import eu.davidea.flexibleadapter.SelectableAdapter;
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
-import eu.davidea.flexibleadapter.items.AbstractHeaderItem;
-import eu.davidea.flexibleadapter.items.AbstractSectionableItem;
 import eu.davidea.flexibleadapter.items.IFlexible;
-import eu.davidea.viewholders.FlexibleViewHolder;
+import eu.davidea.flexibleadapter.utils.DrawableUtils;
 
 /**
  * A fragment representing a list of Items.
- * <p/>
- * Activities containing this fragment MUST implement the {@link OnListFragmentInteractionListener}
- * interface.
  */
-public class ListsFragment extends BaseFragment {
+public class ListsFragment extends BaseListFragment<MediaList, ListsViewModel> {
 
-    private ListsViewModel viewModel;
-    private LiveData<List<MediaList>> liveLists;
+    static final MediaList TRASH_LIST = new MediaList(
+            "",
+            Integer.MIN_VALUE,
+            "Trashbin List",
+            0,
+            0
+    );
+    private boolean inActionMode;
+
+    private ActionMode.Callback callback = new ActionMode.Callback() {
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            mode.setTitle("Delete Lists");
+            mode.getMenuInflater().inflate(R.menu.list_medium_action_mode_menu, menu);
+            Objects.requireNonNull(getMainActivity().getSupportActionBar()).hide();
+            getFlexibleAdapter().setMode(SelectableAdapter.Mode.MULTI);
+            return true;
+        }
+
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return false;
+        }
+
+        @Override
+        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            if (item.getItemId() == R.id.delete_items) {
+                return deleteItemsFromList(mode);
+            }
+            return false;
+        }
+
+        private boolean deleteItemsFromList(ActionMode mode) {
+            List<Integer> selectedPositions = getFlexibleAdapter().getSelectedPositions();
+            List<Integer> selectedListsIds = new ArrayList<>();
+
+            for (Integer selectedPosition : selectedPositions) {
+                IFlexible flexible = getFlexibleAdapter().getItem(selectedPosition);
+
+                if (!(flexible instanceof ListItem)) {
+                    continue;
+                }
+                MediaList list = ((ListItem) flexible).list;
+
+                if (ListsFragment.TRASH_LIST.getListId() == list.getListId()) {
+                    Toast.makeText(
+                            getContext(),
+                            "You cannot delete the Trash list",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return true;
+                }
+                if (getString(R.string.standard_list_name).equals(list.getName())) {
+                    Toast.makeText(
+                            getContext(),
+                            "You cannot delete the Standard list",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return true;
+                }
+
+                selectedListsIds.add(list.getListId());
+            }
+            System.out.println("removed " + selectedListsIds.size() + " lists");
+            showToast("Is not implemented yet");
+            mode.finish();
+            return true;
+        }
+
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+            Objects.requireNonNull(getMainActivity().getSupportActionBar()).show();
+            getFlexibleAdapter().setMode(SelectableAdapter.Mode.IDLE);
+            getFlexibleAdapter().clearSelection();
+            System.out.println("destroyed action mode");
+            inActionMode = false;
+        }
+    };
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -77,6 +152,7 @@ public class ListsFragment extends BaseFragment {
 
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.list_menu, menu);
     }
 
@@ -89,198 +165,93 @@ public class ListsFragment extends BaseFragment {
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        this.setHasOptionsMenu(true);
+    ListsViewModel createViewModel() {
+        return ViewModelProviders.of(this).get(ListsViewModel.class);
     }
 
     @Override
+    LiveData<PagedList<MediaList>> createPagedListLiveData() {
+        return Utils.transform(Transformations.map(
+                getViewModel().getLists(),
+                input -> {
+                    input.remove(TRASH_LIST);
+                    input.add(TRASH_LIST);
+                    return input;
+                }));
+    }
+
+    @Override
+    List<IFlexible> convertToFlexibles(Collection<MediaList> list) {
+        List<IFlexible> items = new ArrayList<>();
+
+        for (MediaList mediaList : list) {
+            items.add(new ListItem(mediaList));
+        }
+        return items;
+    }
+
+
+    @NonNull
+    @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.swipe_list, container, false);
-
-        RecyclerView recyclerView = view.findViewById(R.id.list);
-
-        // Set the adapter
-        Context context = view.getContext();
-
-        LinearLayoutManager layoutManager = new LinearLayoutManager(context);
-        recyclerView.setLayoutManager(layoutManager);
-
-        DividerItemDecoration decoration = new DividerItemDecoration(context, layoutManager.getOrientation());
-        recyclerView.addItemDecoration(decoration);
-
-        FlexibleAdapter<IFlexible> flexibleAdapter = new FlexibleAdapter<>(null)
-                .setStickyHeaders(true)
-                .setDisplayHeadersAtStartUp(true);
-
-        recyclerView.setAdapter(flexibleAdapter);
-        SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swiper);
-
-        this.viewModel = ViewModelProviders.of(this).get(ListsViewModel.class);
-
-        this.liveLists = this.viewModel.getLists();
-        this.liveLists.observe(this, lists -> {
-
-            if (checkEmptyList(lists, view, swipeRefreshLayout)) {
-                return;
-            }
-
-            List<IFlexible> items = new ArrayList<>();
-
-            for (MediaList mediaList : lists) {
-                items.add(new ListItem(mediaList, this));
-            }
-
-            flexibleAdapter.updateDataSet(items);
-        });
+        View view = super.onCreateView(inflater, container, savedInstanceState);
         this.setTitle("Lists");
         return view;
     }
 
-    private static class SectionableListItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
-        private final MediaList list;
-        private final BaseFragment fragment;
-
-        SectionableListItem(@NonNull MediaList list, BaseFragment fragment) {
-            super(new HeaderItem(getDenominator(list)));
-            this.list = list;
-            this.fragment = fragment;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
+    @Override
+    public void onItemLongClick(int position) {
+        if (inActionMode) {
+            return;
         }
+        IFlexible list = getFlexibleAdapter().getItem(position);
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SectionableListItem)) return false;
-
-            SectionableListItem other = (SectionableListItem) o;
-            return this.list.getListId() == other.list.getListId();
+        if (!(list instanceof ListItem)) {
+            return;
         }
+        ListItem item = (ListItem) list;
 
-        @Override
-        public int hashCode() {
-            return this.list.getListId();
+        if (item.list instanceof ExternalMediaList) {
+            return;
         }
+        inActionMode = true;
+        System.out.println("starting action mode");
+        getFlexibleAdapter().addSelection(position);
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.list_item;
-        }
-
-        @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view);
-        }
-
-        @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.mItem = this.list;
-            // transform news id (int) to a string,
-            // because it would expect a resource id if it is an int
-            holder.metaView.setText(String.format("%d Items", this.list.getSize()));
-            holder.denominatorView.setText(getDenominator(list));
-            holder.contentView.setText(this.list.getName());
-
-            holder.mView.setOnClickListener(v -> {
-                Bundle bundle = new Bundle();
-                bundle.putInt(ListMediumFragment.ID, this.list.getListId());
-                bundle.putString(ListMediumFragment.TITLE, this.list.getName());
-                bundle.putBoolean(ListMediumFragment.EXTERNAL, this.list instanceof ExternalMediaList);
-                fragment.getMainActivity().switchWindow(new ListMediumFragment(), bundle, true);
-            });
-        }
-
+        this.getMainActivity().startActionMode(callback);
     }
 
-    private static class ListItem extends AbstractFlexibleItem<ViewHolder> {
-        private final MediaList list;
-        private final BaseFragment fragment;
+    @Override
+    public boolean onItemClick(View view, int position) {
+        IFlexible list = getFlexibleAdapter().getItem(position);
 
-        ListItem(@NonNull MediaList list, BaseFragment fragment) {
-            this.list = list;
-            this.fragment = fragment;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
+        if (!(list instanceof ListItem)) {
+            return false;
+        }
+        ListItem item = (ListItem) list;
+
+        if (this.inActionMode) {
+            if (position != RecyclerView.NO_POSITION && !(item.list instanceof ExternalMediaList)) {
+                getFlexibleAdapter().toggleSelection(position);
+                return true;
+            } else {
+                return false;
+            }
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SectionableListItem)) return false;
-
-            SectionableListItem other = (SectionableListItem) o;
-            return this.list.getListId() == other.list.getListId();
-        }
-
-        @Override
-        public int hashCode() {
-            return this.list.getListId();
-        }
-
-        @Override
-        public int getLayoutRes() {
-            return R.layout.news_item;
-        }
-
-        @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view);
-        }
-
-        @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.mItem = this.list;
-            // transform news id (int) to a string,
-            // because it would expect a resource id if it is an int
-            holder.metaView.setText(String.format("%d Items", this.list.getSize()));
-            holder.denominatorView.setText(getDenominator(list));
-            holder.contentView.setText(this.list.getName());
-
-            holder.mView.setOnClickListener(v -> {
-                Bundle bundle = new Bundle();
-                bundle.putInt(ListMediumFragment.ID, this.list.getListId());
-                bundle.putString(ListMediumFragment.TITLE, this.list.getName());
-                bundle.putBoolean(ListMediumFragment.EXTERNAL, this.list instanceof ExternalMediaList);
-                fragment.getMainActivity().switchWindow(new ListMediumFragment(), bundle, true);
-            });
-
-            /*
-            holder.mView.setOnClickListener(v -> {
-                String url = this.unreadEpisode.getUrl();
-                if (url == null || url.isEmpty()) {
-                    Toast
-                            .makeText(this.fragment.getContext(), "No Link available", Toast.LENGTH_SHORT)
-                            .show();
-                }
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-
-                PackageManager manager = Objects.requireNonNull(this.fragment.getActivity()).getPackageManager();
-
-                if (intent.resolveActivity(manager) != null) {
-                    this.fragment.startActivity(intent);
-                } else {
-                    Toast
-                            .makeText(this.fragment.getContext(), "No Browser available", Toast.LENGTH_SHORT)
-                            .show();
-                }
-            });
-*/
-        }
-
+        getMainActivity().switchWindow(ListMediumFragment.getInstance(item.list), true);
+        return false;
     }
 
-    private static class HeaderItem extends AbstractHeaderItem<HeaderViewHolder> {
+    private static class ListItem extends AbstractFlexibleItem<MetaViewHolder> {
+        private final MediaList list;
 
-        private final String title;
-
-        private HeaderItem(String title) {
-            this.title = title;
+        ListItem(@NonNull MediaList list) {
+            this.list = list;
+            this.setDraggable(false);
+            this.setSwipeable(false);
+            this.setSelectable(true);
         }
 
         @Override
@@ -288,76 +259,40 @@ public class ListsFragment extends BaseFragment {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
 
-            HeaderItem that = (HeaderItem) o;
-
-            return title.equals(that.title);
+            ListItem other = (ListItem) o;
+            return this.list.getListId() == other.list.getListId();
         }
 
         @Override
         public int hashCode() {
-            return title.hashCode();
+            return this.list.getListId();
         }
 
         @Override
         public int getLayoutRes() {
-            return R.layout.flexible_header;
+            return R.layout.meta_item;
         }
 
         @Override
-        public HeaderViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new HeaderViewHolder(view, adapter);
+        public MetaViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
+            return new MetaViewHolder(view, adapter);
         }
 
+        @SuppressLint("DefaultLocale")
         @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, HeaderViewHolder holder, int position, List<Object> payloads) {
-            holder.textView.setText(this.title);
+        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position, List<Object> payloads) {
+            // transform news id (int) to a string,
+            // because it would expect a resource id if it is an int
+            holder.topLeftText.setText(String.format("%d Items", this.list.getSize()));
+            holder.topRightText.setText(getDenominator(list));
+            holder.mainText.setText(this.list.getName());
+
+            Drawable drawable = DrawableUtils.getSelectableBackgroundCompat(
+                    Color.WHITE,             // normal background
+                    Color.GRAY, // pressed background
+                    Color.BLACK);                 // ripple color
+            DrawableUtils.setBackgroundCompat(holder.itemView, drawable);
         }
     }
 
-    private static class HeaderViewHolder extends FlexibleViewHolder {
-        private TextView textView;
-
-        HeaderViewHolder(@NonNull View itemView, FlexibleAdapter<IFlexible> adapter) {
-            super(itemView, adapter, true);
-            textView = itemView.findViewById(R.id.text);
-        }
-    }
-
-    private static class ViewHolder extends RecyclerView.ViewHolder {
-        final View mView;
-        final TextView contentView;
-        private final TextView metaView;
-        private final TextView denominatorView;
-        MediaList mItem;
-
-        ViewHolder(@NonNull View view) {
-            super(view);
-            mView = view;
-            metaView = view.findViewById(R.id.item_top_left);
-            denominatorView = view.findViewById(R.id.item_top_right);
-            contentView = view.findViewById(R.id.content);
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return super.toString() + " '" + contentView.getText() + "'";
-        }
-    }
-
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnListFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onListFragmentInteraction(DummyItem item);
-    }
 }

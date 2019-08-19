@@ -31,6 +31,9 @@ public interface ExternalMediaListDao extends MultiBaseDao<RoomExternalMediaList
     @Query("DELETE FROM ExternalListMediaJoin WHERE listId=:listId")
     void clearJoin(Integer listId);
 
+    @Query("DELETE FROM ExternalListMediaJoin")
+    void clearJoins();
+
     @Delete
     void removeJoin(RoomExternalMediaList.ExternalListMediaJoin listMediaJoin);
 
@@ -60,4 +63,10 @@ public interface ExternalMediaListDao extends MultiBaseDao<RoomExternalMediaList
 
     @Query("SELECT mediumId FROM ExternalListMediaJoin WHERE listId=:externalListId")
     LiveData<List<Integer>> getLiveExternalListItems(Integer externalListId);
+
+    @Query("SELECT DISTINCT mediumId FROM ExternalListMediaJoin")
+    List<Integer> getAllLinkedMedia();
+
+    @Query("SELECT COUNT(externalListId) FROM RoomExternalMediaList")
+    LiveData<Integer> countLists();
 }

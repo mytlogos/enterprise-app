@@ -6,15 +6,31 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 
 import com.mytlogos.enterprise.model.MediumItem;
+import com.mytlogos.enterprise.tools.Sortings;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class ListMediaViewModel extends RepoViewModel {
+
+    private LiveData<List<MediumItem>> items;
+
     public ListMediaViewModel(@NonNull Application application) {
         super(application);
     }
 
     public LiveData<List<MediumItem>> getMedia(int listId, boolean isExternal) {
-        return repository.getMediumItems(listId, isExternal);
+        if (this.items == null) {
+            this.items = repository.getMediumItems(listId, isExternal);
+        }
+        return this.items;
+    }
+
+    public CompletableFuture<Boolean> removeMedia(int listId, int mediumId) {
+        return this.repository.removeItemFromList(listId, mediumId);
+    }
+
+    public void setSort(Sortings sortings) {
+
     }
 }

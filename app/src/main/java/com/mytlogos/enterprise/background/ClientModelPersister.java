@@ -11,6 +11,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
@@ -100,4 +101,6 @@ public interface ClientModelPersister {
     ClientModelPersister persist(ToDownload toDownload);
 
     void persistMediaInWait(List<ClientMediumInWait> medium);
+
+    ClientModelPersister persist(ClientSimpleUser user);
 }

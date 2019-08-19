@@ -1,12 +1,10 @@
 package com.mytlogos.enterprise.background.room.model;
 
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
-import androidx.annotation.NonNull;
-
-import com.mytlogos.enterprise.model.ExternalUser;
 
 @Entity(
         foreignKeys = @ForeignKey(
@@ -20,7 +18,7 @@ import com.mytlogos.enterprise.model.ExternalUser;
                 @Index(value = "userUuid"),
         }
 )
-public class RoomExternalUser implements ExternalUser {
+public class RoomExternalUser {
     @NonNull
     @PrimaryKey
     public final String uuid;

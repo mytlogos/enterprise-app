@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/group_by_medium"
+        android:checkable="true"
+        android:checked="false"
+        android:title="@string/group_by_medium" />
+    <item
+        android:id="@+id/group_by_medium_first"
+        android:checkable="true"
+        android:checked="false"
+        android:title="@string/group_by_medium_first" />
+</menu>

@@ -1,5 +1,7 @@
 package com.mytlogos.enterprise.background.api;
 
+import androidx.annotation.NonNull;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mytlogos.enterprise.background.api.model.AddClientExternalUser;
@@ -14,6 +16,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
@@ -21,14 +24,15 @@ import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 import org.joda.time.DateTime;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import okhttp3.Request;
 import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -41,10 +45,12 @@ public class Client {
     }
 
     private Authentication authentication;
-    private final String serverIp = "192.168.1.6";
+    private Server server;
+    private String lastNetworkSSID;
+    private final NetworkIdentificator identificator;
 
-    public Client() {
-
+    public Client(NetworkIdentificator identificator) {
+        this.identificator = identificator;
     }
 
     private static void buildPathMap() {
@@ -93,6 +99,9 @@ public class Client {
     }
 
     public void setAuthentication(String uuid, String session) {
+        if (uuid == null || uuid.isEmpty() || session == null || session.isEmpty()) {
+            return;
+        }
         this.authentication = new Authentication(uuid, session);
     }
 
@@ -104,8 +113,13 @@ public class Client {
         this.authentication = null;
     }
 
-    public Call<ClientUser> checkLogin() throws IOException {
+    public Call<ClientSimpleUser> checkLogin() throws IOException {
         return build(BasicApi.class, BasicApi::checkLogin);
+    }
+
+    public Call<ClientUser> getUser() throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        return build(UserApi.class, (apiImpl, url) -> apiImpl.getUser(url, body));
     }
 
     private Map<String, Object> userAuthenticationMap() {
@@ -258,6 +272,13 @@ public class Client {
         return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.addListMedia(url, body));
     }
 
+    public Call<Boolean> addListMedia(int listId, Collection<Integer> mediumId) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("listId", listId);
+        body.put("mediumId", mediumId);
+        return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.addListMedia(url, body));
+    }
+
     public Call<Boolean> deleteListMedia(int listId, int mediumId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("listId", listId);
@@ -279,6 +300,11 @@ public class Client {
         return build(MediumApi.class, (apiImpl, url) -> apiImpl.getMedia(url, body));
     }
 
+    public Call<List<Integer>> getAllMedia() throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        return build(MediumApi.class, (apiImpl, url) -> apiImpl.getAllMedia(url, body));
+    }
+
     public Call<ClientMedium> getMedium(int mediumId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("mediumId", mediumId);
@@ -288,6 +314,21 @@ public class Client {
     public Call<List<ClientMediumInWait>> getMediumInWait() throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         return build(MediumApi.class, (apiImpl, url) -> apiImpl.getMediumInWait(url, body));
+    }
+
+    public Call<ClientMedium> createFromMediumInWait(ClientMediumInWait main, Collection<ClientMediumInWait> others, Integer listId) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("createMedium", main);
+        body.put("tocsMedia", others);
+        body.put("listId", listId);
+        return build(MediumApi.class, (apiImpl, url) -> apiImpl.createFromMediumInWait(url, body));
+    }
+
+    public Call<Boolean> consumeMediumInWait(int mediumId, Collection<ClientMediumInWait> others) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("mediumId", mediumId);
+        body.put("tocsMedia", others);
+        return build(MediumApi.class, (apiImpl, url) -> apiImpl.consumeMediumInWait(url, body));
     }
 
     public Call<ClientMedium> addMedia(ClientMedium clientMedium) throws IOException {
@@ -377,6 +418,13 @@ public class Client {
         return build(ProgressApi.class, (apiImpl, url) -> apiImpl.addProgress(url, body));
     }
 
+    public Call<Boolean> addProgress(Collection<Integer> episodeId, float progress) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("episodeId", episodeId);
+        body.put("progress", progress);
+        return build(ProgressApi.class, (apiImpl, url) -> apiImpl.addProgress(url, body));
+    }
+
     public Call<Boolean> deleteProgress(int episodeId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("episodeId", episodeId);
@@ -398,8 +446,11 @@ public class Client {
             throw new IllegalArgumentException("Unknown api class: " + api.getCanonicalName());
         }
 
-        if (!this.isPortReachable()) {
-            throw new IOException("Server out of reach");
+        this.server = this.getServer();
+
+        // FIXME: 29.07.2019 sometimes does not find server even though it is online
+        if (this.server == null) {
+            throw new NotConnectedException("No Server in reach");
         }
 
         if (retrofit == null) {
@@ -407,8 +458,7 @@ public class Client {
                     .registerTypeHierarchyAdapter(DateTime.class, new GsonAdapter.DateTimeAdapter())
                     .create();
             retrofit = new Retrofit.Builder()
-                    // todo: change url to online server url
-                    .baseUrl("http://" + serverIp + ":3000/")
+                    .baseUrl(this.server.getAddress())
                     .addConverterFactory(GsonConverterFactory.create(gson))
                     .build();
             Client.retrofitMap.put(api, retrofit);
@@ -419,15 +469,67 @@ public class Client {
         return buildCall.call(apiImpl, path);
     }
 
-    private boolean isPortReachable() {
-        boolean retVal = false;
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(serverIp, 3000), 2000);
-            retVal = true;
-        } catch (IOException e) {
-            e.printStackTrace();
+    public boolean isOnline() {
+        return this.server != null && this.server.isReachable();
+    }
+
+    private static class ErrorCall<T> implements Call<T> {
+
+        @Override
+        public Response<T> execute() throws IOException {
+            throw new NotConnectedException();
         }
-        return retVal;
+
+        @Override
+        public void enqueue(@NonNull Callback<T> callback) {
+            callback.onFailure(this, new NotConnectedException());
+        }
+
+        @Override
+        public boolean isExecuted() {
+            return false;
+        }
+
+        @Override
+        public void cancel() {
+
+        }
+
+        @Override
+        public boolean isCanceled() {
+            return false;
+        }
+
+        @Override
+        public Call<T> clone() {
+            return this;
+        }
+
+        @Override
+        public Request request() {
+            return null;
+        }
+    }
+
+
+    private Server getServer() throws IOException {
+        String ssid = this.identificator.getSSID();
+
+        if (ssid.isEmpty()) {
+            throw new NotConnectedException("Not connected to any network");
+        }
+        ServerDiscovery discovery = new ServerDiscovery();
+
+        if (ssid.equals(this.lastNetworkSSID)) {
+            if (this.server == null) {
+                return discovery.discover(this.identificator.getBroadcastAddress());
+            } else if (this.server.isReachable()) {
+                return this.server;
+            }
+        } else {
+            this.lastNetworkSSID = ssid;
+        }
+        return discovery.discover(this.identificator.getBroadcastAddress());
     }
 
     private interface BuildCall<T, R> {

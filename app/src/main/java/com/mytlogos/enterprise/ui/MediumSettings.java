@@ -22,6 +22,7 @@ import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.MediumType;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.viewmodel.ListsViewModel;
 
 public class MediumSettings extends BaseFragment {
@@ -68,6 +69,7 @@ public class MediumSettings extends BaseFragment {
         this.videoMedium = view.findViewById(R.id.video_medium);
         this.audioMedium = view.findViewById(R.id.audio_medium);
         this.autoDownload = view.findViewById(R.id.auto_download);
+        this.checkSupportedMedia();
 
         this.openTocButton.setOnClickListener(v -> {
             if (this.mediumSettings() == null) {
@@ -84,8 +86,17 @@ public class MediumSettings extends BaseFragment {
         addMediumListener(this.audioMedium, MediumType.AUDIO);
 
         this.autoDownload.setOnCheckedChangeListener((buttonView, isChecked) -> handleAutoDownloadChanges(isChecked));
-        this.setTitle("List Settings");
+        this.setTitle("Medium Settings");
         return view;
+    }
+
+    private void checkSupportedMedia() {
+        this.autoDownload.setEnabled(
+                (this.textMedium.isChecked() && !FileTools.isTextContentSupported())
+                        || (this.autoDownload.isChecked() && !FileTools.isAudioContentSupported())
+                        || (this.imageMedium.isChecked() && !FileTools.isImageContentSupported())
+                        || (this.videoMedium.isChecked() && !FileTools.isVideoContentSupported())
+        );
     }
 
     private void handleAutoDownloadChanges(boolean isChecked) {
@@ -118,6 +129,7 @@ public class MediumSettings extends BaseFragment {
 
             this.autoDownload.setEnabled(false);
         } else {
+            this.setTitle("Settings - " + mediumSetting.getTitle());
             this.editName.setText(mediumSetting.getTitle());
             this.editName.setInputType(InputType.TYPE_CLASS_TEXT);
 
@@ -141,6 +153,7 @@ public class MediumSettings extends BaseFragment {
             if (this.mediumSettings() == null) {
                 return;
             }
+            this.checkSupportedMedia();
 
             if (isChecked) {
                 MediumSetting setting = new MediumSetting
@@ -185,14 +198,13 @@ public class MediumSettings extends BaseFragment {
 
                             } else if (throwable != null) {
                                 throwable.printStackTrace();
+
                                 if (this.getContext() != null) {
-                                    Toast
-                                            .makeText(
-                                                    this.getContext(),
-                                                    "An Error occurred saving the new Title",
-                                                    Toast.LENGTH_SHORT
-                                            )
-                                            .show();
+                                    Toast.makeText(
+                                            this.getContext(),
+                                            "An Error occurred saving the new Title",
+                                            Toast.LENGTH_SHORT
+                                    ).show();
                                 }
                             }
                             return null;

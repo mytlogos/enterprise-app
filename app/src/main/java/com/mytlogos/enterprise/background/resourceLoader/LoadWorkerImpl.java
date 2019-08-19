@@ -7,7 +7,6 @@ import com.mytlogos.enterprise.background.ClientConsumer;
 import com.mytlogos.enterprise.background.ClientModelPersister;
 import com.mytlogos.enterprise.background.LoadData;
 import com.mytlogos.enterprise.background.Repository;
-import com.mytlogos.enterprise.service.DownloadWorker;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -198,7 +197,6 @@ public class LoadWorkerImpl extends LoadWorker {
     @Override
     public void work() {
         this.doWork();
-        DownloadWorker.enqueueDownloadTask();
     }
 
 

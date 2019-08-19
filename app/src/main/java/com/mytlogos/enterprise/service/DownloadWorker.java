@@ -2,11 +2,14 @@ package com.mytlogos.enterprise.service;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.Environment;
-import android.util.SparseArray;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LiveData;
 import androidx.work.Constraints;
+import androidx.work.ExistingWorkPolicy;
 import androidx.work.ListenableWorker;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
@@ -14,53 +17,77 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
+import com.mytlogos.enterprise.model.MediumType;
+import com.mytlogos.enterprise.model.NotificationItem;
+import com.mytlogos.enterprise.model.SimpleEpisode;
+import com.mytlogos.enterprise.model.SimpleMedium;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.tools.ContentTool;
+import com.mytlogos.enterprise.tools.FileTools;
+import com.mytlogos.enterprise.tools.NotEnoughSpaceException;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import nl.siegmann.epublib.domain.Book;
-import nl.siegmann.epublib.domain.Resource;
-import nl.siegmann.epublib.epub.EpubReader;
-import nl.siegmann.epublib.epub.EpubWriter;
-import nl.siegmann.epublib.service.MediatypeService;
 
 public class DownloadWorker extends Worker {
     private static final String UNIQUE = "DOWNLOAD_WORKER";
+    // TODO: 08.08.2019 use this for sdk >= 28
+    private static final String CHANNEL_ID = "DOWNLOAD_CHANNEL";
+
+    private static final int maxEpisodeLimit = 50;
+    private static final int maxPackageSize = 1;
+    private static final Set<DownloadWorker> currentWorker = new HashSet<>();
+
+    private final int downloadNotificationId = 0x100;
+    private NotificationManagerCompat notificationManager;
+    private NotificationCompat.Builder builder;
+    private boolean stop = false;
+    private Set<ContentTool> contentTools;
 
     public DownloadWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
     }
 
     public static void enqueueDownloadTask() {
+        OneTimeWorkRequest oneTimeWorkRequest = getWorkRequest();
+        WorkManager.getInstance().enqueueUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, oneTimeWorkRequest);
+    }
+
+    static OneTimeWorkRequest getWorkRequest() {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.UNMETERED)
                 .build();
 
-        OneTimeWorkRequest oneTimeWorkRequest = new OneTimeWorkRequest
+        return new OneTimeWorkRequest
                 .Builder(DownloadWorker.class)
                 .setConstraints(constraints)
                 .build();
-/*
-        WorkManager.getInstance().enqueueUniqueWork(
-                "DOWNLOAD_WORKER",
-                ExistingWorkPolicy.APPEND,
-                oneTimeWorkRequest
-        );*/
+    }
 
-        WorkManager.getInstance().enqueue(oneTimeWorkRequest);
+    public static void watchDatabase(Application application, LifecycleOwner owner) {
+        Repository repository = RepositoryImpl.getInstance(application);
+
+        LiveData<Boolean> doDownload = repository.onDownloadable();
+        doDownload.observe(owner, aBoolean -> {
+            if (aBoolean != null && aBoolean) {
+                enqueueDownloadTask();
+            }
+        });
+        enqueueDownloadTask();
+    }
+
+    public static void stopDownloadTasks() {
+        for (DownloadWorker worker : currentWorker) {
+            worker.stop = true;
+        }
     }
 
     @NonNull
@@ -70,7 +97,14 @@ public class DownloadWorker extends Worker {
             System.out.println("Context not instance of Application");
             return Result.failure();
         }
-        this.episodeLimit = maxEpisodeLimit;
+        currentWorker.add(this);
+
+        notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
+        builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);
+        builder
+                .setContentTitle("Download in Progress...")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
         // todo read limit from settings
         try {
@@ -78,19 +112,51 @@ public class DownloadWorker extends Worker {
                 Application application = (Application) this.getApplicationContext();
                 Repository repository = RepositoryImpl.getInstance(application);
 
+                this.contentTools = FileTools.getSupportedContentTools(application);
+
+                for (ContentTool tool : this.contentTools) {
+                    tool.mergeIfNecessary();
+                }
+
                 if (!repository.isClientAuthenticated()) {
+                    currentWorker.remove(this);
                     return Result.retry();
                 }
-                download(repository, application);
+                if (!repository.isClientOnline()) {
+                    notificationManager.notify(
+                            downloadNotificationId,
+                            builder.setContentTitle("Server not in reach").setContentText(null).build()
+                    );
+                    currentWorker.remove(this);
+                    return Result.failure();
+                }
+                if (!FileTools.writable(application)) {
+                    notificationManager.notify(
+                            downloadNotificationId,
+                            builder.setContentTitle("Not enough free space").setContentText(null).build()
+                    );
+                    currentWorker.remove(this);
+                    return Result.failure();
+                }
+                download(repository);
             }
         } catch (Exception e) {
             e.printStackTrace();
+            currentWorker.remove(this);
             return Result.failure();
+        } finally {
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            notificationManager.cancel(downloadNotificationId);
         }
+        currentWorker.remove(this);
         return Result.success();
     }
 
-    private void download(Repository repository, Application application) {
+    private void download(Repository repository) {
         List<ToDownload> toDownloadList = repository.getToDownload();
 
         List<Integer> prohibitedMedia = new ArrayList<>();
@@ -116,274 +182,237 @@ public class DownloadWorker extends Worker {
 
         toDownloadMedia.removeAll(prohibitedMedia);
 
-        SparseArray<List<Integer>> mediaEpisodes = new SparseArray<>();
+        Set<MediumDownload> mediumDownloads = new HashSet<>();
+        int downloadCount = 0;
 
         for (Integer mediumId : toDownloadMedia) {
-            List<Integer> unReadEpisodes = repository.getDownloadableEpisodes(mediumId);
-
-            if (!unReadEpisodes.isEmpty()) {
-                mediaEpisodes.put(mediumId, unReadEpisodes);
+            // TODO: 26.07.2019 check whether the episodes are downloaded in the correct order
+            //  so that there aren't gaps in the episodes one can't read
+            if (repository.countSavedUnreadEpisodes(mediumId) >= maxEpisodeLimit) {
+                continue;
             }
+            SimpleMedium medium = repository.getSimpleMedium(mediumId);
+
+            List<Integer> episodeIds = repository.getDownloadableEpisodes(mediumId);
+            Set<Integer> uniqueEpisodes = new HashSet<>(episodeIds);
+
+            if (!uniqueEpisodes.isEmpty()) {
+                mediumDownloads.add(new MediumDownload(
+                        uniqueEpisodes,
+                        mediumId,
+                        medium.getMedium(),
+                        medium.getTitle()
+                ));
+            }
+            downloadCount += uniqueEpisodes.size();
         }
-        if (mediaEpisodes.size() > 0) {
-            this.downloadEpisodes(mediaEpisodes, application, repository);
+        if (!mediumDownloads.isEmpty()) {
+            builder
+                    .setContentTitle("Download in Progress [0/" + downloadCount + "]")
+                    .setProgress(downloadCount, 0, true);
+            notificationManager.notify(downloadNotificationId, builder.build());
+            this.downloadEpisodes(mediumDownloads, repository, downloadCount);
         }
     }
-
-    private static final int maxEpisodeLimit = 50;
-    private static final int maxPackageSize = 5;
-    private static final int downloadedEpisodeLimit = 50;
-    private int episodeLimit;
 
     /**
      * Download episodes for each medium id,
      * up to an episode limit initialized in {@link #maxEpisodeLimit}.
-     *
-     * @param episodeIds  episodeIds of media to download
-     * @param application current application - needed for internal storage file access
      */
-    private void downloadEpisodes(SparseArray<List<Integer>> episodeIds, Application application, Repository repository) {
-        File internalAppDir = this.getInternalAppDir(application);
-        File externalAppDir = this.getExternalAppDir();
+    private void downloadEpisodes(Set<MediumDownload> episodeIds, Repository repository, int downloadCount) {
+        Collection<DownloadPackage> episodePackages = getDownloadPackages(episodeIds, repository);
 
-        Collection<Collection<Integer>> episodePackages = getDownloadPackages(episodeIds, repository);
+        int successFull = 0;
+        int notSuccessFull = 0;
 
-        List<ClientDownloadedEpisode> downloadedEpisodes = new ArrayList<>();
-
-        for (Collection<Integer> episodePackage : episodePackages) {
-            try {
-                // packs of 5 episodes at max or so, to not 'download' too much at a time
-                downloadedEpisodes.addAll(repository.downloadedEpisodes(episodePackage));
-
-                if (downloadedEpisodes.size() > downloadedEpisodeLimit) {
-                    this.saveDownloadedContent(downloadedEpisodes, episodeIds, internalAppDir, externalAppDir);
-
-                    List<Integer> currentlySavedEpisodes = new ArrayList<>();
-
-                    for (ClientDownloadedEpisode downloadedEpisode : downloadedEpisodes) {
-                        currentlySavedEpisodes.add(downloadedEpisode.getEpisodeId());
-                    }
-                    downloadedEpisodes.clear();
-
-                    repository.updateSaved(currentlySavedEpisodes, true);
-                }
-                // todo create a download tracking notification?
-            } catch (IOException e) {
-                e.printStackTrace();
-                downloadedEpisodes.clear();
-                // todo create notification indicating error
+        for (DownloadPackage episodePackage : episodePackages) {
+            if (this.stop) {
+                this.stop = false;
+                return;
             }
-        }
-        if (!downloadedEpisodes.isEmpty()) {
-            try {
-                this.saveDownloadedContent(downloadedEpisodes, episodeIds, internalAppDir, externalAppDir);
-                List<Integer> currentlySavedEpisodes = new ArrayList<>();
 
-                for (ClientDownloadedEpisode downloadedEpisode : downloadedEpisodes) {
-                    currentlySavedEpisodes.add(downloadedEpisode.getEpisodeId());
-                }
-
-                repository.updateSaved(currentlySavedEpisodes, true);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        this.mergeMediumFiles(getBooks(internalAppDir), getBooks(externalAppDir));
-    }
-
-    private void saveDownloadedContent(List<ClientDownloadedEpisode> downloadedEpisodes,
-                                       SparseArray<List<Integer>> episodeIds, File internalAppDir,
-                                       File externalAppDir) throws IOException {
-
-        SparseArray<List<ClientDownloadedEpisode>> mediumDownloadedEpisodes = new SparseArray<>();
-
-        for (ClientDownloadedEpisode episode : downloadedEpisodes) {
-
-            for (int i = 0; i < episodeIds.size(); i++) {
-
-                if (episodeIds.valueAt(i).contains(episode.getEpisodeId())) {
-                    List<ClientDownloadedEpisode> episodeList = mediumDownloadedEpisodes.get(episodeIds.keyAt(i));
-
-                    if (episodeList == null) {
-                        episodeList = new ArrayList<>();
-                        mediumDownloadedEpisodes.put(episodeIds.keyAt(i), episodeList);
-                    }
-
-                    episodeList.add(episode);
+            ContentTool contentTool = null;
+            for (ContentTool tool : this.contentTools) {
+                if (MediumType.is(tool.getMedium(), episodePackage.mediumType) && tool.isSupported()) {
+                    contentTool = tool;
                     break;
                 }
             }
-        }
+            if (contentTool == null) {
+                notSuccessFull += episodePackage.episodeIds.size();
 
-        SparseArray<File> internalBooks = getBooks(internalAppDir);
-        SparseArray<File> externalBooks = getBooks(externalAppDir);
+                updateProgress(downloadCount, successFull, notSuccessFull);
+                continue;
+            }
+            try {
+                List<ClientDownloadedEpisode> downloadedEpisodes = repository.downloadEpisodes(episodePackage.episodeIds);
 
-        int minMBSpaceAvailable = 100;
-        boolean writeInternal = internalAppDir != null && this.getFreeMBSpace(internalAppDir) >= minMBSpaceAvailable;
-        boolean writeExternal = externalAppDir != null && this.getFreeMBSpace(externalAppDir) >= minMBSpaceAvailable;
+                List<Integer> currentlySavedEpisodes = new ArrayList<>();
 
-        for (int i = 0; i < mediumDownloadedEpisodes.size(); i++) {
-            int key = mediumDownloadedEpisodes.keyAt(i);
-
-            Book book;
-            File file;
-
-            if (writeInternal && internalBooks.indexOfKey(key) >= 0) {
-                file = internalBooks.get(key);
-                book = this.loadBook(file);
-            } else if (writeExternal && externalBooks.indexOfKey(key) >= 0) {
-                file = externalBooks.get(key);
-                book = this.loadBook(file);
-            } else {
-                String fileName = key + ".epub";
-
-                File dir;
-
-                if (writeInternal) {
-                    dir = internalAppDir;
-                } else if (writeExternal) {
-                    dir = externalAppDir;
-                } else {
-                    throw new IOException("Out of Storage Space: Less than 100 MB available");
+                if (downloadedEpisodes == null) {
+                    notSuccessFull = onFailed(
+                            downloadCount,
+                            successFull,
+                            notSuccessFull,
+                            repository,
+                            episodePackage,
+                            false);
+                    continue;
                 }
-                file = new File(dir, fileName);
-                book = new Book();
+                List<ClientDownloadedEpisode> contentEpisodes = new ArrayList<>();
+
+                for (ClientDownloadedEpisode downloadedEpisode : downloadedEpisodes) {
+                    int episodeId = downloadedEpisode.getEpisodeId();
+                    SimpleEpisode episode = repository.getSimpleEpisode(episodeId);
+
+                    if (downloadedEpisode.getContent().length > 0) {
+                        successFull++;
+                        currentlySavedEpisodes.add(episodeId);
+                        contentEpisodes.add(downloadedEpisode);
+                        repository.addNotification(NotificationItem.createNow(
+                                String.format("Episode %s of %s saved", episode.getFormattedTitle(), episodePackage.mediumTitle),
+                                ""
+                        ));
+                    } else {
+                        notSuccessFull++;
+                        repository.updateFailedDownloads(episodeId);
+                        repository.addNotification(NotificationItem.createNow(
+                                String.format("Could not save Episode %s of %s", episode.getFormattedTitle(), episodePackage.mediumTitle),
+                                ""
+                        ));
+                    }
+                }
+                contentTool.saveContent(contentEpisodes, episodePackage.mediumId);
+                repository.updateSaved(currentlySavedEpisodes, true);
+
+                updateProgress(downloadCount, successFull, notSuccessFull);
+            } catch (NotEnoughSpaceException e) {
+                notSuccessFull = onFailed(
+                        downloadCount,
+                        successFull,
+                        notSuccessFull,
+                        repository,
+                        episodePackage,
+                        true
+                );
+            } catch (IOException e) {
+                e.printStackTrace();
+                notSuccessFull = onFailed(
+                        downloadCount,
+                        successFull,
+                        notSuccessFull,
+                        repository,
+                        episodePackage,
+                        false);
             }
-
-            for (ClientDownloadedEpisode episode : mediumDownloadedEpisodes.valueAt(i)) {
-                Resource resource = new Resource(toXhtml(episode).getBytes(), MediatypeService.XHTML);
-                book.addSection(episode.getTitle(), resource);
-            }
-            new EpubWriter().write(book, new FileOutputStream(file));
         }
     }
 
-    private String toXhtml(ClientDownloadedEpisode episode) {
-        String content = episode.getContent();
-        int titleIndex = content.indexOf(episode.getTitle());
+    private int onFailed(int downloadCount, int successFull, int notSuccessFull, Repository repository, DownloadPackage downloadPackage, boolean notEnoughSpace) {
+        notSuccessFull += downloadPackage.episodeIds.size();
 
-        if (titleIndex < 0 || titleIndex > (content.length() / 3)) {
-            content = "<h3>" + episode.getTitle() + "</h3>" + content;
+        for (Integer episodeId : downloadPackage.episodeIds) {
+            repository.updateFailedDownloads(episodeId);
+
+            SimpleEpisode episode = repository.getSimpleEpisode(episodeId);
+            String format = notEnoughSpace ? "Not enough Space for Episode %s of %s" : "Could not save Episode %s of %s";
+
+            repository.addNotification(NotificationItem.createNow(
+                    String.format(format, episode.getFormattedTitle(), downloadPackage.mediumTitle),
+                    ""
+            ));
         }
 
-        if (content.matches("\\s*<html.*>(<head>.*</head>)?<body>.+</body></html>\\s*")) {
-            return content;
+        updateProgress(downloadCount, successFull, notSuccessFull);
+        return notSuccessFull;
+    }
+
+    private void updateProgress(int downloadCount, int successFull, int notSuccessFull) {
+        int progress = successFull + notSuccessFull;
+        builder.setContentTitle(String.format("Download in Progress [%s/%s]", progress, downloadCount));
+        builder.setContentText(String.format("Failed: %s", notSuccessFull));
+        builder.setProgress(downloadCount, progress, false);
+        notificationManager.notify(downloadNotificationId, builder.build());
+    }
+
+    private static class MediumDownload {
+        private final Set<Integer> toDownloadEpisodes;
+        private final int id;
+        private final int mediumType;
+        private final String title;
+
+        private MediumDownload(Set<Integer> toDownloadEpisodes, int id, int mediumType, String title) {
+            this.toDownloadEpisodes = toDownloadEpisodes;
+            this.id = id;
+            this.mediumType = mediumType;
+            this.title = title;
         }
-        return "<html><head></head><body id=\"" + episode.getEpisodeId() + "\">" + content + "</body></html>";
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            MediumDownload that = (MediumDownload) o;
+
+            return id == that.id;
+        }
+
+        @Override
+        public int hashCode() {
+            return id;
+        }
     }
 
-    private Book loadBook(File file) throws IOException {
-        return new EpubReader().readEpub(new FileInputStream(file));
+    private static class DownloadPackage {
+        private final Set<Integer> episodeIds = new HashSet<>();
+        private final int mediumId;
+        private final int mediumType;
+        private final String mediumTitle;
+
+        private DownloadPackage(int mediumId, int mediumType, String mediumTitle) {
+            this.mediumId = mediumId;
+            this.mediumType = mediumType;
+            this.mediumTitle = mediumTitle;
+        }
     }
 
-    private Collection<Collection<Integer>> getDownloadPackages(SparseArray<List<Integer>> episodeIds, Repository repository) {
+
+    private Collection<DownloadPackage> getDownloadPackages(Set<MediumDownload> episodeIds, Repository repository) {
         List<Integer> savedEpisodes = repository.getSavedEpisodes();
 
         Set<Integer> savedIds = new HashSet<>(savedEpisodes);
 
-        Collection<Collection<Integer>> episodePackages = new ArrayList<>();
+        Collection<DownloadPackage> episodePackages = new ArrayList<>();
 
-        Collection<Integer> currentPackage = new ArrayList<>(10);
+        for (MediumDownload mediumDownload : episodeIds) {
+            DownloadPackage downloadPackage = new DownloadPackage(
+                    mediumDownload.id,
+                    mediumDownload.mediumType,
+                    mediumDownload.title
+            );
 
-        for (int i = 0; i < episodeIds.size(); i++) {
-            List<Integer> ints = episodeIds.valueAt(i);
+            for (Integer episodeId : mediumDownload.toDownloadEpisodes) {
 
-            for (int k = 0, intsSize = ints.size(); k < intsSize && k < this.episodeLimit; k++) {
-                Integer episodeId = ints.get(k);
-
-                if (!savedIds.contains(episodeId)) {
-                    if (currentPackage.size() == maxPackageSize) {
-                        episodePackages.add(currentPackage);
-                        currentPackage = new ArrayList<>(maxPackageSize);
-                    }
-                    currentPackage.add(episodeId);
+                if (savedIds.contains(episodeId)) {
+                    continue;
                 }
+
+                if (downloadPackage.episodeIds.size() == maxPackageSize) {
+                    episodePackages.add(downloadPackage);
+                    downloadPackage = new DownloadPackage(
+                            mediumDownload.id,
+                            mediumDownload.mediumType,
+                            mediumDownload.title
+                    );
+                }
+
+                downloadPackage.episodeIds.add(episodeId);
             }
-        }
-        if (!currentPackage.isEmpty()) {
-            episodePackages.add(currentPackage);
+            if (!downloadPackage.episodeIds.isEmpty()) {
+                episodePackages.add(downloadPackage);
+            }
         }
         return episodePackages;
-    }
-
-    private void mergeMediumFiles(SparseArray<File> files1, SparseArray<File> files2) {
-        SparseArray<List<File>> mediumBooks = new SparseArray<>();
-
-        for (int i = 0; i < files1.size(); i++) {
-            mediumBooks
-                    .get(files1.keyAt(i), new ArrayList<>(2))
-                    .add(files1.valueAt(i));
-        }
-
-        for (int i = 0; i < files2.size(); i++) {
-            mediumBooks
-                    .get(files2.keyAt(i), new ArrayList<>(2))
-                    .add(files2.valueAt(i));
-        }
-
-        for (int i = 0; i < mediumBooks.size(); i++) {
-            List<File> files = mediumBooks.valueAt(i);
-            if (files.size() == 2) {
-                this.mergeBooks(files.get(0), files.get(1));
-            }
-        }
-    }
-
-    private void mergeBooks(File file1, File file2) {
-        // todo implement merging
-    }
-
-    private SparseArray<File> getBooks(File file) {
-        if (file == null) {
-            return new SparseArray<>();
-        }
-        Pattern pattern = Pattern.compile("^(\\d+)\\.epub$");
-        File[] files = file.listFiles((dir, name) -> Pattern.matches(pattern.pattern(), name));
-
-        SparseArray<File> mediumIdFileMap = new SparseArray<>();
-
-        for (File bookFile : files) {
-            Matcher matcher = pattern.matcher(bookFile.getName());
-
-            if (!matcher.matches()) {
-                continue;
-            }
-            String mediumIdString = matcher.group(1);
-            int mediumId;
-
-            try {
-                mediumId = Integer.parseInt(mediumIdString);
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-                continue;
-            }
-            mediumIdFileMap.put(mediumId, bookFile);
-        }
-        return mediumIdFileMap;
-    }
-
-    private long getFreeMBSpace(File file) {
-        return file.getFreeSpace() / (1024L * 1024L);
-    }
-
-    private File getExternalAppDir() {
-        if (!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            return null;
-        }
-        return createBookDirectory(Environment.getExternalStorageDirectory());
-    }
-
-    private File getInternalAppDir(Application application) {
-        return createBookDirectory(application.getFilesDir());
-    }
-
-    private File createBookDirectory(File filesDir) {
-        File file = new File(filesDir, "Enterprise Books");
-
-        if (!file.exists()) {
-            return file.mkdir() ? file : null;
-        }
-
-        return file;
     }
 }

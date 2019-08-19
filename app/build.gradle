@@ -11,6 +11,12 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled = true
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = ["room.schemaLocation":
+                                     "$projectDir/schemas".toString()]
+            }
+        }
     }
     buildTypes {
         release {
@@ -38,11 +44,15 @@ dependencies {
     def room_version = '2.1.0-alpha04'
     // 2.1.10-alpha05 and 06 is bugged,
     // cannot run because it throws a 'failed, cannot read kotlin metadata' error
-    implementation 'androidx.appcompat:appcompat:1.1.0-alpha04'
     //noinspection GradleDependency
     implementation "androidx.room:room-runtime:$room_version"
-    implementation 'androidx.recyclerview:recyclerview:1.0.0'
     annotationProcessor "androidx.room:room-compiler:$room_version"
+    //SwipyRefreshLayout
+    implementation 'com.github.omadahealth:swipy:1.2.3@aar'
+    // hello charts
+    implementation 'com.github.lecho:hellocharts-library:1.5.8@aar'
+    def paging_version = "2.1.0"
+    implementation "androidx.paging:paging-runtime:$paging_version"
 
     def work_version = "2.0.1"
     implementation "androidx.work:work-runtime:$work_version"
@@ -54,6 +64,11 @@ dependencies {
     implementation 'com.squareup.retrofit2:retrofit:2.5.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.5.0'
     implementation 'joda-time:joda-time:2.10.1'
+    // jsoup HTML parser library @ https://jsoup.org/
+    implementation 'org.jsoup:jsoup:1.12.1'
+    // https://mvnrepository.com/artifact/org.apache.commons/commons-text
+    implementation group: 'org.apache.commons', name: 'commons-text', version: '1.7'
+
 
     def lifecycle_version = '2.0.0-beta01'
     implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"

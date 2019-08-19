@@ -1,11 +1,13 @@
 package com.mytlogos.enterprise.background.room;
 
-import android.annotation.SuppressLint;
 import android.app.Application;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.Transformations;
+import androidx.lifecycle.MutableLiveData;
+import androidx.paging.DataSource;
+import androidx.paging.LivePagedListBuilder;
+import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.background.ClientConsumer;
 import com.mytlogos.enterprise.background.ClientModelPersister;
@@ -26,6 +28,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
@@ -36,39 +39,45 @@ import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternListView;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
-import com.mytlogos.enterprise.background.room.model.RoomListView;
+import com.mytlogos.enterprise.background.room.model.RoomFailedEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomMedium;
+import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
 import com.mytlogos.enterprise.background.room.model.RoomNews;
+import com.mytlogos.enterprise.background.room.model.RoomNotification;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
-import com.mytlogos.enterprise.background.room.model.RoomUnReadEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalMediaList;
+import com.mytlogos.enterprise.model.ExternalUser;
+import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.News;
+import com.mytlogos.enterprise.model.NotificationItem;
+import com.mytlogos.enterprise.model.ReadEpisode;
+import com.mytlogos.enterprise.model.SimpleEpisode;
+import com.mytlogos.enterprise.model.SimpleMedium;
+import com.mytlogos.enterprise.model.SpaceMedium;
 import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.TocPart;
+import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
-import com.mytlogos.enterprise.service.DownloadWorker;
+import com.mytlogos.enterprise.tools.Sortings;
 
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class RoomStorage implements DatabaseStorage {
 
@@ -80,8 +89,11 @@ public class RoomStorage implements DatabaseStorage {
     private final MediaListDao mediaListDao;
     private final ExternalMediaListDao externalMediaListDao;
     private final ExternalUserDao externalUserDao;
-    private final LiveData<? extends User> storageUserLiveData;
+    private final NotificationDao notificationDao;
+    private final FailedEpisodesDao failedEpisodesDao;
+    private final LiveData<User> userLiveData;
     private final RoomMediumInWaitDao mediumInWaitDao;
+    private final RoomDanglingDao roomDanglingDao;
     private boolean loading = false;
     private final ToDownloadDao toDownloadDao;
 
@@ -96,27 +108,21 @@ public class RoomStorage implements DatabaseStorage {
         partDao = database.partDao();
         episodeDao = database.episodeDao();
         toDownloadDao = database.toDownloadDao();
-        storageUserLiveData = userDao.getUser();
         mediumInWaitDao = database.roomMediumInWaitDao();
+        roomDanglingDao = database.roomDanglingDao();
+        notificationDao = database.notificationDao();
+        failedEpisodesDao = database.failedEpisodesDao();
+        userLiveData = this.userDao.getUser();
     }
 
     @Override
-    public LiveData<List<MediumInWait>> getAllMediaInWait() {
-        return Transformations.map(
-                this.mediumInWaitDao.getAll(),
-                input -> input
-                        .stream()
-                        .map(medium -> new MediumInWait(
-                                medium.getTitle(),
-                                medium.getMedium(),
-                                medium.getLink()
-                        ))
-                        .collect(Collectors.toList()));
+    public LiveData<User> getUser() {
+        return this.userLiveData;
     }
 
     @Override
-    public LiveData<? extends User> getUser() {
-        return storageUserLiveData;
+    public LiveData<HomeStats> getHomeStats() {
+        return this.userDao.getHomeStats();
     }
 
     @Override
@@ -150,11 +156,6 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public void setNewsInterval(DateTime from, DateTime to) {
-        // todo
-    }
-
-    @Override
     public LoadData getLoadData() {
         // todo maybe load this asynchronous?
         LoadData data = new LoadData();
@@ -169,20 +170,8 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public LiveData<List<News>> getNews() {
-        return Transformations.map(
-                this.newsDao.getNews(),
-                input -> input
-                        .stream()
-                        .map(roomNews -> new News(
-                                roomNews.getTitle(),
-                                roomNews.getTimeStamp(),
-                                roomNews.getNewsId(),
-                                roomNews.isRead(),
-                                roomNews.getLink()
-                        ))
-                        .collect(Collectors.toList())
-        );
+    public LiveData<PagedList<News>> getNews() {
+        return new LivePagedListBuilder<>(this.newsDao.getNews(), 50).build();
     }
 
     @Override
@@ -249,36 +238,28 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public LiveData<List<DisplayUnreadEpisode>> getUnreadEpisodes() {
+    public LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodes(int saved, int medium) {
         RoomConverter converter = new RoomConverter();
-        return Transformations.map(
-                this.episodeDao.getUnreadEpisodes(),
-                input -> input
-                        .stream()
-                        .map(converter::convertRoomEpisode)
-                        .collect(Collectors.toList())
-        );
+        return new LivePagedListBuilder<>(
+                this.episodeDao.getUnreadEpisodes(saved, medium).map(converter::convertRoomEpisode),
+                50
+        ).build();
+    }
+
+    @Override
+    public LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodesGrouped(int saved, int medium) {
+        RoomConverter converter = new RoomConverter();
+        return new LivePagedListBuilder<>(
+                this.episodeDao.getUnreadEpisodesGrouped(saved, medium).map(converter::convertRoomEpisode),
+                50
+        ).build();
     }
 
     @Override
     public LiveData<List<MediaList>> getLists() {
         MediatorLiveData<List<MediaList>> liveData = new MediatorLiveData<>();
 
-        liveData.addSource(this.mediaListDao.getListViews(), roomMediaLists -> {
-            List<MediaList> mediaLists = new ArrayList<>();
-
-            for (RoomListView list : roomMediaLists) {
-                RoomMediaList mediaList = list.getMediaList();
-
-                mediaLists.add(new MediaList(
-                        mediaList.uuid,
-                        mediaList.listId,
-                        mediaList.name,
-                        mediaList.medium,
-                        list.getSize()
-                ));
-            }
-
+        liveData.addSource(this.mediaListDao.getListViews(), mediaLists -> {
             HashSet<MediaList> set = new HashSet<>();
 
             if (liveData.getValue() != null) {
@@ -317,6 +298,29 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
+    public void insertDanglingMedia(Collection<Integer> mediaIds) {
+        List<Integer> listMedia = this.mediaListDao.getAllLinkedMedia();
+        List<Integer> externalListMedia = this.externalMediaListDao.getAllLinkedMedia();
+        mediaIds.removeAll(listMedia);
+        mediaIds.removeAll(externalListMedia);
+
+        if (mediaIds.isEmpty()) {
+            return;
+        }
+        RoomConverter converter = new RoomConverter();
+        this.roomDanglingDao.insertBulk(converter.convertToDangling(mediaIds));
+    }
+
+    @Override
+    public void removeDanglingMedia(Collection<Integer> mediaIds) {
+        if (mediaIds.isEmpty()) {
+            return;
+        }
+        RoomConverter converter = new RoomConverter();
+        this.roomDanglingDao.deleteBulk(converter.convertToDangling(mediaIds));
+    }
+
+    @Override
     public LiveData<? extends MediaListSetting> getListSetting(int id, boolean isExternal) {
         if (isExternal) {
             return this.externalMediaListDao.getExternalListSetting(id);
@@ -338,8 +342,14 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public LiveData<List<MediumItem>> getAllMedia() {
-        return this.mediumDao.getAll();
+    public LiveData<PagedList<MediumItem>> getAllMedia(Sortings sortings, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes) {
+        int sortValue = sortings.getSortValue();
+        if (sortValue > 0) {
+            return new LivePagedListBuilder<>(this.mediumDao.getAllAsc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build();
+        } else {
+            sortValue = -sortValue;
+            return new LivePagedListBuilder<>(this.mediumDao.getAllDesc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build();
+        }
     }
 
     @Override
@@ -348,15 +358,17 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public LiveData<List<TocPart>> getToc(int mediumId) {
-        MediatorLiveData<List<TocPart>> data = new MediatorLiveData<>();
-        LiveData<List<RoomPart>> parts = this.partDao.getParts(mediumId);
-        LiveData<List<RoomUnReadEpisode>> episodes = this.episodeDao.getEpisodes(mediumId);
+    public LiveData<PagedList<TocEpisode>> getToc(int mediumId, Sortings sortings, byte read, byte saved) {
+        DataSource.Factory<Integer, RoomTocEpisode> episodes;
 
-        data.addSource(parts, roomParts -> convertToTocPart(data, episodes.getValue(), roomParts));
-        data.addSource(episodes, roomUnReadEpisodes -> convertToTocPart(data, roomUnReadEpisodes, parts.getValue()));
+        if (sortings.getSortValue() > 0) {
+            episodes = this.episodeDao.getTocEpisodesAsc(mediumId, read, saved);
+        } else {
+            episodes = this.episodeDao.getTocEpisodesDesc(mediumId, read, saved);
+        }
+        RoomConverter converter = new RoomConverter();
 
-        return data;
+        return new LivePagedListBuilder<>(episodes.map(converter::convertTocEpisode), 50).build();
     }
 
     @Override
@@ -368,35 +380,250 @@ public class RoomStorage implements DatabaseStorage {
         }
     }
 
-    private void convertToTocPart(MediatorLiveData<List<TocPart>> data, List<RoomUnReadEpisode> episodes, List<RoomPart> roomParts) {
-        if (roomParts == null) {
-            data.postValue(null);
+    @Override
+    public boolean listExists(String listName) {
+        return this.mediaListDao.listExists(listName);
+    }
+
+    @Override
+    public int countSavedEpisodes(Integer mediumId) {
+        return this.episodeDao.countSavedEpisodes(mediumId);
+    }
+
+    @Override
+    public List<Integer> getSavedEpisodes(int mediumId) {
+        return this.episodeDao.getSavedEpisodes(mediumId);
+    }
+
+    @Override
+    public Episode getEpisode(int episodeId) {
+        RoomConverter converter = new RoomConverter();
+        RoomEpisode roomEpisode = this.episodeDao.getEpisode(episodeId);
+        return converter.convert(roomEpisode);
+    }
+
+    @Override
+    public List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids) {
+        return this.episodeDao.getSimpleEpisodes(ids);
+    }
+
+    @Override
+    public void updateProgress(Collection<Integer> episodeIds, float progress) {
+        this.episodeDao.updateProgress(episodeIds, progress, DateTime.now());
+    }
+
+    @Override
+    public LiveData<PagedList<MediumInWait>> getMediaInWaitBy(String filter, int mediumFilter, String hostFilter, Sortings sortings) {
+        DataSource.Factory<Integer, RoomMediumInWait> factory;
+        int sortValue = sortings.getSortValue();
+
+        if (sortValue < 0) {
+            sortValue = -sortValue;
+            factory = this.mediumInWaitDao.getByDesc(sortValue, filter, mediumFilter, hostFilter);
+        } else {
+            factory = this.mediumInWaitDao.getByAsc(sortValue, filter, mediumFilter, hostFilter);
+        }
+        RoomConverter converter = new RoomConverter();
+        return new LivePagedListBuilder<>(
+                factory.map(converter::convert),
+                50
+        ).build();
+    }
+
+    @Override
+    public LiveData<PagedList<ReadEpisode>> getReadTodayEpisodes() {
+        RoomConverter converter = new RoomConverter();
+        return new LivePagedListBuilder<>(
+                this.episodeDao.getReadTodayEpisodes().map(input -> converter.convert(input)),
+                50
+        ).build();
+    }
+
+    @Override
+    public LiveData<List<MediaList>> getInternLists() {
+        return this.mediaListDao.getListViews();
+    }
+
+    @Override
+    public void addItemsToList(int listId, Collection<Integer> ids) {
+        List<RoomMediaList.MediaListMediaJoin> joins = new ArrayList<>();
+        for (Integer id : ids) {
+            joins.add(new RoomMediaList.MediaListMediaJoin(listId, id));
+        }
+        this.mediaListDao.addJoin(joins);
+    }
+
+    @Override
+    public LiveData<List<MediumInWait>> getSimilarMediaInWait(MediumInWait mediumInWait) {
+        return this.mediumInWaitDao.getSimilar(mediumInWait.getTitle(), mediumInWait.getMedium());
+    }
+
+    @Override
+    public LiveData<List<SimpleMedium>> getMediaSuggestions(String title, int medium) {
+        return this.mediumDao.getSuggestions(title, medium);
+    }
+
+    @Override
+    public LiveData<List<MediumInWait>> getMediaInWaitSuggestions(String title, int medium) {
+        return this.mediumInWaitDao.getSuggestions(title, medium);
+    }
+
+    @Override
+    public LiveData<List<MediaList>> getListSuggestion(String name) {
+        return this.mediaListDao.getSuggestion(name);
+    }
+
+    @Override
+    public LiveData<Boolean> onDownloadAble() {
+        MutableLiveData<Integer> previousDownloadCount = new MutableLiveData<>();
+        MutableLiveData<Integer> previousEpisodeCount = new MutableLiveData<>();
+
+        LiveData<Integer> toDownloadCount = this.toDownloadDao.countMediaRows();
+        LiveData<Integer> downloadableEpisodeCount = this.episodeDao.countDownloadableRows();
+
+        MediatorLiveData<Boolean> downloadAbles = new MediatorLiveData<>();
+        downloadAbles.addSource(toDownloadCount, input -> {
+            int previous = this.getOr(previousDownloadCount.getValue(), 0);
+            int current = this.getOr(input, 0);
+
+            previousDownloadCount.setValue(current);
+            downloadAbles.postValue(current > previous);
+        });
+        downloadAbles.addSource(downloadableEpisodeCount, input -> {
+            int previous = this.getOr(previousEpisodeCount.getValue(), 0);
+            int current = this.getOr(input, 0);
+
+            previousEpisodeCount.setValue(current);
+            downloadAbles.postValue(current > previous);
+        });
+        return downloadAbles;
+    }
+
+    @Override
+    public void clearMediaInWait() {
+        this.mediumInWaitDao.clear();
+    }
+
+    @Override
+    public void deleteMediaInWait(Collection<MediumInWait> toDelete) {
+        RoomConverter converter = new RoomConverter();
+        this.mediumInWaitDao.deleteBulk(converter.convertMediaInWait(toDelete));
+    }
+
+    @Override
+    public LiveData<List<MediumItem>> getAllDanglingMedia() {
+        return this.roomDanglingDao.getAll();
+    }
+
+    @Override
+    public void removeItemFromList(int listId, int mediumId) {
+        this.mediaListDao.removeJoin(new RoomMediaList.MediaListMediaJoin(listId, mediumId));
+    }
+
+    @Override
+    public void moveItemsToList(int oldListId, int newListId, Collection<Integer> ids) {
+        Collection<RoomMediaList.MediaListMediaJoin> oldJoins = new ArrayList<>();
+        Collection<RoomMediaList.MediaListMediaJoin> newJoins = new ArrayList<>();
+
+        for (Integer id : ids) {
+            oldJoins.add(new RoomMediaList.MediaListMediaJoin(oldListId, id));
+            newJoins.add(new RoomMediaList.MediaListMediaJoin(newListId, id));
+        }
+
+        this.mediaListDao.moveJoins(oldJoins, newJoins);
+    }
+
+    @Override
+    public LiveData<PagedList<ExternalUser>> getExternalUser() {
+        return new LivePagedListBuilder<>(this.externalUserDao.getAll(), 50).build();
+    }
+
+    @Override
+    public SpaceMedium getSpaceMedium(int mediumId) {
+        return this.mediumDao.getSpaceMedium(mediumId);
+    }
+
+    @Override
+    public int getMediumType(Integer mediumId) {
+        return this.mediumDao.getMediumType(mediumId);
+    }
+
+    @Override
+    public List<String> getReleaseLinks(int episodeId) {
+        return this.episodeDao.getReleaseLinks(episodeId);
+    }
+
+    @Override
+    public List<Integer> getEpisodeIdsWithLowerIndex(int episodeId, boolean read) {
+        RoomEpisode episode = this.episodeDao.getEpisode(episodeId);
+        RoomPart part = this.partDao.getPart(episode.getPartId());
+
+        return this.episodeDao.getEpisodeIdsWithLowerIndex(
+                part.getMediumId(),
+                episode.getTotalIndex(),
+                episode.getPartialIndex(),
+                part.getTotalIndex(),
+                part.getPartialIndex(),
+                read
+        );
+    }
+
+    @Override
+    public void clearLocalMediaData() {
+        this.episodeDao.clearAllReleases();
+        this.episodeDao.clearAll();
+        this.partDao.clearAll();
+        this.externalMediaListDao.clearJoins();
+        this.mediaListDao.clearJoins();
+        this.clearMediaInWait();
+    }
+
+    @Override
+    public LiveData<PagedList<NotificationItem>> getNotifications() {
+        return new LivePagedListBuilder<>(this.notificationDao.getNotifications(), 50).build();
+    }
+
+    @Override
+    public void updateFailedDownload(int episodeId) {
+        RoomFailedEpisode failedEpisode = this.failedEpisodesDao.getFailedEpisode(episodeId);
+        int failedCount = 0;
+
+        if (failedEpisode != null) {
+            failedCount = failedEpisode.getFailCount();
+        }
+        failedCount++;
+        this.failedEpisodesDao.insert(new RoomFailedEpisode(episodeId, failedCount));
+    }
+
+    @Override
+    public void addNotification(NotificationItem notification) {
+        if (notification == null) {
             return;
         }
+        this.notificationDao.insert(new RoomNotification(
+                notification.getTitle(),
+                notification.getDescription(),
+                notification.getDateTime()
+        ));
+    }
 
-        @SuppressLint("UseSparseArrays")
-        Map<Integer, List<DisplayUnreadEpisode>> idEpisodeMap = new HashMap<>();
+    @Override
+    public SimpleEpisode getSimpleEpisode(int episodeId) {
+        return this.episodeDao.getSimpleEpisode(episodeId);
+    }
 
-        if (episodes != null) {
-            RoomConverter converter = new RoomConverter();
+    @Override
+    public SimpleMedium getSimpleMedium(int mediumId) {
+        return this.mediumDao.getSimpleMedium(mediumId);
+    }
 
-            for (RoomUnReadEpisode roomEpisode : episodes) {
-                DisplayUnreadEpisode episode = converter.convertRoomEpisode(roomEpisode);
-                idEpisodeMap
-                        .computeIfAbsent(roomEpisode.getPartId(), integer -> new ArrayList<>())
-                        .add(episode);
-            }
-        }
+    @Override
+    public void clearNotifications() {
+        this.notificationDao.deleteAll();
+    }
 
-        List<TocPart> tocParts = new ArrayList<>(roomParts.size());
-
-        for (RoomPart part : roomParts) {
-            List<DisplayUnreadEpisode> partEpisodes = idEpisodeMap.getOrDefault(part.getPartId(), Collections.emptyList());
-            TocPart tocPart = new TocPart(part.getPartialIndex(), part.getTotalIndex(), part.getTitle(), part.getPartId(), partEpisodes);
-            tocParts.add(tocPart);
-        }
-
-        data.postValue(tocParts);
+    private <E> E getOr(E value, @SuppressWarnings("SameParameterValue") E defaultValue) {
+        return value == null ? defaultValue : value;
     }
 
     private class RoomDependantGenerator implements DependantGenerator {
@@ -688,39 +915,6 @@ public class RoomStorage implements DatabaseStorage {
                     RoomModelPersister.this.persistExternalUsers(extUsers);
                 }
             });
-            consumer.add(new ClientConsumer<RoomUser.UserReadTodayJoin>() {
-                @Override
-                public Class<RoomUser.UserReadTodayJoin> getType() {
-                    return RoomUser.UserReadTodayJoin.class;
-                }
-
-                @Override
-                public void consume(Collection<RoomUser.UserReadTodayJoin> joins) {
-                    RoomStorage.this.userDao.addReadToday(joins);
-                }
-            });
-            consumer.add(new ClientConsumer<RoomUser.UserUnReadChapterJoin>() {
-                @Override
-                public Class<RoomUser.UserUnReadChapterJoin> getType() {
-                    return RoomUser.UserUnReadChapterJoin.class;
-                }
-
-                @Override
-                public void consume(Collection<RoomUser.UserUnReadChapterJoin> joins) {
-                    RoomStorage.this.userDao.addUnReadChapter(joins);
-                }
-            });
-            consumer.add(new ClientConsumer<RoomUser.UserUnReadNewsJoin>() {
-                @Override
-                public Class<RoomUser.UserUnReadNewsJoin> getType() {
-                    return RoomUser.UserUnReadNewsJoin.class;
-                }
-
-                @Override
-                public void consume(Collection<RoomUser.UserUnReadNewsJoin> joins) {
-                    RoomStorage.this.userDao.addUnReadNews(joins);
-                }
-            });
         }
 
         @Override
@@ -765,7 +959,6 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomEpisode episode : list) {
                 this.loadedData.getEpisodes().add(episode.getEpisodeId());
             }
-//            System.out.println("from " + episodes.size() + " persisted: " + list);
             return this;
         }
 
@@ -817,7 +1010,6 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomMediaList mediaList : list) {
                 this.loadedData.getMediaList().add(mediaList.listId);
             }
-//            System.out.println("from " + mediaLists.size() + " persisted: " + list);
             return this;
         }
 
@@ -880,8 +1072,6 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomExternalMediaList mediaList : list) {
                 this.loadedData.getExternalMediaList().add(mediaList.externalListId);
             }
-
-//            System.out.println("from " + externalMediaLists.size() + " persisted: " + list);
             return this;
         }
 
@@ -943,8 +1133,6 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomExternalMediaList mediaList : externalMediaLists) {
                 this.loadedData.getExternalMediaList().add(mediaList.externalListId);
             }
-//            System.out.println("from " + externalUsers.size() + " persisted: " + list.size());
-//            System.out.println("from " + externalMediaLists.size() + " persisted: " + externalMediaLists.size());
             return this;
         }
 
@@ -983,7 +1171,6 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomMedium medium : list) {
                 this.loadedData.getMedia().add(medium.getMediumId());
             }
-//            System.out.println("from " + media.size() + " persisted: " + list);
             return this;
         }
 
@@ -1044,7 +1231,6 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomPart part : list) {
                 this.loadedData.getPart().add(part.getPartId());
             }
-            System.out.println("from " + episodes.size() + " persisted: " + list);
             this.persistEpisodes(episodes);
             return this;
         }
@@ -1067,7 +1253,7 @@ public class RoomStorage implements DatabaseStorage {
         @Override
         public ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes) {
             for (ClientReadEpisode readEpisode : filteredReadEpisodes.episodeList) {
-                RoomStorage.this.episodeDao.update(
+                RoomStorage.this.episodeDao.updateProgress(
                         readEpisode.getEpisodeId(),
                         readEpisode.getProgress(),
                         readEpisode.getReadDate()
@@ -1099,7 +1285,7 @@ public class RoomStorage implements DatabaseStorage {
 
         @Override
         public ClientModelPersister persist(ClientUpdateUser user) {
-            User value = RoomStorage.this.storageUserLiveData.getValue();
+            User value = RoomStorage.this.userLiveData.getValue();
             if (value == null) {
                 throw new IllegalArgumentException("cannot update user if none is stored in the database");
             }
@@ -1122,7 +1308,31 @@ public class RoomStorage implements DatabaseStorage {
 
         @Override
         public void persistMediaInWait(List<ClientMediumInWait> medium) {
-            RoomStorage.this.mediumInWaitDao.insertBulk(new RoomConverter().convert(medium));
+            RoomStorage.this.mediumInWaitDao.insertBulk(new RoomConverter().convertClientMediaInWait(medium));
+        }
+
+        @Override
+        public ClientModelPersister persist(ClientSimpleUser user) {
+            // short cut version
+            if (user == null) {
+                RoomStorage.this.deleteAllUser();
+                return this;
+            }
+            RoomConverter converter = new RoomConverter();
+            RoomUser newRoomUser = converter.convert(user);
+
+            RoomUser currentUser = RoomStorage.this.userDao.getUserNow();
+
+            if (currentUser != null && newRoomUser.getUuid().equals(currentUser.getUuid())) {
+                // update user, so previous one wont be deleted
+                RoomStorage.this.userDao.update(newRoomUser);
+            } else {
+                RoomStorage.this.userDao.deleteAllUser();
+                // persist user
+                RoomStorage.this.userDao.insert(newRoomUser);
+            }
+
+            return this;
         }
 
         @Override
@@ -1134,6 +1344,18 @@ public class RoomStorage implements DatabaseStorage {
             }
 
             RoomConverter converter = new RoomConverter();
+            RoomUser newRoomUser = converter.convert(clientUser);
+
+            RoomUser currentUser = RoomStorage.this.userDao.getUserNow();
+
+            if (currentUser != null && newRoomUser.getUuid().equals(currentUser.getUuid())) {
+                // update user, so previous one wont be deleted
+                RoomStorage.this.userDao.update(newRoomUser);
+            } else {
+                RoomStorage.this.userDao.deleteAllUser();
+                // persist user
+                RoomStorage.this.userDao.insert(newRoomUser);
+            }
 
             LoadWorker worker = this.repository.getLoadWorker();
 
@@ -1159,19 +1381,6 @@ public class RoomStorage implements DatabaseStorage {
                 }
             }
 
-            RoomUser roomUser = converter.convert(clientUser);
-
-            User value = RoomStorage.this.userDao.getCurrentUser();
-
-            if (value != null && roomUser.getUuid().equals(value.getUuid())) {
-                // update user, so previous one wont be deleted
-                RoomStorage.this.userDao.update(roomUser);
-            } else {
-                RoomStorage.this.userDao.deleteAllUser();
-                // persist user
-                RoomStorage.this.userDao.insert(roomUser);
-            }
-
             // persist lists
             this.persist(clientUser.getLists());
             // persist externalUser
@@ -1181,14 +1390,12 @@ public class RoomStorage implements DatabaseStorage {
             // persist/update media with data
             this.persist(clientUser.getReadToday());
 
-            System.out.println("persisted: " + clientUser);
             return this;
         }
 
         @Override
         public void finish() {
             this.repository.getLoadWorker().work();
-            DownloadWorker.enqueueDownloadTask();
         }
     }
 }

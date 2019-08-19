@@ -26,7 +26,7 @@ public class BootReceiver extends BroadcastReceiver {
                 .setRequiredNetworkType(NetworkType.UNMETERED)
                 .build();
 
-        PeriodicWorkRequest periodicWorkRequest = new PeriodicWorkRequest
+        PeriodicWorkRequest periodicSynchronize = new PeriodicWorkRequest
                 .Builder(SynchronizeWorker.class, PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
                 .setConstraints(constraints)
                 .build();
@@ -34,7 +34,17 @@ public class BootReceiver extends BroadcastReceiver {
         WorkManager.getInstance().enqueueUniquePeriodicWork(
                 SynchronizeWorker.SYNCHRONIZE_WORKER,
                 ExistingPeriodicWorkPolicy.REPLACE,
-                periodicWorkRequest
+                periodicSynchronize
+        );
+
+        PeriodicWorkRequest periodicCheckSaved = new PeriodicWorkRequest
+                .Builder(CheckSavedWorker.class, 1, TimeUnit.HOURS)
+                .build();
+
+        WorkManager.getInstance().enqueueUniquePeriodicWork(
+                CheckSavedWorker.CHECK_SAVED_WORKER,
+                ExistingPeriodicWorkPolicy.REPLACE,
+                periodicCheckSaved
         );
     }
 }

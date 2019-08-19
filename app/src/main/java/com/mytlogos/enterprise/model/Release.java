@@ -10,4 +10,6 @@ public interface Release {
     String getUrl();
 
     int getEpisodeId();
+
+    boolean isLocked();
 }

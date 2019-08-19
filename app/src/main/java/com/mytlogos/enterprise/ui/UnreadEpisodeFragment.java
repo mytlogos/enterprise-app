@@ -1,35 +1,39 @@
 package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.fragment.app.Fragment;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProviders;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
+import com.mytlogos.enterprise.background.RepositoryImpl;
+import com.mytlogos.enterprise.background.TaskManager;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.MediumType;
+import com.mytlogos.enterprise.model.Release;
 import com.mytlogos.enterprise.viewmodel.UnreadEpisodeViewModel;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
@@ -41,10 +45,9 @@ import eu.davidea.viewholders.FlexibleViewHolder;
 /**
  * A fragment representing a list of Items.
  */
-public class UnreadEpisodeFragment extends BaseFragment {
+public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode, UnreadEpisodeViewModel> {
 
-    private UnreadEpisodeViewModel viewModel;
-    private LiveData<List<DisplayUnreadEpisode>> liveUnreadEpisodes;
+    private boolean groupByMedium;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -58,152 +61,158 @@ public class UnreadEpisodeFragment extends BaseFragment {
         super.onCreate(savedInstanceState);
     }
 
+    @NonNull
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.swipe_list, container, false);
-
-        RecyclerView recyclerView = view.findViewById(R.id.list);
-
-        // Set the adapter
-        Context context = view.getContext();
-
-        LinearLayoutManager layoutManager = new LinearLayoutManager(context);
-        recyclerView.setLayoutManager(layoutManager);
-
-        DividerItemDecoration decoration = new DividerItemDecoration(context, layoutManager.getOrientation());
-        recyclerView.addItemDecoration(decoration);
-
-        FlexibleAdapter<IFlexible> flexibleAdapter = new FlexibleAdapter<>(null)
-                .setStickyHeaders(true)
-                .setDisplayHeadersAtStartUp(true);
-
-        recyclerView.setAdapter(flexibleAdapter);
-        SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swiper);
-
-        this.viewModel = ViewModelProviders.of(this).get(UnreadEpisodeViewModel.class);
-
-        this.liveUnreadEpisodes = this.viewModel.getUnreadEpisodes();
-        this.liveUnreadEpisodes.observe(this, unreadEpisodes -> {
-
-            if (checkEmptyList(unreadEpisodes, view, swipeRefreshLayout)) {
-                return;
-            }
-
-            List<IFlexible> items = new ArrayList<>();
-
-            for (DisplayUnreadEpisode episode : unreadEpisodes) {
-                items.add(new UnreadEpisodeItem(episode, this));
-            }
-
-            flexibleAdapter.updateDataSet(items);
-        });
+        View view = super.onCreateView(inflater, container, savedInstanceState);
         this.setTitle("Unread Chapters");
         return view;
     }
 
-    private static class SectionableUnreadEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
-        private final DisplayUnreadEpisode displayUnreadEpisode;
-        private final Fragment fragment;
-
-        SectionableUnreadEpisodeItem(@NonNull DisplayUnreadEpisode displayUnreadEpisode, Fragment fragment) {
-            super(new HeaderItem(displayUnreadEpisode.getTitle(), displayUnreadEpisode.getMediumId()));
-            this.displayUnreadEpisode = displayUnreadEpisode;
-            this.fragment = fragment;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SectionableUnreadEpisodeItem)) return false;
-
-            SectionableUnreadEpisodeItem other = (SectionableUnreadEpisodeItem) o;
-            return this.displayUnreadEpisode.getEpisodeId() == other.displayUnreadEpisode.getEpisodeId();
-        }
-
-        @Override
-        public int hashCode() {
-            return this.displayUnreadEpisode.getEpisodeId();
-        }
-
-        @Override
-        public int getLayoutRes() {
-            return R.layout.unreadchapter_item;
-        }
-
-        @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view);
-        }
-
-        @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.mItem = this.displayUnreadEpisode;
-            // transform news id (int) to a string,
-            // because it would expect a resource id if it is an int
-            holder.metaView.setText(this.displayUnreadEpisode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
-            holder.novelView.setText(this.displayUnreadEpisode.getMediumTitle());
-            holder.contentView.setText(this.displayUnreadEpisode.getTitle());
-            holder.optionsButtonView.setOnClickListener(v -> {
-                PopupMenu popupMenu = new PopupMenu(this.fragment.getContext(), holder.optionsButtonView);
-
-                if (holder.mItem.isSaved()) {
-                    popupMenu
-                            .getMenu()
-                            .add("Open Local")
-                            .setOnMenuItemClickListener(item -> {
-                                System.out.println("i am opening locally");
-                                return true;
-                            });
-                }
-                popupMenu
-                        .getMenu()
-                        .add("Open in Browser")
-                        .setOnMenuItemClickListener(item -> {
-                            String url = this.displayUnreadEpisode.getUrl();
-
-                            if (url == null || url.isEmpty()) {
-                                Toast
-                                        .makeText(
-                                                this.fragment.getContext(),
-                                                "No Link available",
-                                                Toast.LENGTH_SHORT
-                                        )
-                                        .show();
-                            }
-                            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-
-                            PackageManager manager = Objects.requireNonNull(this.fragment.getActivity()).getPackageManager();
-
-                            if (intent.resolveActivity(manager) != null) {
-                                this.fragment.startActivity(intent);
-                            } else {
-                                Toast
-                                        .makeText(
-                                                this.fragment.getContext(),
-                                                "No Browser available",
-                                                Toast.LENGTH_SHORT
-                                        )
-                                        .show();
-                            }
-                            System.out.println("i am opening in browser");
-                            return true;
-                        });
-                popupMenu.show();
-            });
-        }
+    @Override
+    UnreadEpisodeViewModel createViewModel() {
+        return ViewModelProviders.of(this).get(UnreadEpisodeViewModel.class);
     }
 
-    private static class UnreadEpisodeItem extends AbstractFlexibleItem<ViewHolder> {
-        private final DisplayUnreadEpisode displayUnreadEpisode;
-        private final Fragment fragment;
+    @Override
+    LiveData<PagedList<DisplayUnreadEpisode>> createPagedListLiveData() {
+        return this.getViewModel().getUnreadEpisodes();
+    }
 
-        UnreadEpisodeItem(@NonNull DisplayUnreadEpisode displayUnreadEpisode, Fragment fragment) {
-            this.displayUnreadEpisode = displayUnreadEpisode;
+    @Nullable
+    @Override
+    Filterable createFilterable() {
+        return new Filterable() {
+            @Override
+            public void onCreateFilter(View view, AlertDialog.Builder builder) {
+                setMediumCheckbox(view, R.id.text_medium, MediumType.TEXT);
+                setMediumCheckbox(view, R.id.audio_medium, MediumType.AUDIO);
+                setMediumCheckbox(view, R.id.video_medium, MediumType.VIDEO);
+                setMediumCheckbox(view, R.id.image_medium, MediumType.IMAGE);
+
+                CheckBox box = view.findViewById(R.id.saved);
+                box.setChecked(getViewModel().getSaved());
+                box.setOnCheckedChangeListener((buttonView, isChecked) -> getViewModel().setSaved(isChecked ? 1 : -1));
+            }
+
+            @Override
+            public int getFilterLayout() {
+                return R.layout.filter_unread_episode_layout;
+            }
+        };
+    }
+
+    @Override
+    List<IFlexible> convertToFlexibles(Collection<DisplayUnreadEpisode> list) {
+        List<IFlexible> items = new ArrayList<>();
+        for (DisplayUnreadEpisode episode : list) {
+            if (episode == null) {
+                break;
+            }
+            if (groupByMedium) {
+                items.add(new SectionableUnreadEpisodeItem(episode, this));
+            } else {
+                items.add(new UnreadEpisodeItem(episode, this));
+            }
+        }
+        return items;
+    }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.unread_chapter_options, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.group_by_medium) {
+            toggleGroupByMedium(item);
+        } else if (item.getItemId() == R.id.group_by_medium_first) {
+            item.setChecked(!item.isChecked());
+            getViewModel().setGrouped(item.isChecked());
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onItemClick(View view, int position) {
+        IFlexible item = getFlexibleAdapter().getItem(position);
+
+
+        int mediumId;
+        if (item instanceof UnreadEpisodeItem) {
+            mediumId = ((UnreadEpisodeItem) item).episode.getMediumId();
+        } else if (item instanceof SectionableUnreadEpisodeItem) {
+            mediumId = ((SectionableUnreadEpisodeItem) item).episode.getMediumId();
+        } else {
+            return false;
+        }
+        TocFragment fragment = TocFragment.newInstance(mediumId);
+        getMainActivity().switchWindow(fragment);
+        return true;
+    }
+
+    private void toggleGroupByMedium(MenuItem item) {
+        item.setChecked(!item.isChecked());
+        this.groupByMedium = item.isChecked();
+        PagedList<DisplayUnreadEpisode> list = this.getLivePagedList().getValue();
+
+        if (list == null) {
+            return;
+        }
+        List<IFlexible> flexibles = this.convertToFlexibles(list);
+        this.getFlexibleAdapter().updateDataSet(flexibles);
+    }
+
+    private void openPopup(ViewHolder holder, DisplayUnreadEpisode episode) {
+        PopupMenu popupMenu = new PopupMenu(getContext(), holder.optionsButtonView);
+
+        if (episode.isSaved()) {
+            popupMenu
+                    .getMenu()
+                    .add("Open Local")
+                    .setOnMenuItemClickListener(item -> {
+
+                        CompletableFuture<Integer> task = TaskManager.runCompletableTask(
+                                () -> RepositoryImpl.getInstance().getMediumType(episode.getMediumId())
+                        );
+                        task.whenComplete((type, throwable) -> {
+                            if (type != null) {
+                                openLocal(episode.getEpisodeId(), episode.getMediumId(), type);
+                            }
+                        });
+                        return true;
+                    });
+        }
+        popupMenu
+                .getMenu()
+                .add("Open in Browser")
+                .setOnMenuItemClickListener(item -> {
+                    List<Release> releases = episode.getReleases();
+                    List<String> urls = new ArrayList<>();
+
+                    for (Release release : releases) {
+                        String url = release.getUrl();
+
+                        if (url != null && !url.isEmpty()) {
+                            urls.add(url);
+                        }
+                    }
+                    this.openInBrowser(urls);
+                    return true;
+                });
+        popupMenu.show();
+    }
+
+    private static class SectionableUnreadEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
+        private final DisplayUnreadEpisode episode;
+        private final UnreadEpisodeFragment fragment;
+
+        SectionableUnreadEpisodeItem(@NonNull DisplayUnreadEpisode episode, UnreadEpisodeFragment fragment) {
+            super(new HeaderItem(episode.getMediumTitle(), episode.getMediumId()));
+            this.episode = episode;
             this.fragment = fragment;
             this.setDraggable(false);
             this.setSwipeable(false);
@@ -216,12 +225,12 @@ public class UnreadEpisodeFragment extends BaseFragment {
             if (!(o instanceof SectionableUnreadEpisodeItem)) return false;
 
             SectionableUnreadEpisodeItem other = (SectionableUnreadEpisodeItem) o;
-            return this.displayUnreadEpisode.getEpisodeId() == other.displayUnreadEpisode.getEpisodeId();
+            return this.episode.equals(other.episode);
         }
 
         @Override
         public int hashCode() {
-            return this.displayUnreadEpisode.getEpisodeId();
+            return this.episode.hashCode();
         }
 
         @Override
@@ -231,80 +240,22 @@ public class UnreadEpisodeFragment extends BaseFragment {
 
         @Override
         public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view);
+            return new ViewHolder(view, adapter);
         }
 
         @SuppressLint("DefaultLocale")
         @Override
         public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            DisplayUnreadEpisode episode = this.displayUnreadEpisode;
-            holder.mItem = episode;
-            // transform news id (int) to a string,
-            // because it would expect a resource id if it is an int
-            holder.metaView.setText(episode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
-            holder.novelView.setText(episode.getMediumTitle());
+            Optional<Release> maxRelease = this.episode.getReleases().stream().max(Comparator.comparing(Release::getReleaseDate));
 
-            String title;
-
-            if (episode.getPartialIndex() > 0) {
-                title = String.format("#%d.%d - %s", episode.getTotalIndex(), episode.getPartialIndex(), episode.getTitle());
-            } else {
-                title = String.format("#%d - %s", episode.getTotalIndex(), episode.getTitle());
-            }
-            holder.contentView.setText(title);
-
-            holder.optionsButtonView.setOnClickListener(v -> {
-                PopupMenu popupMenu = new PopupMenu(this.fragment.getContext(), holder.optionsButtonView);
-
-                if (holder.mItem.isSaved()) {
-                    popupMenu
-                            .getMenu()
-                            .add("Open Local")
-                            .setOnMenuItemClickListener(item -> {
-                                System.out.println("i am opening locally");
-                                return true;
-                            });
-                }
-                popupMenu
-                        .getMenu()
-                        .add("Open in Browser")
-                        .setOnMenuItemClickListener(item -> {
-                            String url = episode.getUrl();
-
-                            if (url == null || url.isEmpty()) {
-                                Toast
-                                        .makeText(
-                                                this.fragment.getContext(),
-                                                "No Link available",
-                                                Toast.LENGTH_SHORT
-                                        )
-                                        .show();
-                            }
-                            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-
-                            PackageManager manager = Objects.requireNonNull(this.fragment.getActivity()).getPackageManager();
-
-                            if (intent.resolveActivity(manager) != null) {
-                                this.fragment.startActivity(intent);
-                            } else {
-                                Toast
-                                        .makeText(
-                                                this.fragment.getContext(),
-                                                "No Browser available",
-                                                Toast.LENGTH_SHORT
-                                        )
-                                        .show();
-                            }
-                            System.out.println("i am opening in browser");
-                            return true;
-                        });
-                popupMenu.show();
-            });
+            holder.metaView.setText(maxRelease.map(release -> release.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss")).orElse("Not available"));
+            holder.novelView.setText(this.episode.getMediumTitle());
+            holder.contentView.setText(maxRelease.map(Release::getTitle).orElse("Not available"));
+            holder.optionsButtonView.setOnClickListener(v -> this.fragment.openPopup(holder, episode));
         }
     }
 
     private static class HeaderItem extends AbstractHeaderItem<HeaderViewHolder> {
-
         private final String title;
         private final int mediumId;
 
@@ -343,6 +294,65 @@ public class UnreadEpisodeFragment extends BaseFragment {
         }
     }
 
+    private static class UnreadEpisodeItem extends AbstractFlexibleItem<ViewHolder> {
+        private final DisplayUnreadEpisode episode;
+        private final UnreadEpisodeFragment fragment;
+
+        UnreadEpisodeItem(@NonNull DisplayUnreadEpisode episode, UnreadEpisodeFragment fragment) {
+            this.episode = episode;
+            this.fragment = fragment;
+            this.setDraggable(false);
+            this.setSwipeable(false);
+            this.setSelectable(false);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof SectionableUnreadEpisodeItem)) return false;
+
+            SectionableUnreadEpisodeItem other = (SectionableUnreadEpisodeItem) o;
+            return this.episode.getEpisodeId() == other.episode.getEpisodeId();
+        }
+
+        @Override
+        public int hashCode() {
+            return this.episode.getEpisodeId();
+        }
+
+        @Override
+        public int getLayoutRes() {
+            return R.layout.unreadchapter_item;
+        }
+
+        @Override
+        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
+            return new ViewHolder(view, adapter);
+        }
+
+        @SuppressLint("DefaultLocale")
+        @Override
+        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
+            // transform news id (int) to a string,
+            // because it would expect a resource id if it is an int
+            Optional<Release> maxRelease = this.episode.getReleases().stream().max(Comparator.comparing(Release::getReleaseDate));
+
+            holder.metaView.setText(maxRelease.map(release -> release.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss")).orElse("Not available"));
+            holder.novelView.setText(episode.getMediumTitle());
+
+            String title = maxRelease.map(Release::getTitle).orElse("Not available");
+
+            if (episode.getPartialIndex() > 0) {
+                title = String.format("#%d.%d - %s", episode.getTotalIndex(), episode.getPartialIndex(), title);
+            } else {
+                title = String.format("#%d - %s", episode.getTotalIndex(), title);
+            }
+            holder.contentView.setText(title);
+
+            holder.optionsButtonView.setOnClickListener(v -> this.fragment.openPopup(holder, episode));
+        }
+    }
+
     private static class HeaderViewHolder extends FlexibleViewHolder {
         private TextView textView;
 
@@ -352,16 +362,15 @@ public class UnreadEpisodeFragment extends BaseFragment {
         }
     }
 
-    private static class ViewHolder extends RecyclerView.ViewHolder {
+    private static class ViewHolder extends FlexibleViewHolder {
         final View mView;
         final TextView contentView;
         private final TextView metaView;
         private final TextView novelView;
         private final ImageButton optionsButtonView;
-        DisplayUnreadEpisode mItem;
 
-        ViewHolder(@NonNull View view) {
-            super(view);
+        ViewHolder(@NonNull View view, FlexibleAdapter adapter) {
+            super(view, adapter);
             mView = view;
             metaView = view.findViewById(R.id.item_top_left);
             novelView = view.findViewById(R.id.item_top_right);
@@ -374,31 +383,5 @@ public class UnreadEpisodeFragment extends BaseFragment {
         public String toString() {
             return super.toString() + " '" + contentView.getText() + "'";
         }
-    }
-
-
-    @Override
-    public void onAttach(@NonNull Context context) {
-        super.onAttach(context);
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-    }
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface UnreadChapterClickListener {
-        // TODO: Update argument type and name
-        void onListFragmentInteraction(Object item);
     }
 }

@@ -1,32 +1,44 @@
 package com.mytlogos.enterprise.model;
 
-import java.util.List;
+public class User {
+    private final String uuid;
+    private final String session;
+    private final String name;
 
-import androidx.annotation.NonNull;
+    public User(String uuid, String session, String name) {
+        this.uuid = uuid;
+        this.session = session;
+        this.name = name;
+    }
 
-public interface User {
-    @NonNull
-    String getUuid();
+    public String getUuid() {
+        return uuid;
+    }
 
-    @NonNull
-    String getName();
+    public String getSession() {
+        return session;
+    }
 
-    @NonNull
-    String getSession();
+    public String getName() {
+        return name;
+    }
 
-    int unreadNewsCount();
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
-    int unreadChapterCount();
+        User user = (User) o;
 
-    int readTodayCount();
+        if (getUuid() != null ? !getUuid().equals(user.getUuid()) : user.getUuid() != null)
+            return false;
+        return getSession() != null ? getSession().equals(user.getSession()) : user.getSession() == null;
+    }
 
-    List<Integer> getUnReadChapter();
-
-    List<Integer> getUnReadNews();
-
-    List<Integer> getReadToday();
-
-    List<Integer> getMediaList();
-
-    List<String> getExternalUser();
+    @Override
+    public int hashCode() {
+        int result = getUuid() != null ? getUuid().hashCode() : 0;
+        result = 31 * result + (getSession() != null ? getSession().hashCode() : 0);
+        return result;
+    }
 }

@@ -12,6 +12,7 @@ import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
@@ -527,6 +528,11 @@ public class DummyClientModelPersister implements ClientModelPersister {
     @Override
     public void persistMediaInWait(List<ClientMediumInWait> medium) {
 
+    }
+
+    @Override
+    public ClientModelPersister persist(ClientSimpleUser user) {
+        return null;
     }
 
     @Override

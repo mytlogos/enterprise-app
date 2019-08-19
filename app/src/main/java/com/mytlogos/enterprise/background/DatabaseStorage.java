@@ -1,17 +1,27 @@
 package com.mytlogos.enterprise.background;
 
 import androidx.lifecycle.LiveData;
+import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.Episode;
+import com.mytlogos.enterprise.model.ExternalUser;
+import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.News;
+import com.mytlogos.enterprise.model.NotificationItem;
+import com.mytlogos.enterprise.model.ReadEpisode;
+import com.mytlogos.enterprise.model.SimpleEpisode;
+import com.mytlogos.enterprise.model.SimpleMedium;
+import com.mytlogos.enterprise.model.SpaceMedium;
 import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.TocPart;
+import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.tools.Sortings;
 
 import org.joda.time.DateTime;
 
@@ -28,7 +38,9 @@ import java.util.List;
  * </p>
  */
 public interface DatabaseStorage {
-    LiveData<? extends User> getUser();
+    LiveData<User> getUser();
+
+    LiveData<HomeStats> getHomeStats();
 
     void deleteAllUser();
 
@@ -42,11 +54,9 @@ public interface DatabaseStorage {
 
     void setLoading(boolean loading);
 
-    void setNewsInterval(DateTime from, DateTime to);
-
     LoadData getLoadData();
 
-    LiveData<List<News>> getNews();
+    LiveData<PagedList<News>> getNews();
 
     List<Integer> getSavedEpisodes();
 
@@ -72,21 +82,89 @@ public interface DatabaseStorage {
 
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediumId);
 
-    LiveData<List<DisplayUnreadEpisode>> getUnreadEpisodes();
+    LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodes(int saved, int medium);
+
+    LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodesGrouped(int saved, int medium);
 
     LiveData<List<MediaList>> getLists();
+
+    void insertDanglingMedia(Collection<Integer> mediaIds);
+
+    void removeDanglingMedia(Collection<Integer> mediaIds);
 
     LiveData<? extends MediaListSetting> getListSetting(int id, boolean isExternal);
 
     void updateToDownload(boolean add, ToDownload toDownload);
 
-    LiveData<List<MediumInWait>> getAllMediaInWait();
-
-    LiveData<List<MediumItem>> getAllMedia();
+    LiveData<PagedList<MediumItem>> getAllMedia(Sortings sortings, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes);
 
     LiveData<MediumSetting> getMediumSettings(int mediumId);
 
-    LiveData<List<TocPart>> getToc(int mediumId);
+    LiveData<PagedList<TocEpisode>> getToc(int mediumId, Sortings sortings, byte read, byte saved);
 
     LiveData<List<MediumItem>> getMediumItems(int listId, boolean isExternal);
+
+    boolean listExists(String listName);
+
+    int countSavedEpisodes(Integer mediumId);
+
+    List<Integer> getSavedEpisodes(int mediumId);
+
+    Episode getEpisode(int episodeId);
+
+    List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids);
+
+    void updateProgress(Collection<Integer> episodeIds, float progress);
+
+    LiveData<PagedList<MediumInWait>> getMediaInWaitBy(String filter, int mediumFilter, String hostFilter, Sortings sortings);
+
+    LiveData<PagedList<ReadEpisode>> getReadTodayEpisodes();
+
+    LiveData<List<MediaList>> getInternLists();
+
+    void addItemsToList(int listId, Collection<Integer> ids);
+
+    LiveData<List<MediumInWait>> getSimilarMediaInWait(MediumInWait mediumInWait);
+
+    LiveData<List<SimpleMedium>> getMediaSuggestions(String title, int medium);
+
+    LiveData<List<MediumInWait>> getMediaInWaitSuggestions(String title, int medium);
+
+    LiveData<List<MediaList>> getListSuggestion(String name);
+
+    LiveData<Boolean> onDownloadAble();
+
+    void clearMediaInWait();
+
+    void deleteMediaInWait(Collection<MediumInWait> toDelete);
+
+    LiveData<List<MediumItem>> getAllDanglingMedia();
+
+    void removeItemFromList(int listId, int mediumId);
+
+    void moveItemsToList(int oldListId, int listId, Collection<Integer> ids);
+
+    LiveData<PagedList<ExternalUser>> getExternalUser();
+
+    SpaceMedium getSpaceMedium(int mediumId);
+
+    int getMediumType(Integer mediumId);
+
+    List<String> getReleaseLinks(int episodeId);
+
+    List<Integer> getEpisodeIdsWithLowerIndex(int episodeId, boolean read);
+
+    void clearLocalMediaData();
+
+    LiveData<PagedList<NotificationItem>> getNotifications();
+
+    void updateFailedDownload(int episodeId);
+
+    void addNotification(NotificationItem notification);
+
+    SimpleEpisode getSimpleEpisode(int episodeId);
+
+    SimpleMedium getSimpleMedium(int mediumId);
+
+    void clearNotifications();
 }

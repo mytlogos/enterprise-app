@@ -1,14 +1,16 @@
 package com.mytlogos.enterprise.background;
 
 import android.app.Application;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MediatorLiveData;
+import androidx.lifecycle.Transformations;
+import androidx.paging.PagedList;
 
+import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator;
 import com.mytlogos.enterprise.background.api.Client;
+import com.mytlogos.enterprise.background.api.NetworkIdentificator;
+import com.mytlogos.enterprise.background.api.NotConnectedException;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
@@ -20,6 +22,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
@@ -27,48 +30,64 @@ import com.mytlogos.enterprise.background.resourceLoader.BlockingLoadWorker;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.background.room.RoomStorage;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.Episode;
+import com.mytlogos.enterprise.model.ExternalUser;
+import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.News;
+import com.mytlogos.enterprise.model.NotificationItem;
+import com.mytlogos.enterprise.model.ReadEpisode;
+import com.mytlogos.enterprise.model.SimpleEpisode;
+import com.mytlogos.enterprise.model.SimpleMedium;
+import com.mytlogos.enterprise.model.SpaceMedium;
 import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.TocPart;
+import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
-import com.mytlogos.enterprise.service.DownloadWorker;
+import com.mytlogos.enterprise.tools.Sortings;
 
 import org.joda.time.DateTime;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Response;
 
 public class RepositoryImpl implements Repository {
     private static RepositoryImpl INSTANCE;
     private final ClientModelPersister persister;
-    private final LiveData<? extends User> storageUserLiveData;
-    private final MediatorLiveData<User> userLiveData;
+    private final LiveData<User> storageUserLiveData;
     private final Client client;
     private final DatabaseStorage storage;
     private final LoadData loadedData;
     private final LoadWorker loadWorker;
-    private boolean clientOnline;
+    private boolean clientOnline = true;
 
     private RepositoryImpl(Application application) {
         this.storage = new RoomStorage(application);
-        this.storageUserLiveData = storage.getUser();
-        this.client = new Client();
         this.loadedData = new LoadData();
-        this.userLiveData = new MediatorLiveData<>();
+        this.storageUserLiveData = Transformations.map(this.storage.getUser(), value -> {
+            if (value == null) {
+                INSTANCE.client.clearAuthentication();
+            } else {
+                INSTANCE.client.setAuthentication(value.getUuid(), value.getSession());
+            }
+            return value;
+        });
         this.persister = this.storage.getPersister(this, this.loadedData);
+        NetworkIdentificator identificator = new AndroidNetworkIdentificator(application.getApplicationContext());
+        this.client = new Client(identificator);
 
         DependantGenerator dependantGenerator = this.storage.getDependantGenerator(this.loadedData);
         this.loadWorker = new BlockingLoadWorker(
@@ -83,7 +102,6 @@ public class RepositoryImpl implements Repository {
      * Return the Repository Singleton Instance.
      *
      * @return returns the singleton
-     * @throws IllegalStateException if repository is not yet initialized
      */
     public static Repository getInstance() {
         if (INSTANCE == null) {
@@ -100,46 +118,31 @@ public class RepositoryImpl implements Repository {
                     INSTANCE.storage.setLoading(true);
                     System.out.println("querying");
 
+                    // storage.getHomeStats() does nothing, but storageHomeStatsLiveData invalidates instantly?
+                    //  storageHomeStatsLiveData does nothing?
+//                    new Handler(Looper.getMainLooper()).post(() -> );
                     // check first login
                     TaskManager.runTask(() -> {
                         try {
-                            Future<Response<ClientUser>> future = TaskManager.runAsyncTask(
-                                    () -> INSTANCE.client.checkLogin().execute()
-                            );
-
                             // ask the database what data it has, to check if it needs to be loaded from the server
-                            INSTANCE.getLoadedData();
+                            INSTANCE.loadLoadedData();
 
-                            // wait for the query to finish
-                            ClientUser clientUser = future.get().body();
+                            Call<ClientSimpleUser> call = INSTANCE.applyClient(Client::checkLogin);
 
-                            if (clientUser != null) {
-                                // set authentication in client before persisting user,
-                                // as it may load data which requires authentication
-                                INSTANCE.client.setAuthentication(clientUser.getUuid(), clientUser.getSession());
+                            if (call != null) {
+                                ClientSimpleUser clientUser = call.execute().body();
+
+                                if (clientUser != null) {
+                                    INSTANCE.client.setAuthentication(clientUser.getUuid(), clientUser.getSession());
+                                }
+                                INSTANCE.persister.persist(clientUser).finish();
                             }
-
-                            INSTANCE.persister
-                                    .persist(clientUser)
-                                    .finish();
-
-
                             Log.i(RepositoryImpl.class.getSimpleName(), "successful query");
-                        } catch (InterruptedException | ExecutionException e) {
+                        } catch (IOException e) {
+                            if (e.getCause() instanceof NotConnectedException) {
+                                INSTANCE.clientOnline = false;
+                            }
                             Log.e(RepositoryImpl.class.getSimpleName(), "failed query", e);
-                        } finally {
-                            // storage.getUser() does nothing, but storageUserLiveData invalidates instantly?
-                            new Handler(Looper.getMainLooper()).post(() -> INSTANCE.userLiveData.addSource(
-                                    INSTANCE.storageUserLiveData,
-                                    value -> {
-                                        if (value == null) {
-                                            INSTANCE.client.clearAuthentication();
-                                        } else {
-                                            INSTANCE.client.setAuthentication(value.getUuid(), value.getSession());
-                                        }
-                                        INSTANCE.userLiveData.postValue(value);
-                                    }
-                            ));
                         }
                     });
                 }
@@ -148,9 +151,26 @@ public class RepositoryImpl implements Repository {
         return INSTANCE;
     }
 
+    @FunctionalInterface
+    private interface FunctionEx<T, R> {
+        R apply(T t) throws IOException;
+    }
+
+
+    private <T> T applyClient(FunctionEx<Client, T> function) throws IOException {
+        try {
+            T result = function.apply(this.client);
+            this.clientOnline = true;
+            return result;
+        } catch (NotConnectedException e) {
+            this.clientOnline = false;
+            throw new NotConnectedException(e);
+        }
+    }
+
     @Override
     public boolean isClientOnline() {
-        return this.clientOnline;
+        return this.client.isOnline();
     }
 
     @Override
@@ -163,7 +183,7 @@ public class RepositoryImpl implements Repository {
         return loadWorker;
     }
 
-    private void getLoadedData() {
+    private void loadLoadedData() {
         LoadData loadData = this.storage.getLoadData();
 
         this.loadedData.getMedia().addAll(loadData.getMedia());
@@ -176,14 +196,19 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
+    public LiveData<HomeStats> getHomeStats() {
+        return this.storage.getHomeStats();
+    }
+
+    @Override
     public LiveData<User> getUser() {
-        return userLiveData;
+        return this.storageUserLiveData;
     }
 
     @Override
     public void updateUser(UpdateUser updateUser) {
         TaskManager.runTask(() -> {
-            User value = userLiveData.getValue();
+            User value = this.storageUserLiveData.getValue();
 
             if (value == null) {
                 throw new IllegalArgumentException("cannot change user when none is logged in");
@@ -263,6 +288,28 @@ public class RepositoryImpl implements Repository {
                 e.printStackTrace();
             }
         });
+    }
+
+
+    @Override
+    public void loadAllMedia() {
+        try {
+            Response<List<Integer>> response = this.client.getAllMedia().execute();
+            List<Integer> mediaIds = response.body();
+
+            if (mediaIds == null) {
+                return;
+            }
+            for (Integer mediumId : mediaIds) {
+                if (this.loadedData.getMedia().contains(mediumId) || this.loadWorker.isMediumLoading(mediumId)) {
+                    continue;
+                }
+                loadWorker.addIntegerIdTask(mediumId, null, loadWorker.MEDIUM_LOADER);
+            }
+            loadWorker.work();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -379,13 +426,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public LiveData<List<News>> getNews() {
+    public LiveData<PagedList<News>> getNews() {
         return this.storage.getNews();
-    }
-
-    @Override
-    public void setNewsInterval(DateTime from, DateTime to) {
-        storage.setNewsInterval(from, to);
     }
 
     @Override
@@ -447,7 +489,7 @@ public class RepositoryImpl implements Repository {
         }
 
         if (userUpdated) {
-            ClientUser user = this.client.checkLogin().execute().body();
+            ClientSimpleUser user = this.client.checkLogin().execute().body();
             this.persister.persist(user);
         }
         loadWorker.work();
@@ -474,7 +516,7 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public List<ClientDownloadedEpisode> downloadedEpisodes(Collection<Integer> episodeIds) throws IOException {
+    public List<ClientDownloadedEpisode> downloadEpisodes(Collection<Integer> episodeIds) throws IOException {
         return this.client.downloadEpisodes(episodeIds).execute().body();
     }
 
@@ -514,8 +556,13 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public LiveData<List<DisplayUnreadEpisode>> getUnReadEpisodes() {
-        return this.storage.getUnreadEpisodes();
+    public LiveData<PagedList<DisplayUnreadEpisode>> getUnReadEpisodes(int saved, int medium) {
+        return this.storage.getUnreadEpisodes(saved, medium);
+    }
+
+    @Override
+    public LiveData<PagedList<DisplayUnreadEpisode>> getUnReadEpisodesGrouped(int saved, int medium) {
+        return this.storage.getUnreadEpisodesGrouped(saved, medium);
     }
 
     @Override
@@ -584,17 +631,11 @@ public class RepositoryImpl implements Repository {
     @Override
     public void updateToDownload(boolean add, ToDownload toDownload) {
         this.storage.updateToDownload(add, toDownload);
-        DownloadWorker.enqueueDownloadTask();
     }
 
     @Override
-    public LiveData<List<MediumInWait>> getAllMediaInWait() {
-        return this.storage.getAllMediaInWait();
-    }
-
-    @Override
-    public LiveData<List<MediumItem>> getAllMedia() {
-        return this.storage.getAllMedia();
+    public LiveData<PagedList<MediumItem>> getAllMedia(Sortings sortings, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes) {
+        return this.storage.getAllMedia(sortings, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes);
     }
 
     @Override
@@ -635,8 +676,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public LiveData<List<TocPart>> getToc(int mediumId) {
-        return this.storage.getToc(mediumId);
+    public LiveData<PagedList<TocEpisode>> getToc(int mediumId, Sortings sortings, byte read, byte saved) {
+        return this.storage.getToc(mediumId, sortings, read, saved);
     }
 
     @Override
@@ -650,8 +691,421 @@ public class RepositoryImpl implements Repository {
         List<ClientMediumInWait> medium = response.body();
 
         if (medium != null && !medium.isEmpty()) {
+            this.storage.clearMediaInWait();
             this.persister.persistMediaInWait(medium);
         }
     }
+
+    @Override
+    public void addList(MediaList list, boolean autoDownload) throws IOException {
+        User value = this.storageUserLiveData.getValue();
+
+        if (value == null || value.getUuid().isEmpty()) {
+            throw new IllegalStateException("user is not authenticated");
+        }
+        Response<ClientMediaList> response = this.client.addList(new ClientMediaList(
+                value.getUuid(),
+                0,
+                list.getName(),
+                list.getMedium(),
+                new int[0]
+        )).execute();
+        ClientMediaList clientMediaList = response.body();
+
+        if (clientMediaList == null) {
+            throw new IllegalArgumentException("adding list failed");
+        }
+
+        this.persister.persist(clientMediaList);
+        ToDownload toDownload = new ToDownload(
+                false,
+                null,
+                clientMediaList.getId(),
+                null
+        );
+        this.storage.updateToDownload(true, toDownload);
+    }
+
+    @Override
+    public boolean listExists(String listName) {
+        return this.storage.listExists(listName);
+    }
+
+    @Override
+    public int countSavedUnreadEpisodes(Integer mediumId) {
+        return this.storage.countSavedEpisodes(mediumId);
+    }
+
+    @Override
+    public List<Integer> getSavedEpisodes(int mediumId) {
+        return this.storage.getSavedEpisodes(mediumId);
+    }
+
+    @Override
+    public Episode getEpisode(int episodeId) {
+        return this.storage.getEpisode(episodeId);
+    }
+
+    @Override
+    public List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids) {
+        return this.storage.getSimpleEpisodes(ids);
+    }
+
+    @Override
+    public void updateRead(int episodeId, boolean read) throws IOException {
+        this.client.addProgress(episodeId, read ? 1 : 0).execute();
+        this.storage.updateProgress(Collections.singletonList(episodeId), read ? 1 : 0);
+    }
+
+    @Override
+    public void updateRead(Collection<Integer> episodeIds, boolean read) throws IOException {
+        if (episodeIds.size() > 100) {
+            List<Integer> list = new ArrayList<>(episodeIds);
+            int steps = 100;
+            int minItem = 0;
+            int maxItem = minItem + steps;
+
+            do {
+                List<Integer> subList = list.subList(minItem, maxItem);
+                Response<Boolean> response = this.client.addProgress(subList, read ? 1 : 0).execute();
+
+                if (!response.isSuccessful() || response.body() == null || !response.body()) {
+                    continue;
+                }
+                this.storage.updateProgress(subList, read ? 1 : 0);
+
+                minItem = minItem + steps;
+                maxItem = minItem + steps;
+
+                if (maxItem > list.size()) {
+                    maxItem = list.size();
+                }
+            } while (minItem < list.size() && maxItem <= list.size());
+        } else {
+            Response<Boolean> response = this.client.addProgress(episodeIds, read ? 1 : 0).execute();
+
+            if (!response.isSuccessful() || response.body() == null || !response.body()) {
+                return;
+            }
+            this.storage.updateProgress(episodeIds, read ? 1 : 0);
+        }
+    }
+
+    @Override
+    public LiveData<PagedList<ReadEpisode>> getReadTodayEpisodes() {
+        return this.storage.getReadTodayEpisodes();
+    }
+
+    @Override
+    public LiveData<PagedList<MediumInWait>> getMediaInWaitBy(String filter, int mediumFilter, String hostFilter, Sortings sortings) {
+        return this.storage.getMediaInWaitBy(filter, mediumFilter, hostFilter, sortings);
+    }
+
+    @Override
+    public LiveData<List<MediaList>> getInternLists() {
+        return this.storage.getInternLists();
+    }
+
+    @Override
+    public LiveData<List<MediumInWait>> getSimilarMediaInWait(MediumInWait mediumInWait) {
+        return this.storage.getSimilarMediaInWait(mediumInWait);
+    }
+
+    @Override
+    public LiveData<List<SimpleMedium>> getMediaSuggestions(String title, int medium) {
+        return this.storage.getMediaSuggestions(title, medium);
+    }
+
+    @Override
+    public LiveData<List<MediumInWait>> getMediaInWaitSuggestions(String title, int medium) {
+        return this.storage.getMediaInWaitSuggestions(title, medium);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> consumeMediumInWait(SimpleMedium selectedMedium, List<MediumInWait> mediumInWaits) {
+        return TaskManager.runCompletableTask(() -> {
+            Collection<ClientMediumInWait> others = new HashSet<>();
+
+            if (mediumInWaits != null) {
+                for (MediumInWait inWait : mediumInWaits) {
+                    others.add(new ClientMediumInWait(
+                            inWait.getTitle(),
+                            inWait.getMedium(),
+                            inWait.getLink()
+                    ));
+                }
+            }
+            try {
+                Response<Boolean> response = this.client.consumeMediumInWait(selectedMedium.getMediumId(), others).execute();
+                Boolean success = response.body();
+
+                if (success != null && success) {
+                    this.storage.deleteMediaInWait(mediumInWaits);
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Boolean> createMedium(MediumInWait mediumInWait, List<MediumInWait> mediumInWaits, MediaList list) {
+        return TaskManager.runCompletableTask(() -> {
+            ClientMediumInWait medium = new ClientMediumInWait(
+                    mediumInWait.getTitle(),
+                    mediumInWait.getMedium(),
+                    mediumInWait.getLink()
+            );
+            Collection<ClientMediumInWait> others = new HashSet<>();
+
+            if (mediumInWaits != null) {
+                for (MediumInWait inWait : mediumInWaits) {
+                    others.add(new ClientMediumInWait(
+                            inWait.getTitle(),
+                            inWait.getMedium(),
+                            inWait.getLink()
+                    ));
+                }
+            }
+            Integer listId = list == null ? null : list.getListId();
+            try {
+                Response<ClientMedium> response = this.client.createFromMediumInWait(medium, others, listId).execute();
+                ClientMedium clientMedium = response.body();
+
+                if (clientMedium == null) {
+                    return false;
+                }
+                this.persister.persist(clientMedium);
+
+                Collection<MediumInWait> toDelete = new HashSet<>();
+                toDelete.add(mediumInWait);
+
+                if (mediumInWaits != null) {
+                    toDelete.addAll(mediumInWaits);
+                }
+                this.storage.deleteMediaInWait(toDelete);
+
+                if (listId != null && listId > 0) {
+                    this.storage.addItemsToList(listId, Collections.singleton(clientMedium.getId()));
+                }
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Boolean> moveMediaToList(int oldListId, int listId, Collection<Integer> ids) {
+        return TaskManager.runCompletableTask(() -> {
+            try {
+                // to prevent duplicates
+                Collection<Integer> items = this.storage.getListItems(listId);
+                ids.removeAll(items);
+
+                // adding nothing cannot fail
+                if (ids.isEmpty()) {
+                    return true;
+                }
+                Collection<Integer> successMove = new ArrayList<>();
+
+                for (Integer id : ids) {
+                    Response<Boolean> response = this.client.updateListMedia(oldListId, listId, id).execute();
+                    Boolean success = response.body();
+
+                    if (success != null && success) {
+                        successMove.add(id);
+                    }
+                }
+                this.storage.moveItemsToList(oldListId, listId, successMove);
+                return !successMove.isEmpty();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Boolean> removeItemFromList(int listId, int mediumId) {
+        return TaskManager.runCompletableTask(() -> {
+            try {
+                Response<Boolean> response = this.client.deleteListMedia(listId, mediumId).execute();
+                Boolean success = response.body();
+
+                if (success != null && success) {
+                    this.storage.removeItemFromList(listId, mediumId);
+                    this.storage.insertDanglingMedia(Collections.singleton(mediumId));
+                    return true;
+                }
+                return false;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return false;
+        });
+    }
+
+    @Override
+    public CompletableFuture<Boolean> addMediumToList(int listId, Collection<Integer> ids) {
+        return TaskManager.runCompletableTask(() -> {
+            try {
+                // to prevent duplicates
+                Collection<Integer> items = this.storage.getListItems(listId);
+                ids.removeAll(items);
+
+                // adding nothing cannot fail
+                if (ids.isEmpty()) {
+                    return true;
+                }
+                Response<Boolean> response = this.client.addListMedia(listId, ids).execute();
+                if (response.body() == null || !response.body()) {
+                    return false;
+                }
+                this.storage.addItemsToList(listId, ids);
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        });
+    }
+
+    @Override
+    public LiveData<PagedList<ExternalUser>> getExternalUser() {
+        return this.storage.getExternalUser();
+    }
+
+    @Override
+    public SpaceMedium getSpaceMedium(int mediumId) {
+        return this.storage.getSpaceMedium(mediumId);
+    }
+
+    @Override
+    public int getMediumType(Integer mediumId) {
+        return this.storage.getMediumType(mediumId);
+    }
+
+    @Override
+    public List<String> getReleaseLinks(int episodeId) {
+        return this.storage.getReleaseLinks(episodeId);
+    }
+
+    @Override
+    public void syncUser() {
+        try {
+            Response<ClientUser> user = this.client.getUser().execute();
+            ClientUser body = user.body();
+
+            if (!user.isSuccessful()) {
+                try (ResponseBody responseBody = user.errorBody()) {
+                    if (responseBody != null) {
+                        System.out.println(responseBody.string());
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            this.persister.persist(body);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException {
+        List<Integer> episodeIds = this.storage.getEpisodeIdsWithLowerIndex(episodeId, read);
+
+        if (!episodeIds.contains(episodeId)) {
+            episodeIds.add(episodeId);
+        }
+
+        this.updateRead(episodeIds, read);
+    }
+
+    @Override
+    public void clearLocalMediaData() {
+        TaskManager.runTask(() -> {
+            this.loadedData.getPart().clear();
+            this.loadedData.getEpisodes().clear();
+            this.storage.clearLocalMediaData();
+        });
+    }
+
+    @Override
+    public LiveData<PagedList<NotificationItem>> getNotifications() {
+        return this.storage.getNotifications();
+    }
+
+    @Override
+    public void updateFailedDownloads(int episodeId) {
+        this.storage.updateFailedDownload(episodeId);
+    }
+
+    @Override
+    public void addNotification(NotificationItem notification) {
+        this.storage.addNotification(notification);
+    }
+
+    @Override
+    public SimpleEpisode getSimpleEpisode(int episodeId) {
+        return this.storage.getSimpleEpisode(episodeId);
+    }
+
+    @Override
+    public SimpleMedium getSimpleMedium(Integer mediumId) {
+        return this.storage.getSimpleMedium(mediumId);
+    }
+
+    @Override
+    public void clearNotifications() {
+        this.storage.clearNotifications();
+    }
+
+    @Override
+    public CompletableFuture<Boolean> moveItemFromList(int oldListId, int newListId, int mediumId) {
+        return TaskManager.runCompletableTask(() -> {
+            try {
+                Response<Boolean> response = this.client.updateListMedia(oldListId, newListId, mediumId).execute();
+                Boolean success = response.body();
+
+                if (success != null && success) {
+                    this.storage.removeItemFromList(oldListId, mediumId);
+                    this.storage.addItemsToList(newListId, Collections.singleton(mediumId));
+                    return true;
+                }
+                return false;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return false;
+        });
+    }
+
+    @Override
+    public LiveData<List<MediaList>> getListSuggestion(String name) {
+        return this.storage.getListSuggestion(name);
+    }
+
+    @Override
+    public LiveData<Boolean> onDownloadable() {
+        return this.storage.onDownloadAble();
+    }
+
+    @Override
+    public void removeDanglingMedia(Collection<Integer> mediaIds) {
+        this.storage.removeDanglingMedia(mediaIds);
+    }
+
+    @Override
+    public LiveData<List<MediumItem>> getAllDanglingMedia() {
+        return this.storage.getAllDanglingMedia();
+    }
+
 }
 

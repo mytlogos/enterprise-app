@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.ViewModelProviders;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.viewmodel.AddMediumViewModel;
@@ -22,10 +23,10 @@ public class AddMedium extends BaseFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-
+        View view = inflater.inflate(R.layout.add_medium_fragment, container, false);
         this.setTitle("Add Medium");
-
-        return inflater.inflate(R.layout.add_medium_fragment, container, false);
+        this.mViewModel = ViewModelProviders.of(this).get(AddMediumViewModel.class);
+        return view;
     }
 
     @Override
@@ -33,5 +34,4 @@ public class AddMedium extends BaseFragment {
         super.onActivityCreated(savedInstanceState);
         // TODO: Use the ViewModel
     }
-
 }

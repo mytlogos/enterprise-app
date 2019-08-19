@@ -16,4 +16,10 @@ public interface PartDao extends MultiBaseDao<RoomPart> {
 
     @Query("SELECT * FROM RoomPart WHERE mediumId=:mediumId ORDER BY totalIndex DESC, partialIndex DESC")
     LiveData<List<RoomPart>> getParts(int mediumId);
+
+    @Query("SELECT * FROM RoomPart WHERE partId=:partId")
+    RoomPart getPart(int partId);
+
+    @Query("DELETE FROM RoomPart")
+    void clearAll();
 }

@@ -6,9 +6,10 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Transaction;
 
-import com.mytlogos.enterprise.background.room.model.RoomListView;
 import com.mytlogos.enterprise.background.room.model.RoomMediaList;
+import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
 
 import java.util.Collection;
@@ -32,6 +33,9 @@ public interface MediaListDao extends MultiBaseDao<RoomMediaList> {
     @Query("DELETE FROM MediaListMediaJoin WHERE listId=:listId")
     void clearJoin(Integer listId);
 
+    @Query("DELETE FROM MediaListMediaJoin")
+    void clearJoins();
+
     @Delete
     void removeJoin(RoomMediaList.MediaListMediaJoin listMediaJoin);
 
@@ -50,7 +54,7 @@ public interface MediaListDao extends MultiBaseDao<RoomMediaList> {
     @Query("SELECT RoomMediaList.*, " +
             "(SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size " +
             "FROM RoomMediaList")
-    LiveData<List<RoomListView>> getListViews();
+    LiveData<List<MediaList>> getListViews();
 
     @Query("SELECT RoomMediaList.listId,RoomMediaList.uuid,medium,name,toDownload, " +
             "   (SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size " +
@@ -60,4 +64,24 @@ public interface MediaListDao extends MultiBaseDao<RoomMediaList> {
             "as RoomToDownload ON RoomToDownload.listId=RoomMediaList.listId " +
             "WHERE RoomMediaList.listId=:id")
     LiveData<MediaListSetting> getListSettings(int id);
+
+    @Query("SELECT 1 WHERE :listName IN (SELECT name FROM RoomMediaList)")
+    boolean listExists(String listName);
+
+    @Query("SELECT RoomMediaList.*, 0 as size FROM RoomMediaList WHERE :name IS NULL OR INSTR(lower(name), :name) > 0 LIMIT 5")
+    LiveData<List<MediaList>> getSuggestion(String name);
+
+
+    @Query("SELECT DISTINCT mediumId FROM MediaListMediaJoin")
+    List<Integer> getAllLinkedMedia();
+
+    @Transaction
+    default void moveJoins(Collection<RoomMediaList.MediaListMediaJoin> oldJoins, Collection<RoomMediaList.MediaListMediaJoin> newJoins) {
+        this.removeJoin(oldJoins);
+        this.addJoin(newJoins);
+
+    }
+
+    @Query("SELECT COUNT(listId) FROM RoomMediaList")
+    LiveData<Integer> countLists();
 }

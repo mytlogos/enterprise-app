@@ -1,88 +1,168 @@
 package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProviders;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumType;
-import com.mytlogos.enterprise.viewmodel.MediumInWaitViewModel;
+import com.mytlogos.enterprise.tools.Sortings;
+import com.mytlogos.enterprise.tools.Utils;
+import com.mytlogos.enterprise.viewmodel.MediaInWaitListViewModel;
 
 import java.io.IOException;
-import java.net.URI;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Objects;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
 import eu.davidea.flexibleadapter.items.IFlexible;
 
-public class MediaInWaitListFragment extends BaseFragment {
+public class MediaInWaitListFragment extends BaseSwipeListFragment<MediumInWait, MediaInWaitListViewModel> {
 
-    private MediumInWaitViewModel viewModel;
-    private LiveData<List<MediumInWait>> liveMedia;
-    private SwipeRefreshLayout swipeRefreshLayout;
-
+    @NonNull
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.swipe_list, container, false);
-
-        RecyclerView recyclerView = view.findViewById(R.id.list);
-
-        // Set the adapter
-        Context context = view.getContext();
-
-        LinearLayoutManager layoutManager = new LinearLayoutManager(context);
-        recyclerView.setLayoutManager(layoutManager);
-
-        DividerItemDecoration decoration = new DividerItemDecoration(context, layoutManager.getOrientation());
-        recyclerView.addItemDecoration(decoration);
-
-        FlexibleAdapter<IFlexible> flexibleAdapter = new FlexibleAdapter<>(null)
-                .setStickyHeaders(true)
-                .setDisplayHeadersAtStartUp(true);
-
-        recyclerView.setAdapter(flexibleAdapter);
-
-        this.viewModel = ViewModelProviders.of(this).get(MediumInWaitViewModel.class);
-        this.swipeRefreshLayout = view.findViewById(R.id.swiper);
-        this.swipeRefreshLayout.setOnRefreshListener(() -> new LoadingTask().execute());
-
-        this.liveMedia = this.viewModel.getAllMediaInWait();
-        this.liveMedia.observe(this, mediumItems -> {
-
-            if (checkEmptyList(mediumItems, view, this.swipeRefreshLayout)) {
-                return;
-            }
-
-            List<IFlexible> items = new ArrayList<>();
-
-            for (MediumInWait item : mediumItems) {
-                items.add(new MediumItem(item, this));
-            }
-
-            flexibleAdapter.updateDataSet(items);
-        });
+        View view = super.onCreateView(inflater, container, savedInstanceState);
         this.setTitle("Unused Media");
         return view;
+    }
+
+    @Nullable
+    @Override
+    Filterable createFilterable() {
+        return new Filterable() {
+
+            @Override
+            public void onCreateFilter(View view, AlertDialog.Builder builder) {
+                setMediumCheckbox(view, R.id.text_medium, MediumType.TEXT);
+                setMediumCheckbox(view, R.id.audio_medium, MediumType.AUDIO);
+                setMediumCheckbox(view, R.id.video_medium, MediumType.VIDEO);
+                setMediumCheckbox(view, R.id.image_medium, MediumType.IMAGE);
+            }
+
+            @Override
+            public int getFilterLayout() {
+                return R.layout.filter_medium_in_wait_layout;
+            }
+
+            @Override
+            public FilterProperty[] getSearchFilterProperties() {
+                return new FilterProperty[]{
+                        new FilterProperty() {
+                            @Override
+                            public int getSearchViewId() {
+                                return R.id.title_filter;
+                            }
+
+                            @Override
+                            public int getClearSearchButtonId() {
+                                return R.id.clear_title;
+                            }
+
+                            @Override
+                            public String get() {
+                                return getViewModel().getTitleFilter();
+                            }
+
+                            @Override
+                            public void set(String newFilter) {
+                                getViewModel().setTitleFilter(newFilter);
+                            }
+                        },
+                        new FilterProperty() {
+                            @Override
+                            public int getSearchViewId() {
+                                return R.id.host_filter;
+                            }
+
+                            @Override
+                            public int getClearSearchButtonId() {
+                                return R.id.clear_host;
+                            }
+
+                            @Override
+                            public String get() {
+                                return getViewModel().getHostFilter();
+                            }
+
+                            @Override
+                            public void set(String newFilter) {
+                                getViewModel().setHostFilter(newFilter);
+                            }
+                        }
+                };
+            }
+
+        };
+    }
+
+    @Override
+    LinkedHashMap<String, Sortings> getSortMap() {
+        LinkedHashMap<String, Sortings> map = new LinkedHashMap<>();
+        map.put("Title A-Z", Sortings.TITLE_AZ);
+        map.put("Title Z-A", Sortings.TITLE_ZA);
+        map.put("Medium Asc", Sortings.MEDIUM);
+        map.put("Medium Desc", Sortings.MEDIUM_REVERSE);
+        map.put("Host A-Z", Sortings.HOST_AZ);
+        map.put("Host Z-A", Sortings.HOST_ZA);
+        return map;
+    }
+
+    @Override
+    MediaInWaitListViewModel createViewModel() {
+        return ViewModelProviders.of(this).get(MediaInWaitListViewModel.class);
+    }
+
+    @Override
+    LiveData<PagedList<MediumInWait>> createPagedListLiveData() {
+        return this.getViewModel().getMediaInWait();
+    }
+
+    @Override
+    List<IFlexible> convertToFlexibles(Collection<MediumInWait> mediumItems) {
+        List<IFlexible> items = new ArrayList<>();
+
+        for (MediumInWait item : mediumItems) {
+            if (item == null) {
+                break;
+            }
+            items.add(new MediumItem(item));
+        }
+        return items;
+    }
+
+    @Override
+    void onSwipeRefresh() {
+        new LoadingTask().execute();
+    }
+
+    @Override
+    public boolean onItemClick(View view, int position) {
+        MediumItem item = (MediumItem) getFlexibleAdapter().getItem(position);
+
+        if (item == null) {
+            return false;
+        }
+        getMainActivity().switchWindow(MediaInWaitFragment.getInstance(item.item));
+        return true;
     }
 
     @SuppressLint("StaticFieldLeak")
@@ -92,7 +172,7 @@ public class MediaInWaitListFragment extends BaseFragment {
         @Override
         protected Void doInBackground(Void... voids) {
             try {
-                viewModel.loadMediaInWait();
+                getViewModel().loadMediaInWait();
             } catch (IOException e) {
                 errorMsg = "Loading went wrong";
                 e.printStackTrace();
@@ -105,56 +185,45 @@ public class MediaInWaitListFragment extends BaseFragment {
             if (this.errorMsg != null) {
                 Toast.makeText(getContext(), errorMsg, Toast.LENGTH_SHORT).show();
             }
-            swipeRefreshLayout.setRefreshing(false);
+            getListContainer().setRefreshing(false);
         }
     }
 
+    private static class MediumFilter implements Serializable {
+        private final String title;
+        private final int medium;
+        private final String link;
 
-    public static class MediumItem extends AbstractFlexibleItem<ViewHolder> {
+        private MediumFilter(String title, int medium, String link) {
+            this.title = title == null ? "" : title.toLowerCase();
+            this.medium = medium;
+            this.link = link == null ? "" : link.toLowerCase();
+        }
+    }
+
+    private static class MediumItem extends AbstractFlexibleItem<MetaViewHolder> /*implements IFilterable<MediumFilter>*/ {
         private final MediumInWait item;
-        private final BaseFragment fragment;
 
-        MediumItem(@NonNull MediumInWait item, BaseFragment fragment) {
+        MediumItem(@NonNull MediumInWait item) {
             this.item = item;
-            this.fragment = fragment;
             this.setDraggable(false);
             this.setSwipeable(false);
             this.setSelectable(false);
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            MediumItem that = (MediumItem) o;
-
-            if (!item.equals(that.item)) return false;
-            return fragment.equals(that.fragment);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = item.hashCode();
-            result = 31 * result + fragment.hashCode();
-            return result;
-        }
-
-        @Override
         public int getLayoutRes() {
-            return R.layout.news_item;
+            return R.layout.meta_item;
         }
 
         @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view);
+        public MetaViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
+            return new MetaViewHolder(view, adapter);
         }
 
         @SuppressLint("DefaultLocale")
         @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.mItem = this.item;
-
+        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position, List<Object> payloads) {
             String mediumType;
 
             switch (this.item.getMedium()) {
@@ -174,51 +243,40 @@ public class MediaInWaitListFragment extends BaseFragment {
                     String msg = String.format("no valid medium type: %d", this.item.getMedium());
                     throw new IllegalStateException(msg);
             }
-            holder.metaView.setText(mediumType);
+            holder.topLeftText.setText(mediumType);
 
-            String host = URI.create(this.item.getLink()).getHost();
-            Matcher matcher = Pattern.compile("(www\\.)?(.+?)/?").matcher(host);
-
-            String domain;
-            if (matcher.matches()) {
-                domain = matcher.group(2);
-                int index = domain.indexOf("/");
-
-                if (index >= 0) {
-                    domain = domain.substring(0, index);
-                }
-            } else {
-                domain = host;
-            }
-            holder.denominatorView.setText(domain);
-            holder.contentView.setText(this.item.getTitle());
-
-            holder.mView.setOnClickListener(v -> {
-//                this.fragment.getMainActivity().switchWindow(fragment, true);
-            });
+            String domain = Utils.getDomain(this.item.getLink());
+            holder.topRightText.setText(domain);
+            holder.mainText.setText(this.item.getTitle());
         }
 
-    }
-
-    private static class ViewHolder extends RecyclerView.ViewHolder {
-        final View mView;
-        final TextView contentView;
-        private final TextView metaView;
-        private final TextView denominatorView;
-        MediumInWait mItem;
-
-        ViewHolder(@NonNull View view) {
-            super(view);
-            mView = view;
-            metaView = view.findViewById(R.id.item_top_left);
-            denominatorView = view.findViewById(R.id.item_top_right);
-            contentView = view.findViewById(R.id.content);
-        }
-
-        @NonNull
         @Override
-        public String toString() {
-            return super.toString() + " '" + contentView.getText() + "'";
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            MediumItem that = (MediumItem) o;
+
+            return Objects.equals(item, that.item);
+        }
+
+        @Override
+        public int hashCode() {
+            return item != null ? item.hashCode() : 0;
+        }
+
+        public boolean filter(MediumFilter constraint) {
+            if (constraint == null) {
+                return true;
+            }
+            if (constraint.medium > 0 && (this.item.getMedium() & constraint.medium) == 0) {
+                return false;
+            }
+            if (!constraint.link.isEmpty() && !(this.item.getLink().toLowerCase().contains(constraint.link))) {
+                return false;
+            }
+            return constraint.title.isEmpty() || this.item.getTitle().toLowerCase().contains(constraint.title);
         }
     }
+
 }

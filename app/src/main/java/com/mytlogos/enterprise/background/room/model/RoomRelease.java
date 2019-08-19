@@ -29,11 +29,19 @@ public class RoomRelease implements Release {
     @NonNull
     private final DateTime releaseDate;
 
-    public RoomRelease(int episodeId, @NonNull String title, @NonNull String url, @NonNull DateTime releaseDate) {
+    private final boolean locked;
+
+    public RoomRelease(int episodeId, @NonNull String title, @NonNull String url, @NonNull DateTime releaseDate, boolean locked) {
         this.episodeId = episodeId;
         this.title = title;
         this.url = url;
         this.releaseDate = releaseDate;
+        this.locked = locked;
+    }
+
+    @Override
+    public boolean isLocked() {
+        return locked;
     }
 
     @NonNull

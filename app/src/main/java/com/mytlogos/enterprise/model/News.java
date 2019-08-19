@@ -1,5 +1,7 @@
 package com.mytlogos.enterprise.model;
 
+import androidx.room.Ignore;
+
 import com.mytlogos.enterprise.Formatter;
 
 import org.joda.time.DateTime;
@@ -10,6 +12,8 @@ public class News {
     private final int id;
     private final boolean read;
     private final String url;
+    // this is so ugly, but at the moment mediumType is not saved in storage
+    @Ignore
     private final int mediumType;
 
     public News(String title, DateTime timeStamp, int id, boolean read, String url) {
@@ -39,7 +43,7 @@ public class News {
     }
 
 
-    public int getNewsId() {
+    public int getId() {
         return this.id;
     }
 

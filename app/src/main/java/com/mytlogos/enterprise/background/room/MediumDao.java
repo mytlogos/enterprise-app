@@ -1,12 +1,17 @@
 package com.mytlogos.enterprise.background.room;
 
 import androidx.lifecycle.LiveData;
+import androidx.paging.DataSource;
 import androidx.room.Dao;
 import androidx.room.Query;
 
 import com.mytlogos.enterprise.background.room.model.RoomMedium;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
+import com.mytlogos.enterprise.model.SimpleMedium;
+import com.mytlogos.enterprise.model.SpaceMedium;
+
+import org.joda.time.DateTime;
 
 import java.util.List;
 
@@ -16,11 +21,12 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
     @Query("SELECT mediumId FROM RoomMedium;")
     List<Integer> loaded();
 
-    @Query("SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
+    @Query("SELECT * FROM " +
+            "(SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
             "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
             "(" +
             "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead=episodeId" +
+            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
             ") as currentReadEpisode," +
             "(" +
             "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
@@ -33,14 +39,71 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
             "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
             "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
             ") as lastUpdated " +
-            "FROM RoomMedium")
-    LiveData<List<MediumItem>> getAll();
+            "FROM RoomMedium" +
+            ") as RoomMedium " +
+            "WHERE " +
+            "(:title IS NULL OR INSTR(lower(title), :title) > 0) " +
+            "AND (:medium = 0 OR (:medium & medium) > 0) " +
+            "AND (:author IS NULL OR INSTR(lower(author), :author) > 0) " +
+            "AND (:lastUpdate IS NULL OR datetime(lastUpdated) >= datetime(:lastUpdate)) " +
+            "AND (:minCountEpisodes < 0 OR :minCountEpisodes >= lastEpisode) " +
+            "AND (:minCountReadEpisodes < 0 OR :minCountReadEpisodes >= currentReadEpisode) " +
+            "ORDER BY " +
+            "CASE :sortValue " +
+            "WHEN 2 THEN medium " +
+            "WHEN 3 THEN title " +
+            "WHEN 5 THEN author " +
+            "WHEN 7 THEN lastEpisode " +
+            "WHEN 8 THEN currentReadEpisode " +
+            "WHEN 9 THEN lastUpdated " +
+            "ELSE title " +
+            "END ASC")
+    DataSource.Factory<Integer, MediumItem> getAllAsc(int sortValue, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes);
+
+    @Query("SELECT * FROM " +
+            "(SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
+            "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
+            "(" +
+            "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
+            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
+            ") as currentReadEpisode," +
+            "(" +
+            "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
+            "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
+            ") as lastEpisode , " +
+            "(" +
+            "   SELECT MAX(RoomRelease.releaseDate) FROM RoomEpisode " +
+            "   INNER JOIN RoomRelease ON RoomEpisode.episodeId=RoomRelease.episodeId " +
+            "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
+            "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
+            ") as lastUpdated " +
+            "FROM RoomMedium" +
+            ") as RoomMedium " +
+            "WHERE " +
+            "(:title IS NULL OR INSTR(lower(title), :title) > 0) " +
+            "AND (:medium = 0 OR (:medium & medium) > 0) " +
+            "AND (:author IS NULL OR INSTR(lower(author), :author) > 0) " +
+            "AND (:lastUpdate IS NULL OR datetime(lastUpdated) >= datetime(:lastUpdate)) " +
+            "AND (:minCountEpisodes < 0 OR :minCountEpisodes >= lastEpisode) " +
+            "AND (:minCountReadEpisodes < 0 OR :minCountReadEpisodes >= currentReadEpisode) " +
+            "ORDER BY " +
+            "CASE :sortValue " +
+            "WHEN 2 THEN medium " +
+            "WHEN 3 THEN title " +
+            "WHEN 5 THEN author " +
+            "WHEN 7 THEN lastEpisode " +
+            "WHEN 8 THEN currentReadEpisode " +
+            "WHEN 9 THEN lastUpdated " +
+            "ELSE title " +
+            "END DESC")
+    DataSource.Factory<Integer, MediumItem> getAllDesc(int sortValue, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes);
 
     @Query("SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
             "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
             "(" +
             "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead=episodeId" +
+            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
             ") as currentReadEpisode," +
             "(" +
             "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
@@ -63,7 +126,7 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
             "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
             "(" +
             "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead=episodeId" +
+            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
             ") as currentReadEpisode," +
             "(" +
             "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
@@ -86,7 +149,7 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
             "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, toDownload, " +
             "(" +
             "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead=episodeId" +
+            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
             ") as currentReadEpisode," +
             "(" +
             "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
@@ -105,4 +168,25 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
             "as RoomToDownload ON RoomToDownload.mediumId=RoomMedium.mediumId " +
             "WHERE RoomMedium.mediumId=:mediumId")
     LiveData<MediumSetting> getMediumSettings(int mediumId);
+
+    @Query("SELECT title, medium, mediumId FROM RoomMedium " +
+            "WHERE medium=:medium AND INSTR(lower(title), :title) ORDER BY title LIMIT 10")
+    LiveData<List<SimpleMedium>> getSuggestions(String title, int medium);
+
+    @Query("SELECT title, medium, mediumId FROM RoomMedium WHERE mediumId=:mediumId")
+    SimpleMedium getSimpleMedium(int mediumId);
+
+    @Query("SELECT mediumId, title," +
+            "(" +
+            "   SELECT COUNT(episodeId) FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
+            "   WHERE RoomPart.mediumId=:mediumId AND saved=1" +
+            ") as savedEpisodes " +
+            "FROM RoomMedium " +
+            "WHERE mediumId=:mediumId")
+    SpaceMedium getSpaceMedium(int mediumId);
+
+    @Query("SELECT medium FROM RoomMedium WHERE mediumId=:mediumId")
+    int getMediumType(Integer mediumId);
+
 }

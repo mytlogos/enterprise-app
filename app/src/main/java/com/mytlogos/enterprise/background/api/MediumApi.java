@@ -23,8 +23,17 @@ interface MediumApi {
     @GET
     Call<List<ClientMedium>> getMedia(@Url String url, @QueryMap Map<String, Object> body);
 
+    @GET("{start}/all")
+    Call<List<Integer>> getAllMedia(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+
     @GET("{start}/unused")
     Call<List<ClientMediumInWait>> getMediumInWait(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+
+    @PUT("{start}/unused")
+    Call<Boolean> consumeMediumInWait(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
+
+    @POST("{start}/create")
+    Call<ClientMedium> createFromMediumInWait(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
 
     @POST
     Call<ClientMedium> addMedia(@Url String url, @Body Map<String, Object> body);

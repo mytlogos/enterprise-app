@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background.room;
 
 import androidx.lifecycle.LiveData;
+import androidx.paging.DataSource;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -8,6 +9,7 @@ import androidx.room.Query;
 import androidx.room.Update;
 
 import com.mytlogos.enterprise.background.room.model.RoomNews;
+import com.mytlogos.enterprise.model.News;
 
 import org.joda.time.DateTime;
 
@@ -16,10 +18,10 @@ import java.util.List;
 @Dao
 public interface NewsDao {
 
-    @Query("SELECT * FROM RoomNews ORDER BY timeStamp DESC LIMIT 100 ")
-    LiveData<List<RoomNews>> getNews();
+    @Query("SELECT link as url, title, timeStamp, newsId as id, read FROM RoomNews ORDER BY timeStamp DESC")
+    DataSource.Factory<Integer, News> getNews();
 
-    @Query("SELECT * FROM RoomNews  ORDER BY timeStamp DESC  LIMIT 100")
+    @Query("SELECT * FROM RoomNews  ORDER BY timeStamp DESC LIMIT 100")
     List<RoomNews> getCurrentNews();
 
     @Query("DELETE FROM RoomNews WHERE timeStamp >= :from AND timeStamp <= :to")
@@ -46,4 +48,7 @@ public interface NewsDao {
 
     @Query("SELECT newsId FROM RoomNews;")
     List<Integer> loaded();
+
+    @Query("SELECT COUNT(newsId) FROM RoomNews WHERE read=0")
+    LiveData<Integer> countUnreadNews();
 }

@@ -23,11 +23,15 @@ import com.mytlogos.enterprise.model.ExternalMediaListSetting;
 import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumType;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.viewmodel.ListsViewModel;
 
 import java.util.Objects;
 
 public class ListSettings extends BaseFragment {
+    private static final String ID = "id";
+    private static final String EXTERNAL = "external";
+
     private ListsViewModel listsViewModel;
     private LiveData<? extends MediaListSetting> liveListSettings;
     private Button openItemsButton;
@@ -37,8 +41,6 @@ public class ListSettings extends BaseFragment {
     private CheckBox videoMedium;
     private CheckBox audioMedium;
     private Switch autoDownload;
-    static final String ID = "id";
-    static final String EXTERNAL = "external";
 
     @Nullable
     @Override
@@ -61,6 +63,7 @@ public class ListSettings extends BaseFragment {
         this.videoMedium = view.findViewById(R.id.video_medium);
         this.audioMedium = view.findViewById(R.id.audio_medium);
         this.autoDownload = view.findViewById(R.id.auto_download);
+        checkSupportedMedia();
 
         this.openItemsButton.setOnClickListener(v -> {
             MediaListSetting listSetting = this.listSettings();
@@ -84,6 +87,15 @@ public class ListSettings extends BaseFragment {
         this.autoDownload.setOnCheckedChangeListener((buttonView, isChecked) -> handleAutoDownloadChanges(isChecked));
         this.setTitle("List Settings");
         return view;
+    }
+
+    private void checkSupportedMedia() {
+        this.autoDownload.setEnabled(
+                (this.textMedium.isChecked() && !FileTools.isTextContentSupported())
+                        || (this.autoDownload.isChecked() && !FileTools.isAudioContentSupported())
+                        || (this.imageMedium.isChecked() && !FileTools.isImageContentSupported())
+                        || (this.videoMedium.isChecked() && !FileTools.isVideoContentSupported())
+        );
     }
 
     private void handleAutoDownloadChanges(boolean isChecked) {
@@ -147,6 +159,7 @@ public class ListSettings extends BaseFragment {
             if (this.listSettings() == null || !this.listSettings().isMediumMutable()) {
                 return;
             }
+            checkSupportedMedia();
 
             int newMediumType;
 

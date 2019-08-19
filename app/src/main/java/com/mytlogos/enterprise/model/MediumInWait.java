@@ -1,6 +1,8 @@
 package com.mytlogos.enterprise.model;
 
-public class MediumInWait {
+import java.io.Serializable;
+
+public class MediumInWait implements Serializable {
     private final String title;
     private final int medium;
     private final String link;

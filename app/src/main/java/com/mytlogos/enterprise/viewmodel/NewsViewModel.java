@@ -8,6 +8,7 @@ import android.os.Message;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.background.TaskManager;
 import com.mytlogos.enterprise.model.News;
@@ -21,6 +22,7 @@ public class NewsViewModel extends RepoViewModel {
     private final Handler handler;
     private final int LOADING_COMPLETE = 0x1;
     private final MutableLiveData<Boolean> loadingComplete = new MutableLiveData<>();
+    private LiveData<PagedList<News>> news;
 
     public NewsViewModel(@NonNull Application application) {
         super(application);
@@ -33,8 +35,11 @@ public class NewsViewModel extends RepoViewModel {
         };
     }
 
-    public LiveData<List<News>> getNews() {
-        return repository.getNews();
+    public LiveData<PagedList<News>> getNews() {
+        if (this.news == null) {
+            this.news = repository.getNews();
+        }
+        return this.news;
     }
 
     public void deleteOldNews() {

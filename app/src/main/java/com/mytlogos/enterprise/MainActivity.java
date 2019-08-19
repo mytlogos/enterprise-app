@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,61 +22,62 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
+import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.UserPreferences;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.service.BootReceiver;
+import com.mytlogos.enterprise.service.DownloadWorker;
+import com.mytlogos.enterprise.service.SynchronizeWorker;
 import com.mytlogos.enterprise.ui.Home;
 import com.mytlogos.enterprise.ui.ListsFragment;
 import com.mytlogos.enterprise.ui.MediaInWaitListFragment;
 import com.mytlogos.enterprise.ui.MediumFragment;
 import com.mytlogos.enterprise.ui.NewsFragment;
-import com.mytlogos.enterprise.ui.ReadHistoryFragment;
-import com.mytlogos.enterprise.ui.UnreadEpisodeFragment;
 import com.mytlogos.enterprise.viewmodel.UserViewModel;
 
+import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements
-        NavigationView.OnNavigationItemSelectedListener,
-        ReadHistoryFragment.ReadHistoryClickListener,
-        UnreadEpisodeFragment.UnreadChapterClickListener {
+        NavigationView.OnNavigationItemSelectedListener {
 
     private final SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener = this::handlePreferences;
     private UserViewModel viewModel;
     private View container;
-    private View progressView;
     private BaseLayout baseLayout;
+    private LiveData<User> userData;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // start periodic worker if it isn't running yet
+
+        DownloadWorker.watchDatabase(this.getApplication(), this);
         BootReceiver.startWorker();
-        checkToolbar();
 
-        setContentView(R.layout.trial_activity_main);
+        setContentView(R.layout.activity_main);
 
-        this.container = findViewById(R.id.base_content);
-        this.progressView = findViewById(R.id.load_progress);
+        this.container = findViewById(R.id.container);
         this.baseLayout = findViewById(R.id.BASE_ID);
+        this.showLoading(true);
+        // start periodic worker if it isn't running yet
+        checkToolbar();
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
         this.viewModel = ViewModelProviders.of(this).get(UserViewModel.class);
-        this.viewModel.getUser().observe(this, this::handleUserChanges);
+        userData = this.viewModel.getUserLiveData();
+        userData.observe(this, this::handleUserChanges);
 
         this.getSupportFragmentManager().addOnBackStackChangedListener(() -> {
             boolean showHomeAsUp = this.getSupportFragmentManager().getBackStackEntryCount() > 0;
             Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(showHomeAsUp);
         });
-
-        System.out.println(this.viewModel.isLoading());
-        this.checkLogin(null);
     }
 
     public TabLayout getTabLayout() {
@@ -91,63 +93,48 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     /**
-     * Shows the progress UI and hides the login form.
+     * Shows the progress UI and hides the main content.
      */
     @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
-    public void showLoading(final boolean show) {
+    public void showLoading(final boolean showLoading) {
         // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
         // for very easy animations. If available, use these APIs to fade-in
         // the progress spinner.
         int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
-
-        // fixme does not show any animation
-
-        this.container.setVisibility(show ? View.GONE : View.VISIBLE);
+        this.container.setVisibility(showLoading ? View.GONE : View.VISIBLE);
         this.container.animate().setDuration(shortAnimTime).alpha(
-                show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
+                showLoading ? 0 : 1).setListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                container.setVisibility(show ? View.GONE : View.VISIBLE);
+                container.setVisibility(showLoading ? View.GONE : View.VISIBLE);
             }
         });
 
-        this.progressView.setVisibility(show ? View.VISIBLE : View.GONE);
-        this.progressView.animate().setDuration(shortAnimTime).alpha(
-                show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationStart(Animator animation) {
-                System.out.println("animation start");
-                super.onAnimationStart(animation);
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                System.out.println("animation ended");
-                progressView.setVisibility(show ? View.VISIBLE : View.GONE);
-            }
-        });
+        this.baseLayout.showLoading(showLoading);
     }
 
-    private void handleUserChanges(User userImpl) {
-        this.checkLogin(userImpl);
-        UserPreferences.putLoggedStatus(this, userImpl != null);
-        UserPreferences.putLoggedUuid(this, userImpl == null ? null : userImpl.getUuid());
-        System.out.println("roomUser changed to: " + userImpl);
+    private void handleUserChanges(User user) {
+        this.checkLogin(user);
+        UserPreferences.putLoggedStatus(this, user != null);
+        UserPreferences.putLoggedUuid(this, user == null ? null : user.getUuid());
+        System.out.println("roomUser changed to: " + user);
         this.showLoading(false);
     }
 
-    private void checkLogin(@Nullable User roomUser) {
-        if (roomUser == null) {
-            roomUser = this.viewModel.getUser().getValue();
+    private void checkLogin(@Nullable User user) {
+        if (user == null) {
+            user = this.userData.getValue();
         }
-        if (roomUser != null) {
+        if (user != null) {
+            this.showLoading(false);
             if (this.getSupportFragmentManager().getBackStackEntryCount() == 0) {
                 this.switchWindow(new Home(), false);
             }
         } else if (UserPreferences.getLoggedStatus(this) || this.viewModel.isLoading()) {
             this.showLoading(true);
         } else {
+            this.showLoading(false);
             Intent intent = new Intent(this, LoginRegisterActivity.class);
             startActivity(intent);
         }
@@ -203,6 +190,12 @@ public class MainActivity extends AppCompatActivity implements
         for (String key : sharedPreferences.getAll().keySet()) {
             this.handlePreferences(sharedPreferences, key);
         }
+
+        List<Fragment> fragments = getSupportFragmentManager().getFragments();
+        if (fragments.size() > 0) {
+            Fragment fragment = fragments.get(fragments.size() - 1);
+            Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(!(fragment instanceof Home));
+        }
     }
 
     @Override
@@ -223,6 +216,10 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (this.userData.getValue() == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show();
+            return true;
+        }
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
@@ -239,6 +236,22 @@ public class MainActivity extends AppCompatActivity implements
                 this.logout();
                 selected = true;
                 break;
+            case R.id.download_now:
+                DownloadWorker.enqueueDownloadTask();
+                selected = true;
+                break;
+            case R.id.stop_download_now:
+                DownloadWorker.stopDownloadTasks();
+                selected = true;
+                break;
+            case R.id.synch_now:
+                SynchronizeWorker.enqueueOneTime();
+                selected = true;
+                break;
+            case R.id.clear_media:
+                this.clearLocalMediaData();
+                selected = true;
+                break;
             case android.R.id.home:
                 onBackPressed();
                 return true;
@@ -253,6 +266,17 @@ public class MainActivity extends AppCompatActivity implements
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void clearLocalMediaData() {
+        new AlertDialog.Builder(this)
+                .setTitle("Are you sure you want to clear local Media Data?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    RepositoryImpl.getInstance().clearLocalMediaData();
+                    SynchronizeWorker.enqueueOneTime();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     @Override
@@ -327,6 +351,10 @@ public class MainActivity extends AppCompatActivity implements
             super.onBackPressed();
         }
         this.baseLayout.deactivateTabs();
+
+        if (this.getSupportFragmentManager().getBackStackEntryCount() == 0) {
+            this.switchWindow(new Home(), false);
+        }
     }
 
     public void switchWindow(@NonNull Fragment fragment, boolean addToBackStack) {
@@ -363,10 +391,4 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
     }
-
-    @Override
-    public void onListFragmentInteraction(Object item) {
-
-    }
-
 }

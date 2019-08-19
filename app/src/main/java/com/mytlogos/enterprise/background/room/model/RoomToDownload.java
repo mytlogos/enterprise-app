@@ -27,7 +27,9 @@ import androidx.room.PrimaryKey;
                 )
         },
         indices = {
-                @Index(value = {"mediumId", "listId", "externalListId", "prohibited"}, unique = true)
+                @Index(value = {"mediumId"}, unique = true),
+                @Index(value = {"listId"}, unique = true),
+                @Index(value = {"externalListId"}, unique = true)
         }
 )
 public class RoomToDownload {

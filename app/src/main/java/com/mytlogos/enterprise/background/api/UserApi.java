@@ -3,6 +3,7 @@ package com.mytlogos.enterprise.background.api;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
+import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 
 import java.util.List;
@@ -24,6 +25,9 @@ interface UserApi {
 
     @PUT
     Call<Boolean> updateUser(@Url String url, @Body Map<String, Object> body);
+
+    @GET
+    Call<ClientUser> getUser(@Url String url, @QueryMap Map<String, Object> body);
 
     @GET("{start}/news")
     Call<List<ClientNews>> getNews(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);

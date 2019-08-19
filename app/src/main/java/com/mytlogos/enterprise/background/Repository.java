@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background;
 
 import androidx.lifecycle.LiveData;
+import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
@@ -11,17 +12,26 @@ import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
+import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.Episode;
+import com.mytlogos.enterprise.model.ExternalUser;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.News;
+import com.mytlogos.enterprise.model.NotificationItem;
+import com.mytlogos.enterprise.model.ReadEpisode;
+import com.mytlogos.enterprise.model.SimpleEpisode;
+import com.mytlogos.enterprise.model.SimpleMedium;
+import com.mytlogos.enterprise.model.SpaceMedium;
 import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.TocPart;
-import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
+import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.tools.Sortings;
 
 import org.joda.time.DateTime;
 
@@ -37,6 +47,8 @@ public interface Repository {
 
     LoadWorker getLoadWorker();
 
+    LiveData<HomeStats> getHomeStats();
+
     LiveData<User> getUser();
 
     void updateUser(UpdateUser updateUser);
@@ -48,6 +60,8 @@ public interface Repository {
     void register(String email, String password) throws IOException;
 
     void logout();
+
+    void loadAllMedia();
 
     CompletableFuture<List<ClientEpisode>> loadEpisodeAsync(Collection<Integer> episodeIds);
 
@@ -77,9 +91,7 @@ public interface Repository {
 
     List<ClientNews> loadNewsSync(Collection<Integer> newsIds);
 
-    LiveData<List<News>> getNews();
-
-    void setNewsInterval(DateTime from, DateTime to);
+    LiveData<PagedList<News>> getNews();
 
     void removeOldNews();
 
@@ -97,7 +109,7 @@ public interface Repository {
 
     List<Integer> getToDeleteEpisodes();
 
-    List<ClientDownloadedEpisode> downloadedEpisodes(Collection<Integer> episodeIds) throws IOException;
+    List<ClientDownloadedEpisode> downloadEpisodes(Collection<Integer> episodeIds) throws IOException;
 
     List<ToDownload> getToDownload();
 
@@ -113,7 +125,9 @@ public interface Repository {
 
     List<Integer> getDownloadableEpisodes(Integer mediumId);
 
-    LiveData<List<DisplayUnreadEpisode>> getUnReadEpisodes();
+    LiveData<PagedList<DisplayUnreadEpisode>> getUnReadEpisodes(int saved, int medium);
+
+    LiveData<PagedList<DisplayUnreadEpisode>> getUnReadEpisodesGrouped(int saved, int medium);
 
     LiveData<List<MediaList>> getLists();
 
@@ -125,17 +139,89 @@ public interface Repository {
 
     void updateToDownload(boolean add, ToDownload toDownload);
 
-    LiveData<List<MediumInWait>> getAllMediaInWait();
-
-    LiveData<List<MediumItem>> getAllMedia();
+    LiveData<PagedList<MediumItem>> getAllMedia(Sortings sortings, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes);
 
     LiveData<MediumSetting> getMediumSettings(int mediumId);
 
     CompletableFuture<String> updateMediumType(MediumSetting mediumSettings);
 
-    LiveData<List<TocPart>> getToc(int mediumId);
+    LiveData<PagedList<TocEpisode>> getToc(int mediumId, Sortings sortings, byte read, byte saved);
 
     LiveData<List<MediumItem>> getMediumItems(int listId, boolean isExternal);
 
     void loadMediaInWaitSync() throws IOException;
+
+    void addList(MediaList list, boolean autoDownload) throws IOException;
+
+    boolean listExists(String listName);
+
+    int countSavedUnreadEpisodes(Integer mediumId);
+
+    List<Integer> getSavedEpisodes(int mediumId);
+
+    Episode getEpisode(int episodeId);
+
+    List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids);
+
+    void updateRead(int episodeId, boolean read) throws IOException;
+
+    void updateRead(Collection<Integer> episodeIds, boolean read) throws IOException;
+
+    LiveData<PagedList<ReadEpisode>> getReadTodayEpisodes();
+
+    LiveData<PagedList<MediumInWait>> getMediaInWaitBy(String filter, int mediumFilter, String hostFilter, Sortings sortings);
+
+    LiveData<List<MediaList>> getInternLists();
+
+    CompletableFuture<Boolean> moveMediaToList(int oldListId, int listId, Collection<Integer> ids);
+
+    LiveData<List<MediumInWait>> getSimilarMediaInWait(MediumInWait mediumInWait);
+
+    LiveData<List<SimpleMedium>> getMediaSuggestions(String title, int medium);
+
+    LiveData<List<MediumInWait>> getMediaInWaitSuggestions(String title, int medium);
+
+    CompletableFuture<Boolean> consumeMediumInWait(SimpleMedium selectedMedium, List<MediumInWait> mediumInWaits);
+
+    CompletableFuture<Boolean> createMedium(MediumInWait mediumInWait, List<MediumInWait> mediumInWaits, MediaList list);
+
+    CompletableFuture<Boolean> removeItemFromList(int listId, int mediumId);
+
+    CompletableFuture<Boolean> moveItemFromList(int oldListId, int newListId, int mediumId);
+
+    LiveData<List<MediaList>> getListSuggestion(String name);
+
+    LiveData<Boolean> onDownloadable();
+
+    void removeDanglingMedia(Collection<Integer> mediaIds);
+
+    LiveData<List<MediumItem>> getAllDanglingMedia();
+
+    CompletableFuture<Boolean> addMediumToList(int listId, Collection<Integer> ids);
+
+    LiveData<PagedList<ExternalUser>> getExternalUser();
+
+    SpaceMedium getSpaceMedium(int mediumId);
+
+    int getMediumType(Integer mediumId);
+
+    List<String> getReleaseLinks(int episodeId);
+
+    void syncUser();
+
+    void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException;
+
+    void clearLocalMediaData();
+
+    LiveData<PagedList<NotificationItem>> getNotifications();
+
+    void updateFailedDownloads(int episodeId);
+
+    void addNotification(NotificationItem notification);
+
+    SimpleEpisode getSimpleEpisode(int episodeId);
+
+    SimpleMedium getSimpleMedium(Integer mediumId);
+
+    void clearNotifications();
 }

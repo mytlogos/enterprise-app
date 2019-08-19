@@ -41,7 +41,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
      */
     private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = (preference, value) -> {
         String stringValue = value.toString();
-
+        System.out.println("preference " + preference + " has value " + stringValue);
         if (preference instanceof ListPreference) {
             // For list preferences, look up the correct display value in
             // the preference's 'entries' list.
@@ -83,6 +83,15 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
         }
         return true;
     };
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            onBackPressed();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 
     /**
      * Helper method to determine if the device has an extra-large screen. For

@@ -5,6 +5,7 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 
+import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
 
@@ -12,15 +13,21 @@ import java.io.IOException;
 
 public class UserViewModel extends RepoViewModel {
 
-    private LiveData<User> user;
+    private final LiveData<User> userLiveData;
+    private LiveData<HomeStats> homeStatsLiveData;
 
     public UserViewModel(@NonNull Application application) {
         super(application);
-        user = repository.getUser();
+        homeStatsLiveData = repository.getHomeStats();
+        userLiveData = repository.getUser();
     }
 
-    public LiveData<User> getUser() {
-        return user;
+    public LiveData<HomeStats> getHomeStatsLiveData() {
+        return homeStatsLiveData;
+    }
+
+    public LiveData<User> getUserLiveData() {
+        return userLiveData;
     }
 
     public boolean isLoading() {

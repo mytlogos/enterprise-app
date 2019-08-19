@@ -1,40 +1,33 @@
 package com.mytlogos.enterprise.background.room.model;
 
-import org.joda.time.DateTime;
+import androidx.room.Relation;
+
+import java.util.List;
 
 public class RoomUnReadEpisode {
     private final int episodeId;
-    private final int partId;
     private final int mediumId;
     private final String mediumTitle;
-    private final String title;
     private final int totalIndex;
     private final int partialIndex;
-    private final String url;
-    private final DateTime releaseDate;
     private final boolean saved;
     private final boolean read;
+    @Relation(parentColumn = "episodeId", entityColumn = "episodeId")
+    private final List<RoomRelease> releases;
 
-    public RoomUnReadEpisode(int episodeId, int partId, int mediumId, String mediumTitle, String title, int totalIndex, int partialIndex, String url, DateTime releaseDate, boolean saved, boolean read) {
+    public RoomUnReadEpisode(int episodeId, int mediumId, String mediumTitle, int totalIndex, int partialIndex, boolean saved, boolean read, List<RoomRelease> releases) {
         this.episodeId = episodeId;
-        this.partId = partId;
         this.mediumId = mediumId;
         this.mediumTitle = mediumTitle;
-        this.title = title;
         this.totalIndex = totalIndex;
         this.partialIndex = partialIndex;
-        this.url = url;
-        this.releaseDate = releaseDate;
         this.saved = saved;
         this.read = read;
+        this.releases = releases;
     }
 
     public boolean isRead() {
         return read;
-    }
-
-    public int getPartId() {
-        return partId;
     }
 
     public String getMediumTitle() {
@@ -49,10 +42,6 @@ public class RoomUnReadEpisode {
         return episodeId;
     }
 
-    public String getTitle() {
-        return title;
-    }
-
     public int getTotalIndex() {
         return totalIndex;
     }
@@ -61,15 +50,40 @@ public class RoomUnReadEpisode {
         return partialIndex;
     }
 
-    public String getUrl() {
-        return url;
-    }
-
-    public DateTime getReleaseDate() {
-        return releaseDate;
-    }
-
     public boolean isSaved() {
         return saved;
+    }
+
+    public List<RoomRelease> getReleases() {
+        return releases;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        RoomUnReadEpisode that = (RoomUnReadEpisode) o;
+
+        return getEpisodeId() == that.getEpisodeId();
+    }
+
+    @Override
+    public int hashCode() {
+        return getEpisodeId();
+    }
+
+    @Override
+    public String toString() {
+        return "RoomUnReadEpisode{" +
+                "episodeId=" + episodeId +
+                ", mediumId=" + mediumId +
+                ", mediumTitle='" + mediumTitle + '\'' +
+                ", totalIndex=" + totalIndex +
+                ", partialIndex=" + partialIndex +
+                ", saved=" + saved +
+                ", read=" + read +
+                ", releases=" + releases +
+                '}';
     }
 }

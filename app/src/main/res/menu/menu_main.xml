@@ -3,6 +3,26 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.mytlogos.enterprise.MainActivity">
     <item
+        android:id="@+id/synch_now"
+        android:orderInCategory="100"
+        android:title="@string/synch_now"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/download_now"
+        android:orderInCategory="100"
+        android:title="@string/download_now"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/stop_download_now"
+        android:orderInCategory="100"
+        android:title="@string/stop_download_now"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/clear_media"
+        android:orderInCategory="100"
+        android:title="@string/clear_local_media_data"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_settings"
         android:orderInCategory="100"
         android:title="@string/action_settings"

@@ -9,8 +9,10 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
+import com.mytlogos.enterprise.background.room.model.RoomDanglingMedium;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
@@ -19,12 +21,19 @@ import com.mytlogos.enterprise.background.room.model.RoomMedium;
 import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
 import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
+import com.mytlogos.enterprise.background.room.model.RoomReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
+import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUnReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.Episode;
+import com.mytlogos.enterprise.model.HomeStats;
+import com.mytlogos.enterprise.model.MediumInWait;
+import com.mytlogos.enterprise.model.ReadEpisode;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.model.TocEpisode;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -93,7 +102,15 @@ public class RoomConverter {
         return this.convert(roomToDownloads, this::convert);
     }
 
-    public Collection<RoomMediumInWait> convert(List<ClientMediumInWait> medium) {
+    public Collection<RoomMediumInWait> convertClientMediaInWait(Collection<ClientMediumInWait> medium) {
+        return this.convert(medium, this::convert);
+    }
+
+    public Collection<RoomDanglingMedium> convertToDangling(Collection<Integer> mediaIds) {
+        return this.convert(mediaIds, RoomDanglingMedium::new);
+    }
+
+    public Collection<RoomMediumInWait> convertMediaInWait(Collection<MediumInWait> medium) {
         return this.convert(medium, this::convert);
     }
 
@@ -106,18 +123,24 @@ public class RoomConverter {
         return list;
     }
 
+    public RoomMediumInWait convert(MediumInWait inWait) {
+        return inWait == null ? null : new RoomMediumInWait(
+                inWait.getTitle(),
+                inWait.getMedium(),
+                inWait.getLink()
+        );
+    }
+
     public DisplayUnreadEpisode convertRoomEpisode(RoomUnReadEpisode episode) {
         return episode == null ? null : new DisplayUnreadEpisode(
                 episode.getEpisodeId(),
                 episode.getMediumId(),
                 episode.getMediumTitle(),
-                episode.getTitle(),
                 episode.getTotalIndex(),
                 episode.getPartialIndex(),
-                episode.getUrl(),
-                episode.getReleaseDate(),
                 episode.isSaved(),
-                episode.isRead()
+                episode.isRead(),
+                new ArrayList<>(episode.getReleases())
         );
     }
 
@@ -145,7 +168,8 @@ public class RoomConverter {
                 release.getEpisodeId(),
                 release.getTitle(),
                 release.getUrl(),
-                release.getReleaseDate()
+                release.getReleaseDate(),
+                release.isLocked()
         );
     }
 
@@ -226,6 +250,62 @@ public class RoomConverter {
                 medium.getTitle(),
                 medium.getMedium(),
                 medium.getLink()
+        );
+    }
+
+    public Episode convert(RoomEpisode roomEpisode) {
+        return roomEpisode == null ? null : new Episode(
+                roomEpisode.getEpisodeId(),
+                roomEpisode.getProgress(),
+                roomEpisode.getPartId(),
+                roomEpisode.getPartialIndex(),
+                roomEpisode.getTotalIndex(),
+                roomEpisode.getReadDate(),
+                roomEpisode.isSaved()
+        );
+    }
+
+    public HomeStats toUser(RoomUser user, Integer countReadToday, Integer countUnreadChapter, Integer countUnreadNews) {
+        return null;
+    }
+
+    public MediumInWait convert(RoomMediumInWait input) {
+        return input == null ? null : new MediumInWait(
+                input.getTitle(),
+                input.getMedium(),
+                input.getLink()
+        );
+    }
+
+    public TocEpisode convertTocEpisode(RoomTocEpisode roomTocEpisode) {
+        return roomTocEpisode == null ? null : new TocEpisode(
+                roomTocEpisode.getEpisodeId(),
+                roomTocEpisode.getProgress(),
+                roomTocEpisode.getPartId(),
+                roomTocEpisode.getPartialIndex(),
+                roomTocEpisode.getTotalIndex(),
+                roomTocEpisode.getReadDate(),
+                roomTocEpisode.isSaved(),
+                new ArrayList<>(roomTocEpisode.getReleases())
+        );
+    }
+
+    public RoomUser convert(ClientSimpleUser user) {
+        return user == null ? null : new RoomUser(
+                user.getName(),
+                user.getUuid(),
+                user.getSession()
+        );
+    }
+
+    public ReadEpisode convert(RoomReadEpisode input) {
+        return input == null ? null : new ReadEpisode(
+                input.getEpisodeId(),
+                input.getMediumId(),
+                input.getMediumTitle(),
+                input.getTotalIndex(),
+                input.getPartialIndex(),
+                new ArrayList<>(input.getReleases())
         );
     }
 }

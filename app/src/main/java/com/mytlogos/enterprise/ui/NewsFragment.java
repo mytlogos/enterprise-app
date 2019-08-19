@@ -1,7 +1,6 @@
 package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,33 +8,24 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentStatePagerAdapter;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.paging.PagedList;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import androidx.viewpager.widget.ViewPager;
 
-import com.google.android.material.tabs.TabLayout;
-import com.mytlogos.enterprise.MainActivity;
 import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.MediumType;
 import com.mytlogos.enterprise.model.News;
+import com.mytlogos.enterprise.tools.Utils;
 import com.mytlogos.enterprise.viewmodel.NewsViewModel;
 
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -52,7 +42,10 @@ import eu.davidea.viewholders.FlexibleViewHolder;
  * A fragment representing a list of Items.
  * <p/>
  */
-public class NewsFragment extends BaseFragment {
+public class NewsFragment extends BaseSwipeListFragment<News, NewsViewModel> {
+
+    private AttachedListener attachedListener;
+    private ScheduledFuture<?> attachedFuture;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -66,26 +59,136 @@ public class NewsFragment extends BaseFragment {
         super.onCreate(savedInstanceState);
     }
 
+    @NonNull
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        View view = inflater.inflate(R.layout.news, container, false);
+        View view = super.onCreateView(inflater, container, savedInstanceState);
 
-        MainActivity activity = this.getMainActivity();
+        RecyclerView recyclerView = view.findViewById(R.id.list);
 
-        FragmentManager supportFragmentManager = activity.getSupportFragmentManager();
-        SectionsPagerAdapter mSectionsPagerAdapter = new SectionsPagerAdapter(supportFragmentManager);
+        ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+        Runnable attachedTask = new Runnable() {
+            @Override
+            public void run() {
+                if (attachedListener == null) {
+                    attachedFuture = service.schedule(this, 2, TimeUnit.SECONDS);
+                    return;
+                }
+                attachedListener.handle();
+            }
+        };
+        attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (attachedFuture != null) {
+                    attachedFuture.cancel(true);
+                }
 
-        // Set up the ViewPager with the sections adapter.
-        ViewPager mViewPager = view.findViewById(R.id.tab_container);
-        mViewPager.setAdapter(mSectionsPagerAdapter);
+                if (RecyclerView.SCROLL_STATE_IDLE == newState) {
+                    attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS);
+                }
+            }
+        });
 
-        TabLayout tabs = activity.getTabLayout();
-        tabs.setupWithViewPager(mViewPager);
-        tabs.setTabMode(TabLayout.MODE_SCROLLABLE);
+        // FIXME: 22.07.2019 does not work quite correctly:
+        //  -when one does not scroll
+        //  -one switches to one news page a second time
+        //  it does not get the correct newsItems
+        this.attachedListener = () -> {
+            int firstPosition = LayoutUtils.findFirstCompletelyVisibleItemPosition(recyclerView);
+            int lastPosition = LayoutUtils.findLastCompletelyVisibleItemPosition(recyclerView);
+
+            if (firstPosition == RecyclerView.NO_POSITION || lastPosition == RecyclerView.NO_POSITION) {
+                return;
+            }
+            DateTime minimumVisible = DateTime.now().minusSeconds(2);
+            List<Integer> readNews = new ArrayList<>();
+
+            for (int i = firstPosition; i <= lastPosition; i++) {
+                IFlexible item = getFlexibleAdapter().getItem(i);
+
+                if (!(item instanceof NewsItem)) {
+                    continue;
+                }
+                NewsItem newsItem = (NewsItem) item;
+                if (newsItem.attached == null) {
+                    continue;
+                }
+                if (newsItem.attached.isBefore(minimumVisible) && !newsItem.news.isRead()) {
+                    readNews.add(newsItem.news.getId());
+                }
+            }
+            if (!readNews.isEmpty()) {
+                this.getViewModel().markNewsRead(readNews);
+            }
+        };
         this.setTitle("News");
         return view;
+    }
+
+    @Override
+    NewsViewModel createViewModel() {
+        return ViewModelProviders.of(this).get(NewsViewModel.class);
+    }
+
+    @Override
+    LiveData<PagedList<News>> createPagedListLiveData() {
+        return this.getViewModel().getNews();
+    }
+
+    @Override
+    List<IFlexible> convertToFlexibles(Collection<News> list) {
+        if (list == null) {
+            return null;
+        }
+
+        List<IFlexible> items = new ArrayList<>();
+        for (News news : list) {
+            if (news == null) {
+                break;
+            }
+            NewsItem item = new NewsItem(news);
+            item.listener = this.attachedListener;
+            items.add(item);
+        }
+        return items;
+    }
+
+    @Override
+    void onSwipeRefresh() {
+        List<News> news = this.getLivePagedList().getValue();
+        DateTime latest = null;
+
+        if (news != null) {
+            Comparator<News> newsComparator = Comparator.nullsLast((o1, o2) -> o1.getTimeStamp().compareTo(o2.getTimeStamp()));
+            News latestNews = Collections.max(news, newsComparator);
+            latest = latestNews == null ? null : latestNews.getTimeStamp();
+        }
+        this.getViewModel().refresh(latest).observe(this, loadingComplete -> {
+            if (loadingComplete != null && loadingComplete) {
+                getListContainer().setRefreshing(false);
+            }
+        });
+    }
+
+    @Override
+    public boolean onItemClick(View view, int position) {
+        IFlexible item = getFlexibleAdapter().getItem(position);
+        if (!(item instanceof NewsItem)) {
+            return false;
+        }
+        String url = ((NewsItem) item).news.getUrl();
+        this.openInBrowser(url);
+        return false;
+    }
+
+    @FunctionalInterface
+    private interface AttachedListener {
+        void handle();
+
     }
 
     private static class HeaderItem extends AbstractHeaderItem<HeaderViewHolder> {
@@ -134,21 +237,14 @@ public class NewsFragment extends BaseFragment {
         }
     }
 
-    @FunctionalInterface
-    private interface AttachedListener {
-        void handle();
-    }
-
-    private static class NewsItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
+    private static class NewsItem extends AbstractSectionableItem<MetaViewHolder, HeaderItem> {
         private final News news;
-        private final BaseFragment fragment;
         private DateTime attached;
         private AttachedListener listener;
 
-        NewsItem(@NonNull News news, BaseFragment fragment) {
+        NewsItem(@NonNull News news) {
             super(new HeaderItem(news.getTimeStamp().toLocalDate()));
             this.news = news;
-            this.fragment = fragment;
             this.setDraggable(false);
             this.setSwipeable(false);
             this.setSelectable(false);
@@ -160,294 +256,48 @@ public class NewsFragment extends BaseFragment {
             if (!(o instanceof NewsItem)) return false;
 
             NewsItem other = (NewsItem) o;
-            return this.news.getNewsId() == other.news.getNewsId();
+            return this.news.getId() == other.news.getId();
         }
 
         @Override
         public int hashCode() {
-            return this.news.getNewsId();
+            return this.news.getId();
         }
 
         @Override
         public int getLayoutRes() {
-            return R.layout.news_item;
+            return R.layout.meta_item;
         }
 
         @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view);
+        public MetaViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
+            return new MetaViewHolder(view, adapter);
         }
 
         @SuppressLint("DefaultLocale")
         @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.mItem = this.news;
+        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position, List<Object> payloads) {
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            holder.metaView.setText(this.news.getTimeStamp().toString("HH:mm:ss"));
-
-            holder.contentView.setText(this.news.getTitle());
-            holder.mView.setOnClickListener(v -> {
-                String url = this.news.getUrl();
-                Context context = this.fragment.getContext();
-                this.fragment.openInBrowser(url, context);
-            });
+            holder.topLeftText.setText(this.news.getTimeStamp().toString("HH:mm:ss"));
+            holder.mainText.setText(this.news.getTitle());
+            holder.topRightText.setText(Utils.getDomain(this.news.getUrl()));
         }
 
         @Override
-        public void onViewAttached(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position) {
+        public void onViewAttached(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position) {
             super.onViewAttached(adapter, holder, position);
             this.attached = DateTime.now();
         }
 
         @Override
-        public void onViewDetached(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position) {
+        public void onViewDetached(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position) {
             super.onViewDetached(adapter, holder, position);
             this.attached = null;
 
             if (this.listener != null) {
                 this.listener.handle();
             }
-        }
-    }
-
-    /**
-     * A placeholder fragment containing a simple view.
-     */
-    public static class PlaceholderFragment extends BaseFragment {
-
-        private LiveData<List<News>> newsLiveData;
-        private int typeFilter = MediumType.ALL;
-        private NewsViewModel newsViewModel;
-        private Observer<List<News>> listObserver;
-        private AttachedListener attachedListener;
-        private ScheduledFuture<?> attachedFuture;
-
-        @Override
-        public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View view = inflater.inflate(R.layout.swipe_list, container, false);
-
-            RecyclerView recyclerView = view.findViewById(R.id.list);
-
-            Context context = Objects.requireNonNull(getContext());
-
-            LinearLayoutManager layoutManager = new LinearLayoutManager(context);
-            recyclerView.setLayoutManager(layoutManager);
-
-            DividerItemDecoration decoration = new DividerItemDecoration(context, layoutManager.getOrientation());
-            recyclerView.addItemDecoration(decoration);
-
-            FlexibleAdapter<IFlexible> flexibleAdapter = new FlexibleAdapter<>(null)
-                    .setStickyHeaders(true)
-                    .setDisplayHeadersAtStartUp(true);
-
-            recyclerView.setAdapter(flexibleAdapter);
-
-            ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-            Runnable attachedTask = new Runnable() {
-                @Override
-                public void run() {
-                    if (attachedListener == null) {
-                        attachedFuture = service.schedule(this, 2, TimeUnit.SECONDS);
-                        return;
-                    }
-                    attachedListener.handle();
-                }
-            };
-            attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS);
-            recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-                @Override
-                public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-                    if (attachedFuture != null) {
-                        attachedFuture.cancel(true);
-                    }
-
-                    if (RecyclerView.SCROLL_STATE_IDLE == newState) {
-                        attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS);
-                    }
-                }
-            });
-
-            // FIXME: 22.07.2019 does not work quite correctly:
-            //  -when one does not scroll it
-            //  -one switches to one news page a second time
-            //  it does not get the correct newsItems
-            this.attachedListener = () -> {
-                int firstPosition = LayoutUtils.findFirstCompletelyVisibleItemPosition(recyclerView);
-                int lastPosition = LayoutUtils.findLastCompletelyVisibleItemPosition(recyclerView);
-
-                if (firstPosition == RecyclerView.NO_POSITION || lastPosition == RecyclerView.NO_POSITION) {
-                    return;
-                }
-                DateTime minimumVisible = DateTime.now().minusSeconds(2);
-                List<Integer> readNews = new ArrayList<>();
-
-                for (int i = firstPosition; i <= lastPosition; i++) {
-                    IFlexible item = flexibleAdapter.getItem(i);
-
-                    if (!(item instanceof NewsItem)) {
-                        continue;
-                    }
-                    NewsItem newsItem = (NewsItem) item;
-                    if (newsItem.attached == null) {
-                        System.err.println("Completely visible attached item has no attached time");
-                        continue;
-                    }
-                    if (newsItem.attached.isBefore(minimumVisible) && !newsItem.news.isRead()) {
-                        readNews.add(newsItem.news.getNewsId());
-                    }
-                }
-                this.newsViewModel.markNewsRead(readNews);
-            };
-            SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swiper);
-
-            this.listObserver = news -> {
-
-                if (checkEmptyList(news, view, swipeRefreshLayout)) {
-                    return;
-                }
-
-                flexibleAdapter.updateDataSet(this.transformNews(news));
-            };
-
-            this.newsViewModel = ViewModelProviders.of(this).get(NewsViewModel.class);
-            this.loadNews();
-
-            swipeRefreshLayout.setOnRefreshListener(() -> {
-                List<News> news = this.newsLiveData.getValue();
-                DateTime latest = null;
-
-                if (news != null) {
-                    News latestNews = Collections.max(news, (o1, o2) -> o1.getTimeStamp().compareTo(o2.getTimeStamp()));
-                    latest = latestNews == null ? null : latestNews.getTimeStamp();
-                }
-                this.newsViewModel.refresh(latest).observe(this, loadingComplete -> {
-                    if (loadingComplete != null && loadingComplete) {
-                        swipeRefreshLayout.setRefreshing(false);
-                    }
-                });
-            });
-
-            return view;
-        }
-
-        private List<IFlexible> transformNews(List<News> newsList) {
-            if (newsList == null) {
-                return null;
-            }
-
-            List<IFlexible> items = new ArrayList<>();
-            for (News news : newsList) {
-                if ((news.getMediumType() & this.typeFilter) == this.typeFilter) {
-                    NewsItem item = new NewsItem(news, this);
-                    item.listener = this.attachedListener;
-                    items.add(item);
-                }
-            }
-            return items;
-        }
-
-        private void loadNews() {
-            if (this.newsLiveData != null) {
-                this.newsLiveData.removeObservers(this);
-            }
-            if (this.newsViewModel == null) {
-                return;
-            }
-            // todo load data according to current
-            this.newsLiveData = this.newsViewModel.getNews();
-            this.newsLiveData.observe(this, this.listObserver);
-        }
-
-        void setTypeFilter(int typeFilter) {
-            this.typeFilter = typeFilter;
-            this.loadNews();
-        }
-    }
-
-
-    /**
-     * A {@link FragmentStatePagerAdapter} that returns a fragment corresponding to
-     * one of the sections/tabs/pages.
-     */
-    public class SectionsPagerAdapter extends FragmentStatePagerAdapter {
-        private final int[] typeFilter;
-        private final PlaceholderFragment[] fragments;
-
-        SectionsPagerAdapter(FragmentManager fm) {
-            super(fm);
-            this.typeFilter = new int[]{
-                    MediumType.ALL,
-                    MediumType.NOVEL,
-                    MediumType.MANGA,
-                    MediumType.ANIME,
-                    MediumType.SERIES
-            };
-            this.fragments = new PlaceholderFragment[this.typeFilter.length];
-        }
-
-
-        @NonNull
-        @Override
-        public Fragment getItem(int position) {
-            PlaceholderFragment fragment = this.fragments[position];
-
-            if (fragment == null) {
-                fragment = this.fragments[position] = new PlaceholderFragment();
-                fragment.setTypeFilter(this.typeFilter[position]);
-            }
-
-            return fragment;
-        }
-
-        @Override
-        public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
-            this.fragments[position] = null;
-            super.destroyItem(container, position, object);
-        }
-
-        @Nullable
-        @Override
-        public CharSequence getPageTitle(int position) {
-            switch (position) {
-                case 0:
-                    return "All";
-                case 1:
-                    return "Novel";
-                case 2:
-                    return "Manga";
-                case 3:
-                    return "Anime";
-                case 4:
-                    return "Series";
-            }
-            return super.getPageTitle(position);
-        }
-
-        @Override
-        public int getCount() {
-            return this.typeFilter.length;
-        }
-    }
-
-    private static class ViewHolder extends RecyclerView.ViewHolder {
-        final View mView;
-        final TextView contentView;
-        private final TextView metaView;
-        News mItem;
-
-        ViewHolder(@NonNull View view) {
-            super(view);
-            mView = view;
-            metaView = view.findViewById(R.id.item_top_left);
-            contentView = view.findViewById(R.id.content);
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return super.toString() + " '" + contentView.getText() + "'";
         }
     }
 }

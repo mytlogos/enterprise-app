@@ -1,16 +1,21 @@
 package com.mytlogos.enterprise.background.room;
 
 import androidx.lifecycle.LiveData;
+import androidx.paging.DataSource;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Transaction;
 import androidx.room.Update;
 
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
+import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUnReadEpisode;
+import com.mytlogos.enterprise.model.SimpleEpisode;
 
 import org.joda.time.DateTime;
 
@@ -21,7 +26,10 @@ import java.util.List;
 public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
 
     @Query("UPDATE RoomEpisode SET progress=:progress, readDate=:readDate WHERE episodeId=:episodeId")
-    void update(int episodeId, float progress, DateTime readDate);
+    void updateProgress(int episodeId, float progress, DateTime readDate);
+
+    @Query("UPDATE RoomEpisode SET progress=:progress, readDate=:readDate WHERE episodeId IN (:episodeIds)")
+    void updateProgress(Collection<Integer> episodeIds, float progress, DateTime readDate);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertBulkRelease(Collection<RoomRelease> collection);
@@ -48,39 +56,141 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
     void updateSaved(Collection<Integer> episodeIds, boolean saved);
 
     @Query("SELECT RoomEpisode.episodeId FROM RoomEpisode " +
+            "LEFT JOIN RoomFailedEpisode ON RoomFailedEpisode.episodeId=RoomEpisode.episodeId " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
-            "WHERE progress < 1 AND saved = 0 AND RoomPart.mediumId =:mediumId")
+            "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
+            "WHERE progress < 1 AND saved = 0 AND RoomPart.mediumId =:mediumId " +
+            "ORDER BY failCount, RoomEpisode.totalIndex, RoomEpisode.partialIndex LIMIT 50")
     List<Integer> getDownloadableEpisodes(Integer mediumId);
 
     @Query("SELECT RoomEpisode.episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
-            "WHERE progress < 1 AND saved = 0 AND RoomPart.mediumId IN (:mediaIds)")
+            "WHERE progress < 1 AND saved = 0 AND RoomPart.mediumId IN (:mediaIds) " +
+            "ORDER BY mediumId, RoomEpisode.totalIndex, RoomEpisode.partialIndex")
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediaIds);
 
-    @Query("SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex," +
-            "RoomMedium.mediumId,RoomMedium.title as mediumTitle, RoomRelease.releaseDate, " +
-            "RoomRelease.url, RoomRelease.title,RoomPart.partId, " +
-            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read " +
+    @Query("SELECT COUNT(RoomEpisode.episodeId) FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
+            "WHERE saved = 1 AND RoomPart.mediumId =:mediumId")
+    Integer countSavedEpisodes(Integer mediumId);
+
+    @Query("SELECT episodeId FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
+            "WHERE saved = 1 AND RoomPart.mediumId =:mediumId " +
+            "ORDER BY RoomEpisode.totalIndex, RoomEpisode.partialIndex")
+    List<Integer> getSavedEpisodes(int mediumId);
+
+    @Transaction
+    @Query("SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,\n" +
+            "RoomMedium.mediumId,RoomMedium.title as mediumTitle, \n" +
+            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read \n" +
+            "FROM RoomEpisode \n" +
+            "INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId \n" +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId \n" +
+            "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId \n" +
+            "WHERE progress=0\n" +
+            "AND (:medium = 0 OR (:medium & medium) > 0)\n" +
+            "AND (:saved < 0 OR saved=:saved)\n" +
+            "GROUP BY RoomEpisode.episodeId\n" +
+            "ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.totalIndex DESC, RoomEpisode.partialIndex DESC")
+    DataSource.Factory<Integer, RoomUnReadEpisode> getUnreadEpisodes(int saved, int medium);
+
+    @Transaction
+    @Query("SELECT * FROM \n" +
+            "(\n" +
+            "    SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,\n" +
+            "    RoomMedium.mediumId,RoomMedium.title as mediumTitle, \n" +
+            "    CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read \n" +
+            "    FROM RoomEpisode \n" +
+            "    INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId \n" +
+            "    INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId \n" +
+            "    WHERE progress=0\n" +
+            "    AND (:medium = 0 OR (:medium & medium) > 0)\n" +
+            "    ORDER BY RoomEpisode.totalIndex DESC, RoomEpisode.partialIndex DESC\n" +
+            ") as UnreadEpisode\n" +
+            "WHERE (:saved < 0 OR saved=:saved)\n" +
+            "GROUP BY UnreadEpisode.mediumId\n" +
+            "ORDER BY (\n" +
+            "    SELECT MIN(releaseDate) FROM RoomRelease WHERE RoomRelease.episodeId=UnreadEpisode.episodeId\n" +
+            ") DESC")
+    DataSource.Factory<Integer, RoomUnReadEpisode> getUnreadEpisodesGrouped(int saved, int medium);
+
+    @Query("SELECT * FROM RoomEpisode WHERE episodeId=:episodeId")
+    RoomEpisode getEpisode(int episodeId);
+
+    @Query("SELECT episodeId, partialIndex, totalIndex, progress FROM RoomEpisode WHERE episodeId IN (:ids)")
+    List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids);
+
+    @Query("SELECT episodeId, partialIndex, totalIndex, progress FROM RoomEpisode WHERE episodeId =:episodeId")
+    SimpleEpisode getSimpleEpisode(int episodeId);
+
+    @Transaction
+    @Query("SELECT RoomEpisode.episodeId, RoomEpisode.partialIndex, RoomEpisode.totalIndex," +
+            "RoomMedium.mediumId,RoomMedium.title as mediumTitle " +
             "FROM RoomEpisode " +
-            "INNER JOIN (SELECT * FROM RoomRelease GROUP BY episodeId,releaseDate ORDER BY releaseDate DESC) " +
-            "as RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
             "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
-            "WHERE progress=0 " +
-            "ORDER BY releaseDate DESC")
-    LiveData<List<RoomUnReadEpisode>> getUnreadEpisodes();
+            "WHERE date(readDate) = date('now') " +
+            "ORDER BY RoomEpisode.readDate DESC")
+    DataSource.Factory<Integer, RoomReadEpisode> getReadTodayEpisodes();
 
-    @Query("SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex," +
-            "RoomMedium.mediumId,RoomMedium.title as mediumTitle,RoomRelease.releaseDate, " +
-            "RoomRelease.url, RoomRelease.title, RoomPart.partId, " +
-            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read " +
-            "FROM RoomEpisode " +
-            "INNER JOIN (SELECT * FROM RoomRelease GROUP BY episodeId,releaseDate ORDER BY releaseDate DESC) " +
-            "as RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId " +
+    @Query("SELECT COUNT(episodeId) FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
+            "LEFT JOIN MediaListMediaJoin ON RoomMedium.mediumId=MediaListMediaJoin.mediumId " +
+            "LEFT JOIN ExternalListMediaJoin ON RoomMedium.mediumId=ExternalListMediaJoin.mediumId " +
+            "WHERE saved=0 AND progress < 1 " +
+            "AND (RoomMedium.mediumId IN " +
+            "(SELECT mediumId FROM RoomToDownload WHERE mediumId IS NOT NULL)" +
+            "OR (ExternalListMediaJoin.listId IS NOT NULL " +
+            "AND ExternalListMediaJoin.listId IN " +
+            "(SELECT externalListId FROM RoomToDownload WHERE externalListId IS NOT NULL))" +
+            "OR (MediaListMediaJoin.listId IS NOT NULL " +
+            "AND MediaListMediaJoin.listId IN " +
+            "(SELECT listId FROM RoomToDownload WHERE listId IS NOT NULL)))")
+    LiveData<Integer> countDownloadableRows();
+
+    @Transaction
+    @Query("SELECT RoomEpisode.* FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
             "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
             "WHERE RoomMedium.mediumId=:mediumId " +
-            "ORDER BY RoomEpisode.totalIndex DESC, RoomEpisode.partialIndex DESC")
-    LiveData<List<RoomUnReadEpisode>> getEpisodes(int mediumId);
+            "AND (:read < 0 OR (:read == 0 AND progress < 1) OR :read = progress)" +
+            "AND (:saved < 0 OR :saved=saved)" +
+            "ORDER BY RoomEpisode.totalIndex ASC, RoomEpisode.partialIndex ASC")
+    DataSource.Factory<Integer, RoomTocEpisode> getTocEpisodesAsc(int mediumId, byte read, byte saved);
 
+
+    @Transaction
+    @Query("SELECT RoomEpisode.* FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
+            "WHERE RoomMedium.mediumId=:mediumId " +
+            "AND (:read < 0 OR (:read == 0 AND progress < 1) OR :read = progress)" +
+            "AND (:saved < 0 OR :saved=saved)" +
+            "ORDER BY RoomEpisode.totalIndex DESC, RoomEpisode.partialIndex DESC")
+    DataSource.Factory<Integer, RoomTocEpisode> getTocEpisodesDesc(int mediumId, byte read, byte saved);
+
+    @Query("SELECT url FROM RoomRelease WHERE episodeId=:episodeId")
+    List<String> getReleaseLinks(int episodeId);
+
+    @Query("SELECT episodeId FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "WHERE mediumId = :mediumId " +
+            "AND CASE WHEN :toRead = 1 " +
+            "THEN progress < 1 " +
+            "ELSE progress = 1 " +
+            "END " +
+            "AND CASE WHEN :partTotal = -1 " +
+            "THEN RoomPart.totalIndex= -1 " +
+            "ELSE RoomPart.totalIndex >= 0 AND RoomPart.totalIndex <= :partTotal AND (RoomPart.partialIndex IS NULL OR RoomPart.totalIndex < :partTotal OR RoomPart.partialIndex <= :partPartial) " +
+            "END " +
+            "AND RoomEpisode.totalIndex <= :episodeTotal AND (RoomEpisode.partialIndex IS NULL OR RoomPart.totalIndex < :partTotal OR RoomEpisode.partialIndex <= :episodePartial)")
+    List<Integer> getEpisodeIdsWithLowerIndex(int mediumId, int episodeTotal, int episodePartial, int partTotal, int partPartial, boolean toRead);
+
+    @Query("DELETE FROM RoomRelease")
+    void clearAllReleases();
+
+    @Query("DELETE FROM RoomEpisode")
+    void clearAll();
 }

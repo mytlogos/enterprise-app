@@ -11,10 +11,14 @@ import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.ToDownload;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class ListsViewModel extends RepoViewModel {
+
+    private LiveData<? extends MediaListSetting> listSettings;
+    private LiveData<MediumSetting> settings;
 
     public ListsViewModel(@NonNull Application application) {
         super(application);
@@ -24,8 +28,15 @@ public class ListsViewModel extends RepoViewModel {
         return repository.getLists();
     }
 
+    public LiveData<List<MediaList>> getInternLists() {
+        return repository.getInternLists();
+    }
+
     public LiveData<? extends MediaListSetting> getListSettings(int id, boolean isExternal) {
-        return repository.getListSettings(id, isExternal);
+        if (this.listSettings == null) {
+            listSettings = repository.getListSettings(id, isExternal);
+        }
+        return listSettings;
     }
 
     public CompletableFuture<String> updateListName(MediaListSetting listSetting, String text) {
@@ -41,10 +52,21 @@ public class ListsViewModel extends RepoViewModel {
     }
 
     public LiveData<MediumSetting> getMediumSettings(int mediumId) {
-        return repository.getMediumSettings(mediumId);
+        if (this.settings == null) {
+            this.settings = repository.getMediumSettings(mediumId);
+        }
+        return this.settings;
     }
 
     public CompletableFuture<String> updateMedium(MediumSetting mediumSettings) {
         return repository.updateMediumType(mediumSettings);
+    }
+
+    public CompletableFuture<Boolean> moveMediumToList(int oldListId, int newListId, Collection<Integer> ids) {
+        return repository.moveMediaToList(oldListId, newListId, ids);
+    }
+
+    public CompletableFuture<Boolean> addMediumToList(int listId, Collection<Integer> ids) {
+        return repository.addMediumToList(listId, ids);
     }
 }
