@@ -267,7 +267,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         @Override
         protected void onPostExecute(Void aVoid) {
             if (errorMessage != null) {
-                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this.context, errorMessage, Toast.LENGTH_SHORT).show();
             }
         }
     }

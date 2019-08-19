@@ -59,14 +59,26 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "LEFT JOIN RoomFailedEpisode ON RoomFailedEpisode.episodeId=RoomEpisode.episodeId " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
             "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
-            "WHERE progress < 1 AND saved = 0 AND RoomPart.mediumId =:mediumId " +
-            "ORDER BY failCount, RoomEpisode.totalIndex, RoomEpisode.partialIndex LIMIT 50")
+            "WHERE " +
+            "progress < 1 " +
+            "AND saved = 0 " +
+            "AND RoomPart.mediumId =:mediumId " +
+            "AND RoomEpisode.episodeId IN (SELECT episodeId FROM RoomRelease WHERE locked=0)" +
+            "ORDER BY " +
+            "CASE RoomMedium.medium " +
+            "WHEN 1 THEN 1 " +
+            "WHEN 2 THEN 2 " +
+            "WHEN 4 THEN 4 " +
+            "WHEN 8 THEN 3 " +
+            "ELSE 5 " +
+            "END, " +
+            "RoomEpisode.combiIndex LIMIT 50")
     List<Integer> getDownloadableEpisodes(Integer mediumId);
 
     @Query("SELECT RoomEpisode.episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
             "WHERE progress < 1 AND saved = 0 AND RoomPart.mediumId IN (:mediaIds) " +
-            "ORDER BY mediumId, RoomEpisode.totalIndex, RoomEpisode.partialIndex")
+            "ORDER BY mediumId, RoomEpisode.combiIndex")
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediaIds);
 
     @Query("SELECT COUNT(RoomEpisode.episodeId) FROM RoomEpisode " +
@@ -77,7 +89,7 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
             "WHERE saved = 1 AND RoomPart.mediumId =:mediumId " +
-            "ORDER BY RoomEpisode.totalIndex, RoomEpisode.partialIndex")
+            "ORDER BY RoomEpisode.combiIndex")
     List<Integer> getSavedEpisodes(int mediumId);
 
     @Transaction
@@ -92,7 +104,7 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "AND (:medium = 0 OR (:medium & medium) > 0)\n" +
             "AND (:saved < 0 OR saved=:saved)\n" +
             "GROUP BY RoomEpisode.episodeId\n" +
-            "ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.totalIndex DESC, RoomEpisode.partialIndex DESC")
+            "ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC")
     DataSource.Factory<Integer, RoomUnReadEpisode> getUnreadEpisodes(int saved, int medium);
 
     @Transaction
@@ -106,7 +118,7 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "    INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId \n" +
             "    WHERE progress=0\n" +
             "    AND (:medium = 0 OR (:medium & medium) > 0)\n" +
-            "    ORDER BY RoomEpisode.totalIndex DESC, RoomEpisode.partialIndex DESC\n" +
+            "    ORDER BY RoomEpisode.combiIndex DESC\n" +
             ") as UnreadEpisode\n" +
             "WHERE (:saved < 0 OR saved=:saved)\n" +
             "GROUP BY UnreadEpisode.mediumId\n" +
@@ -157,7 +169,7 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "WHERE RoomMedium.mediumId=:mediumId " +
             "AND (:read < 0 OR (:read == 0 AND progress < 1) OR :read = progress)" +
             "AND (:saved < 0 OR :saved=saved)" +
-            "ORDER BY RoomEpisode.totalIndex ASC, RoomEpisode.partialIndex ASC")
+            "ORDER BY RoomEpisode.combiIndex ASC")
     DataSource.Factory<Integer, RoomTocEpisode> getTocEpisodesAsc(int mediumId, byte read, byte saved);
 
 
@@ -168,7 +180,7 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "WHERE RoomMedium.mediumId=:mediumId " +
             "AND (:read < 0 OR (:read == 0 AND progress < 1) OR :read = progress)" +
             "AND (:saved < 0 OR :saved=saved)" +
-            "ORDER BY RoomEpisode.totalIndex DESC, RoomEpisode.partialIndex DESC")
+            "ORDER BY RoomEpisode.combiIndex DESC")
     DataSource.Factory<Integer, RoomTocEpisode> getTocEpisodesDesc(int mediumId, byte read, byte saved);
 
     @Query("SELECT url FROM RoomRelease WHERE episodeId=:episodeId")
@@ -181,12 +193,12 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "THEN progress < 1 " +
             "ELSE progress = 1 " +
             "END " +
-            "AND CASE WHEN :partTotal = -1 " +
+            "AND CASE WHEN :partCombiIndex < 0 " +
             "THEN RoomPart.totalIndex= -1 " +
-            "ELSE RoomPart.totalIndex >= 0 AND RoomPart.totalIndex <= :partTotal AND (RoomPart.partialIndex IS NULL OR RoomPart.totalIndex < :partTotal OR RoomPart.partialIndex <= :partPartial) " +
+            "ELSE RoomPart.combiIndex <= :partCombiIndex " +
             "END " +
-            "AND RoomEpisode.totalIndex <= :episodeTotal AND (RoomEpisode.partialIndex IS NULL OR RoomPart.totalIndex < :partTotal OR RoomEpisode.partialIndex <= :episodePartial)")
-    List<Integer> getEpisodeIdsWithLowerIndex(int mediumId, int episodeTotal, int episodePartial, int partTotal, int partPartial, boolean toRead);
+            "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
+    List<Integer> getEpisodeIdsWithLowerIndex(int mediumId, double episodeCombiIndex, double partCombiIndex, boolean toRead);
 
     @Query("DELETE FROM RoomRelease")
     void clearAllReleases();

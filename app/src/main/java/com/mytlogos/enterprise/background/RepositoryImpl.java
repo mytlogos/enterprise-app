@@ -32,6 +32,7 @@ import com.mytlogos.enterprise.background.room.RoomStorage;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalUser;
+import com.mytlogos.enterprise.model.FailedEpisode;
 import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
@@ -952,6 +953,26 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
+    public CompletableFuture<Boolean> removeItemFromList(int listId, Collection<Integer> mediumId) {
+        return TaskManager.runCompletableTask(() -> {
+            try {
+                Response<Boolean> response = this.client.deleteListMedia(listId, mediumId).execute();
+                Boolean success = response.body();
+
+                if (success != null && success) {
+                    this.storage.removeItemFromList(listId, mediumId);
+                    this.storage.insertDanglingMedia(mediumId);
+                    return true;
+                }
+                return false;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return false;
+        });
+    }
+
+    @Override
     public CompletableFuture<Boolean> addMediumToList(int listId, Collection<Integer> ids) {
         return TaskManager.runCompletableTask(() -> {
             try {
@@ -1048,6 +1069,12 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
+    public List<FailedEpisode> getFailedEpisodes(Collection<Integer> episodeIds) {
+        return this.storage.getFailedEpisodes(episodeIds);
+    }
+
+
+    @Override
     public void addNotification(NotificationItem notification) {
         this.storage.addNotification(notification);
     }
@@ -1065,6 +1092,11 @@ public class RepositoryImpl implements Repository {
     @Override
     public void clearNotifications() {
         this.storage.clearNotifications();
+    }
+
+    @Override
+    public void clearFailEpisodes() {
+        this.storage.clearFailEpisodes();
     }
 
     @Override

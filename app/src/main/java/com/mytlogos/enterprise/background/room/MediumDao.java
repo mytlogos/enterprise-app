@@ -23,13 +23,24 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
 
     @Query("SELECT * FROM " +
             "(SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
-            "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
+            "countryOfOrigin, languageOfOrigin, lang, series, universe, " +
             "(" +
-            "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
+            "   SELECT episodeId FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId " +
+            "   WHERE mediumId=RoomMedium.mediumId " +
+            "   ORDER BY RoomEpisode.combiIndex DESC " +
+            "   LIMIT 1" +
+            ") as currentRead," +
+            "(" +
+            "    SELECT RoomEpisode.combiIndex \n" +
+            "    FROM RoomEpisode\n" +
+            "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId\n" +
+            "    WHERE RoomPart.mediumId=RoomMedium.mediumId AND RoomEpisode.progress=1\n" +
+            "    ORDER BY RoomEpisode.combiIndex DESC\n" +
+            "    LIMIT 1" +
             ") as currentReadEpisode," +
             "(" +
-            "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
+            "   SELECT MAX(RoomEpisode.combiIndex) FROM RoomEpisode " +
             "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
             "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
             ") as lastEpisode , " +
@@ -62,10 +73,21 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
 
     @Query("SELECT * FROM " +
             "(SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
-            "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
+            "countryOfOrigin, languageOfOrigin, lang, series, universe, " +
             "(" +
-            "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
+            "   SELECT episodeId FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId " +
+            "   WHERE mediumId=RoomMedium.mediumId " +
+            "   ORDER BY RoomEpisode.combiIndex DESC " +
+            "   LIMIT 1" +
+            ") as currentRead," +
+            "(" +
+            "    SELECT RoomEpisode.combiIndex \n" +
+            "    FROM RoomEpisode\n" +
+            "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId\n" +
+            "    WHERE RoomPart.mediumId=RoomMedium.mediumId AND RoomEpisode.progress=1" +
+            "    ORDER BY RoomEpisode.combiIndex DESC" +
+            "    LIMIT 1" +
             ") as currentReadEpisode," +
             "(" +
             "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
@@ -100,13 +122,24 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
     DataSource.Factory<Integer, MediumItem> getAllDesc(int sortValue, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes);
 
     @Query("SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
-            "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
+            "countryOfOrigin, languageOfOrigin, lang, series, universe, " +
             "(" +
-            "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
+            "   SELECT episodeId FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId " +
+            "   WHERE mediumId=RoomMedium.mediumId " +
+            "   ORDER BY RoomEpisode.combiIndex DESC " +
+            "   LIMIT 1" +
+            ") as currentRead," +
+            "(" +
+            "    SELECT RoomEpisode.combiIndex \n" +
+            "    FROM RoomEpisode\n" +
+            "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId\n" +
+            "    WHERE RoomPart.mediumId=RoomMedium.mediumId AND RoomEpisode.progress=1" +
+            "    ORDER BY RoomEpisode.combiIndex DESC" +
+            "    LIMIT 1" +
             ") as currentReadEpisode," +
             "(" +
-            "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
+            "   SELECT MAX(RoomEpisode.combiIndex) FROM RoomEpisode " +
             "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
             "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
             ") as lastEpisode , " +
@@ -122,37 +155,60 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
             "ORDER BY title")
     LiveData<List<MediumItem>> getListMedia(int listId);
 
-    @Query("SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
-            "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
+    @Query("SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, \n" +
+            "countryOfOrigin, languageOfOrigin, lang, series, universe," +
             "(" +
-            "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
-            ") as currentReadEpisode," +
-            "(" +
-            "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
-            "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
-            "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
-            ") as lastEpisode , " +
-            "(" +
-            "   SELECT MAX(RoomRelease.releaseDate) FROM RoomEpisode " +
-            "   INNER JOIN RoomRelease ON RoomEpisode.episodeId=RoomRelease.episodeId " +
-            "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
-            "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
-            ") as lastUpdated " +
-            "FROM RoomMedium INNER JOIN ExternalListMediaJoin " +
-            "ON ExternalListMediaJoin.mediumId=RoomMedium.mediumId " +
-            "WHERE listId=:listId " +
-            "ORDER BY title")
+            "   SELECT episodeId FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId " +
+            "   WHERE mediumId=RoomMedium.mediumId " +
+            "   ORDER BY RoomEpisode.combiIndex DESC " +
+            "   LIMIT 1" +
+            ") as currentRead, \n" +
+            "(\n" +
+            "    SELECT RoomEpisode.combiIndex \n" +
+            "    FROM RoomEpisode\n" +
+            "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId\n" +
+            "    WHERE RoomPart.mediumId=RoomMedium.mediumId AND RoomEpisode.progress=1" +
+            "    ORDER BY RoomEpisode.combiIndex DESC" +
+            "    LIMIT 1" +
+            ") as currentReadEpisode,\n" +
+            "(\n" +
+            "    SELECT MAX(RoomEpisode.combiIndex) \n" +
+            "    FROM RoomEpisode\n" +
+            "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId\n" +
+            "    WHERE RoomPart.mediumId=RoomMedium.mediumId\n" +
+            ") as lastEpisode,\n" +
+            "(\n" +
+            "    SELECT MAX(RoomRelease.releaseDate) \n" +
+            "    FROM RoomEpisode\n" +
+            "    INNER JOIN RoomRelease ON RoomEpisode.episodeId=RoomRelease.episodeId\n" +
+            "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId \n" +
+            "    WHERE RoomPart.mediumId=RoomMedium.mediumId\n" +
+            ") as lastUpdated \n" +
+            "FROM RoomMedium \n" +
+            "INNER JOIN ExternalListMediaJoin ON ExternalListMediaJoin.mediumId=RoomMedium.mediumId \n" +
+            "WHERE listId=:listId ORDER BY title")
     LiveData<List<MediumItem>> getExternalListMedia(int listId);
 
     @Query("SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
-            "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, toDownload, " +
+            "countryOfOrigin, languageOfOrigin, lang, series, universe, toDownload, " +
             "(" +
-            "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-            "   WHERE currentRead IS NOT NULL AND currentRead=episodeId" +
+            "    SELECT RoomEpisode.combiIndex \n" +
+            "    FROM RoomEpisode\n" +
+            "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId\n" +
+            "    WHERE RoomPart.mediumId=RoomMedium.mediumId AND RoomEpisode.progress=1" +
+            "    ORDER BY RoomEpisode.combiIndex DESC" +
+            "    LIMIT 1" +
             ") as currentReadEpisode," +
             "(" +
-            "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
+            "   SELECT episodeId FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId " +
+            "   WHERE mediumId=RoomMedium.mediumId " +
+            "   ORDER BY RoomEpisode.combiIndex DESC " +
+            "   LIMIT 1" +
+            ") as currentRead, " +
+            "(" +
+            "   SELECT MAX(RoomEpisode.combiIndex) FROM RoomEpisode " +
             "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
             "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
             ") as lastEpisode, " +

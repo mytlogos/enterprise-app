@@ -286,6 +286,13 @@ public class Client {
         return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.deleteListMedia(url, body));
     }
 
+    public Call<Boolean> deleteListMedia(int listId, Collection<Integer> mediumId) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("listId", listId);
+        body.put("mediumId", mediumId);
+        return build(ListMediaApi.class, (apiImpl, url) -> apiImpl.deleteListMedia(url, body));
+    }
+
     public Call<Boolean> updateListMedia(int oldListId, int newListId, int mediumId) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("oldListId", oldListId);

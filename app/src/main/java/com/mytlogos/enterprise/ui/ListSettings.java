@@ -11,7 +11,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Switch;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -193,19 +192,13 @@ public class ListSettings extends BaseFragment {
                         .updateListName(this.listSettings(), newName)
                         .handle((s, throwable) -> {
                             if (this.getContext() != null && s != null && !s.isEmpty()) {
-                                Toast.makeText(this.getContext(), s, Toast.LENGTH_SHORT).show();
+                                showToast(s);
                                 editName.setText(this.listSettings().getName());
 
                             } else if (throwable != null) {
                                 throwable.printStackTrace();
                                 if (this.getContext() != null) {
-                                    Toast
-                                            .makeText(
-                                                    this.getContext(),
-                                                    "An Error occurred saving the new Name",
-                                                    Toast.LENGTH_SHORT
-                                            )
-                                            .show();
+                                    showToast("An Error occurred saving the new Name");
                                 }
                             }
                             return null;

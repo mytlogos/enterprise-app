@@ -252,6 +252,10 @@ public class MainActivity extends AppCompatActivity implements
                 this.clearLocalMediaData();
                 selected = true;
                 break;
+            case R.id.reset_fail_counter:
+                RepositoryImpl.getInstance().clearFailEpisodes();
+                selected = true;
+                break;
             case android.R.id.home:
                 onBackPressed();
                 return true;

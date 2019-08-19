@@ -159,7 +159,9 @@ public class RoomConverter {
     public RoomEpisode convert(ClientEpisode episode) {
         return new RoomEpisode(
                 episode.getId(), episode.getProgress(), episode.getReadDate(), episode.getPartId(),
-                episode.getTotalIndex(), episode.getPartialIndex(), false
+                episode.getTotalIndex(), episode.getPartialIndex(),
+                Double.parseDouble(String.format("%s.%s", episode.getTotalIndex(), episode.getPartialIndex())),
+                false
         );
     }
 
@@ -214,8 +216,12 @@ public class RoomConverter {
 
     public RoomPart convert(ClientPart part) {
         return new RoomPart(
-                part.getId(), part.getMediumId(), part.getTitle(), part.getTotalIndex(),
-                part.getPartialIndex()
+                part.getId(),
+                part.getMediumId(),
+                part.getTitle(),
+                part.getTotalIndex(),
+                part.getPartialIndex(),
+                Double.parseDouble(String.format("%s.%s", part.getTotalIndex(), part.getPartialIndex()))
         );
     }
 

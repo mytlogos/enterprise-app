@@ -35,7 +35,7 @@ import com.mytlogos.enterprise.background.room.model.RoomUser;
                 RoomMediumInWait.class, RoomDanglingMedium.class, RoomFailedEpisode.class,
                 RoomNotification.class
         },
-        version = 9
+        version = 10
 )
 @TypeConverters({Converters.class})
 public abstract class AbstractDatabase extends RoomDatabase {
@@ -114,6 +114,15 @@ public abstract class AbstractDatabase extends RoomDatabase {
                     @Override
                     public void migrate(@NonNull SupportSQLiteDatabase database) {
                         database.execSQL("ALTER TABLE RoomRelease ADD COLUMN locked INTEGER NOT NULL DEFAULT 0");
+                    }
+                },
+                new Migration(9, 10) {
+                    @Override
+                    public void migrate(@NonNull SupportSQLiteDatabase database) {
+                        database.execSQL("ALTER TABLE RoomEpisode ADD COLUMN combiIndex REAL NOT NULL DEFAULT 0");
+                        database.execSQL("UPDATE RoomEpisode SET combiIndex=CAST((totalIndex || \".\" || COALESCE(partialIndex,0)) as decimal)");
+                        database.execSQL("ALTER TABLE RoomPart ADD COLUMN combiIndex REAL NOT NULL DEFAULT 0");
+                        database.execSQL("UPDATE RoomPart SET combiIndex=CAST((totalIndex || \".\" || COALESCE(partialIndex,0)) as decimal)");
                     }
                 }
         };

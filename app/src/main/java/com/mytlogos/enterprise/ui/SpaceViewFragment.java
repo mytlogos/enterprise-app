@@ -124,7 +124,7 @@ public class SpaceViewFragment extends BaseFragment {
                 }
                 selectedNode = node;
                 viewSelected.setEnabled(!node.children.isEmpty());
-                selectedTitle.setText(node.name);
+                selectedTitle.setText(String.format("%s (%s MB)", node.name, node.getSizeMB()));
                 selectedTitle.setVisibility(View.VISIBLE);
 
                 clearBtn.setText(String.format("Clear %s", new String(value.getLabelAsChars())));
@@ -316,6 +316,10 @@ public class SpaceViewFragment extends BaseFragment {
             }
             return total + this.size;
         }
+
+        private long getSizeMB() {
+            return this.getSize() / (1024 * 1024);
+        }
     }
 
     private static class EpisodeNode extends SpaceDataNode {
@@ -446,7 +450,6 @@ public class SpaceViewFragment extends BaseFragment {
     private PieChartData getData(List<SliceValue> sliceValues, long size) {
         PieChartData data = new PieChartData();
         data.setHasLabels(true).setValueLabelTextSize(14);
-
         String readableByteCount = FileTools.humanReadableByteCount(size, true);
 
         data.setValues(sliceValues)

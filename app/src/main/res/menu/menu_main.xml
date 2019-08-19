@@ -23,6 +23,11 @@
         android:title="@string/clear_local_media_data"
         app:showAsAction="never" />
     <item
+        android:id="@+id/reset_fail_counter"
+        android:orderInCategory="100"
+        android:title="@string/reset_download_fail_counter"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_settings"
         android:orderInCategory="100"
         android:title="@string/action_settings"

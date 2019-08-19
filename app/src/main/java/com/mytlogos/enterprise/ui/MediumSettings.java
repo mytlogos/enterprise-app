@@ -11,7 +11,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.Switch;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -193,18 +192,14 @@ public class MediumSettings extends BaseFragment {
                         .updateMedium(setting)
                         .handle((s, throwable) -> {
                             if (this.getContext() != null && s != null && !s.isEmpty()) {
-                                Toast.makeText(this.getContext(), s, Toast.LENGTH_SHORT).show();
+                                showToast(s);
                                 editName.setText(currentMediumSetting.getTitle());
 
                             } else if (throwable != null) {
                                 throwable.printStackTrace();
 
                                 if (this.getContext() != null) {
-                                    Toast.makeText(
-                                            this.getContext(),
-                                            "An Error occurred saving the new Title",
-                                            Toast.LENGTH_SHORT
-                                    ).show();
+                                    showToast("An Error occurred saving the new Title");
                                 }
                             }
                             return null;

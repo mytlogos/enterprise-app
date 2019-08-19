@@ -16,6 +16,7 @@ import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalUser;
+import com.mytlogos.enterprise.model.FailedEpisode;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumInWait;
@@ -405,6 +406,11 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
+    public CompletableFuture<Boolean> removeItemFromList(int listId, Collection<Integer> mediumId) {
+        return null;
+    }
+
+    @Override
     public CompletableFuture<Boolean> moveItemFromList(int oldListId, int newListId, int mediumId) {
         return null;
     }
@@ -479,6 +485,11 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
+    public List<FailedEpisode> getFailedEpisodes(Collection<Integer> episodeIds) {
+        return null;
+    }
+
+    @Override
     public void addNotification(NotificationItem notification) {
 
     }
@@ -495,6 +506,11 @@ public final class DummyRepository implements Repository {
 
     @Override
     public void clearNotifications() {
+
+    }
+
+    @Override
+    public void clearFailEpisodes() {
 
     }
 

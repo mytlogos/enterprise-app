@@ -54,6 +54,7 @@ import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalMediaList;
 import com.mytlogos.enterprise.model.ExternalUser;
+import com.mytlogos.enterprise.model.FailedEpisode;
 import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
@@ -192,6 +193,10 @@ public class RoomStorage implements DatabaseStorage {
     @Override
     public void updateSaved(Collection<Integer> episodeIds, boolean saved) {
         this.episodeDao.updateSaved(episodeIds, saved);
+
+        if (saved) {
+            this.failedEpisodesDao.deleteBulkPerId(episodeIds);
+        }
     }
 
     @Override
@@ -434,7 +439,7 @@ public class RoomStorage implements DatabaseStorage {
     public LiveData<PagedList<ReadEpisode>> getReadTodayEpisodes() {
         RoomConverter converter = new RoomConverter();
         return new LivePagedListBuilder<>(
-                this.episodeDao.getReadTodayEpisodes().map(input -> converter.convert(input)),
+                this.episodeDao.getReadTodayEpisodes().map(converter::convert),
                 50
         ).build();
     }
@@ -521,6 +526,11 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
+    public void removeItemFromList(int listId, Collection<Integer> mediumId) {
+        this.mediaListDao.removeJoin(listId, mediumId);
+    }
+
+    @Override
     public void moveItemsToList(int oldListId, int newListId, Collection<Integer> ids) {
         Collection<RoomMediaList.MediaListMediaJoin> oldJoins = new ArrayList<>();
         Collection<RoomMediaList.MediaListMediaJoin> newJoins = new ArrayList<>();
@@ -560,16 +570,15 @@ public class RoomStorage implements DatabaseStorage {
 
         return this.episodeDao.getEpisodeIdsWithLowerIndex(
                 part.getMediumId(),
-                episode.getTotalIndex(),
-                episode.getPartialIndex(),
-                part.getTotalIndex(),
-                part.getPartialIndex(),
+                episode.getCombiIndex(),
+                part.getCombiIndex(),
                 read
         );
     }
 
     @Override
     public void clearLocalMediaData() {
+        this.failedEpisodesDao.clearAll();
         this.episodeDao.clearAllReleases();
         this.episodeDao.clearAll();
         this.partDao.clearAll();
@@ -596,6 +605,12 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
+    public List<FailedEpisode> getFailedEpisodes(Collection<Integer> episodeIds) {
+        return this.failedEpisodesDao.getFailedEpisodes(episodeIds);
+    }
+
+
+    @Override
     public void addNotification(NotificationItem notification) {
         if (notification == null) {
             return;
@@ -620,6 +635,11 @@ public class RoomStorage implements DatabaseStorage {
     @Override
     public void clearNotifications() {
         this.notificationDao.deleteAll();
+    }
+
+    @Override
+    public void clearFailEpisodes() {
+        this.failedEpisodesDao.clearAll();
     }
 
     private <E> E getOr(E value, @SuppressWarnings("SameParameterValue") E defaultValue) {

@@ -11,7 +11,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -90,19 +89,11 @@ public class ListsFragment extends BaseListFragment<MediaList, ListsViewModel> {
                 MediaList list = ((ListItem) flexible).list;
 
                 if (ListsFragment.TRASH_LIST.getListId() == list.getListId()) {
-                    Toast.makeText(
-                            getContext(),
-                            "You cannot delete the Trash list",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                    showToast("You cannot delete the Trash list");
                     return true;
                 }
                 if (getString(R.string.standard_list_name).equals(list.getName())) {
-                    Toast.makeText(
-                            getContext(),
-                            "You cannot delete the Standard list",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                    showToast("You cannot delete the Standard list");
                     return true;
                 }
 

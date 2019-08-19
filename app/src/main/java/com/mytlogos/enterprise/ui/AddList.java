@@ -9,7 +9,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Switch;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -65,7 +64,7 @@ public class AddList extends BaseFragment {
         String name = editName.getText().toString().trim();
 
         if (name.isEmpty()) {
-            Toast.makeText(this.getContext(), "No Name", Toast.LENGTH_SHORT).show();
+            showToast("No Name");
             return;
         }
         int medium = 0;
@@ -123,7 +122,7 @@ public class AddList extends BaseFragment {
             super.onPostExecute(aVoid);
 
             if (this.errorMessage != null) {
-                Toast.makeText(this.addList.getContext(), this.errorMessage, Toast.LENGTH_SHORT).show();
+                this.addList.showToast(this.errorMessage);
             }
             this.addList.getMainActivity().showLoading(false);
             this.addList.getMainActivity().onBackPressed();

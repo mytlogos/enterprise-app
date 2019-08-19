@@ -15,6 +15,7 @@ import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalUser;
+import com.mytlogos.enterprise.model.FailedEpisode;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumInWait;
@@ -187,6 +188,8 @@ public interface Repository {
 
     CompletableFuture<Boolean> removeItemFromList(int listId, int mediumId);
 
+    CompletableFuture<Boolean> removeItemFromList(int listId, Collection<Integer> mediumId);
+
     CompletableFuture<Boolean> moveItemFromList(int oldListId, int newListId, int mediumId);
 
     LiveData<List<MediaList>> getListSuggestion(String name);
@@ -217,6 +220,8 @@ public interface Repository {
 
     void updateFailedDownloads(int episodeId);
 
+    List<FailedEpisode> getFailedEpisodes(Collection<Integer> episodeIds);
+
     void addNotification(NotificationItem notification);
 
     SimpleEpisode getSimpleEpisode(int episodeId);
@@ -224,4 +229,6 @@ public interface Repository {
     SimpleMedium getSimpleMedium(Integer mediumId);
 
     void clearNotifications();
+
+    void clearFailEpisodes();
 }

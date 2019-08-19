@@ -21,6 +21,7 @@ import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
+import com.mytlogos.enterprise.model.FailedEpisode;
 import com.mytlogos.enterprise.model.MediumType;
 import com.mytlogos.enterprise.model.NotificationItem;
 import com.mytlogos.enterprise.model.SimpleEpisode;
@@ -58,10 +59,13 @@ public class DownloadWorker extends Worker {
 
     public static void enqueueDownloadTask() {
         OneTimeWorkRequest oneTimeWorkRequest = getWorkRequest();
-        WorkManager.getInstance().enqueueUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, oneTimeWorkRequest);
+        WorkManager.getInstance()
+                .beginUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, oneTimeWorkRequest)
+                .then(CheckSavedWorker.getWorkRequest())
+                .enqueue();
     }
 
-    static OneTimeWorkRequest getWorkRequest() {
+    private static OneTimeWorkRequest getWorkRequest() {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.UNMETERED)
                 .build();
@@ -142,6 +146,10 @@ public class DownloadWorker extends Worker {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            notificationManager.notify(
+                    downloadNotificationId,
+                    builder.setContentTitle("Download failed").setContentText(null).build()
+            );
             currentWorker.remove(this);
             return Result.failure();
         } finally {
@@ -196,14 +204,29 @@ public class DownloadWorker extends Worker {
             List<Integer> episodeIds = repository.getDownloadableEpisodes(mediumId);
             Set<Integer> uniqueEpisodes = new HashSet<>(episodeIds);
 
-            if (!uniqueEpisodes.isEmpty()) {
-                mediumDownloads.add(new MediumDownload(
-                        uniqueEpisodes,
-                        mediumId,
-                        medium.getMedium(),
-                        medium.getTitle()
-                ));
+            if (uniqueEpisodes.isEmpty()) {
+                continue;
             }
+            List<FailedEpisode> failedEpisodes = repository.getFailedEpisodes(uniqueEpisodes);
+
+            for (FailedEpisode failedEpisode : failedEpisodes) {
+                // if it failed 3 times or more, don't try anymore for now
+                if (failedEpisode.getFailCount() < 3) {
+                    continue;
+                }
+                uniqueEpisodes.remove(failedEpisode.getEpisodeId());
+            }
+
+            if (uniqueEpisodes.isEmpty()) {
+                continue;
+            }
+
+            mediumDownloads.add(new MediumDownload(
+                    uniqueEpisodes,
+                    mediumId,
+                    medium.getMedium(),
+                    medium.getTitle()
+            ));
             downloadCount += uniqueEpisodes.size();
         }
         if (!mediumDownloads.isEmpty()) {

@@ -14,13 +14,24 @@ public interface RoomDanglingDao extends MultiBaseDao<RoomDanglingMedium> {
 
     @Query(
             "SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
-                    "countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, " +
+                    "countryOfOrigin, languageOfOrigin, lang, series, universe, " +
                     "(" +
-                    "   SELECT (COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0)) FROM RoomEpisode " +
-                    "   WHERE currentRead=episodeId" +
+                    "   SELECT episodeId FROM RoomEpisode " +
+                    "   INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId " +
+                    "   WHERE mediumId=RoomMedium.mediumId " +
+                    "   ORDER BY RoomEpisode.combiIndex DESC " +
+                    "   LIMIT 1" +
+                    ") as currentRead," +
+                    "(" +
+                    "    SELECT RoomEpisode.combiIndex \n" +
+                    "    FROM RoomEpisode\n" +
+                    "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId\n" +
+                    "    WHERE RoomPart.mediumId=RoomMedium.mediumId AND RoomEpisode.progress=1" +
+                    "    ORDER BY RoomEpisode.combiIndex DESC" +
+                    "    LIMIT 1" +
                     ") as currentReadEpisode," +
                     "(" +
-                    "   SELECT MAX((COALESCE(RoomEpisode.totalIndex,0) + COALESCE(RoomEpisode.partialIndex,0))) FROM RoomEpisode " +
+                    "   SELECT MAX(RoomEpisode.combiIndex) FROM RoomEpisode " +
                     "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
                     "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
                     ") as lastEpisode , " +

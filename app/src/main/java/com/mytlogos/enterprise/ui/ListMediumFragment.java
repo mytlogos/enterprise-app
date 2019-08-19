@@ -13,7 +13,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -78,11 +77,7 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
 
         private boolean deleteItemsFromList(ActionMode mode) {
             if (ListsFragment.TRASH_LIST.getListId() == listId) {
-                Toast.makeText(
-                        ListMediumFragment.this.getContext(),
-                        "You cannot delete from the Trash list",
-                        Toast.LENGTH_SHORT
-                ).show();
+                showToast("You cannot delete from the Trash list");
                 mode.finish();
                 // TODO: 01.08.2019 ask if we really want to remove this item
                 return true;
@@ -101,8 +96,21 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
                     selectedMediaIds.add(mediumItem.getMediumId());
                 }
             }
-            Toast.makeText(requireContext(), "Does not work yet", Toast.LENGTH_SHORT).show();
-            System.out.println("removed " + selectedMediaIds.size() + " Items from list");
+            int size = selectedMediaIds.size();
+            getViewModel().removeMedia(listId, selectedMediaIds).whenComplete((aBoolean, throwable) -> {
+                Handler mainHandler = new Handler(Looper.getMainLooper());
+                mainHandler.post(() -> {
+                    String text;
+                    if (aBoolean == null || !aBoolean || throwable != null) {
+                        text = String.format("Could not delete %s Media from List '%s'", size, listTitle);
+                    } else {
+                        text = String.format("Removed %s Media from '%s'", size, listTitle);
+                        // TODO: 29.07.2019 replace toast with undoable snackbar
+                        mode.finish();
+                    }
+                    requireActivity().runOnUiThread(() -> showToast(text));
+                });
+            });
             return false;
         }
 
@@ -159,7 +167,7 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
                             // TODO: 29.07.2019 replace toast with undoable snackbar
                             mode.finish();
                         }
-                        requireActivity().runOnUiThread(() -> Toast.makeText(context, text, Toast.LENGTH_SHORT).show());
+                        requireActivity().runOnUiThread(() -> showToast(text));
                     });
                 });
 
@@ -290,7 +298,7 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
                 msg = "Successfully removed Item from List";
             }
             this.requireActivity().runOnUiThread(() -> {
-                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
+                showToast(msg)
                 this.requireActivity().onBackPressed();
             });
 

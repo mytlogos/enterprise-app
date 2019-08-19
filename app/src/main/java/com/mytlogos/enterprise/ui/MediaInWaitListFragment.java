@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -183,7 +182,7 @@ public class MediaInWaitListFragment extends BaseSwipeListFragment<MediumInWait,
         @Override
         protected void onPostExecute(Void aVoid) {
             if (this.errorMsg != null) {
-                Toast.makeText(getContext(), errorMsg, Toast.LENGTH_SHORT).show();
+                showToast(errorMsg);
             }
             getListContainer().setRefreshing(false);
         }

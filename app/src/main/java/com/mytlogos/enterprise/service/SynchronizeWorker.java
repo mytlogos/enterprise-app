@@ -43,8 +43,6 @@ public class SynchronizeWorker extends Worker {
 
         WorkManager.getInstance()
                 .beginUniqueWork(SYNCHRONIZE_WORKER, ExistingWorkPolicy.REPLACE, workRequest)
-                .then(DownloadWorker.getWorkRequest())
-                .then(CheckSavedWorker.getWorkRequest())
                 .enqueue();
     }
 

@@ -9,7 +9,6 @@ import android.widget.RadioButton;
 import android.widget.SearchView;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -254,13 +253,13 @@ public class MediaInWaitFragment extends BaseFragment {
                 }
                 this.running = false;
                 requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+                    showToast(msg);
                     requireActivity().onBackPressed();
                 });
             });
         } else if (addToc.isChecked()) {
             if (this.selectedMedium == null) {
-                Toast.makeText(requireContext(), "No Medium selected", Toast.LENGTH_SHORT).show();
+                showToast("No Medium selected");
                 return;
             }
             List<IFlexible> items = listAdapter.getCurrentItems();
@@ -283,7 +282,7 @@ public class MediaInWaitFragment extends BaseFragment {
                 }
                 this.running = false;
                 requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+                    showToast(msg);
                     requireActivity().onBackPressed();
                 });
             });

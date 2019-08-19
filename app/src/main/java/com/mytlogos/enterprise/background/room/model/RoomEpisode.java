@@ -28,16 +28,22 @@ public class RoomEpisode {
     private final int partId;
     private final int totalIndex;
     private final int partialIndex;
+    private final double combiIndex;
     private final boolean saved;
 
-    public RoomEpisode(int episodeId, float progress, DateTime readDate, int partId, int totalIndex, int partialIndex, boolean saved) {
+    public RoomEpisode(int episodeId, float progress, DateTime readDate, int partId, int totalIndex, int partialIndex, double combiIndex, boolean saved) {
         this.episodeId = episodeId;
         this.progress = progress;
         this.readDate = readDate;
         this.partId = partId;
         this.totalIndex = totalIndex;
         this.partialIndex = partialIndex;
+        this.combiIndex = combiIndex;
         this.saved = saved;
+    }
+
+    public double getCombiIndex() {
+        return combiIndex;
     }
 
     public int getEpisodeId() {

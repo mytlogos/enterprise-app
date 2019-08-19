@@ -27,21 +27,23 @@ import java.util.List;
 )
 public class RoomPart implements Part {
     @PrimaryKey
-    private int partId;
-    private int mediumId;
-    private String title;
-    private int totalIndex;
-    private int partialIndex;
+    private final int partId;
+    private final int mediumId;
+    private final String title;
+    private final int totalIndex;
+    private final int partialIndex;
+    private final double combiIndex;
 
     @Ignore
     private List<Integer> episodes;
 
-    public RoomPart(int partId, int mediumId, String title, int totalIndex, int partialIndex) {
+    public RoomPart(int partId, int mediumId, String title, int totalIndex, int partialIndex, double combiIndex) {
         this.partId = partId;
         this.mediumId = mediumId;
         this.title = title;
         this.totalIndex = totalIndex;
         this.partialIndex = partialIndex;
+        this.combiIndex = combiIndex;
         this.episodes = new ArrayList<>();
     }
 
@@ -82,6 +84,10 @@ public class RoomPart implements Part {
                 ", partialIndex=" + partialIndex +
                 ", episodes=" + episodes +
                 '}';
+    }
+
+    public double getCombiIndex() {
+        return combiIndex;
     }
 
     @Override

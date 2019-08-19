@@ -6,7 +6,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -46,11 +45,11 @@ public class TextReaderFragmentText extends TextViewerFragment {
                 }
                 if (index >= this.readableEpisodes.size()) {
                     // TODO: 26.07.2019 check with if there are more episodes and save them
-                    Toast.makeText(this.getContext(), "You are already reading the last saved episode", Toast.LENGTH_SHORT).show();
+                    showToast("You are already reading the last saved episode");
                     return;
                 } else if (index < 0) {
                     // TODO: 26.07.2019 check with if there are more episodes and save them
-                    Toast.makeText(this.getContext(), "You are already reading the first saved episode", Toast.LENGTH_SHORT).show();
+                    showToast("You are already reading the first saved episode");
                     return;
                 }
                 this.currentlyReading = this.readableEpisodes.get(index);

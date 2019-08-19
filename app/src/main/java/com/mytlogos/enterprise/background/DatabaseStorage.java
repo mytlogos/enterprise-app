@@ -6,6 +6,7 @@ import androidx.paging.PagedList;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalUser;
+import com.mytlogos.enterprise.model.FailedEpisode;
 import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
@@ -142,6 +143,8 @@ public interface DatabaseStorage {
 
     void removeItemFromList(int listId, int mediumId);
 
+    void removeItemFromList(int listId, Collection<Integer> mediumId);
+
     void moveItemsToList(int oldListId, int listId, Collection<Integer> ids);
 
     LiveData<PagedList<ExternalUser>> getExternalUser();
@@ -160,6 +163,8 @@ public interface DatabaseStorage {
 
     void updateFailedDownload(int episodeId);
 
+    List<FailedEpisode> getFailedEpisodes(Collection<Integer> episodeIds);
+
     void addNotification(NotificationItem notification);
 
     SimpleEpisode getSimpleEpisode(int episodeId);
@@ -167,4 +172,6 @@ public interface DatabaseStorage {
     SimpleMedium getSimpleMedium(int mediumId);
 
     void clearNotifications();
+
+    void clearFailEpisodes();
 }

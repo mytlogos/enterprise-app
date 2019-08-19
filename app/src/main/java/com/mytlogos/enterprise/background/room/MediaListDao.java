@@ -84,4 +84,7 @@ public interface MediaListDao extends MultiBaseDao<RoomMediaList> {
 
     @Query("SELECT COUNT(listId) FROM RoomMediaList")
     LiveData<Integer> countLists();
+
+    @Query("DELETE FROM MediaListMediaJoin WHERE listId=:listId AND mediumId IN (:mediumId)")
+    void removeJoin(int listId, Collection<Integer> mediumId);
 }

@@ -19,7 +19,9 @@ import org.joda.time.DateTime;
                         parentColumns = "episodeId"
                 )
         },
-        indices = @Index("episodeId"))
+        indices = {
+                @Index("episodeId")
+        })
 public class RoomRelease implements Release {
     private final int episodeId;
     @NonNull

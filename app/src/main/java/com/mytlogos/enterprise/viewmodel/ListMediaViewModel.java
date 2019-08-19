@@ -8,6 +8,7 @@ import androidx.lifecycle.LiveData;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.tools.Sortings;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -27,6 +28,10 @@ public class ListMediaViewModel extends RepoViewModel {
     }
 
     public CompletableFuture<Boolean> removeMedia(int listId, int mediumId) {
+        return this.repository.removeItemFromList(listId, mediumId);
+    }
+
+    public CompletableFuture<Boolean> removeMedia(int listId, Collection<Integer> mediumId) {
         return this.repository.removeItemFromList(listId, mediumId);
     }
 
