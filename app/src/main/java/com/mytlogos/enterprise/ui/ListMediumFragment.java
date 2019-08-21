@@ -232,7 +232,7 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
         Bundle bundle = null;
         boolean selected = false;
 
-        if (item.getItemId() == R.id.item_setting) {
+        if (item.getItemId() == R.id.list_setting) {
             fragment = new ListSettings();
             bundle = Objects.requireNonNull(this.getArguments());
             selected = true;

@@ -224,4 +224,8 @@
     <string name="notification_history">Notification History</string>
     <string name="clear_notification_history">Clear Notification History</string>
     <string name="reset_download_fail_counter">Reset Download Fail Counter</string>
+    <string name="font">Font</string>
+    <string name="increment_font">Increment Font</string>
+    <string name="decrement_font">Decrement Font</string>
+    <string name="default_zero">0</string>
 </resources>

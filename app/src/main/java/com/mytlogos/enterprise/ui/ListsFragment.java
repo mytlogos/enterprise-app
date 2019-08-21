@@ -144,7 +144,7 @@ public class ListsFragment extends BaseListFragment<MediaList, ListsViewModel> {
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
-        inflater.inflate(R.menu.list_menu, menu);
+        inflater.inflate(R.menu.lists_menu, menu);
     }
 
     @Override

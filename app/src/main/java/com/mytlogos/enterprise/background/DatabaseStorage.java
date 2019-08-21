@@ -155,7 +155,7 @@ public interface DatabaseStorage {
 
     List<String> getReleaseLinks(int episodeId);
 
-    List<Integer> getEpisodeIdsWithLowerIndex(int episodeId, boolean read);
+    List<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId, boolean read);
 
     void clearLocalMediaData();
 
@@ -174,4 +174,9 @@ public interface DatabaseStorage {
     void clearNotifications();
 
     void clearFailEpisodes();
+
+    Collection<Integer> getAllEpisodes(int mediumId);
+
+    Collection<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId);
+
 }

@@ -27,11 +27,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ImageContentTool extends ContentTool {
-
     private final Repository repository;
     private Map<Integer, File> internalImageMedia;
     private Map<Integer, File> externalImageMedia;
@@ -57,6 +58,9 @@ public class ImageContentTool extends ContentTool {
 
     @Override
     void removeMediaEpisodes(Set<Integer> episodeIds, String path) {
+        if (path == null) {
+            return;
+        }
         File file = new File(path);
         Set<String> prefixes = new HashSet<>();
 
@@ -177,90 +181,132 @@ public class ImageContentTool extends ContentTool {
             List<String> links = this.repository.getReleaseLinks(episode.getEpisodeId());
             List<File> writtenFiles = new ArrayList<>();
 
-            for (int page = 0, contentLength = content.length; page < contentLength; page++) {
-                String link = content[page];
-                String pageLinkDomain = Utils.getDomain(link);
+            downloadPage(content, 0, file, episode.getEpisodeId(), links, writtenFiles);
 
-                if (pageLinkDomain == null) {
-                    System.err.println("invalid url: '" + link + "'");
-                    continue;
+            File firstImage = writtenFiles.get(0);
+            long estimatedByteSize = firstImage.length() * content.length;
+
+            if (!writeable(file, estimatedByteSize)) {
+                if (!firstImage.delete()) {
+                    System.out.println("could not delete image: " + firstImage.getAbsolutePath());
                 }
-                String referer = null;
+                throw new NotEnoughSpaceException();
+            }
 
-                for (String releaseUrl : links) {
-                    if (Objects.equals(Utils.getDomain(link), pageLinkDomain)) {
-                        referer = releaseUrl;
-                        break;
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+            for (int page = 1, contentLength = content.length; page < contentLength; page++) {
+                int tempPage = page;
+                futures.add(CompletableFuture.runAsync(() -> {
+                    try {
+                        downloadPage(content, tempPage, file, episode.getEpisodeId(), links, writtenFiles);
+                    } catch (NotEnoughSpaceException e) {
+                        throw new IllegalStateException(e);
                     }
+                }));
+            }
+            try {
+                CompletableFuture
+                        .allOf(futures.toArray(new CompletableFuture[0]))
+                        .whenComplete((aVoid, throwable) -> {
+                            if (throwable == null) {
+                                return;
+                            }
+                            // first exception is completionException, then the illegalStateException
+                            // followed by notEnoughSpaceException
+                            Throwable cause = throwable.getCause();
+                            if (cause != null && cause.getCause() instanceof NotEnoughSpaceException) {
+                                for (File writtenFile : writtenFiles) {
+                                    if (!writtenFile.delete()) {
+                                        System.out.println("could not delete image: " + writtenFile.getAbsolutePath());
+                                    }
+                                }
+                                throwable = cause.getCause();
+                            }
+                            throw new RuntimeException(throwable);
+                        })
+                        .get();
+            } catch (ExecutionException e) {
+                if (e.getCause() instanceof NotEnoughSpaceException) {
+                    throw new NotEnoughSpaceException();
+                } else if (e.getCause() instanceof IOException) {
+                    throw new IOException(e);
+                } else {
+                    e.printStackTrace();
                 }
-                if (referer == null || referer.isEmpty()) {
-                    // we need a referrer for sites like mangahasu
-                    continue;
-                }
-                // TODO: 06.08.2019 instead of continuing maybe create an empty image file to signal
-                //  the reader that this page is explicitly missing?
-                if (link == null || link.isEmpty()) {
-                    System.err.println("got an invalid link");
-                    continue;
-                }
-                try {
-                    URL url = new URL(link);
-                    HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
-                    httpURLConnection.setDoInput(true);
-                    httpURLConnection.setRequestProperty("Referer", referer);
-                    httpURLConnection.connect();
-                    int responseCode = httpURLConnection.getResponseCode();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
-                    if (responseCode != HttpURLConnection.HTTP_OK) {
-                        System.err.println("invalid response for " + link);
-                        continue;
-                    }
+    private Void downloadPage(String[] content, int page, File file, int episodeId, List<String> links, List<File> writtenFiles) throws NotEnoughSpaceException {
+        String link = content[page];
+        String pageLinkDomain = Utils.getDomain(link);
 
-                    try (InputStream in = httpURLConnection.getInputStream()) {
-                        Bitmap bitmap = BitmapFactory.decodeStream(in);
+        if (pageLinkDomain == null) {
+            System.err.println("invalid url: '" + link + "'");
+            return null;
+        }
+        String referer = null;
 
-                        String pageName = String.format("%s-%s.png", episode.getEpisodeId(), page + 1);
-                        File image = new File(file, pageName);
+        for (String releaseUrl : links) {
+            if (Objects.equals(Utils.getDomain(link), pageLinkDomain)) {
+                referer = releaseUrl;
+                break;
+            }
+        }
+        if (referer == null || referer.isEmpty()) {
+            // we need a referrer for sites like mangahasu
+            return null;
+        }
+        // TODO: 06.08.2019 instead of continuing maybe create an empty image file to signal
+        //  the reader that this page is explicitly missing?
+        if (link == null || link.isEmpty()) {
+            System.err.println("got an invalid link");
+            return null;
+        }
+        try {
+            URL url = new URL(link);
+            HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+            httpURLConnection.setDoInput(true);
+            httpURLConnection.setRequestProperty("Referer", referer);
+            httpURLConnection.connect();
+            int responseCode = httpURLConnection.getResponseCode();
 
-                        try (OutputStream outputStream = new FileOutputStream(image)) {
-                            bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream);
-                            outputStream.flush();
-                        } catch (FileNotFoundException e) {
-                            e.printStackTrace();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        writtenFiles.add(image);
-                    }
-                } catch (MalformedURLException e) {
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                System.err.println("invalid response for " + link);
+                return null;
+            }
+
+            try (InputStream in = httpURLConnection.getInputStream()) {
+                Bitmap bitmap = BitmapFactory.decodeStream(in);
+
+                String pageName = String.format("%s-%s.png", episodeId, page + 1);
+                File image = new File(file, pageName);
+
+                try (OutputStream outputStream = new FileOutputStream(image)) {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream);
+                    outputStream.flush();
+                } catch (FileNotFoundException e) {
                     e.printStackTrace();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                if (page == 0) {
-                    File firstImage = writtenFiles.get(0);
-                    long estimatedByteSize = firstImage.length() * content.length;
-
-                    if (!writeable(file, estimatedByteSize)) {
-                        if (!firstImage.delete()) {
-                            System.out.println("could not delete image: " + firstImage.getAbsolutePath());
-                        }
-                        throw new NotEnoughSpaceException();
-                    }
-                }
-                // if the estimation was too low
-                // and subsequent images took more space than expected
-                // check if it can still write after this
-                if (!this.writeable()) {
-                    for (File writtenFile : writtenFiles) {
-                        if (!writtenFile.delete()) {
-                            System.out.println("could not delete image: " + writtenFile.getAbsolutePath());
-                        }
-                    }
-                    throw new NotEnoughSpaceException();
-                }
+                writtenFiles.add(image);
             }
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        // if the estimation was too low
+        // and subsequent images took more space than expected
+        // check if it can still write after this
+        if (!this.writeable()) {
+            throw new NotEnoughSpaceException();
+        }
+        return null;
     }
 
     @Override

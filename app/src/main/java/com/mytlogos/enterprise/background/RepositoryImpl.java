@@ -49,6 +49,8 @@ import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.tools.ContentTool;
+import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.Sortings;
 
 import org.joda.time.DateTime;
@@ -59,6 +61,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import okhttp3.ResponseBody;
@@ -508,7 +511,26 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void updateSaved(Collection<Integer> episodeIds, boolean saved) {
-        this.storage.updateSaved(episodeIds, saved);
+        List<Integer> list = new ArrayList<>(episodeIds);
+        int steps = 100;
+        int minItem = 0;
+        int maxItem = minItem + steps;
+
+        do {
+            if (maxItem > list.size()) {
+                maxItem = list.size();
+            }
+
+            List<Integer> subList = list.subList(minItem, maxItem);
+            this.storage.updateSaved(subList, saved);
+
+            minItem = minItem + steps;
+            maxItem = minItem + steps;
+
+            if (maxItem > list.size()) {
+                maxItem = list.size();
+            }
+        } while (minItem < list.size() && maxItem <= list.size());
     }
 
     @Override
@@ -750,6 +772,47 @@ public class RepositoryImpl implements Repository {
     @Override
     public List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids) {
         return this.storage.getSimpleEpisodes(ids);
+    }
+
+    @Override
+    public void updateAllRead(int episodeId, boolean read) throws IOException {
+        Collection<Integer> episodeIds = this.storage.getAllEpisodes(episodeId);
+
+        if (!episodeIds.contains(episodeId)) {
+            episodeIds.add(episodeId);
+        }
+
+        this.updateRead(episodeIds, read);
+    }
+
+    @Override
+    public void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException {
+        this.deleteLocalEpisodes(Collections.singleton(episodeId), mediumId, application);
+    }
+
+    @Override
+    public void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId, Application application) throws IOException {
+        Collection<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithLowerIndex(episodeId);
+        this.deleteLocalEpisodes(new HashSet<>(episodeIds), mediumId, application);
+    }
+
+    @Override
+    public void deleteAllLocalEpisodes(int mediumId, Application application) throws IOException {
+        Collection<Integer> episodes = this.storage.getSavedEpisodes(mediumId);
+        this.deleteLocalEpisodes(new HashSet<>(episodes), mediumId, application);
+    }
+
+    private void deleteLocalEpisodes(Set<Integer> episodeIds, int mediumId, Application application) throws IOException {
+        int medium = this.getMediumType(mediumId);
+
+        ContentTool contentTool = FileTools.getContentTool(medium, application);
+
+        if (!contentTool.isSupported()) {
+            throw new IOException("medium type: " + medium + " is not supported");
+        }
+
+        contentTool.removeMediaEpisodes(mediumId, episodeIds);
+        this.updateSaved(episodeIds, false);
     }
 
     @Override
@@ -1040,7 +1103,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException {
-        List<Integer> episodeIds = this.storage.getEpisodeIdsWithLowerIndex(episodeId, read);
+        List<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithLowerIndex(episodeId, read);
 
         if (!episodeIds.contains(episodeId)) {
             episodeIds.add(episodeId);
@@ -1098,6 +1161,7 @@ public class RepositoryImpl implements Repository {
     public void clearFailEpisodes() {
         this.storage.clearFailEpisodes();
     }
+
 
     @Override
     public CompletableFuture<Boolean> moveItemFromList(int oldListId, int newListId, int mediumId) {

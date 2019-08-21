@@ -10,6 +10,8 @@ import androidx.paging.PagedList;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.tools.Sortings;
 
+import java.io.IOException;
+
 public class TocEpisodeViewModel extends FilterableViewModel implements SortableViewModel {
     private MutableLiveData<SortFilter> sortFilterLiveData = new MutableLiveData<>();
     private LiveData<PagedList<TocEpisode>> repositoryToc;
@@ -60,13 +62,37 @@ public class TocEpisodeViewModel extends FilterableViewModel implements Sortable
         return this.repositoryToc;
     }
 
+    public void deleteAllLocalEpisodes(int mediumId) throws IOException {
+        repository.deleteAllLocalEpisodes(mediumId, this.getApplication());
+    }
+
+    public void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId) throws IOException {
+        repository.deleteLocalEpisodesWithLowerIndex(episodeId, mediumId, this.getApplication());
+    }
+
+    public void deleteLocalEpisode(int episodeId, int mediumId) throws IOException {
+        repository.deleteLocalEpisode(episodeId, mediumId, this.getApplication());
+    }
+
+    public void updateAllRead(int mediumId, boolean read) throws IOException {
+        repository.updateAllRead(mediumId, read);
+    }
+
+    public void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException {
+        repository.updateReadWithLowerIndex(episodeId, read);
+    }
+
+    public void updateRead(int episodeId, boolean read) throws IOException {
+        repository.updateRead(episodeId, read);
+    }
+
     private static class Builder {
 
         private Sortings sortings;
         private byte read;
         private byte saved;
 
-        public Builder(SortFilter sortFilter) {
+        Builder(SortFilter sortFilter) {
             if (sortFilter == null) {
                 sortings = Sortings.INDEX_DESC;
                 read = -1;

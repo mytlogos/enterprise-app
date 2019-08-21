@@ -1,5 +1,7 @@
 package com.mytlogos.enterprise.background;
 
+import android.app.Application;
+
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.paging.PagedList;
@@ -511,6 +513,26 @@ public final class DummyRepository implements Repository {
 
     @Override
     public void clearFailEpisodes() {
+
+    }
+
+    @Override
+    public void updateAllRead(int episodeId, boolean read) {
+
+    }
+
+    @Override
+    public void deleteAllLocalEpisodes(int mediumId, Application application) throws IOException {
+
+    }
+
+    @Override
+    public void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId, Application application) throws IOException {
+
+    }
+
+    @Override
+    public void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException {
 
     }
 

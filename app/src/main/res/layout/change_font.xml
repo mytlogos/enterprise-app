@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
+
+    <EditText
+        android:id="@+id/font_size"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ems="10"
+        android:hint="@string/font"
+        android:inputType="numberSigned"
+        android:text="@string/default_zero" />
+
+    <ImageButton
+        android:id="@+id/increment_font"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/increment_font"
+        android:text="@string/default_zero"
+        app:srcCompat="@drawable/ic_add_dark" />
+
+    <ImageButton
+        android:id="@+id/decrement_font"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/decrement_font"
+        app:srcCompat="@drawable/ic_subtract_dark" />
+</LinearLayout>

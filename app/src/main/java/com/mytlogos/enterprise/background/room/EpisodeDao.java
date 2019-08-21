@@ -130,7 +130,9 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
     @Query("SELECT * FROM RoomEpisode WHERE episodeId=:episodeId")
     RoomEpisode getEpisode(int episodeId);
 
-    @Query("SELECT episodeId, partialIndex, totalIndex, progress FROM RoomEpisode WHERE episodeId IN (:ids)")
+    @Query("SELECT episodeId, partialIndex, totalIndex, progress FROM RoomEpisode " +
+            "WHERE episodeId IN (:ids) " +
+            "ORDER BY combiIndex")
     List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids);
 
     @Query("SELECT episodeId, partialIndex, totalIndex, progress FROM RoomEpisode WHERE episodeId =:episodeId")
@@ -159,7 +161,8 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "(SELECT externalListId FROM RoomToDownload WHERE externalListId IS NOT NULL))" +
             "OR (MediaListMediaJoin.listId IS NOT NULL " +
             "AND MediaListMediaJoin.listId IN " +
-            "(SELECT listId FROM RoomToDownload WHERE listId IS NOT NULL)))")
+            "(SELECT listId FROM RoomToDownload WHERE listId IS NOT NULL))) " +
+            "AND episodeId IN (SELECT episodeId FROM RoomRelease WHERE locked=0)")
     LiveData<Integer> countDownloadableRows();
 
     @Transaction
@@ -200,9 +203,25 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
     List<Integer> getEpisodeIdsWithLowerIndex(int mediumId, double episodeCombiIndex, double partCombiIndex, boolean toRead);
 
+    @Query("SELECT episodeId FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "WHERE mediumId = :mediumId " +
+            "AND saved = 1 " +
+            "AND CASE WHEN :partCombiIndex < 0 " +
+            "THEN RoomPart.totalIndex= -1 " +
+            "ELSE RoomPart.combiIndex <= :partCombiIndex " +
+            "END " +
+            "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
+    List<Integer> getSavedEpisodeIdsWithLowerIndex(int mediumId, double episodeCombiIndex, double partCombiIndex);
+
     @Query("DELETE FROM RoomRelease")
     void clearAllReleases();
 
     @Query("DELETE FROM RoomEpisode")
     void clearAll();
+
+    @Query("SELECT episodeId FROM RoomPart " +
+            "INNER JOIN RoomEpisode ON RoomPart.partId=RoomEpisode.partId " +
+            "WHERE RoomPart.mediumId=:mediumId")
+    List<Integer> getAllEpisodes(int mediumId);
 }

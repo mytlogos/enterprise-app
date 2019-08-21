@@ -564,7 +564,7 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public List<Integer> getEpisodeIdsWithLowerIndex(int episodeId, boolean read) {
+    public List<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId, boolean read) {
         RoomEpisode episode = this.episodeDao.getEpisode(episodeId);
         RoomPart part = this.partDao.getPart(episode.getPartId());
 
@@ -640,6 +640,23 @@ public class RoomStorage implements DatabaseStorage {
     @Override
     public void clearFailEpisodes() {
         this.failedEpisodesDao.clearAll();
+    }
+
+    @Override
+    public Collection<Integer> getAllEpisodes(int mediumId) {
+        return this.episodeDao.getAllEpisodes(mediumId);
+    }
+
+    @Override
+    public Collection<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId) {
+        RoomEpisode episode = this.episodeDao.getEpisode(episodeId);
+        RoomPart part = this.partDao.getPart(episode.getPartId());
+
+        return this.episodeDao.getSavedEpisodeIdsWithLowerIndex(
+                part.getMediumId(),
+                episode.getCombiIndex(),
+                part.getCombiIndex()
+        );
     }
 
     private <E> E getOr(E value, @SuppressWarnings("SameParameterValue") E defaultValue) {

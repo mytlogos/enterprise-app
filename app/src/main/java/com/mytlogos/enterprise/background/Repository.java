@@ -1,5 +1,7 @@
 package com.mytlogos.enterprise.background;
 
+import android.app.Application;
+
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
 
@@ -231,4 +233,12 @@ public interface Repository {
     void clearNotifications();
 
     void clearFailEpisodes();
+
+    void updateAllRead(int episodeId, boolean read) throws IOException;
+
+    void deleteAllLocalEpisodes(int mediumId, Application application) throws IOException;
+
+    void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId, Application application) throws IOException;
+
+    void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException;
 }

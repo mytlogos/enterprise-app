@@ -245,4 +245,10 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
     @Query("SELECT medium FROM RoomMedium WHERE mediumId=:mediumId")
     int getMediumType(Integer mediumId);
 
+    @Query("SELECT mediumId FROM RoomPart " +
+            "INNER JOIN RoomEpisode ON RoomPart.partId=RoomEpisode.partId " +
+            "WHERE RoomEpisode.episodeId=:episodeId " +
+            "LIMIT 1")
+    Integer getMediumId(int episodeId);
+
 }

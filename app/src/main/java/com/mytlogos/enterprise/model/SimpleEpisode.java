@@ -1,6 +1,6 @@
 package com.mytlogos.enterprise.model;
 
-public class SimpleEpisode  {
+public class SimpleEpisode {
     private final int episodeId;
     private final int totalIndex;
     private final int partialIndex;
