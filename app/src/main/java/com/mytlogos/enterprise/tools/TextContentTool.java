@@ -101,7 +101,7 @@ public class TextContentTool extends ContentTool {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (!src.delete()) {
+        if (src.exists() && !src.delete()) {
             System.err.println("could not delete old epub: " + src.getAbsolutePath());
         }
     }

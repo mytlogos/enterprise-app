@@ -80,7 +80,7 @@ public class ImageContentTool extends ContentTool {
                     continue;
                 }
                 try {
-                    if (!episodePath.delete()) {
+                    if (episodePath.exists() && !episodePath.delete()) {
                         String idSubString = prefix.substring(0, prefix.indexOf("-"));
                         System.err.printf("could not delete episode %s totally, deleting: '%s' failed%n", idSubString, file.getName());
                     }
@@ -187,7 +187,7 @@ public class ImageContentTool extends ContentTool {
             long estimatedByteSize = firstImage.length() * content.length;
 
             if (!writeable(file, estimatedByteSize)) {
-                if (!firstImage.delete()) {
+                if (firstImage.exists() && !firstImage.delete()) {
                     System.out.println("could not delete image: " + firstImage.getAbsolutePath());
                 }
                 throw new NotEnoughSpaceException();
@@ -200,7 +200,7 @@ public class ImageContentTool extends ContentTool {
                 futures.add(CompletableFuture.runAsync(() -> {
                     try {
                         downloadPage(content, tempPage, file, episode.getEpisodeId(), links, writtenFiles);
-                    } catch (NotEnoughSpaceException e) {
+                    } catch (IOException e) {
                         throw new IllegalStateException(e);
                     }
                 }));
@@ -217,7 +217,7 @@ public class ImageContentTool extends ContentTool {
                             Throwable cause = throwable.getCause();
                             if (cause != null && cause.getCause() instanceof NotEnoughSpaceException) {
                                 for (File writtenFile : writtenFiles) {
-                                    if (!writtenFile.delete()) {
+                                    if (writtenFile.exists() && !writtenFile.delete()) {
                                         System.out.println("could not delete image: " + writtenFile.getAbsolutePath());
                                     }
                                 }
@@ -240,13 +240,13 @@ public class ImageContentTool extends ContentTool {
         }
     }
 
-    private Void downloadPage(String[] content, int page, File file, int episodeId, List<String> links, List<File> writtenFiles) throws NotEnoughSpaceException {
+    private void downloadPage(String[] content, int page, File file, int episodeId, List<String> links, List<File> writtenFiles) throws IOException {
         String link = content[page];
         String pageLinkDomain = Utils.getDomain(link);
 
         if (pageLinkDomain == null) {
             System.err.println("invalid url: '" + link + "'");
-            return null;
+            return;
         }
         String referer = null;
 
@@ -258,13 +258,13 @@ public class ImageContentTool extends ContentTool {
         }
         if (referer == null || referer.isEmpty()) {
             // we need a referrer for sites like mangahasu
-            return null;
+            return;
         }
         // TODO: 06.08.2019 instead of continuing maybe create an empty image file to signal
         //  the reader that this page is explicitly missing?
         if (link == null || link.isEmpty()) {
             System.err.println("got an invalid link");
-            return null;
+            return;
         }
         try {
             URL url = new URL(link);
@@ -276,7 +276,7 @@ public class ImageContentTool extends ContentTool {
 
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 System.err.println("invalid response for " + link);
-                return null;
+                return;
             }
 
             try (InputStream in = httpURLConnection.getInputStream()) {
@@ -284,20 +284,16 @@ public class ImageContentTool extends ContentTool {
 
                 String pageName = String.format("%s-%s.png", episodeId, page + 1);
                 File image = new File(file, pageName);
+                writtenFiles.add(image);
 
                 try (OutputStream outputStream = new FileOutputStream(image)) {
                     bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream);
                     outputStream.flush();
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
-                writtenFiles.add(image);
             }
         } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
             e.printStackTrace();
         }
         // if the estimation was too low
@@ -306,7 +302,6 @@ public class ImageContentTool extends ContentTool {
         if (!this.writeable()) {
             throw new NotEnoughSpaceException();
         }
-        return null;
     }
 
     @Override
@@ -346,7 +341,7 @@ public class ImageContentTool extends ContentTool {
                 continue;
             }
             for (File file : files) {
-                if (!file.delete()) {
+                if (file.exists() && !file.delete()) {
                     System.err.println("could not delete file");
                 }
             }

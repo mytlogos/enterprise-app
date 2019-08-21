@@ -235,7 +235,7 @@ public abstract class ContentTool {
             if (file.isDirectory()) {
                 this.deleteDir(file);
             }
-            if (!file.delete()) {
+            if (file.exists() && !file.delete()) {
                 System.err.println("could not delete file: " + file.getAbsolutePath());
             }
         }
@@ -243,7 +243,7 @@ public abstract class ContentTool {
             if (file.isDirectory()) {
                 this.deleteDir(file);
             }
-            if (!file.delete()) {
+            if (file.exists() && !file.delete()) {
                 System.err.println("could not delete file: " + file.getAbsolutePath());
             }
         }
@@ -254,7 +254,7 @@ public abstract class ContentTool {
             if (content.isDirectory()) {
                 this.deleteDir(content);
             }
-            if (!content.delete()) {
+            if (content.exists() && !content.delete()) {
                 break;
             }
         }

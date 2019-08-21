@@ -11,6 +11,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -24,6 +25,7 @@ import org.jsoup.Jsoup;
 
 public class TextReaderFragmentText extends TextViewerFragment {
     private TextView textDisplay;
+    private ScrollView scrollView;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
@@ -32,6 +34,7 @@ public class TextReaderFragmentText extends TextViewerFragment {
         View view = inflater.inflate(R.layout.fragment_reader_text, container, false);
         this.swipeLayout = view.findViewById(R.id.swiper);
         this.textDisplay = view.findViewById(R.id.display);
+        this.scrollView = view.findViewById(R.id.scroller);
         this.textDisplay.setMovementMethod(new ScrollingMovementMethod());
         swipeLayout.setOnRefreshListener(direction -> {
             if (this.currentlyReading == null) {
@@ -136,6 +139,6 @@ public class TextReaderFragmentText extends TextViewerFragment {
             text = data;
         }
         textDisplay.setText(text);
-        textDisplay.scrollTo(0, 0);
+        scrollView.scrollTo(0, 0);
     }
 }
