@@ -9,7 +9,7 @@ import com.mytlogos.enterprise.model.ExternalUser;
 
 public class ExternalUserViewModel extends RepoViewModel {
 
-    ExternalUserViewModel(Application application) {
+    public ExternalUserViewModel(Application application) {
         super(application);
     }
 

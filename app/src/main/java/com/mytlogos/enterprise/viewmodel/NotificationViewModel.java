@@ -10,7 +10,7 @@ import com.mytlogos.enterprise.model.NotificationItem;
 
 public class NotificationViewModel extends RepoViewModel {
 
-    NotificationViewModel(Application application) {
+    public NotificationViewModel(Application application) {
         super(application);
     }
 

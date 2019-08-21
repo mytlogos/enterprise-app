@@ -8,7 +8,7 @@ import androidx.paging.PagedList;
 import com.mytlogos.enterprise.model.ReadEpisode;
 
 public class ReadEpisodeViewModel extends RepoViewModel {
-    ReadEpisodeViewModel(Application application) {
+    public ReadEpisodeViewModel(Application application) {
         super(application);
     }
 

@@ -16,7 +16,7 @@ public class TocEpisodeViewModel extends FilterableViewModel implements Sortable
     private MutableLiveData<SortFilter> sortFilterLiveData = new MutableLiveData<>();
     private LiveData<PagedList<TocEpisode>> repositoryToc;
 
-    TocEpisodeViewModel(Application application) {
+    public TocEpisodeViewModel(Application application) {
         super(application);
         this.resetFilter();
     }

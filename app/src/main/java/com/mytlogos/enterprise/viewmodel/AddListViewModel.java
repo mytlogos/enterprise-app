@@ -8,7 +8,7 @@ import java.io.IOException;
 
 public class AddListViewModel extends RepoViewModel {
 
-    AddListViewModel(Application application) {
+    public AddListViewModel(Application application) {
         super(application);
     }
 

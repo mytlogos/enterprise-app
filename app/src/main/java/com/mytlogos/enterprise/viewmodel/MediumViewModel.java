@@ -8,7 +8,6 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
 
-import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.MediumItem;
 import com.mytlogos.enterprise.tools.Sortings;
 
@@ -17,7 +16,6 @@ import org.joda.time.DateTime;
 public class MediumViewModel extends FilterableViewModel implements SortableViewModel, MediumFilterableViewModel {
 
     private LiveData<PagedList<MediumItem>> allMedia;
-    private LiveData<PagedList<DisplayUnreadEpisode>> repositoryToc;
     private MutableLiveData<SortFilter> sortFilterLiveData = new MutableLiveData<>();
 
     public MediumViewModel(@NonNull Application application) {

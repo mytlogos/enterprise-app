@@ -19,7 +19,7 @@ public class MediumInWaitViewModel extends FilterableViewModel {
     private MutableLiveData<String> mediumInWaitTitleFilterLiveData = new MutableLiveData<>();
     private MutableLiveData<String> listNameFilterLiveData = new MutableLiveData<>();
 
-    MediumInWaitViewModel(Application application) {
+    public MediumInWaitViewModel(Application application) {
         super(application);
     }
 
