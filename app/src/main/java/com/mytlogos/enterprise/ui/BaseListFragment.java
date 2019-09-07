@@ -24,6 +24,7 @@ import androidx.appcompat.widget.SearchView;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.paging.PagedList;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -477,9 +478,13 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
         });
     }
 
-    abstract ViewModel createViewModel();
+    abstract Class<ViewModel> getViewModelClass();
 
     abstract LiveData<PagedList<Value>> createPagedListLiveData();
 
     abstract List<IFlexible> convertToFlexibles(Collection<Value> list);
+
+    private ViewModel createViewModel() {
+        return new ViewModelProvider(this).get(getViewModelClass());
+    }
 }

@@ -55,13 +55,12 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
     @Query("UPDATE RoomEpisode SET saved=:saved WHERE episodeId IN (:episodeIds)")
     void updateSaved(Collection<Integer> episodeIds, boolean saved);
 
-    @Query("SELECT RoomEpisode.episodeId FROM RoomEpisode " +
+    @Query("SELECT episodeId FROM (SELECT RoomEpisode.episodeId, RoomEpisode.saved FROM RoomEpisode " +
             "LEFT JOIN RoomFailedEpisode ON RoomFailedEpisode.episodeId=RoomEpisode.episodeId " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
             "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId " +
             "WHERE " +
             "progress < 1 " +
-            "AND saved = 0 " +
             "AND RoomPart.mediumId =:mediumId " +
             "AND RoomEpisode.episodeId IN (SELECT episodeId FROM RoomRelease WHERE locked=0)" +
             "ORDER BY " +
@@ -72,7 +71,9 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "WHEN 8 THEN 3 " +
             "ELSE 5 " +
             "END, " +
-            "RoomEpisode.combiIndex LIMIT 50")
+            "RoomEpisode.combiIndex LIMIT 50) " +
+            "as RoomEpisode " +
+            "WHERE saved = 0")
     List<Integer> getDownloadableEpisodes(Integer mediumId);
 
     @Query("SELECT RoomEpisode.episodeId FROM RoomEpisode " +
@@ -224,4 +225,10 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "INNER JOIN RoomEpisode ON RoomPart.partId=RoomEpisode.partId " +
             "WHERE RoomPart.mediumId=:mediumId")
     List<Integer> getAllEpisodes(int mediumId);
+
+    @Query("SELECT episodeId FROM RoomEpisode WHERE partId=:partId")
+    List<Integer> getEpisodeIds(Integer partId);
+
+    @Query("DELETE FROM RoomEpisode WHERE episodeId IN (:ids)")
+    void deletePerId(List<Integer> ids);
 }

@@ -15,7 +15,7 @@ import android.widget.Switch;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.MediumSetting;
@@ -56,7 +56,7 @@ public class MediumSettings extends BaseFragment {
         }
         int mediumId = arguments.getInt(ID);
 
-        this.mediumViewModel = ViewModelProviders.of(this).get(ListsViewModel.class);
+        this.mediumViewModel = new ViewModelProvider(this).get(ListsViewModel.class);
         this.liveMediumSettings = mediumViewModel.getMediumSettings(mediumId);
 
         this.liveMediumSettings.observe(this, this::handleNewMediumSetting);

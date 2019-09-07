@@ -12,7 +12,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
@@ -59,8 +58,8 @@ public class ReadHistoryFragment extends BaseListFragment<ReadEpisode, ReadEpiso
     }
 
     @Override
-    ReadEpisodeViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(ReadEpisodeViewModel.class);
+    Class<ReadEpisodeViewModel> getViewModelClass() {
+        return ReadEpisodeViewModel.class;
     }
 
     @Override

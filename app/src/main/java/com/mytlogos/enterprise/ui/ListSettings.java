@@ -15,7 +15,7 @@ import android.widget.Switch;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.ExternalMediaListSetting;
@@ -50,7 +50,7 @@ public class ListSettings extends BaseFragment {
         int listId = arguments.getInt(ID);
         boolean isExternal = arguments.getBoolean(EXTERNAL);
 
-        this.listsViewModel = ViewModelProviders.of(this).get(ListsViewModel.class);
+        this.listsViewModel = new ViewModelProvider(this).get(ListsViewModel.class);
         this.liveListSettings = listsViewModel.getListSettings(listId, isExternal);
 
         this.liveListSettings.observe(this, this::handleNewListSetting);

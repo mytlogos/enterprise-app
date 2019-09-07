@@ -6,7 +6,6 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
@@ -23,9 +22,10 @@ import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
 import eu.davidea.flexibleadapter.items.IFlexible;
 
 public class ExternalUserListFragment extends BaseListFragment<ExternalUser, ExternalUserViewModel> {
+
     @Override
-    ExternalUserViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(ExternalUserViewModel.class);
+    Class<ExternalUserViewModel> getViewModelClass() {
+        return ExternalUserViewModel.class;
     }
 
     @Override

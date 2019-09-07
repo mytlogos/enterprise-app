@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -16,6 +17,11 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
+import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
+import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
+import com.bumptech.glide.request.target.Target;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
@@ -26,6 +32,8 @@ import com.mytlogos.enterprise.tools.ImageContentTool;
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout;
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
 
+import java.io.File;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -198,14 +206,34 @@ public class ImageViewerFragment extends BaseFragment {
             holder.imageView.setVisibility(empty ? View.GONE : View.VISIBLE);
 
             if (empty) {
-                holder.imageView.setImageURI(null);
+                Glide.with(holder.itemView).clear(holder.imageView);
+//                holder.imageView.setImageURI(null);
                 holder.emptyText.setText(String.format("Page %s is missing", this.page));
             } else {
                 holder.emptyText.setText(null);
-                holder.imageView.setImageURI(Uri.parse(this.imagePath));
+                Glide
+                        .with(holder.itemView)
+                        .load(Uri.fromFile(new File(this.imagePath)))
+                        .format(DecodeFormat.PREFER_ARGB_8888)
+                        .override(Target.SIZE_ORIGINAL)
+                        .into(holder.imageView);
+//                holder.imageView.setImageURI(Uri.fromFile(new File(this.imagePath)));
             }
         }
     }
+
+    private static class CropBitMap extends BitmapTransformation {
+        @Override
+        protected Bitmap transform(@NonNull BitmapPool pool, @NonNull Bitmap toTransform, int outWidth, int outHeight) {
+            return null;
+        }
+
+        @Override
+        public void updateDiskCacheKey(@NonNull MessageDigest messageDigest) {
+
+        }
+    }
+
 
     private static class ViewHolder extends FlexibleViewHolder {
         private final ImageView imageView;

@@ -11,7 +11,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
@@ -126,8 +125,8 @@ public class MediaInWaitListFragment extends BaseSwipeListFragment<MediumInWait,
     }
 
     @Override
-    MediaInWaitListViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(MediaInWaitListViewModel.class);
+    Class<MediaInWaitListViewModel> getViewModelClass() {
+        return MediaInWaitListViewModel.class;
     }
 
     @Override

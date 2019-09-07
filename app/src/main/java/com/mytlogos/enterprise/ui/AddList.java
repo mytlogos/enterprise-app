@@ -12,7 +12,7 @@ import android.widget.Switch;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.MediaList;
@@ -47,7 +47,7 @@ public class AddList extends BaseFragment {
         Button addBtn = view.findViewById(R.id.add_btn);
         Button cancelBtn = view.findViewById(R.id.cancel_button);
 
-        this.mViewModel = ViewModelProviders.of(this).get(AddListViewModel.class);
+        this.mViewModel = new ViewModelProvider(this).get(AddListViewModel.class);
 
         cancelBtn.setOnClickListener(v -> this.getMainActivity().onBackPressed());
         addBtn.setOnClickListener(v -> this.addList());

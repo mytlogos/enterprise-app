@@ -43,9 +43,13 @@ import com.mytlogos.enterprise.background.room.model.RoomFailedEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomMedium;
 import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
+import com.mytlogos.enterprise.background.room.model.RoomMediumPart;
+import com.mytlogos.enterprise.background.room.model.RoomMediumProgress;
 import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomNotification;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
+import com.mytlogos.enterprise.background.room.model.RoomPartEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomProgressComparison;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
@@ -71,6 +75,7 @@ import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.tools.Sortings;
+import com.mytlogos.enterprise.tools.Utils;
 
 import org.joda.time.DateTime;
 
@@ -95,6 +100,8 @@ public class RoomStorage implements DatabaseStorage {
     private final LiveData<User> userLiveData;
     private final RoomMediumInWaitDao mediumInWaitDao;
     private final RoomDanglingDao roomDanglingDao;
+    private final MediumProgressDao mediumProgressDao;
+    private final DataStructureDao dataStructureDao;
     private boolean loading = false;
     private final ToDownloadDao toDownloadDao;
 
@@ -112,7 +119,9 @@ public class RoomStorage implements DatabaseStorage {
         mediumInWaitDao = database.roomMediumInWaitDao();
         roomDanglingDao = database.roomDanglingDao();
         notificationDao = database.notificationDao();
+        mediumProgressDao = database.mediumProgressDao();
         failedEpisodesDao = database.failedEpisodesDao();
+        dataStructureDao = database.dataStructureDao();
         userLiveData = this.userDao.getUser();
     }
 
@@ -657,6 +666,69 @@ public class RoomStorage implements DatabaseStorage {
                 episode.getCombiIndex(),
                 part.getCombiIndex()
         );
+    }
+
+    @Override
+    public void syncProgress() {
+        List<RoomProgressComparison> all = this.mediumProgressDao.getComparison();
+
+        for (RoomProgressComparison comparison : all) {
+            if (comparison.getCurrentMaxReadIndex() != 0) {
+                this.mediumProgressDao.update(new RoomMediumProgress(
+                        comparison.getMediumId(),
+                        comparison.getCurrentMaxReadIndex())
+                );
+                continue;
+            }
+            List<RoomPart> parts = this.partDao.getPartsNow(comparison.getMediumId());
+
+            for (RoomPart part : parts) {
+                List<Integer> episodeIds = this.episodeDao.getEpisodeIdsWithLowerIndex(
+                        comparison.getMediumId(),
+                        comparison.getCurrentReadIndex(),
+                        part.getCombiIndex(),
+                        true
+                );
+                try {
+                    Utils.doPartitioned(episodeIds, ids -> {
+                        this.episodeDao.updateProgress(ids, 1, DateTime.now());
+                        return false;
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds) {
+        for (Integer mediumId : mediaIds) {
+            List<Integer> mediumPartIds = this.dataStructureDao.getPartJoin(mediumId);
+            List<Integer> availablePartIds = this.partDao.getPartsIds(mediumId);
+            availablePartIds.removeAll(mediumPartIds);
+
+            if (!availablePartIds.isEmpty()) {
+                this.partDao.deletePerId(availablePartIds);
+            }
+        }
+
+        for (Integer partId : partIds) {
+            List<Integer> episodePartIds = this.dataStructureDao.getEpisodeJoin(partId);
+            List<Integer> availableEpisodeIds = this.episodeDao.getEpisodeIds(partId);
+            availableEpisodeIds.removeAll(episodePartIds);
+
+            if (!availableEpisodeIds.isEmpty()) {
+                try {
+                    Utils.doPartitioned(availableEpisodeIds, ids -> {
+                        this.episodeDao.deletePerId(ids);
+                        return true;
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     private <E> E getOr(E value, @SuppressWarnings("SameParameterValue") E defaultValue) {
@@ -1208,6 +1280,18 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomMedium medium : list) {
                 this.loadedData.getMedia().add(medium.getMediumId());
             }
+            LoadWorker worker = this.repository.getLoadWorker();
+
+            for (ClientMedium medium : filteredMedia.updateMedia) {
+                RoomStorage.this.dataStructureDao.clearPartJoin(medium.getId());
+                List<RoomMediumPart> mediumParts = new ArrayList<>(medium.getParts().length);
+                worker.enforceMediumStructure(medium.getId());
+
+                for (int part : medium.getParts()) {
+                    mediumParts.add(new RoomMediumPart(medium.getId(), part));
+                }
+                RoomStorage.this.dataStructureDao.addPartJoin(mediumParts);
+            }
             return this;
         }
 
@@ -1267,6 +1351,18 @@ public class RoomStorage implements DatabaseStorage {
 
             for (RoomPart part : list) {
                 this.loadedData.getPart().add(part.getPartId());
+            }
+            LoadWorker worker = this.repository.getLoadWorker();
+
+            for (ClientPart part : filteredParts.updateParts) {
+                RoomStorage.this.dataStructureDao.clearEpisodeJoin(part.getId());
+                List<RoomPartEpisode> partEpisodes = new ArrayList<>(part.getEpisodes().length);
+                worker.enforcePartStructure(part.getId());
+
+                for (ClientEpisode episode : part.getEpisodes()) {
+                    partEpisodes.add(new RoomPartEpisode(part.getId(), episode.getId()));
+                }
+                RoomStorage.this.dataStructureDao.addEpisodeJoin(partEpisodes);
             }
             this.persistEpisodes(episodes);
             return this;

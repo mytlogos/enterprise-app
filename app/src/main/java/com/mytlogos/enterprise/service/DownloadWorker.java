@@ -13,10 +13,12 @@ import androidx.work.ExistingWorkPolicy;
 import androidx.work.ListenableWorker;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
@@ -37,6 +39,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 public class DownloadWorker extends Worker {
     private static final String UNIQUE = "DOWNLOAD_WORKER";
@@ -45,21 +49,21 @@ public class DownloadWorker extends Worker {
 
     private static final int maxEpisodeLimit = 50;
     private static final int maxPackageSize = 1;
-    private static final Set<DownloadWorker> currentWorker = new HashSet<>();
+    private static volatile UUID uuid;
 
     private final int downloadNotificationId = 0x100;
     private NotificationManagerCompat notificationManager;
     private NotificationCompat.Builder builder;
-    private boolean stop = false;
     private Set<ContentTool> contentTools;
 
     public DownloadWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+        uuid = this.getId();
     }
 
-    public static void enqueueDownloadTask() {
+    public static void enqueueDownloadTask(Context context) {
         OneTimeWorkRequest oneTimeWorkRequest = getWorkRequest();
-        WorkManager.getInstance()
+        WorkManager.getInstance(context)
                 .beginUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, oneTimeWorkRequest)
                 .then(CheckSavedWorker.getWorkRequest())
                 .enqueue();
@@ -82,16 +86,30 @@ public class DownloadWorker extends Worker {
         LiveData<Boolean> doDownload = repository.onDownloadable();
         doDownload.observe(owner, aBoolean -> {
             if (aBoolean != null && aBoolean) {
-                enqueueDownloadTask();
+                enqueueDownloadTask(application);
             }
         });
-        enqueueDownloadTask();
+        enqueueDownloadTask(application);
     }
 
-    public static void stopDownloadTasks() {
-        for (DownloadWorker worker : currentWorker) {
-            worker.stop = true;
+    public static void stopWorker(Application application) {
+        if (uuid == null) {
+            return;
         }
+        WorkManager.getInstance(application).cancelWorkById(uuid);
+    }
+
+    public static boolean isRunning(Application application) {
+        if (uuid == null) {
+            return false;
+        }
+        ListenableFuture<WorkInfo> infoFuture = WorkManager.getInstance(application).getWorkInfoById(uuid);
+        try {
+            return infoFuture.get().getState() == WorkInfo.State.RUNNING;
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     @NonNull
@@ -101,7 +119,11 @@ public class DownloadWorker extends Worker {
             System.out.println("Context not instance of Application");
             return Result.failure();
         }
-        currentWorker.add(this);
+        Application application = (Application) this.getApplicationContext();
+
+        if (SynchronizeWorker.isRunning(application)) {
+            return Result.retry();
+        }
 
         notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
         builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);
@@ -113,7 +135,6 @@ public class DownloadWorker extends Worker {
         // todo read limit from settings
         try {
             synchronized (UNIQUE) {
-                Application application = (Application) this.getApplicationContext();
                 Repository repository = RepositoryImpl.getInstance(application);
 
                 this.contentTools = FileTools.getSupportedContentTools(application);
@@ -123,7 +144,6 @@ public class DownloadWorker extends Worker {
                 }
 
                 if (!repository.isClientAuthenticated()) {
-                    currentWorker.remove(this);
                     return Result.retry();
                 }
                 if (!repository.isClientOnline()) {
@@ -131,7 +151,7 @@ public class DownloadWorker extends Worker {
                             downloadNotificationId,
                             builder.setContentTitle("Server not in reach").setContentText(null).build()
                     );
-                    currentWorker.remove(this);
+                    cleanUp();
                     return Result.failure();
                 }
                 if (!FileTools.writable(application)) {
@@ -139,7 +159,7 @@ public class DownloadWorker extends Worker {
                             downloadNotificationId,
                             builder.setContentTitle("Not enough free space").setContentText(null).build()
                     );
-                    currentWorker.remove(this);
+                    cleanUp();
                     return Result.failure();
                 }
                 download(repository);
@@ -150,17 +170,10 @@ public class DownloadWorker extends Worker {
                     downloadNotificationId,
                     builder.setContentTitle("Download failed").setContentText(null).build()
             );
-            currentWorker.remove(this);
+            cleanUp();
             return Result.failure();
-        } finally {
-            try {
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            notificationManager.cancel(downloadNotificationId);
         }
-        currentWorker.remove(this);
+        cleanUp();
         return Result.success();
     }
 
@@ -249,8 +262,8 @@ public class DownloadWorker extends Worker {
         int notSuccessFull = 0;
 
         for (DownloadPackage episodePackage : episodePackages) {
-            if (this.stop) {
-                this.stop = false;
+            if (this.isStopped()) {
+                this.stopDownload();
                 return;
             }
 
@@ -329,6 +342,26 @@ public class DownloadWorker extends Worker {
                         false);
             }
         }
+    }
+
+    private void stopDownload() {
+        notificationManager.notify(
+                downloadNotificationId,
+                builder
+                        .setContentTitle("Download stopped")
+                        .setContentText(null)
+                        .build()
+        );
+    }
+
+    private void cleanUp() {
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        notificationManager.cancel(downloadNotificationId);
+        uuid = null;
     }
 
     private int onFailed(int downloadCount, int successFull, int notSuccessFull, Repository repository, DownloadPackage downloadPackage, boolean notEnoughSpace) {

@@ -10,13 +10,19 @@ import androidx.work.Constraints;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
+
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 
 public class SynchronizeWorker extends Worker {
     static final String SYNCHRONIZE_WORKER = "SYNCHRONIZE_WORKER";
@@ -25,13 +31,33 @@ public class SynchronizeWorker extends Worker {
     private NotificationManagerCompat notificationManager;
     private NotificationCompat.Builder builder;
     private final int syncNotificationId = 0x200;
+    private final Consumer<Integer> progressListener = progress -> {
+        if (this.builder == null || this.notificationManager == null) {
+            return;
+        }
+        int totalWork = RepositoryImpl.getInstance().getLoadWorkerTotalWork();
+        builder.setProgress(totalWork, progress, totalWork < 0);
 
+        notificationManager.notify(syncNotificationId, builder.build());
+    };
+    private final Consumer<Integer> totalWorkListener = totalWork -> {
+        if (this.builder == null || this.notificationManager == null) {
+            return;
+        }
+
+        int progress = RepositoryImpl.getInstance().getLoadWorkerProgress();
+        builder.setProgress(totalWork, progress, totalWork < 0);
+
+        notificationManager.notify(syncNotificationId, builder.build());
+    };
+    private static volatile UUID uuid;
 
     public SynchronizeWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+        uuid = this.getId();
     }
 
-    public static void enqueueOneTime() {
+    public static void enqueueOneTime(Context context) {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.UNMETERED)
                 .build();
@@ -41,9 +67,29 @@ public class SynchronizeWorker extends Worker {
                 .setConstraints(constraints)
                 .build();
 
-        WorkManager.getInstance()
+        WorkManager.getInstance(context)
                 .beginUniqueWork(SYNCHRONIZE_WORKER, ExistingWorkPolicy.REPLACE, workRequest)
                 .enqueue();
+    }
+
+    public static void stopWorker(Application application) {
+        if (uuid == null) {
+            return;
+        }
+        WorkManager.getInstance(application).cancelWorkById(uuid);
+    }
+
+    public static boolean isRunning(Application application) {
+        if (uuid == null) {
+            return false;
+        }
+        ListenableFuture<WorkInfo> infoFuture = WorkManager.getInstance(application).getWorkInfoById(uuid);
+        try {
+            return infoFuture.get().getState() == WorkInfo.State.RUNNING;
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     @NonNull
@@ -58,6 +104,7 @@ public class SynchronizeWorker extends Worker {
             Repository repository = RepositoryImpl.getInstance(application);
 
             if (!repository.isClientAuthenticated()) {
+                cleanUp();
                 return Result.retry();
             }
             notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
@@ -68,14 +115,23 @@ public class SynchronizeWorker extends Worker {
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
+            repository.addTotalWorkListener(this.totalWorkListener);
+            repository.addProgressListener(this.progressListener);
+
             notificationManager.notify(syncNotificationId, builder.build());
             repository.syncUser();
+
+            if (this.isStopped()) {
+                return this.stopSynchronize();
+            }
 
             builder.setContentText("Updating Content data");
             notificationManager.notify(syncNotificationId, builder.build());
             repository.loadInvalidated();
 
-            notificationManager.notify(syncNotificationId, builder.build());
+            if (this.isStopped()) {
+                return this.stopSynchronize();
+            }
 
             builder.setContentText("Loading new Media");
             notificationManager.notify(syncNotificationId, builder.build());
@@ -94,14 +150,39 @@ public class SynchronizeWorker extends Worker {
                     .setContentText(null);
 
             notificationManager.notify(syncNotificationId, builder.build());
+            cleanUp();
             return Result.failure();
         }
+        cleanUp();
+        return Result.success();
+    }
+
+    private Result stopSynchronize() {
+        notificationManager.notify(
+                syncNotificationId,
+                builder
+                        .setContentTitle("Synchronization stopped")
+                        .setContentText(null)
+                        .build()
+        );
+        cleanUp();
+        return Result.failure();
+    }
+
+    private void cleanUp() {
+        Repository repository = RepositoryImpl.getInstance();
+        repository.removeProgressListener(this.progressListener);
+        repository.removeTotalWorkListener(this.totalWorkListener);
+        repository.syncProgress();
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        notificationManager.cancel(syncNotificationId);
-        return Result.success();
+        if (notificationManager != null) {
+            notificationManager.cancel(syncNotificationId);
+        }
+        uuid = null;
     }
+
 }

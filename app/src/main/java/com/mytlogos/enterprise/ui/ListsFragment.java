@@ -15,7 +15,6 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -156,8 +155,8 @@ public class ListsFragment extends BaseListFragment<MediaList, ListsViewModel> {
     }
 
     @Override
-    ListsViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(ListsViewModel.class);
+    Class<ListsViewModel> getViewModelClass() {
+        return ListsViewModel.class;
     }
 
     @Override

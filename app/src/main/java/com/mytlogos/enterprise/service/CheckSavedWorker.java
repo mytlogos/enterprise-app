@@ -43,12 +43,12 @@ public class CheckSavedWorker extends Worker {
         super(context, workerParams);
     }
 
-    public static void checkLocal() {
+    public static void checkLocal(Context context) {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.UNMETERED)
                 .build();
 
-        WorkManager.getInstance()
+        WorkManager.getInstance(context)
                 .beginWith(CheckSavedWorker.getWorkRequest())
                 .then(new OneTimeWorkRequest.Builder(DownloadWorker.class)
                         .setConstraints(constraints).build())
@@ -64,6 +64,10 @@ public class CheckSavedWorker extends Worker {
     @SuppressLint("UseSparseArrays")
     public Result doWork() {
         Application application = (Application) this.getApplicationContext();
+
+        if (SynchronizeWorker.isRunning(application) || DownloadWorker.isRunning(application)) {
+            return Result.retry();
+        }
 
         notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
         builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);

@@ -74,11 +74,11 @@ public class TocEpisodeViewModel extends FilterableViewModel implements Sortable
         repository.deleteLocalEpisode(episodeId, mediumId, this.getApplication());
     }
 
-    public void updateAllRead(int mediumId, boolean read) throws IOException {
+    public void updateAllRead(int mediumId, boolean read) throws Exception {
         repository.updateAllRead(mediumId, read);
     }
 
-    public void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException {
+    public void updateReadWithLowerIndex(int episodeId, boolean read) throws Exception {
         repository.updateReadWithLowerIndex(episodeId, read);
     }
 

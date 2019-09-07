@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.viewmodel.AddMediumViewModel;
@@ -25,7 +25,7 @@ public class AddMedium extends BaseFragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.add_medium_fragment, container, false);
         this.setTitle("Add Medium");
-        this.mViewModel = ViewModelProviders.of(this).get(AddMediumViewModel.class);
+        this.mViewModel = new ViewModelProvider(this).get(AddMediumViewModel.class);
         return view;
     }
 

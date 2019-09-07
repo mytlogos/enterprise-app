@@ -14,7 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -85,7 +85,7 @@ public class MediaInWaitFragment extends BaseFragment {
 
         titleView.setText(String.format("%s (%s)", this.mediumInWait.getTitle(), domain));
 
-        viewModel = ViewModelProviders.of(this).get(MediumInWaitViewModel.class);
+        viewModel = new ViewModelProvider(this).get(MediumInWaitViewModel.class);
 
         FlexibleAdapter<IFlexible> listAdapter = getFlexibleRecyclerAdapter(view, R.id.list);
         FlexibleAdapter<IFlexible> mediumSuggestAdapter = getFlexibleRecyclerAdapter(view, R.id.medium_suggestions);

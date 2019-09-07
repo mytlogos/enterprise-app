@@ -18,9 +18,12 @@ import com.mytlogos.enterprise.background.room.model.RoomFailedEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomMedium;
 import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
+import com.mytlogos.enterprise.background.room.model.RoomMediumPart;
+import com.mytlogos.enterprise.background.room.model.RoomMediumProgress;
 import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomNotification;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
+import com.mytlogos.enterprise.background.room.model.RoomPartEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
@@ -33,9 +36,10 @@ import com.mytlogos.enterprise.background.room.model.RoomUser;
                 RoomPart.class, RoomMedium.class, RoomExternalMediaList.class,
                 RoomExternalMediaList.ExternalListMediaJoin.class, RoomToDownload.class,
                 RoomMediumInWait.class, RoomDanglingMedium.class, RoomFailedEpisode.class,
-                RoomNotification.class
+                RoomNotification.class, RoomMediumProgress.class, RoomMediumPart.class,
+                RoomPartEpisode.class
         },
-        version = 10
+        version = 12
 )
 @TypeConverters({Converters.class})
 public abstract class AbstractDatabase extends RoomDatabase {
@@ -87,6 +91,10 @@ public abstract class AbstractDatabase extends RoomDatabase {
 
     public abstract NotificationDao notificationDao();
 
+    public abstract MediumProgressDao mediumProgressDao();
+
+    public abstract DataStructureDao dataStructureDao();
+
     private static Migration[] migrations() {
         return new Migration[]{
                 new Migration(7, 8) {
@@ -123,6 +131,69 @@ public abstract class AbstractDatabase extends RoomDatabase {
                         database.execSQL("UPDATE RoomEpisode SET combiIndex=CAST((totalIndex || \".\" || COALESCE(partialIndex,0)) as decimal)");
                         database.execSQL("ALTER TABLE RoomPart ADD COLUMN combiIndex REAL NOT NULL DEFAULT 0");
                         database.execSQL("UPDATE RoomPart SET combiIndex=CAST((totalIndex || \".\" || COALESCE(partialIndex,0)) as decimal)");
+                    }
+                },
+                new Migration(10, 11) {
+                    @Override
+                    public void migrate(@NonNull SupportSQLiteDatabase database) {
+                        database.execSQL("CREATE TABLE IF NOT EXISTS RoomMediumProgress " +
+                                "(mediumId INTEGER NOT NULL, currentReadIndex REAL NOT NULL, " +
+                                "PRIMARY KEY(`mediumId`), " +
+                                "FOREIGN KEY(`mediumId`) REFERENCES `RoomMedium`(`mediumId`) " +
+                                "ON UPDATE NO ACTION ON DELETE CASCADE )"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomMediumProgress_mediumId " +
+                                        "ON RoomMediumProgress (mediumId);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomMediumProgress_currentReadIndex " +
+                                        "ON RoomMediumProgress (currentReadIndex);"
+                        );
+                        database.execSQL(
+                                "INSERT OR IGNORE INTO RoomMediumProgress " +
+                                        "SELECT RoomMedium.mediumId, MAX(RoomEpisode.combiIndex) FROM RoomMedium " +
+                                        "INNER JOIN RoomPart ON RoomMedium.mediumId=RoomPart.mediumId " +
+                                        "INNER JOIN RoomEpisode ON RoomPart.partId=RoomEpisode.partId " +
+                                        "WHERE progress = 1"
+                        );
+                    }
+                },
+                new Migration(11, 12) {
+                    @Override
+                    public void migrate(@NonNull SupportSQLiteDatabase database) {
+                        database.execSQL("CREATE TABLE IF NOT EXISTS RoomMediumPart " +
+                                "(mediumId INTEGER NOT NULL, partId INTEGER NOT NULL, " +
+                                "PRIMARY KEY(`mediumId`, `partId`), " +
+                                "FOREIGN KEY(`mediumId`) REFERENCES `RoomMedium`(`mediumId`) " +
+                                "ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                                "FOREIGN KEY(`partId`) REFERENCES `RoomPart`(`partId`) " +
+                                "ON UPDATE NO ACTION ON DELETE CASCADE)"
+                        );
+                        database.execSQL("CREATE TABLE IF NOT EXISTS RoomPartEpisode " +
+                                "(episodeId INTEGER NOT NULL, partId INTEGER NOT NULL, " +
+                                "PRIMARY KEY(`episodeId`, `partId`), " +
+                                "FOREIGN KEY(`episodeId`) REFERENCES `RoomEpisode`(`episodeId`) " +
+                                "ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                                "FOREIGN KEY(`partId`) REFERENCES `RoomPart`(`partId`) " +
+                                "ON UPDATE NO ACTION ON DELETE CASCADE)"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomMediumPart_mediumId " +
+                                        "ON RoomMediumPart (mediumId);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomMediumPart_partId " +
+                                        "ON RoomMediumPart (partId);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomPartEpisode_episodeId " +
+                                        "ON RoomPartEpisode (episodeId);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomPartEpisode_partId " +
+                                        "ON RoomPartEpisode (partId);"
+                        );
                     }
                 }
         };

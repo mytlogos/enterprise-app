@@ -52,6 +52,7 @@ import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.Sortings;
+import com.mytlogos.enterprise.tools.Utils;
 
 import org.joda.time.DateTime;
 
@@ -63,6 +64,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -511,26 +513,14 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void updateSaved(Collection<Integer> episodeIds, boolean saved) {
-        List<Integer> list = new ArrayList<>(episodeIds);
-        int steps = 100;
-        int minItem = 0;
-        int maxItem = minItem + steps;
-
-        do {
-            if (maxItem > list.size()) {
-                maxItem = list.size();
-            }
-
-            List<Integer> subList = list.subList(minItem, maxItem);
-            this.storage.updateSaved(subList, saved);
-
-            minItem = minItem + steps;
-            maxItem = minItem + steps;
-
-            if (maxItem > list.size()) {
-                maxItem = list.size();
-            }
-        } while (minItem < list.size() && maxItem <= list.size());
+        try {
+            Utils.doPartitioned(episodeIds, ids -> {
+                this.storage.updateSaved(ids, saved);
+                return false;
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -775,7 +765,7 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void updateAllRead(int episodeId, boolean read) throws IOException {
+    public void updateAllRead(int episodeId, boolean read) throws Exception {
         Collection<Integer> episodeIds = this.storage.getAllEpisodes(episodeId);
 
         if (!episodeIds.contains(episodeId)) {
@@ -788,6 +778,46 @@ public class RepositoryImpl implements Repository {
     @Override
     public void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException {
         this.deleteLocalEpisodes(Collections.singleton(episodeId), mediumId, application);
+    }
+
+    @Override
+    public void addProgressListener(Consumer<Integer> consumer) {
+        this.loadWorker.addProgressListener(consumer);
+    }
+
+    @Override
+    public void removeProgressListener(Consumer<Integer> consumer) {
+        this.loadWorker.removeProgressListener(consumer);
+    }
+
+    @Override
+    public void addTotalWorkListener(Consumer<Integer> consumer) {
+        this.loadWorker.addTotalWorkListener(consumer);
+    }
+
+    @Override
+    public void removeTotalWorkListener(Consumer<Integer> consumer) {
+        this.loadWorker.removeTotalWorkListener(consumer);
+    }
+
+    @Override
+    public int getLoadWorkerProgress() {
+        return this.loadWorker.getProgress();
+    }
+
+    @Override
+    public int getLoadWorkerTotalWork() {
+        return this.loadWorker.getTotalWork();
+    }
+
+    @Override
+    public void syncProgress() {
+        this.storage.syncProgress();
+    }
+
+    @Override
+    public void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds) {
+        this.storage.updateDataStructure(mediaIds, partIds);
     }
 
     @Override
@@ -822,37 +852,16 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void updateRead(Collection<Integer> episodeIds, boolean read) throws IOException {
-        if (episodeIds.size() > 100) {
-            List<Integer> list = new ArrayList<>(episodeIds);
-            int steps = 100;
-            int minItem = 0;
-            int maxItem = minItem + steps;
-
-            do {
-                List<Integer> subList = list.subList(minItem, maxItem);
-                Response<Boolean> response = this.client.addProgress(subList, read ? 1 : 0).execute();
-
-                if (!response.isSuccessful() || response.body() == null || !response.body()) {
-                    continue;
-                }
-                this.storage.updateProgress(subList, read ? 1 : 0);
-
-                minItem = minItem + steps;
-                maxItem = minItem + steps;
-
-                if (maxItem > list.size()) {
-                    maxItem = list.size();
-                }
-            } while (minItem < list.size() && maxItem <= list.size());
-        } else {
-            Response<Boolean> response = this.client.addProgress(episodeIds, read ? 1 : 0).execute();
+    public void updateRead(Collection<Integer> episodeIds, boolean read) throws Exception {
+        Utils.doPartitioned(episodeIds, ids -> {
+            Response<Boolean> response = this.client.addProgress(ids, read ? 1 : 0).execute();
 
             if (!response.isSuccessful() || response.body() == null || !response.body()) {
-                return;
+                return true;
             }
-            this.storage.updateProgress(episodeIds, read ? 1 : 0);
-        }
+            this.storage.updateProgress(ids, read ? 1 : 0);
+            return false;
+        });
     }
 
     @Override
@@ -1102,7 +1111,7 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException {
+    public void updateReadWithLowerIndex(int episodeId, boolean read) throws Exception {
         List<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithLowerIndex(episodeId, read);
 
         if (!episodeIds.contains(episodeId)) {
@@ -1159,7 +1168,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void clearFailEpisodes() {
-        this.storage.clearFailEpisodes();
+        TaskManager.runAsyncTask(this.storage::clearFailEpisodes);
     }
 
 

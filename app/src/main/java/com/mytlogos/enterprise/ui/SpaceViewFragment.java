@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
 import android.app.Application;
+import android.content.Context;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -145,11 +146,11 @@ public class SpaceViewFragment extends BaseFragment {
 
         AsyncTask<Void, Void, String> task;
         if (node.equals(root)) {
-            task = new ClearRootTask(FileTools.getSupportedContentTools(application));
+            task = new ClearRootTask(FileTools.getSupportedContentTools(application), this.getContext());
 
         } else if (node instanceof MediumNode) {
             ContentTool tool = getContentTool(node.parent);
-            task = new ClearMediaTask(((MediumNode) node).id, tool);
+            task = new ClearMediaTask(((MediumNode) node).id, tool, this.getContext());
 
         } else if (node instanceof EpisodeNode) {
             int id = ((EpisodeNode) node).id;
@@ -160,11 +161,11 @@ public class SpaceViewFragment extends BaseFragment {
                 throw new Error("episode node which is no child of medium node");
             }
             ContentTool tool = getContentTool(parent);
-            task = new ClearEpisodeTask(((MediumNode) episodeParent).id, id, tool);
+            task = new ClearEpisodeTask(((MediumNode) episodeParent).id, id, tool, this.getContext());
 
         } else if (node.parent == null) {
             ContentTool tool = getContentTool(node);
-            task = new ClearRootTask(Collections.singleton(tool));
+            task = new ClearRootTask(Collections.singleton(tool), this.getContext());
 
         } else {
             System.err.println("unknown node, neither root, sub root, medium or episode node");
@@ -176,10 +177,13 @@ public class SpaceViewFragment extends BaseFragment {
     private static class ClearMediaTask extends AsyncTask<Void, Void, String> {
         private final int mediumId;
         private final ContentTool tool;
+        @SuppressLint("StaticFieldLeak")
+        private final Context context;
 
-        private ClearMediaTask(int mediumId, ContentTool tool) {
+        private ClearMediaTask(int mediumId, ContentTool tool, Context context) {
             this.mediumId = mediumId;
             this.tool = tool;
+            this.context = context;
         }
 
         @Override
@@ -194,7 +198,7 @@ public class SpaceViewFragment extends BaseFragment {
 
         @Override
         protected void onPostExecute(String s) {
-            CheckSavedWorker.checkLocal();
+            CheckSavedWorker.checkLocal(this.context);
         }
     }
 
@@ -202,11 +206,14 @@ public class SpaceViewFragment extends BaseFragment {
         private final int mediumId;
         private final int episodeId;
         private final ContentTool tool;
+        @SuppressLint("StaticFieldLeak")
+        private final Context context;
 
-        private ClearEpisodeTask(int mediumId, int episodeId, ContentTool tool) {
+        private ClearEpisodeTask(int mediumId, int episodeId, ContentTool tool, Context context) {
             this.mediumId = mediumId;
             this.episodeId = episodeId;
             this.tool = tool;
+            this.context = context;
         }
 
         @Override
@@ -221,15 +228,18 @@ public class SpaceViewFragment extends BaseFragment {
 
         @Override
         protected void onPostExecute(String s) {
-            CheckSavedWorker.checkLocal();
+            CheckSavedWorker.checkLocal(this.context);
         }
     }
 
     private static class ClearRootTask extends AsyncTask<Void, Void, String> {
         private final Set<ContentTool> toolSet;
+        @SuppressLint("StaticFieldLeak")
+        private final Context context;
 
-        private ClearRootTask(Set<ContentTool> toolSet) {
+        private ClearRootTask(Set<ContentTool> toolSet, Context context) {
             this.toolSet = toolSet;
+            this.context = context;
         }
 
         @Override
@@ -246,7 +256,7 @@ public class SpaceViewFragment extends BaseFragment {
 
         @Override
         protected void onPostExecute(String s) {
-            CheckSavedWorker.checkLocal();
+            CheckSavedWorker.checkLocal(this.context);
         }
     }
 

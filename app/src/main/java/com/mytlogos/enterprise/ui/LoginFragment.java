@@ -23,7 +23,7 @@ import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.loader.app.LoaderManager;
 import androidx.loader.content.CursorLoader;
 import androidx.loader.content.Loader;
@@ -95,7 +95,7 @@ public class LoginFragment extends Fragment implements LoaderManager.LoaderCallb
         this.progressView = fragmentView.findViewById(R.id.login_progress);
 
         FragmentActivity activity = Objects.requireNonNull(getActivity());
-        this.userViewModel = ViewModelProviders.of(activity).get(UserViewModel.class);
+        this.userViewModel = new ViewModelProvider(activity).get(UserViewModel.class);
 
         return fragmentView;
     }

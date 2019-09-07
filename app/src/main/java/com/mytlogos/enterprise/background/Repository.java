@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 public interface Repository {
     boolean isClientOnline();
@@ -168,7 +169,7 @@ public interface Repository {
 
     void updateRead(int episodeId, boolean read) throws IOException;
 
-    void updateRead(Collection<Integer> episodeIds, boolean read) throws IOException;
+    void updateRead(Collection<Integer> episodeIds, boolean read) throws Exception;
 
     LiveData<PagedList<ReadEpisode>> getReadTodayEpisodes();
 
@@ -214,7 +215,7 @@ public interface Repository {
 
     void syncUser();
 
-    void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException;
+    void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException, Exception;
 
     void clearLocalMediaData();
 
@@ -234,11 +235,27 @@ public interface Repository {
 
     void clearFailEpisodes();
 
-    void updateAllRead(int episodeId, boolean read) throws IOException;
+    void updateAllRead(int episodeId, boolean read) throws IOException, Exception;
 
     void deleteAllLocalEpisodes(int mediumId, Application application) throws IOException;
 
     void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId, Application application) throws IOException;
 
     void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException;
+
+    void addProgressListener(Consumer<Integer> consumer);
+
+    void removeProgressListener(Consumer<Integer> consumer);
+
+    void addTotalWorkListener(Consumer<Integer> consumer);
+
+    void removeTotalWorkListener(Consumer<Integer> consumer);
+
+    int getLoadWorkerProgress();
+
+    int getLoadWorkerTotalWork();
+
+    void syncProgress();
+
+    void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds);
 }

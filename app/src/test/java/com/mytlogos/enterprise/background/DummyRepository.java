@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 public final class DummyRepository implements Repository {
 
@@ -533,6 +534,46 @@ public final class DummyRepository implements Repository {
 
     @Override
     public void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException {
+
+    }
+
+    @Override
+    public void addProgressListener(Consumer<Integer> consumer) {
+
+    }
+
+    @Override
+    public void removeProgressListener(Consumer<Integer> consumer) {
+
+    }
+
+    @Override
+    public void addTotalWorkListener(Consumer<Integer> consumer) {
+
+    }
+
+    @Override
+    public void removeTotalWorkListener(Consumer<Integer> consumer) {
+
+    }
+
+    @Override
+    public int getLoadWorkerProgress() {
+        return 0;
+    }
+
+    @Override
+    public int getLoadWorkerTotalWork() {
+        return 0;
+    }
+
+    @Override
+    public void syncProgress() {
+
+    }
+
+    @Override
+    public void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds) {
 
     }
 

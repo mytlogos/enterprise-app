@@ -23,7 +23,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
 
         DownloadWorker.watchDatabase(this.getApplication(), this);
-        BootReceiver.startWorker();
+        BootReceiver.startWorker(this.getApplication());
 
         setContentView(R.layout.activity_main);
 
@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        this.viewModel = ViewModelProviders.of(this).get(UserViewModel.class);
+        this.viewModel = new ViewModelProvider(this).get(UserViewModel.class);
         userData = this.viewModel.getUserLiveData();
         userData.observe(this, this::handleUserChanges);
 
@@ -237,15 +237,15 @@ public class MainActivity extends AppCompatActivity implements
                 selected = true;
                 break;
             case R.id.download_now:
-                DownloadWorker.enqueueDownloadTask();
+                DownloadWorker.enqueueDownloadTask(this.getApplication());
                 selected = true;
                 break;
             case R.id.stop_download_now:
-                DownloadWorker.stopDownloadTasks();
+                DownloadWorker.stopWorker(this.getApplication());
                 selected = true;
                 break;
             case R.id.synch_now:
-                SynchronizeWorker.enqueueOneTime();
+                SynchronizeWorker.enqueueOneTime(this.getApplication());
                 selected = true;
                 break;
             case R.id.clear_media:
@@ -277,7 +277,7 @@ public class MainActivity extends AppCompatActivity implements
                 .setTitle("Are you sure you want to clear local Media Data?")
                 .setPositiveButton("Yes", (dialog, which) -> {
                     RepositoryImpl.getInstance().clearLocalMediaData();
-                    SynchronizeWorker.enqueueOneTime();
+                    SynchronizeWorker.enqueueOneTime(this.getApplication());
                 })
                 .setNegativeButton("Cancel", null)
                 .show();

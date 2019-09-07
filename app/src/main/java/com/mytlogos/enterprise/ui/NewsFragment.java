@@ -9,7 +9,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -130,8 +129,8 @@ public class NewsFragment extends BaseSwipeListFragment<News, NewsViewModel> {
     }
 
     @Override
-    NewsViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(NewsViewModel.class);
+    Class<NewsViewModel> getViewModelClass() {
+        return NewsViewModel.class;
     }
 
     @Override

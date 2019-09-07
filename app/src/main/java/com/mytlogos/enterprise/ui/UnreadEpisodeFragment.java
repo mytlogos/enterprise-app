@@ -17,7 +17,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
@@ -71,8 +70,8 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode
     }
 
     @Override
-    UnreadEpisodeViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(UnreadEpisodeViewModel.class);
+    Class<UnreadEpisodeViewModel> getViewModelClass() {
+        return UnreadEpisodeViewModel.class;
     }
 
     @Override

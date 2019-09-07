@@ -19,7 +19,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.paging.PagedList;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -118,8 +118,7 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
             Context context = Objects.requireNonNull(getContext());
             AlertDialog.Builder builder = new AlertDialog.Builder(context);
 
-            ListsViewModel listsViewModel = ViewModelProviders
-                    .of(ListMediumFragment.this)
+            ListsViewModel listsViewModel = new ViewModelProvider(ListMediumFragment.this)
                     .get(ListsViewModel.class);
 
             LiveData<List<MediaList>> listLiveData = Transformations.map(
@@ -325,8 +324,8 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
     }
 
     @Override
-    ListMediaViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(ListMediaViewModel.class);
+    Class<ListMediaViewModel> getViewModelClass() {
+        return ListMediaViewModel.class;
     }
 
     @Override

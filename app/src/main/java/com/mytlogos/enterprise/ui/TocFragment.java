@@ -18,7 +18,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
@@ -106,8 +105,8 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     }
 
     @Override
-    TocEpisodeViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(TocEpisodeViewModel.class);
+    Class<TocEpisodeViewModel> getViewModelClass() {
+        return TocEpisodeViewModel.class;
     }
 
     @Override
@@ -310,7 +309,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
                         viewModel.deleteAllLocalEpisodes(mediumId);
                         break;
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 errorMessage = "Could not update Read Status";
             }

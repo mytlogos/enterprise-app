@@ -10,7 +10,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.mytlogos.enterprise.MainActivity;
 import com.mytlogos.enterprise.R;
@@ -36,7 +36,7 @@ public class Home extends BaseFragment {
         this.addClickListener(view, R.id.settings, SettingsActivity.class);
         this.addClickListener(view, R.id.logout, MainActivity::logout);
 
-        UserViewModel viewModel = ViewModelProviders.of(this).get(UserViewModel.class);
+        UserViewModel viewModel = new ViewModelProvider(this).get(UserViewModel.class);
 
         TextView unreadChapter = view.findViewById(R.id.unread_chapter);
         TextView unreadNews = view.findViewById(R.id.unread_news);

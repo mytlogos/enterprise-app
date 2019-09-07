@@ -11,7 +11,7 @@ import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentActivity;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.viewmodel.UserViewModel;
@@ -59,7 +59,7 @@ public class RegisterFragment extends LoginFragment {
         this.progressView = fragment.findViewById(R.id.login_progress);
 
         FragmentActivity activity = Objects.requireNonNull(getActivity());
-        this.userViewModel = ViewModelProviders.of(activity).get(UserViewModel.class);
+        this.userViewModel = new ViewModelProvider(activity).get(UserViewModel.class);
 
         return fragment;
     }

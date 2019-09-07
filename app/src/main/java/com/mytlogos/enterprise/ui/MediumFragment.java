@@ -21,7 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.paging.PagedList;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -75,8 +75,7 @@ public class MediumFragment extends BaseListFragment<MediumItem, MediumViewModel
                 Context context = Objects.requireNonNull(getContext());
                 AlertDialog.Builder builder = new AlertDialog.Builder(context);
 
-                ListsViewModel listsViewModel = ViewModelProviders
-                        .of(MediumFragment.this)
+                ListsViewModel listsViewModel = new ViewModelProvider(MediumFragment.this)
                         .get(ListsViewModel.class);
 
                 ArrayAdapter<MediaList> adapter = new TextOnlyListAdapter<>(
@@ -184,8 +183,8 @@ public class MediumFragment extends BaseListFragment<MediumItem, MediumViewModel
     }
 
     @Override
-    MediumViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(MediumViewModel.class);
+    Class<MediumViewModel> getViewModelClass() {
+        return MediumViewModel.class;
     }
 
     @Override

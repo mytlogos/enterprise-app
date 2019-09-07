@@ -11,7 +11,6 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
@@ -38,8 +37,8 @@ public class NotificationFragment extends BaseListFragment<NotificationItem, Not
     }
 
     @Override
-    NotificationViewModel createViewModel() {
-        return ViewModelProviders.of(this).get(NotificationViewModel.class);
+    Class<NotificationViewModel> getViewModelClass() {
+        return NotificationViewModel.class;
     }
 
     @Override

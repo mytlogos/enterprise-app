@@ -17,11 +17,11 @@ public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            BootReceiver.startWorker();
+            BootReceiver.startWorker(context);
         }
     }
 
-    public static void startWorker() {
+    public static void startWorker(Context context) {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.UNMETERED)
                 .build();
@@ -31,7 +31,7 @@ public class BootReceiver extends BroadcastReceiver {
                 .setConstraints(constraints)
                 .build();
 
-        WorkManager.getInstance().enqueueUniquePeriodicWork(
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 SynchronizeWorker.SYNCHRONIZE_WORKER,
                 ExistingPeriodicWorkPolicy.REPLACE,
                 periodicSynchronize
@@ -41,7 +41,7 @@ public class BootReceiver extends BroadcastReceiver {
                 .Builder(CheckSavedWorker.class, 1, TimeUnit.HOURS)
                 .build();
 
-        WorkManager.getInstance().enqueueUniquePeriodicWork(
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 CheckSavedWorker.CHECK_SAVED_WORKER,
                 ExistingPeriodicWorkPolicy.REPLACE,
                 periodicCheckSaved

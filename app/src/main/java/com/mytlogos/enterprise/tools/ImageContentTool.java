@@ -9,8 +9,9 @@ import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.model.ChapterPage;
 import com.mytlogos.enterprise.model.MediumType;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -108,7 +109,7 @@ public class ImageContentTool extends ContentTool {
         if (!file.exists() || !file.isDirectory()) {
             return Collections.emptyMap();
         }
-        Pattern pagePattern = Pattern.compile("^(\\d+)-\\d+\\.png$");
+        Pattern pagePattern = Pattern.compile("^(\\d+)-\\d+\\.(png|jpg)$");
 
         @SuppressLint("UseSparseArrays")
         Map<Integer, String> firstPageEpisodes = new HashMap<>();
@@ -216,6 +217,7 @@ public class ImageContentTool extends ContentTool {
                             // followed by notEnoughSpaceException
                             Throwable cause = throwable.getCause();
                             if (cause != null && cause.getCause() instanceof NotEnoughSpaceException) {
+                                cause = cause.getCause();
                                 for (File writtenFile : writtenFiles) {
                                     if (writtenFile.exists() && !writtenFile.delete()) {
                                         System.out.println("could not delete image: " + writtenFile.getAbsolutePath());
@@ -266,6 +268,16 @@ public class ImageContentTool extends ContentTool {
             System.err.println("got an invalid link");
             return;
         }
+        String imageFormat;
+
+        if (link.toLowerCase().endsWith(".png")) {
+            imageFormat = "png";
+        } else if (link.toLowerCase().endsWith(".jpg")) {
+            imageFormat = "jpg";
+        } else {
+            System.err.println("got unsupported/unwanted image format: " + link);
+            return;
+        }
         try {
             URL url = new URL(link);
             HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
@@ -279,19 +291,12 @@ public class ImageContentTool extends ContentTool {
                 return;
             }
 
-            try (InputStream in = httpURLConnection.getInputStream()) {
-                Bitmap bitmap = BitmapFactory.decodeStream(in);
-
-                String pageName = String.format("%s-%s.png", episodeId, page + 1);
+            try (BufferedInputStream in = new BufferedInputStream(httpURLConnection.getInputStream())) {
+                String pageName = String.format("%s-%s.%s", episodeId, page + 1, imageFormat);
                 File image = new File(file, pageName);
                 writtenFiles.add(image);
 
-                try (OutputStream outputStream = new FileOutputStream(image)) {
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream);
-                    outputStream.flush();
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                }
+                saveImageStream(in, image);
             }
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -301,6 +306,24 @@ public class ImageContentTool extends ContentTool {
         // check if it can still write after this
         if (!this.writeable()) {
             throw new NotEnoughSpaceException();
+        }
+    }
+
+    private void saveImageStream(InputStream in, File image) throws IOException {
+        try (BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(image))) {
+            int ch;
+            while ((ch = in.read()) != -1) {
+                outputStream.write(ch);
+            }
+        }
+    }
+
+    private void saveImageBitmap(InputStream in, File image) throws IOException {
+        Bitmap bitmap = BitmapFactory.decodeStream(in);
+
+        try (OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(image))) {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream);
+            outputStream.flush();
         }
     }
 
@@ -368,7 +391,7 @@ public class ImageContentTool extends ContentTool {
         if (!file.exists() || !file.isDirectory()) {
             return Collections.emptyMap();
         }
-        Pattern pagePattern = Pattern.compile("^(\\d+)-(\\d+)\\.png$");
+        Pattern pagePattern = Pattern.compile("^(\\d+)-(\\d+)\\.(png|jpg)$");
 
         @SuppressLint("UseSparseArrays")
         Map<Integer, Set<ChapterPage>> episodePages = new HashMap<>();

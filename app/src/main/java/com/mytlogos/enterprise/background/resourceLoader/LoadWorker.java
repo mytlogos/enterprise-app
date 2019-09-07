@@ -8,7 +8,11 @@ import com.mytlogos.enterprise.background.DependantGenerator;
 import com.mytlogos.enterprise.background.LoadData;
 import com.mytlogos.enterprise.background.Repository;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Consumer;
 
 public abstract class LoadWorker {
     public final NewsLoader NEWS_LOADER;
@@ -23,6 +27,10 @@ public abstract class LoadWorker {
     final ClientModelPersister persister;
     final LoadData loadedData;
     final DependantGenerator generator;
+    private final Set<Consumer<Integer>> progressListener = Collections.synchronizedSet(new HashSet<>());
+    private final Set<Consumer<Integer>> totalWorkListener = Collections.synchronizedSet(new HashSet<>());
+    private int progress;
+    private int totalWork = -1;
 
     public LoadWorker(Repository repository, ClientModelPersister persister, LoadData loadedData, DependantGenerator generator) {
         this.repository = repository;
@@ -162,4 +170,52 @@ public abstract class LoadWorker {
     abstract void doWork();
 
     public abstract void work();
+
+    public void addProgressListener(Consumer<Integer> consumer) {
+        this.progressListener.add(consumer);
+        consumer.accept(progress);
+    }
+
+    public void removeProgressListener(Consumer<Integer> consumer) {
+        this.progressListener.remove(consumer);
+    }
+
+    public void addTotalWorkListener(Consumer<Integer> consumer) {
+        this.progressListener.add(consumer);
+        consumer.accept(progress);
+    }
+
+    public void removeTotalWorkListener(Consumer<Integer> consumer) {
+        this.progressListener.remove(consumer);
+    }
+
+    protected void updateProgress(int progress) {
+        this.progress = progress;
+        for (Consumer<Integer> consumer : this.progressListener) {
+            consumer.accept(progress);
+        }
+    }
+
+    protected void updateTotalWork(int total) {
+        this.totalWork = total;
+        for (Consumer<Integer> consumer : this.totalWorkListener) {
+            consumer.accept(total);
+        }
+    }
+
+    public int getProgress() {
+        return progress;
+    }
+
+    public int getTotalWork() {
+        return totalWork;
+    }
+
+    public void enforceMediumStructure(int id) {
+
+    }
+
+    public void enforcePartStructure(int id) {
+
+    }
 }

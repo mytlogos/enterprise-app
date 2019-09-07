@@ -38,6 +38,8 @@ public class BlockingLoadWorker extends LoadWorker {
 
     private Map<NetworkLoader<Integer>, IntLoaderManager> intLoaderManager = new HashMap<>();
     private Map<NetworkLoader<String>, StringLoaderManager> stringLoaderManager = new HashMap<>();
+    private List<Integer> enforceMedia = new ArrayList<>();
+    private List<Integer> enforcePart = new ArrayList<>();
 
     public BlockingLoadWorker(LoadData loadedData, Repository repository, ClientModelPersister persister, DependantGenerator generator) {
         super(repository, persister, loadedData, generator);
@@ -388,7 +390,15 @@ public class BlockingLoadWorker extends LoadWorker {
     @Override
     public void doWork() {
         System.out.println("do work");
-        print();
+        int totalWork = 0;
+
+        for (StringLoaderManager manager : new ArrayList<>(this.stringLoaderManager.values())) {
+            totalWork += manager.loading();
+        }
+        for (LoaderManagerImpl<Integer> manager : new ArrayList<>(this.intLoaderManager.values())) {
+            totalWork += manager.loading();
+        }
+        this.updateTotalWork(totalWork);
 
         Collection<DependantNode> nodes = new ArrayList<>();
         Map<Future<Collection<DependencyTask<?>>>, ProcessTasks> futureProcessTasksMap = new HashMap<>();
@@ -422,7 +432,7 @@ public class BlockingLoadWorker extends LoadWorker {
         }*/
 
         System.out.println("finish work");
-        print();
+//        print();
 
         // todo only exit condition, maybe do more
         if (!nodes.isEmpty()) {
@@ -551,9 +561,24 @@ public class BlockingLoadWorker extends LoadWorker {
     }
 
     @Override
+    public void enforceMediumStructure(int id) {
+        this.enforceMedia.add(id);
+    }
+
+    @Override
+    public void enforcePartStructure(int id) {
+        this.enforcePart.add(id);
+    }
+
+    @Override
     public void work() {
         try {
             workService.submit(this::doWork).get();
+            List<Integer> mediaIds = new ArrayList<>(this.enforceMedia);
+            List<Integer> partIds = new ArrayList<>(this.enforcePart);
+            this.enforcePart.clear();
+            this.enforceMedia.clear();
+            this.repository.updateDataStructure(mediaIds, partIds);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -621,6 +646,10 @@ public class BlockingLoadWorker extends LoadWorker {
 
         boolean isLoading(T value) {
             return this.loading.contains(value);
+        }
+
+        int loading() {
+            return this.loading.size();
         }
 
         @Override

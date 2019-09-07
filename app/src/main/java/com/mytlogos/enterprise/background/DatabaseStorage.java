@@ -179,4 +179,7 @@ public interface DatabaseStorage {
 
     Collection<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId);
 
+    void syncProgress();
+
+    void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds);
 }
