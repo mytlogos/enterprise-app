@@ -16,9 +16,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.text.HtmlCompat;
 
 import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.tools.HtmlToPlainText;
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
 
 import org.jsoup.Jsoup;
@@ -133,8 +133,9 @@ public class TextReaderFragmentText extends TextViewerFragment {
         // and displays characters like ' or ´ incorrectly
         CharSequence text;
         try {
-            text = new HtmlToPlainText().getPlainText(Jsoup.parse(data).body());
-//            text = HtmlCompat.fromHtml(data, HtmlCompat.FROM_HTML_MODE_COMPACT);
+//            text = new HtmlToPlainText().getPlainText(Jsoup.parse(data).body());
+            String html = Jsoup.parse(data).body().html();
+            text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY);
         } catch (Exception ignored) {
             text = data;
         }
