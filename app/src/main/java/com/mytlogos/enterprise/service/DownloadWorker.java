@@ -93,10 +93,10 @@ public class DownloadWorker extends Worker {
     }
 
     public static void stopWorker(Application application) {
-        if (uuid == null) {
-            return;
+        if (uuid != null) {
+            WorkManager.getInstance(application).cancelWorkById(uuid);
         }
-        WorkManager.getInstance(application).cancelWorkById(uuid);
+        WorkManager.getInstance(application).cancelUniqueWork(UNIQUE);
     }
 
     public static boolean isRunning(Application application) {
