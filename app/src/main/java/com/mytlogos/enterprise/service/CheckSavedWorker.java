@@ -38,6 +38,8 @@ public class CheckSavedWorker extends Worker {
     private final int checkLocalNotificationId = 0x300;
     private int correctedSaveState = 0;
     private int clearedLooseEpisodes = 0;
+    private int checkedCount;
+    private int mediaToCheck;
 
     public CheckSavedWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -96,28 +98,19 @@ public class CheckSavedWorker extends Worker {
                     .computeIfAbsent(mediumType, integer -> new HashMap<>())
                     .put(entry.getKey(), entry.getValue());
         }
-        int mediaToCheck = 0;
+        this.mediaToCheck = 0;
 
         for (Map<Integer, Set<Integer>> map : typeMediumSavedEpisodes.values()) {
-            mediaToCheck += map.size();
+            this.mediaToCheck += map.size();
         }
 
-        builder.setContentTitle(String.format("Checking Local Content Integrity [0/%s]", mediaToCheck));
-        notificationManager.notify(checkLocalNotificationId, builder.build());
-
-        int checkedCount = 0;
+        this.checkedCount = 0;
+        this.updateNotificationContentText();
 
         for (Map.Entry<Integer, Map<Integer, Set<Integer>>> entry : typeMediumSavedEpisodes.entrySet()) {
             Integer mediumType = entry.getKey();
             ContentTool tool = FileTools.getContentTool(mediumType, application);
             checkLocalContentFiles(tool, repository, entry.getValue());
-
-            checkedCount++;
-            builder.setContentTitle(String.format(
-                    "Checking Local Content Integrity [%s/%s]",
-                    checkedCount,
-                    mediaToCheck
-            ));
             notificationManager.notify(checkLocalNotificationId, builder.build());
         }
 
@@ -143,28 +136,31 @@ public class CheckSavedWorker extends Worker {
             if (!unSavedIds.isEmpty()) {
                 repository.updateSaved(unSavedIds, false);
                 this.correctedSaveState += unSavedIds.size();
-                updateNotificationContentText();
             }
 
-            if (looseIds.isEmpty()) {
-                continue;
+            if (!looseIds.isEmpty()) {
+                try {
+                    tool.removeMediaEpisodes(entry.getKey(), looseIds);
+                    this.clearedLooseEpisodes += looseIds.size();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
-            try {
-                tool.removeMediaEpisodes(entry.getKey(), looseIds);
-                this.clearedLooseEpisodes += looseIds.size();
-                updateNotificationContentText();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            this.checkedCount++;
+            updateNotificationContentText();
         }
     }
 
     private void updateNotificationContentText() {
-        this.builder.setContentText(String.format(
-                "Corrected Save State: %s, Cleared Loose Episodes: %s",
-                this.correctedSaveState,
-                this.clearedLooseEpisodes
+        builder.setContentTitle(String.format(
+                "Checking Local Content Integrity [%s/%s]",
+                this.checkedCount,
+                this.mediaToCheck
         ));
+        this.builder.setStyle(new NotificationCompat.InboxStyle()
+                .addLine(String.format("Corrected Save State: %s", this.correctedSaveState))
+                .addLine(String.format("Cleared Loose Episodes: %s", this.clearedLooseEpisodes))
+        );
         this.notificationManager.notify(this.checkLocalNotificationId, this.builder.build());
     }
 
