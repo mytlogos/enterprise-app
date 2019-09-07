@@ -72,10 +72,6 @@ public class ImageContentTool extends ContentTool {
 
             String name = episodePath.getName();
 
-            if (!name.endsWith(".png")) {
-                continue;
-            }
-
             for (String prefix : prefixes) {
                 if (!name.startsWith(prefix)) {
                     continue;

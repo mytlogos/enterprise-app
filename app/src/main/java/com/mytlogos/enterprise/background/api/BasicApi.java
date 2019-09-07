@@ -25,7 +25,5 @@ interface BasicApi {
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/register")
     Call<ClientUser> register(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
-
-
 }
 
