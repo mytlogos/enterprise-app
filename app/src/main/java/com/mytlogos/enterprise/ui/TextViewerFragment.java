@@ -10,8 +10,10 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
@@ -20,6 +22,8 @@ import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.TextContentTool;
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout;
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
+
+import org.joda.time.DateTime;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +41,12 @@ public class TextViewerFragment extends BaseFragment {
     private int currentEpisode;
     private String currentBook;
     private WebView webView;
+    private boolean readingMode = false;
+    private DateTime lastReadingModeChange = null;
     List<ReadableEpisode> readableEpisodes = new ArrayList<>();
     ReadableEpisode currentlyReading;
     SwipyRefreshLayout swipeLayout;
+    BottomNavigationView navigationView;
 
 
     /**
@@ -74,39 +81,76 @@ public class TextViewerFragment extends BaseFragment {
         View view = inflater.inflate(R.layout.text_reader_fragment, container, false);
         this.webView = view.findViewById(R.id.web_view);
         this.swipeLayout = view.findViewById(R.id.swiper);
-
-        swipeLayout.setOnRefreshListener(direction -> {
-            if (this.currentlyReading == null) {
-                if (this.readableEpisodes.isEmpty()) {
-                    return;
-                } else {
-                    this.currentlyReading = this.readableEpisodes.get(0);
-                }
+        this.swipeLayout.setOnRefreshListener(this::navigateEpisode);
+        this.navigationView = view.findViewById(R.id.navigation);
+        this.navigationView.setOnNavigationItemSelectedListener(item -> {
+            if (item.getItemId() == R.id.left_nav) {
+                navigateEpisode(SwipyRefreshLayoutDirection.TOP);
+            } else if (item.getItemId() == R.id.right_nav) {
+                navigateEpisode(SwipyRefreshLayoutDirection.BOTTOM);
             } else {
-                int index = this.readableEpisodes.indexOf(currentlyReading);
-                if (direction == SwipyRefreshLayoutDirection.TOP) {
-                    index--;
-                } else if (direction == SwipyRefreshLayoutDirection.BOTTOM) {
-                    index++;
-                } else {
-                    System.out.println("Unknown swipe direction in TextViewerFragment, neither top or bottom");
-                    return;
-                }
-                if (index >= this.readableEpisodes.size()) {
-                    // TODO: 26.07.2019 check with if there are more episodes and save them
-                    showToast("You are already reading the last saved episode");
-                    return;
-                } else if (index < 0) {
-                    // TODO: 26.07.2019 check with if there are more episodes and save them
-                    showToast("You are already reading the first saved episode");
-                    return;
-                }
-                this.currentlyReading = this.readableEpisodes.get(index);
+                System.out.println("unknown MenuItem for Text Navigation: " + item.getItemId());
+                showToast("Unknown MenuItem");
             }
-            new OpenEpisodeTask().execute();
+            return true;
         });
+        this.webView.setOnClickListener(v -> this.toggleReadingMode());
         this.loadZip();
         return view;
+    }
+
+    void enableReadingMode(boolean enable) {
+        DateTime now = DateTime.now();
+        if (this.lastReadingModeChange != null && this.lastReadingModeChange.isAfter(now.minusMillis(200))) {
+            return;
+        }
+        this.lastReadingModeChange = now;
+        this.navigationView.setVisibility(enable ? View.INVISIBLE : View.VISIBLE);
+        ActionBar bar = this.getMainActivity().getSupportActionBar();
+
+        if (bar != null) {
+            if (enable) {
+                bar.hide();
+            } else {
+                bar.show();
+            }
+        }
+        this.readingMode = enable;
+    }
+
+    void toggleReadingMode() {
+        enableReadingMode(!this.readingMode);
+    }
+
+    void navigateEpisode(SwipyRefreshLayoutDirection direction) {
+        if (this.currentlyReading == null) {
+            if (this.readableEpisodes.isEmpty()) {
+                return;
+            } else {
+                this.currentlyReading = this.readableEpisodes.get(0);
+            }
+        } else {
+            int index = this.readableEpisodes.indexOf(currentlyReading);
+            if (direction == SwipyRefreshLayoutDirection.TOP) {
+                index--;
+            } else if (direction == SwipyRefreshLayoutDirection.BOTTOM) {
+                index++;
+            } else {
+                System.out.println("Unknown swipe direction in TextViewerFragment, neither top or bottom");
+                return;
+            }
+            if (index >= this.readableEpisodes.size()) {
+                // TODO: 26.07.2019 check with if there are more episodes and save them
+                showToast("You are already reading the last saved episode");
+                return;
+            } else if (index < 0) {
+                // TODO: 26.07.2019 check with if there are more episodes and save them
+                showToast("You are already reading the first saved episode");
+                return;
+            }
+            this.currentlyReading = this.readableEpisodes.get(index);
+        }
+        new OpenEpisodeTask().execute();
     }
 
     static class ReadableEpisode extends SimpleEpisode {

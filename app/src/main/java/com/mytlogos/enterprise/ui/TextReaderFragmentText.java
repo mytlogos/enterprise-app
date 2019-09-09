@@ -36,38 +36,31 @@ public class TextReaderFragmentText extends TextViewerFragment {
         this.textDisplay = view.findViewById(R.id.display);
         this.scrollView = view.findViewById(R.id.scroller);
         this.textDisplay.setMovementMethod(new ScrollingMovementMethod());
-        swipeLayout.setOnRefreshListener(direction -> {
-            if (this.currentlyReading == null) {
-                if (this.readableEpisodes.isEmpty()) {
-                    return;
-                } else {
-                    this.currentlyReading = this.readableEpisodes.get(0);
-                }
-            } else {
-                int index = this.readableEpisodes.indexOf(currentlyReading);
-                if (direction == SwipyRefreshLayoutDirection.TOP) {
-                    index--;
-                } else if (direction == SwipyRefreshLayoutDirection.BOTTOM) {
-                    index++;
-                } else {
-                    System.out.println("Unknown swipe direction in TextViewerFragment, neither top or bottom");
-                    return;
-                }
-                if (index >= this.readableEpisodes.size()) {
-                    // TODO: 26.07.2019 check with if there are more episodes and save them
-                    showToast("You are already reading the last saved episode");
-                    return;
-                } else if (index < 0) {
-                    // TODO: 26.07.2019 check with if there are more episodes and save them
-                    showToast("You are already reading the first saved episode");
-                    return;
-                }
-                this.currentlyReading = this.readableEpisodes.get(index);
-            }
-            new OpenEpisodeTask().execute();
-        });
+        this.swipeLayout.setOnRefreshListener(this::navigateEpisode);
         this.loadZip();
+        this.navigationView = view.findViewById(R.id.navigation);
+        this.navigationView.setOnNavigationItemSelectedListener(item -> {
+            if (item.getItemId() == R.id.left_nav) {
+                navigateEpisode(SwipyRefreshLayoutDirection.TOP);
+            } else if (item.getItemId() == R.id.right_nav) {
+                navigateEpisode(SwipyRefreshLayoutDirection.BOTTOM);
+            } else {
+                System.out.println("unknown MenuItem for Text Navigation: " + item.getItemId());
+                showToast("Unknown MenuItem");
+            }
+            return true;
+        });
         this.setHasOptionsMenu(true);
+        this.scrollView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+            if (scrollY < oldScrollY) {
+                // if scrolling up
+                this.enableReadingMode(false);
+            } else if (scrollY > oldScrollY) {
+                // if scrolling down
+                this.enableReadingMode(true);
+            }
+        });
+        this.textDisplay.setOnClickListener(v -> this.toggleReadingMode());
         return view;
     }
 
