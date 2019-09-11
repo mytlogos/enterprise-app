@@ -487,11 +487,13 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
                 title = release.getTitle();
             }
             boolean hasOnline = this.item.getReleases().stream().anyMatch(any -> any.getUrl() != null && !any.getUrl().isEmpty());
+            boolean isLocked = this.item.getReleases().stream().allMatch(Release::isLocked);
 
             holder.textTopLeft.setText(index);
             holder.textTopRight.setText(topRight);
             holder.textContentView.setText(title);
 
+            holder.episodeLockedIcon.setVisibility(isLocked ? View.VISIBLE : View.GONE);
             holder.episodeReadIcon.setAlpha(this.item.getProgress() == 1 ? 1 : 0.25f);
             holder.openLocalIcon.setAlpha(this.item.isSaved() ? 1 : 0.25f);
             holder.openBrowserIcon.setAlpha(hasOnline ? 1 : 0.25f);
@@ -504,6 +506,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         final TextView textContentView;
         private final TextView textTopLeft;
         private final TextView textTopRight;
+        private final ImageView episodeLockedIcon;
         private final ImageView episodeReadIcon;
         private final ImageView openBrowserIcon;
         private final ImageView openLocalIcon;
@@ -513,6 +516,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
             this.mView = view;
             this.textTopLeft = view.findViewById(R.id.item_top_left);
             this.textTopRight = view.findViewById(R.id.item_top_right);
+            this.episodeLockedIcon = view.findViewById(R.id.episode_locked);
             this.episodeReadIcon = view.findViewById(R.id.episode_read);
             this.openBrowserIcon = view.findViewById(R.id.open_in_browser);
             this.openLocalIcon = view.findViewById(R.id.open_local);

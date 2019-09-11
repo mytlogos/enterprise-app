@@ -50,6 +50,15 @@
         android:orientation="horizontal">
 
         <ImageView
+            android:id="@+id/episode_locked"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_margin="@dimen/small_margin"
+            android:contentDescription="@string/episode_locked"
+            android:src="@drawable/ic_lock_dark"
+            android:visibility="visible" />
+
+        <ImageView
             android:id="@+id/episode_read"
             android:layout_width="20dp"
             android:layout_height="20dp"

@@ -228,4 +228,5 @@
     <string name="increment_font">Increment Font</string>
     <string name="decrement_font">Decrement Font</string>
     <string name="default_zero">0</string>
+    <string name="episode_locked">Episode Locked</string>
 </resources>
