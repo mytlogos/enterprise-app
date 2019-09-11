@@ -28,7 +28,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -464,8 +466,14 @@ public class Client {
             Gson gson = new GsonBuilder()
                     .registerTypeHierarchyAdapter(DateTime.class, new GsonAdapter.DateTimeAdapter())
                     .create();
+            OkHttpClient client = new OkHttpClient
+                    .Builder()
+                    .readTimeout(20, TimeUnit.SECONDS)
+                    .build();
+
             retrofit = new Retrofit.Builder()
                     .baseUrl(this.server.getAddress())
+                    .client(client)
                     .addConverterFactory(GsonConverterFactory.create(gson))
                     .build();
             Client.retrofitMap.put(api, retrofit);

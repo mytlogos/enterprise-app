@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background;
 
 import android.app.Application;
+import android.content.Context;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -469,7 +470,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void updateReadWithLowerIndex(int episodeId, boolean read) {
+    public void updateReadWithLowerIndex(double episodeId, boolean read, int mediumId) {
     }
 
     @Override
@@ -528,7 +529,12 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId, Application application) throws IOException {
+    public void deleteLocalEpisodesWithLowerIndex(double episodeId, int mediumId, Application application) throws IOException {
+
+    }
+
+    @Override
+    public void deleteLocalEpisodesWithHigherIndex(double combiIndex, int mediumId, Application application) {
 
     }
 
@@ -574,6 +580,51 @@ public final class DummyRepository implements Repository {
 
     @Override
     public void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds) {
+
+    }
+
+    @Override
+    public void reloadLowerIndex(double combiIndex, int mediumId) {
+
+    }
+
+    @Override
+    public void reloadHigherIndex(double combiIndex, int mediumId) {
+
+    }
+
+    @Override
+    public void reloadSingle(int episodeId) {
+
+    }
+
+    @Override
+    public void reloadAll(int mediumId) {
+
+    }
+
+    @Override
+    public void downloadLowerIndex(double combiIndex, int mediumId, Context context) {
+
+    }
+
+    @Override
+    public void downloadHigherIndex(double combiIndex, int mediumId, Context context) {
+
+    }
+
+    @Override
+    public void downloadSingle(int episodeId, int mediumId, Context context) {
+
+    }
+
+    @Override
+    public void downloadAll(int mediumId, Context context) {
+
+    }
+
+    @Override
+    public void updateReadWithHigherIndex(double episodeId, boolean read, int mediumId) {
 
     }
 

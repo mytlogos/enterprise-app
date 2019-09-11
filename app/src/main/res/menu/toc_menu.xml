@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/mark_read"
+        android:icon="@drawable/ic_mark_bright"
+        android:title="" />
+    <item
+        android:id="@+id/mark_unread"
+        android:icon="@drawable/ic_unmark_bright"
+        android:title="" />
+    <item
+        android:id="@+id/download"
+        android:icon="@drawable/ic_download_bright"
+        android:title="" />
+    <item
+        android:id="@+id/delete_local"
+        android:icon="@drawable/ic_delete_bright"
+        android:title="" />
+    <item
+        android:id="@+id/refresh"
+        android:icon="@drawable/ic_refresh_bright"
+        android:title="" />
+</menu>

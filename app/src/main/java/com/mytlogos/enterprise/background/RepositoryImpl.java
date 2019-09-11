@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
@@ -27,6 +28,7 @@ import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 import com.mytlogos.enterprise.background.resourceLoader.BlockingLoadWorker;
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.background.room.RoomStorage;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
@@ -49,6 +51,7 @@ import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.service.DownloadWorker;
 import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.Sortings;
@@ -765,13 +768,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void updateAllRead(int episodeId, boolean read) throws Exception {
-        Collection<Integer> episodeIds = this.storage.getAllEpisodes(episodeId);
-
-        if (!episodeIds.contains(episodeId)) {
-            episodeIds.add(episodeId);
-        }
-
+    public void updateAllRead(int mediumId, boolean read) throws Exception {
+        Collection<Integer> episodeIds = this.storage.getAllEpisodes(mediumId);
         this.updateRead(episodeIds, read);
     }
 
@@ -821,8 +819,118 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId, Application application) throws IOException {
-        Collection<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithLowerIndex(episodeId);
+    public void reloadLowerIndex(double combiIndex, int mediumId) throws Exception {
+        List<Integer> episodeIds = this.storage.getEpisodeIdsWithLowerIndex(combiIndex, mediumId);
+        this.reloadEpisodes(episodeIds);
+    }
+
+    @Override
+    public void reloadHigherIndex(double combiIndex, int mediumId) throws Exception {
+        List<Integer> episodeIds = this.storage.getEpisodeIdsWithHigherIndex(combiIndex, mediumId);
+        this.reloadEpisodes(episodeIds);
+    }
+
+    @Override
+    public void reloadSingle(int episodeId) throws Exception {
+        this.reloadEpisodes(Collections.singleton(episodeId));
+    }
+
+    @Override
+    public void reloadAll(int mediumId) throws IOException {
+        Response<ClientMedium> response = this.client.getMedium(mediumId).execute();
+        ClientMedium medium = response.body();
+
+        if (medium == null) {
+            System.err.println("missing medium: " + mediumId);
+            return;
+        }
+        int[] parts = medium.getParts();
+        Collection<Integer> partIds = new ArrayList<>(parts.length);
+
+        for (int part : parts) {
+            partIds.add(part);
+        }
+        Response<List<ClientPart>> partResponse = this.client.getParts(partIds).execute();
+        List<ClientPart> partBody = partResponse.body();
+
+        if (partBody == null) {
+            return;
+        }
+        List<Integer> loadedPartIds = new ArrayList<>();
+
+        for (ClientPart part : partBody) {
+            loadedPartIds.add(part.getId());
+        }
+        LoadWorkGenerator generator = new LoadWorkGenerator(this.loadedData);
+        LoadWorkGenerator.FilteredParts filteredParts = generator.filterParts(partBody);
+        this.persister.persist(filteredParts);
+
+        partIds.removeAll(loadedPartIds);
+        this.storage.removeParts(partIds);
+    }
+
+    private void reloadEpisodes(Collection<Integer> episodeIds) throws Exception {
+        Utils.doPartitioned(episodeIds, integers -> {
+            Response<List<ClientEpisode>> response = this.client.getEpisodes(integers).execute();
+            List<ClientEpisode> episodes = response.body();
+
+            if (episodes == null) {
+                return true;
+            }
+            LoadWorkGenerator generator = new LoadWorkGenerator(this.loadedData);
+            LoadWorkGenerator.FilteredEpisodes filteredEpisodes = generator.filterEpisodes(episodes);
+            this.persister.persist(filteredEpisodes);
+
+            List<Integer> loadedIds = new ArrayList<>();
+
+            for (ClientEpisode episode : episodes) {
+                loadedIds.add(episode.getId());
+            }
+
+            integers.removeAll(loadedIds);
+            this.storage.removeEpisodes(integers);
+            return true;
+        });
+    }
+
+    @Override
+    public void downloadLowerIndex(double combiIndex, int mediumId, Context context) {
+        List<Integer> episodeIds = this.storage.getEpisodeIdsWithLowerIndex(combiIndex, mediumId);
+        DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds);
+    }
+
+    @Override
+    public void downloadHigherIndex(double combiIndex, int mediumId, Context context) {
+        List<Integer> episodeIds = this.storage.getEpisodeIdsWithHigherIndex(combiIndex, mediumId);
+        DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds);
+    }
+
+    @Override
+    public void downloadSingle(int episodeId, int mediumId, Context context) {
+        DownloadWorker.enqueueDownloadTask(context, mediumId, Collections.singleton(episodeId));
+    }
+
+    @Override
+    public void downloadAll(int mediumId, Context context) {
+        Collection<Integer> episodeIds = this.storage.getAllEpisodes(mediumId);
+        DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds);
+    }
+
+    @Override
+    public void updateReadWithHigherIndex(double combiIndex, boolean read, int mediumId) throws Exception {
+        List<Integer> episodeIds = this.storage.getEpisodeIdsWithHigherIndex(combiIndex, mediumId, read);
+        this.updateRead(episodeIds, read);
+    }
+
+    @Override
+    public void deleteLocalEpisodesWithLowerIndex(double combiIndex, int mediumId, Application application) throws IOException {
+        Collection<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithLowerIndex(combiIndex, mediumId);
+        this.deleteLocalEpisodes(new HashSet<>(episodeIds), mediumId, application);
+    }
+
+    @Override
+    public void deleteLocalEpisodesWithHigherIndex(double combiIndex, int mediumId, Application application) throws IOException {
+        Collection<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithHigherIndex(combiIndex, mediumId);
         this.deleteLocalEpisodes(new HashSet<>(episodeIds), mediumId, application);
     }
 
@@ -1111,13 +1219,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void updateReadWithLowerIndex(int episodeId, boolean read) throws Exception {
-        List<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithLowerIndex(episodeId, read);
-
-        if (!episodeIds.contains(episodeId)) {
-            episodeIds.add(episodeId);
-        }
-
+    public void updateReadWithLowerIndex(double combiIndex, boolean read, int mediumId) throws Exception {
+        List<Integer> episodeIds = this.storage.getEpisodeIdsWithLowerIndex(combiIndex, mediumId, read);
         this.updateRead(episodeIds, read);
     }
 

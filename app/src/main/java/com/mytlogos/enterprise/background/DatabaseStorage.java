@@ -155,8 +155,6 @@ public interface DatabaseStorage {
 
     List<String> getReleaseLinks(int episodeId);
 
-    List<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId, boolean read);
-
     void clearLocalMediaData();
 
     LiveData<PagedList<NotificationItem>> getNotifications();
@@ -177,9 +175,23 @@ public interface DatabaseStorage {
 
     Collection<Integer> getAllEpisodes(int mediumId);
 
-    Collection<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId);
-
     void syncProgress();
 
     void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds);
+
+    List<Integer> getEpisodeIdsWithHigherIndex(double combiIndex, int mediumId, boolean read);
+
+    List<Integer> getEpisodeIdsWithHigherIndex(double combiIndex, int mediumId);
+
+    List<Integer> getEpisodeIdsWithLowerIndex(double combiIndex, int mediumId, boolean read);
+
+    List<Integer> getEpisodeIdsWithLowerIndex(double combiIndex, int mediumId);
+
+    Collection<Integer> getSavedEpisodeIdsWithHigherIndex(double combiIndex, int mediumId);
+
+    Collection<Integer> getSavedEpisodeIdsWithLowerIndex(double combiIndex, int mediumId);
+
+    void removeEpisodes(List<Integer> episodeIds);
+
+    void removeParts(Collection<Integer> partIds);
 }

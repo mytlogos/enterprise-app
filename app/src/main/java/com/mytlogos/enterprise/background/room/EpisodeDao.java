@@ -197,23 +197,44 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "THEN progress < 1 " +
             "ELSE progress = 1 " +
             "END " +
-            "AND CASE WHEN :partCombiIndex < 0 " +
-            "THEN RoomPart.totalIndex= -1 " +
-            "ELSE RoomPart.combiIndex <= :partCombiIndex " +
-            "END " +
             "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
-    List<Integer> getEpisodeIdsWithLowerIndex(int mediumId, double episodeCombiIndex, double partCombiIndex, boolean toRead);
+    List<Integer> getEpisodeIdsWithLowerIndex(int mediumId, double episodeCombiIndex, boolean toRead);
+
+    @Query("SELECT episodeId FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "WHERE mediumId = :mediumId " +
+            "AND CASE WHEN :toRead = 1 " +
+            "THEN progress < 1 " +
+            "ELSE progress = 1 " +
+            "END " +
+            "AND RoomEpisode.combiIndex >= :episodeCombiIndex")
+    List<Integer> getEpisodeIdsWithHigherIndex(int mediumId, double episodeCombiIndex, boolean toRead);
+
+    @Query("SELECT episodeId FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "WHERE mediumId = :mediumId " +
+            "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
+    List<Integer> getEpisodeIdsWithLowerIndex(int mediumId, double episodeCombiIndex);
+
+    @Query("SELECT episodeId FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "WHERE mediumId = :mediumId " +
+            "AND RoomEpisode.combiIndex >= :episodeCombiIndex")
+    List<Integer> getEpisodeIdsWithHigherIndex(int mediumId, double episodeCombiIndex);
 
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
             "WHERE mediumId = :mediumId " +
             "AND saved = 1 " +
-            "AND CASE WHEN :partCombiIndex < 0 " +
-            "THEN RoomPart.totalIndex= -1 " +
-            "ELSE RoomPart.combiIndex <= :partCombiIndex " +
-            "END " +
             "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
-    List<Integer> getSavedEpisodeIdsWithLowerIndex(int mediumId, double episodeCombiIndex, double partCombiIndex);
+    List<Integer> getSavedEpisodeIdsWithLowerIndex(int mediumId, double episodeCombiIndex);
+
+    @Query("SELECT episodeId FROM RoomEpisode " +
+            "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
+            "WHERE mediumId = :mediumId " +
+            "AND saved = 1 " +
+            "AND RoomEpisode.combiIndex >= :episodeCombiIndex")
+    List<Integer> getSavedEpisodeIdsWithHigherIndex(int mediumId, double episodeCombiIndex);
 
     @Query("DELETE FROM RoomRelease")
     void clearAllReleases();

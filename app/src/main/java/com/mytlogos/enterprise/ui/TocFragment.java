@@ -2,8 +2,11 @@ package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -11,6 +14,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,6 +24,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.TaskManager;
@@ -28,12 +33,13 @@ import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.viewmodel.TocEpisodeViewModel;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -52,6 +58,85 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
 
     private static final String MEDIUM_ID = "mediumId";
     private int mediumId;
+    private boolean inActionMode;
+    private ActionType actionType;
+    private final ActionMode.Callback callback = new ActionMode.Callback() {
+        private RelativeLayout relativeLayout;
+        private BottomNavigationView navigationView;
+
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            mode.setTitle("ToC Actions");
+            Objects.requireNonNull(getMainActivity().getSupportActionBar()).hide();
+            this.navigationView = new BottomNavigationView(requireContext());
+            this.relativeLayout = (RelativeLayout) getView();
+
+            if (this.relativeLayout == null) {
+                System.err.println("root view is null in TocFragment for ActionMode");
+                showToast("An Error occurred while entering ActionMode");
+                return false;
+            }
+            getLayoutInflater().inflate(R.layout.bottom_navigation, this.relativeLayout);
+            this.navigationView = this.relativeLayout.findViewById(R.id.navigation);
+            this.navigationView.inflateMenu(R.menu.toc_menu);
+            this.navigationView.setItemIconTintList(new ColorStateList(
+                    new int[][]{
+                            new int[]{android.R.attr.state_checked},
+                            new int[]{}
+                    },
+                    new int[]{
+                            requireContext().getResources().getColor(R.color.colorPrimary, null),
+                            Color.WHITE
+                    }
+            ));
+            this.navigationView.setOnNavigationItemSelectedListener(item -> {
+                switch (item.getItemId()) {
+                    case R.id.mark_read:
+                        actionType = ActionType.MARK_READ;
+                        break;
+                    case R.id.mark_unread:
+                        actionType = ActionType.MARK_UNREAD;
+                        break;
+                    case R.id.download:
+                        actionType = ActionType.DOWNLOAD;
+                        break;
+                    case R.id.delete_local:
+                        actionType = ActionType.DELETE_SAVED_EPISODE;
+                        break;
+                    case R.id.refresh:
+                        actionType = ActionType.RELOAD;
+                        break;
+                    default:
+                        showToast("Unknown Selected Item");
+                        return false;
+                }
+                return true;
+            });
+            this.navigationView.setSelectedItemId(R.id.mark_read);
+            actionType = ActionType.MARK_READ;
+            inActionMode = true;
+            return true;
+        }
+
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return false;
+        }
+
+        @Override
+        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            return false;
+        }
+
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+            Objects.requireNonNull(getMainActivity().getSupportActionBar()).show();
+            this.relativeLayout.removeView(this.navigationView);
+            actionType = null;
+            inActionMode = false;
+        }
+    };
+
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -161,6 +246,10 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
 
     @Override
     public boolean onItemClick(View view, int position) {
+        if (this.inActionMode) {
+            displayActionModeActions(position);
+            return false;
+        }
         IFlexible flexible = getFlexibleAdapter().getItem(position);
 
         if (!(flexible instanceof ListItem)) {
@@ -183,6 +272,18 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
 
     @Override
     public void onItemLongClick(int position) {
+        if (!inActionMode) {
+            System.out.println("starting action mode");
+            this.getMainActivity().startActionMode(callback);
+        }
+    }
+
+    private void displayActionModeActions(int position) {
+        if (actionType == null) {
+            System.err.println("not action type selected");
+            showToast("An Error occurred, cannot open Action Popup");
+            return;
+        }
         IFlexible flexible = getFlexibleAdapter().getItem(position);
 
         if (!(flexible instanceof ListItem)) {
@@ -191,67 +292,77 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         ListItem item = (ListItem) flexible;
         TocEpisode mItem = item.item;
 
-        List<String> menuItems = new ArrayList<>();
-
-        if (mItem.getProgress() == 1) {
-            menuItems.add("Mark unread");
-        } else {
-            menuItems.add("Mark read");
-            menuItems.add("Mark current and previously read");
+        Map<String, ActionCount> actionCountMap = new HashMap<>();
+        for (ActionCount value : ActionCount.values()) {
+            actionCountMap.put(value.title, value);
         }
-        menuItems.add("Mark current and previously unread");
-        menuItems.add("Mark all read");
-        menuItems.add("Mark all unread");
 
-        if (mItem.isSaved()) {
-            menuItems.add("Delete this saved Episode");
+        List<String> menuItems = new ArrayList<>(actionCountMap.keySet());
+
+        String title;
+        switch (this.actionType) {
+            case RELOAD:
+                title = "Refresh";
+                break;
+            case DOWNLOAD:
+                title = "Download";
+                break;
+            case MARK_READ:
+                title = "Mark read";
+                break;
+            case MARK_UNREAD:
+                title = "Mark unread";
+                break;
+            case DELETE_SAVED_EPISODE:
+                title = "Delete Saved";
+                break;
+            default:
+                showToast("Unknown ActionType");
+                return;
         }
-        menuItems.add("Delete this and previously saved Episodes");
-        menuItems.add("Delete all saved Episodes");
+        title += ":";
 
+        switch (this.actionType) {
+            case DOWNLOAD:
+                if (mItem.isSaved()) {
+                    menuItems.remove(0);
+                }
+                break;
+            case MARK_READ:
+                if (mItem.getProgress() == 1) {
+                    menuItems.remove(0);
+                }
+                break;
+            case MARK_UNREAD:
+                if (mItem.getProgress() < 1) {
+                    menuItems.remove(0);
+                }
+                break;
+            case DELETE_SAVED_EPISODE:
+                if (!mItem.isSaved()) {
+                    menuItems.remove(0);
+                }
+                break;
+        }
         new AlertDialog
                 .Builder(requireContext())
+                .setTitle(title)
                 .setItems(menuItems.toArray(new String[0]), (dialog, which) -> {
-                    int offset = 0;
-                    if (mItem.getProgress() == 1) {
-                        if (which == 0) {
-                            this.handle(mItem, ActionType.MARK_UNREAD);
-                        }
+                    String menuTitle = menuItems.get(which);
+                    ActionCount count = actionCountMap.get(menuTitle);
+
+                    if (count == null) {
+                        showToast("Unknown MenuItem");
                     } else {
-                        if (which == 0) {
-                            this.handle(mItem, ActionType.MARK_READ);
-                        } else if (which == 1) {
-                            this.handle(mItem, ActionType.MARK_PREVIOUSLY_READ);
-                        }
-                        offset++;
-                    }
-                    if (which == (offset + 1)) {
-                        this.handle(mItem, ActionType.MARK_PREVIOUSLY_UNREAD);
-                    } else if (which == (offset + 2)) {
-                        this.handle(mItem, ActionType.MARK_ALL_READ);
-                    } else if (which == (offset + 3)) {
-                        this.handle(mItem, ActionType.MARK_ALL_UNREAD);
-                    }
-
-                    if (mItem.isSaved()) {
-                        if (which == (offset + 4)) {
-                            this.handle(mItem, ActionType.DELETE_SAVED_EPISODE);
-                        }
-                        offset++;
-                    }
-
-                    if (which == (offset + 4)) {
-                        this.handle(mItem, ActionType.DELETE_PREVIOUSLY_SAVED_EPISODE);
-                    } else if (which == (offset + 5)) {
-                        this.handle(mItem, ActionType.DELETE_ALL_SAVED_EPISODE);
+                        this.handle(item.item, actionType, count);
                     }
                 })
                 .show();
     }
 
     @Override
-    public boolean handle(TocEpisode item, ActionType type) {
-        new ChangeEpisodeReadStatus(type, item, mediumId, this.getItems(), this.getContext(), getViewModel()).execute();
+    public boolean handle(TocEpisode item, ActionType type, ActionCount count) {
+        new ChangeEpisodeReadStatus(type, item, mediumId, count, this.getItems(), this.getContext(), getViewModel()).execute();
         return true;
     }
 
@@ -259,16 +370,18 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         private final ActionType type;
         private final TocEpisode episode;
         private final int mediumId;
+        private final ActionCount count;
         private final List<TocEpisode> episodes;
         @SuppressLint("StaticFieldLeak")
         private final Context context;
         private final TocEpisodeViewModel viewModel;
         private String errorMessage;
 
-        private ChangeEpisodeReadStatus(ActionType type, TocEpisode episode, int mediumId, List<TocEpisode> episodes, Context context, TocEpisodeViewModel viewModel) {
+        private ChangeEpisodeReadStatus(ActionType type, TocEpisode episode, int mediumId, ActionCount count, List<TocEpisode> episodes, Context context, TocEpisodeViewModel viewModel) {
             this.type = type;
             this.episode = episode;
             this.mediumId = mediumId;
+            this.count = count;
             this.episodes = episodes;
             this.context = context;
             this.viewModel = viewModel;
@@ -280,38 +393,28 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
                 return null;
             }
             try {
-                switch (type) {
+                int episodeId = episode.getEpisodeId();
+                double combiIndex = Double.parseDouble(episode.getTotalIndex() + "." + episode.getPartialIndex());
+                switch (this.type) {
                     case MARK_READ:
-                        viewModel.updateRead(episode.getEpisodeId(), true);
+                        this.viewModel.updateRead(episodeId, combiIndex, this.count, this.mediumId, true);
                         break;
                     case MARK_UNREAD:
-                        viewModel.updateRead(episode.getEpisodeId(), false);
-                        break;
-                    case MARK_PREVIOUSLY_READ:
-                        viewModel.updateReadWithLowerIndex(episode.getEpisodeId(), true);
-                        break;
-                    case MARK_PREVIOUSLY_UNREAD:
-                        viewModel.updateReadWithLowerIndex(episode.getEpisodeId(), false);
-                        break;
-                    case MARK_ALL_READ:
-                        viewModel.updateAllRead(mediumId, true);
-                        break;
-                    case MARK_ALL_UNREAD:
-                        viewModel.updateAllRead(mediumId, false);
+                        this.viewModel.updateRead(episodeId, combiIndex, this.count, this.mediumId, false);
                         break;
                     case DELETE_SAVED_EPISODE:
-                        viewModel.deleteLocalEpisode(episode.getEpisodeId(), mediumId);
+                        this.viewModel.deleteLocalEpisode(episodeId, combiIndex, this.count, this.mediumId);
                         break;
-                    case DELETE_PREVIOUSLY_SAVED_EPISODE:
-                        viewModel.deleteLocalEpisodesWithLowerIndex(episode.getEpisodeId(), mediumId);
+                    case DOWNLOAD:
+                        this.viewModel.download(episodeId, combiIndex, this.count, this.mediumId);
                         break;
-                    case DELETE_ALL_SAVED_EPISODE:
-                        viewModel.deleteAllLocalEpisodes(mediumId);
+                    case RELOAD:
+                        this.viewModel.reload(episodeId, combiIndex, this.count, this.mediumId);
                         break;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                errorMessage = "Could not update Read Status";
+                errorMessage = "Could not execute Action";
             }
             return null;
         }
@@ -424,6 +527,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         }
     }
 
+
     public enum ActionType {
         MARK_READ,
         MARK_UNREAD,
@@ -434,5 +538,8 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         DELETE_SAVED_EPISODE,
         DELETE_PREVIOUSLY_SAVED_EPISODE,
         DELETE_ALL_SAVED_EPISODE,
+        DOWNLOAD,
+        RELOAD,
+        ;
     }
 }

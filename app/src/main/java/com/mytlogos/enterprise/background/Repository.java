@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background;
 
 import android.app.Application;
+import android.content.Context;
 
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
@@ -167,10 +168,6 @@ public interface Repository {
 
     List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids);
 
-    void updateRead(int episodeId, boolean read) throws IOException;
-
-    void updateRead(Collection<Integer> episodeIds, boolean read) throws Exception;
-
     LiveData<PagedList<ReadEpisode>> getReadTodayEpisodes();
 
     LiveData<PagedList<MediumInWait>> getMediaInWaitBy(String filter, int mediumFilter, String hostFilter, Sortings sortings);
@@ -215,8 +212,6 @@ public interface Repository {
 
     void syncUser();
 
-    void updateReadWithLowerIndex(int episodeId, boolean read) throws IOException, Exception;
-
     void clearLocalMediaData();
 
     LiveData<PagedList<NotificationItem>> getNotifications();
@@ -235,11 +230,21 @@ public interface Repository {
 
     void clearFailEpisodes();
 
-    void updateAllRead(int episodeId, boolean read) throws IOException, Exception;
+    void updateRead(int episodeId, boolean read) throws IOException;
+
+    void updateRead(Collection<Integer> episodeIds, boolean read) throws Exception;
+
+    void updateAllRead(int episodeId, boolean read) throws Exception;
+
+    void updateReadWithHigherIndex(double episodeId, boolean read, int mediumId) throws Exception;
+
+    void updateReadWithLowerIndex(double episodeId, boolean read, int mediumId) throws Exception;
 
     void deleteAllLocalEpisodes(int mediumId, Application application) throws IOException;
 
-    void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId, Application application) throws IOException;
+    void deleteLocalEpisodesWithLowerIndex(double episodeId, int mediumId, Application application) throws IOException;
+
+    void deleteLocalEpisodesWithHigherIndex(double combiIndex, int mediumId, Application application) throws IOException;
 
     void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException;
 
@@ -258,4 +263,20 @@ public interface Repository {
     void syncProgress();
 
     void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds);
+
+    void reloadLowerIndex(double combiIndex, int mediumId) throws Exception;
+
+    void reloadHigherIndex(double combiIndex, int mediumId) throws Exception;
+
+    void reloadSingle(int episodeId) throws Exception;
+
+    void reloadAll(int mediumId) throws IOException;
+
+    void downloadLowerIndex(double combiIndex, int mediumId, Context context);
+
+    void downloadHigherIndex(double combiIndex, int mediumId, Context context);
+
+    void downloadSingle(int episodeId, int mediumId, Context context);
+
+    void downloadAll(int mediumId, Context context);
 }

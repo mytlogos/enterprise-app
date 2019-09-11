@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LiveData;
 import androidx.work.Constraints;
+import androidx.work.Data;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.ListenableWorker;
 import androidx.work.NetworkType;
@@ -36,6 +37,7 @@ import com.mytlogos.enterprise.tools.NotEnoughSpaceException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,7 +51,9 @@ public class DownloadWorker extends Worker {
 
     private static final int maxEpisodeLimit = 50;
     private static final int maxPackageSize = 1;
-    private static volatile UUID uuid;
+    private static final String mediumId = "mediumId";
+    private static final String episodeIds = "episodeIds";
+    private static Set<UUID> uuids = Collections.synchronizedSet(new HashSet<>());
 
     private final int downloadNotificationId = 0x100;
     private NotificationManagerCompat notificationManager;
@@ -58,24 +62,28 @@ public class DownloadWorker extends Worker {
 
     public DownloadWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
-        uuid = this.getId();
+        DownloadWorker.uuids.add(this.getId());
     }
 
     public static void enqueueDownloadTask(Context context) {
-        OneTimeWorkRequest oneTimeWorkRequest = getWorkRequest();
+        OneTimeWorkRequest oneTimeWorkRequest = getWorkRequest(null);
         WorkManager.getInstance(context)
                 .beginUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, oneTimeWorkRequest)
                 .then(CheckSavedWorker.getWorkRequest())
                 .enqueue();
     }
 
-    private static OneTimeWorkRequest getWorkRequest() {
+    private static OneTimeWorkRequest getWorkRequest(Data data) {
+        if (data == null) {
+            data = Data.EMPTY;
+        }
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.UNMETERED)
                 .build();
 
         return new OneTimeWorkRequest
                 .Builder(DownloadWorker.class)
+                .setInputData(data)
                 .setConstraints(constraints)
                 .build();
     }
@@ -93,23 +101,40 @@ public class DownloadWorker extends Worker {
     }
 
     public static void stopWorker(Application application) {
-        if (uuid != null) {
-            WorkManager.getInstance(application).cancelWorkById(uuid);
-        }
         WorkManager.getInstance(application).cancelUniqueWork(UNIQUE);
     }
 
     public static boolean isRunning(Application application) {
-        if (uuid == null) {
-            return false;
-        }
-        ListenableFuture<WorkInfo> infoFuture = WorkManager.getInstance(application).getWorkInfoById(uuid);
-        try {
-            return infoFuture.get().getState() == WorkInfo.State.RUNNING;
-        } catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
+        for (UUID uuid : DownloadWorker.uuids) {
+            ListenableFuture<WorkInfo> infoFuture = WorkManager.getInstance(application).getWorkInfoById(uuid);
+            try {
+                WorkInfo info = infoFuture.get();
+                if (info == null) {
+                    continue;
+                }
+                if (info.getState() == WorkInfo.State.RUNNING) {
+                    return true;
+                }
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         return false;
+    }
+
+    public static void enqueueDownloadTask(Context context, int mediumId, Collection<Integer> episodeIds) {
+        Data data = new Data.Builder()
+                .putInt(DownloadWorker.mediumId, mediumId)
+                .putIntArray(DownloadWorker.episodeIds, episodeIds.stream().mapToInt(Integer::intValue).toArray())
+                .build();
+
+        OneTimeWorkRequest oneTimeWorkRequest = getWorkRequest(data);
+        String uniqueWorkName = UNIQUE + "-" + mediumId;
+        WorkManager.getInstance(context)
+                .beginUniqueWork(uniqueWorkName, ExistingWorkPolicy.REPLACE, oneTimeWorkRequest)
+                .then(CheckSavedWorker.getWorkRequest())
+                .enqueue();
+
     }
 
     @NonNull
@@ -149,7 +174,7 @@ public class DownloadWorker extends Worker {
                 if (!repository.isClientOnline()) {
                     notificationManager.notify(
                             downloadNotificationId,
-                            builder.setContentTitle("Server not in reach").setContentText(null).build()
+                            builder.setContentTitle("Server not in reach").build()
                     );
                     cleanUp();
                     return Result.failure();
@@ -157,12 +182,16 @@ public class DownloadWorker extends Worker {
                 if (!FileTools.writable(application)) {
                     notificationManager.notify(
                             downloadNotificationId,
-                            builder.setContentTitle("Not enough free space").setContentText(null).build()
+                            builder.setContentTitle("Not enough free space").build()
                     );
                     cleanUp();
                     return Result.failure();
                 }
-                download(repository);
+                if (this.getInputData().equals(Data.EMPTY)) {
+                    this.download(repository);
+                } else {
+                    this.downloadData(repository);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -243,12 +272,25 @@ public class DownloadWorker extends Worker {
             downloadCount += uniqueEpisodes.size();
         }
         if (!mediumDownloads.isEmpty()) {
-            builder
-                    .setContentTitle("Download in Progress [0/" + downloadCount + "]")
-                    .setProgress(downloadCount, 0, true);
-            notificationManager.notify(downloadNotificationId, builder.build());
             this.downloadEpisodes(mediumDownloads, repository, downloadCount);
         }
+    }
+
+    private void downloadData(Repository repository) {
+        Data data = this.getInputData();
+        int mediumId = data.getInt(DownloadWorker.mediumId, 0);
+        int[] episodeIds = data.getIntArray(DownloadWorker.episodeIds);
+
+        if (mediumId == 0 || episodeIds == null || episodeIds.length == 0) {
+            return;
+        }
+        HashSet<Integer> episodes = new HashSet<>();
+        for (int episodeId : episodeIds) {
+            episodes.add(episodeId);
+        }
+        SimpleMedium medium = repository.getSimpleMedium(mediumId);
+        MediumDownload download = new MediumDownload(episodes, mediumId, medium.getMedium(), medium.getTitle());
+        this.downloadEpisodes(Collections.singleton(download), repository, episodeIds.length);
     }
 
     /**
@@ -256,6 +298,11 @@ public class DownloadWorker extends Worker {
      * up to an episode limit initialized in {@link #maxEpisodeLimit}.
      */
     private void downloadEpisodes(Set<MediumDownload> episodeIds, Repository repository, int downloadCount) {
+        builder
+                .setContentTitle("Download in Progress [0/" + downloadCount + "]")
+                .setProgress(downloadCount, 0, true);
+        notificationManager.notify(downloadNotificationId, builder.build());
+
         Collection<DownloadPackage> episodePackages = getDownloadPackages(episodeIds, repository);
 
         int successFull = 0;
@@ -361,7 +408,7 @@ public class DownloadWorker extends Worker {
             e.printStackTrace();
         }
         notificationManager.cancel(downloadNotificationId);
-        uuid = null;
+        DownloadWorker.uuids.remove(this.getId());
     }
 
     private int onFailed(int downloadCount, int successFull, int notSuccessFull, Repository repository, DownloadPackage downloadPackage, boolean notEnoughSpace) {

@@ -9,6 +9,7 @@ import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.tools.Sortings;
+import com.mytlogos.enterprise.ui.ActionCount;
 
 import java.io.IOException;
 
@@ -62,28 +63,72 @@ public class TocEpisodeViewModel extends FilterableViewModel implements Sortable
         return this.repositoryToc;
     }
 
-    public void deleteAllLocalEpisodes(int mediumId) throws IOException {
-        repository.deleteAllLocalEpisodes(mediumId, this.getApplication());
+    public void deleteLocalEpisode(int episodeId, double combiIndex, ActionCount count, int mediumId) throws IOException {
+        switch (count) {
+            case ALL:
+                repository.deleteAllLocalEpisodes(mediumId, this.getApplication());
+                break;
+            case CURRENT:
+                repository.deleteLocalEpisode(episodeId, mediumId, this.getApplication());
+                break;
+            case CURRENT_AND_ONWARDS:
+                repository.deleteLocalEpisodesWithHigherIndex(combiIndex, mediumId, this.getApplication());
+                break;
+            case CURRENT_AND_PREVIOUSLY:
+                repository.deleteLocalEpisodesWithLowerIndex(combiIndex, mediumId, this.getApplication());
+                break;
+        }
     }
 
-    public void deleteLocalEpisodesWithLowerIndex(int episodeId, int mediumId) throws IOException {
-        repository.deleteLocalEpisodesWithLowerIndex(episodeId, mediumId, this.getApplication());
+    public void updateRead(int episodeId, double combiIndex, ActionCount count, int mediumId, boolean read) throws Exception {
+        switch (count) {
+            case ALL:
+                repository.updateAllRead(mediumId, read);
+                break;
+            case CURRENT:
+                repository.updateRead(episodeId, read);
+                break;
+            case CURRENT_AND_ONWARDS:
+                repository.updateReadWithHigherIndex(combiIndex, read, mediumId);
+                break;
+            case CURRENT_AND_PREVIOUSLY:
+                repository.updateReadWithLowerIndex(combiIndex, read, mediumId);
+                break;
+        }
     }
 
-    public void deleteLocalEpisode(int episodeId, int mediumId) throws IOException {
-        repository.deleteLocalEpisode(episodeId, mediumId, this.getApplication());
+    public void reload(int episodeId, double combiIndex, ActionCount count, int mediumId) throws Exception {
+        switch (count) {
+            case ALL:
+                repository.reloadAll(mediumId);
+                break;
+            case CURRENT:
+                repository.reloadSingle(episodeId);
+                break;
+            case CURRENT_AND_ONWARDS:
+                repository.reloadHigherIndex(combiIndex, mediumId);
+                break;
+            case CURRENT_AND_PREVIOUSLY:
+                repository.reloadLowerIndex(combiIndex, mediumId);
+                break;
+        }
     }
 
-    public void updateAllRead(int mediumId, boolean read) throws Exception {
-        repository.updateAllRead(mediumId, read);
-    }
-
-    public void updateReadWithLowerIndex(int episodeId, boolean read) throws Exception {
-        repository.updateReadWithLowerIndex(episodeId, read);
-    }
-
-    public void updateRead(int episodeId, boolean read) throws IOException {
-        repository.updateRead(episodeId, read);
+    public void download(int episodeId, double combiIndex, ActionCount count, int mediumId) {
+        switch (count) {
+            case ALL:
+                repository.downloadAll(mediumId, this.getApplication());
+                break;
+            case CURRENT:
+                repository.downloadSingle(episodeId, mediumId,this.getApplication() );
+                break;
+            case CURRENT_AND_ONWARDS:
+                repository.downloadHigherIndex(combiIndex, mediumId, this.getApplication());
+                break;
+            case CURRENT_AND_PREVIOUSLY:
+                repository.downloadLowerIndex(combiIndex, mediumId, this.getApplication());
+                break;
+        }
     }
 
     private static class Builder {

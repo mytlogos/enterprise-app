@@ -573,19 +573,6 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public List<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId, boolean read) {
-        RoomEpisode episode = this.episodeDao.getEpisode(episodeId);
-        RoomPart part = this.partDao.getPart(episode.getPartId());
-
-        return this.episodeDao.getEpisodeIdsWithLowerIndex(
-                part.getMediumId(),
-                episode.getCombiIndex(),
-                part.getCombiIndex(),
-                read
-        );
-    }
-
-    @Override
     public void clearLocalMediaData() {
         this.failedEpisodesDao.clearAll();
         this.episodeDao.clearAllReleases();
@@ -657,15 +644,18 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public Collection<Integer> getSavedEpisodeIdsWithLowerIndex(int episodeId) {
-        RoomEpisode episode = this.episodeDao.getEpisode(episodeId);
-        RoomPart part = this.partDao.getPart(episode.getPartId());
+    public Collection<Integer> getSavedEpisodeIdsWithLowerIndex(double combiIndex, int mediumId) {
+        return this.episodeDao.getSavedEpisodeIdsWithLowerIndex(mediumId, combiIndex);
+    }
 
-        return this.episodeDao.getSavedEpisodeIdsWithLowerIndex(
-                part.getMediumId(),
-                episode.getCombiIndex(),
-                part.getCombiIndex()
-        );
+    @Override
+    public void removeEpisodes(List<Integer> episodeIds) {
+        this.episodeDao.deletePerId(episodeIds);
+    }
+
+    @Override
+    public void removeParts(Collection<Integer> partIds) {
+        this.partDao.deletePerId(partIds);
     }
 
     @Override
@@ -682,11 +672,11 @@ public class RoomStorage implements DatabaseStorage {
             }
             List<RoomPart> parts = this.partDao.getPartsNow(comparison.getMediumId());
 
+            // TODO: 09.09.2019 check this unused variable
             for (RoomPart part : parts) {
                 List<Integer> episodeIds = this.episodeDao.getEpisodeIdsWithLowerIndex(
                         comparison.getMediumId(),
                         comparison.getCurrentReadIndex(),
-                        part.getCombiIndex(),
                         true
                 );
                 try {
@@ -729,6 +719,31 @@ public class RoomStorage implements DatabaseStorage {
                 }
             }
         }
+    }
+
+    @Override
+    public List<Integer> getEpisodeIdsWithHigherIndex(double combiIndex, int mediumId, boolean read) {
+        return this.episodeDao.getEpisodeIdsWithHigherIndex(mediumId, combiIndex, read);
+    }
+
+    @Override
+    public List<Integer> getEpisodeIdsWithHigherIndex(double combiIndex, int mediumId) {
+        return this.episodeDao.getEpisodeIdsWithHigherIndex(mediumId, combiIndex);
+    }
+
+    @Override
+    public List<Integer> getEpisodeIdsWithLowerIndex(double combiIndex, int mediumId, boolean read) {
+        return this.episodeDao.getEpisodeIdsWithLowerIndex(mediumId, combiIndex, read);
+    }
+
+    @Override
+    public List<Integer> getEpisodeIdsWithLowerIndex(double combiIndex, int mediumId) {
+        return this.episodeDao.getEpisodeIdsWithLowerIndex(mediumId, combiIndex);
+    }
+
+    @Override
+    public Collection<Integer> getSavedEpisodeIdsWithHigherIndex(double combiIndex, int mediumId) {
+        return this.episodeDao.getSavedEpisodeIdsWithHigherIndex(mediumId, combiIndex);
     }
 
     private <E> E getOr(E value, @SuppressWarnings("SameParameterValue") E defaultValue) {
@@ -1288,7 +1303,9 @@ public class RoomStorage implements DatabaseStorage {
                 worker.enforceMediumStructure(medium.getId());
 
                 for (int part : medium.getParts()) {
-                    mediumParts.add(new RoomMediumPart(medium.getId(), part));
+                    if (this.loadedData.getPart().contains(part)) {
+                        mediumParts.add(new RoomMediumPart(medium.getId(), part));
+                    }
                 }
                 RoomStorage.this.dataStructureDao.addPartJoin(mediumParts);
             }
@@ -1354,6 +1371,10 @@ public class RoomStorage implements DatabaseStorage {
             }
             LoadWorker worker = this.repository.getLoadWorker();
 
+            this.persistEpisodes(episodes);
+
+            Collection<RoomMediumPart> mediumParts = new HashSet<>();
+
             for (ClientPart part : filteredParts.updateParts) {
                 RoomStorage.this.dataStructureDao.clearEpisodeJoin(part.getId());
                 List<RoomPartEpisode> partEpisodes = new ArrayList<>(part.getEpisodes().length);
@@ -1363,8 +1384,17 @@ public class RoomStorage implements DatabaseStorage {
                     partEpisodes.add(new RoomPartEpisode(part.getId(), episode.getId()));
                 }
                 RoomStorage.this.dataStructureDao.addEpisodeJoin(partEpisodes);
+
+                if (this.loadedData.getMedia().contains(part.getMediumId())) {
+                    mediumParts.add(new RoomMediumPart(part.getMediumId(), part.getId()));
+                }
             }
-            this.persistEpisodes(episodes);
+            for (ClientPart part : filteredParts.newParts) {
+                if (this.loadedData.getMedia().contains(part.getMediumId())) {
+                    mediumParts.add(new RoomMediumPart(part.getMediumId(), part.getId()));
+                }
+            }
+            RoomStorage.this.dataStructureDao.addPartJoin(mediumParts);
             return this;
         }
 
