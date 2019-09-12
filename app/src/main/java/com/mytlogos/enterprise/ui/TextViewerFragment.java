@@ -47,6 +47,7 @@ public class TextViewerFragment extends BaseFragment {
     ReadableEpisode currentlyReading;
     SwipyRefreshLayout swipeLayout;
     BottomNavigationView navigationView;
+    View appbar;
 
 
     /**
@@ -83,6 +84,7 @@ public class TextViewerFragment extends BaseFragment {
         this.swipeLayout = view.findViewById(R.id.swiper);
         this.swipeLayout.setOnRefreshListener(this::navigateEpisode);
         this.navigationView = view.findViewById(R.id.navigation);
+        this.appbar = requireActivity().findViewById(R.id.appbar);
         this.navigationView.setOnNavigationItemSelectedListener(item -> {
             if (item.getItemId() == R.id.left_nav) {
                 navigateEpisode(SwipyRefreshLayoutDirection.TOP);
@@ -116,6 +118,51 @@ public class TextViewerFragment extends BaseFragment {
             }
         }
         this.readingMode = enable;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) this.appbar.getLayoutParams();
+        params.topMargin = 0;
+    }
+
+    void hideBars(int oldY, int newY) {
+        setAppBarParams(oldY, newY);
+        setNavBarParams(oldY, newY);
+    }
+
+    private void setNavBarParams(int oldY, int newY) {
+        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) this.navigationView.getLayoutParams();
+        layoutParams.bottomMargin = layoutParams.bottomMargin - (newY - oldY);
+
+        int minBottomMargin = -navigationView.getHeight();
+        int maxBottomMargin = 0;
+
+        if (layoutParams.bottomMargin < minBottomMargin) {
+            layoutParams.bottomMargin = minBottomMargin;
+        } else if (layoutParams.bottomMargin > maxBottomMargin) {
+            layoutParams.bottomMargin = maxBottomMargin;
+        }
+        System.out.println(layoutParams.bottomMargin);
+        this.navigationView.setLayoutParams(layoutParams);
+        System.out.println(((ViewGroup.MarginLayoutParams) this.navigationView.getLayoutParams()).bottomMargin);
+    }
+
+    private void setAppBarParams(int oldY, int newY) {
+        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) this.appbar.getLayoutParams();
+        layoutParams.topMargin = layoutParams.topMargin - (newY - oldY);
+
+        int minTopMargin = -appbar.getHeight();
+        int maxTopMargin = 0;
+
+        if (layoutParams.topMargin < minTopMargin) {
+            layoutParams.topMargin = minTopMargin;
+        } else if (layoutParams.topMargin > maxTopMargin) {
+            layoutParams.topMargin = maxTopMargin;
+        }
+        this.appbar.setLayoutParams(layoutParams);
     }
 
     void toggleReadingMode() {
