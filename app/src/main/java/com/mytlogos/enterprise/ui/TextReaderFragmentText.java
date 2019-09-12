@@ -39,6 +39,7 @@ public class TextReaderFragmentText extends TextViewerFragment {
         this.swipeLayout.setOnRefreshListener(this::navigateEpisode);
         this.loadZip();
         this.navigationView = view.findViewById(R.id.navigation);
+        this.appbar = requireActivity().findViewById(R.id.appbar);
         this.navigationView.setOnNavigationItemSelectedListener(item -> {
             if (item.getItemId() == R.id.left_nav) {
                 navigateEpisode(SwipyRefreshLayoutDirection.TOP);
@@ -54,10 +55,10 @@ public class TextReaderFragmentText extends TextViewerFragment {
         this.scrollView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             if (scrollY < oldScrollY) {
                 // if scrolling up
-                this.enableReadingMode(false);
+                this.hideBars(oldScrollY, scrollY);
             } else if (scrollY > oldScrollY) {
                 // if scrolling down
-                this.enableReadingMode(true);
+                this.hideBars(oldScrollY, scrollY);
             }
         });
         this.textDisplay.setOnClickListener(v -> this.toggleReadingMode());
