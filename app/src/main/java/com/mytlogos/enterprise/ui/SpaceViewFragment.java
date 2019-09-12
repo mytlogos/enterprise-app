@@ -408,7 +408,9 @@ public class SpaceViewFragment extends BaseFragment {
                             episode.getEpisodeId()
                     ));
                 }
-                node.addChild(mediumNode);
+                if (!mediumNode.children.isEmpty()) {
+                    node.addChild(mediumNode);
+                }
                 this.publishProgress();
             }
         }
