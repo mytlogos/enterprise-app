@@ -121,18 +121,27 @@ public class TextReaderFragmentText extends TextViewerFragment {
     }
 
     @Override
-    void displayData(String data) {
-        // this does not work really, can't scroll to the bottom
-        // and displays characters like ' or ´ incorrectly
-        CharSequence text;
-        try {
-//            text = new HtmlToPlainText().getPlainText(Jsoup.parse(data).body());
-            String html = Jsoup.parse(data).body().html();
-            text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY);
-        } catch (Exception ignored) {
-            text = data;
+    CharSequence processData(String data) {
+        if (data != null && data.length() < 200) {
+            showToast(data);
+            data = null;
         }
-        textDisplay.setText(text);
+        if (data == null) {
+            data = "No Content Found";
+        } else {
+            try {
+//            text = new HtmlToPlainText().getPlainText(Jsoup.parse(data).body());
+                String html = Jsoup.parse(data).body().html();
+                return HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY);
+            } catch (Exception ignored) {
+            }
+        }
+        return data;
+    }
+
+    @Override
+    void displayData(CharSequence data) {
+        textDisplay.setText(data);
         scrollView.scrollTo(0, 0);
     }
 }

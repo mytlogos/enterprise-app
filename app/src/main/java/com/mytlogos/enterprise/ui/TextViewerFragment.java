@@ -142,10 +142,12 @@ public class TextViewerFragment extends BaseFragment {
             if (index >= this.readableEpisodes.size()) {
                 // TODO: 26.07.2019 check with if there are more episodes and save them
                 showToast("You are already reading the last saved episode");
+                this.swipeLayout.setRefreshing(false);
                 return;
             } else if (index < 0) {
                 // TODO: 26.07.2019 check with if there are more episodes and save them
                 showToast("You are already reading the first saved episode");
+                this.swipeLayout.setRefreshing(false);
                 return;
             }
             this.currentlyReading = this.readableEpisodes.get(index);
@@ -162,36 +164,45 @@ public class TextViewerFragment extends BaseFragment {
         }
     }
 
-    void displayData(String data) {
-        webView.loadData(
-                data,
-                "text/html; charset=utf-8",
-                "UTF-8"
-        );
+    void displayData(CharSequence data) {
+        if (data instanceof String) {
+            webView.loadData(
+                    (String) data,
+                    "text/html; charset=utf-8",
+                    "UTF-8"
+            );
+        } else {
+            showToast("Error while loading Episode, Contact Dev and hit him");
+        }
+    }
+
+    CharSequence processData(String data) {
+        if (data != null && data.length() < 200) {
+            showToast(data);
+            data = null;
+        }
+        if (data == null) {
+            data = "<html><head></head><body>No Content Found.</body></html>";
+        } else {
+            // TODO: 15.06.2019 escape # with %23 (chromium complains about it, but is # even there?
+            data = data.replaceAll("#", "%23");
+        }
+        return data;
     }
 
     @SuppressLint("StaticFieldLeak")
-    class OpenEpisodeTask extends AsyncTask<Void, Void, String> {
+    class OpenEpisodeTask extends AsyncTask<Void, Void, CharSequence> {
 
         @Override
-        protected String doInBackground(Void... voids) {
+        protected CharSequence doInBackground(Void... voids) {
             TextContentTool bookTool = FileTools.getTextContentTool();
-            return bookTool.openEpisode(currentBook, currentlyReading.file);
+            String data = bookTool.openEpisode(currentBook, currentlyReading.file);
+            return processData(data);
         }
 
         @SuppressLint("DefaultLocale")
         @Override
-        protected void onPostExecute(String data) {
-            if (data != null && data.length() < 200) {
-                showToast(data);
-                data = null;
-            }
-            if (data == null) {
-                data = "<html><head></head><body>No Content Found.</body></html>";
-            } else {
-                // TODO: 15.06.2019 escape # with %23 (chromium complains about it, but is # even there?
-                data = data.replaceAll("#", "%23");
-            }
+        protected void onPostExecute(CharSequence data) {
             if (currentlyReading != null) {
                 if (currentlyReading.getPartialIndex() > 0) {
                     setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
@@ -208,10 +219,10 @@ public class TextViewerFragment extends BaseFragment {
 
     void loadZip() {
         @SuppressLint("StaticFieldLeak")
-        AsyncTask<Void, Void, String> task = new AsyncTask<Void, Void, String>() {
+        AsyncTask<Void, Void, CharSequence> task = new AsyncTask<Void, Void, CharSequence>() {
 
             @Override
-            protected String doInBackground(Void... voids) {
+            protected CharSequence doInBackground(Void... voids) {
                 TextContentTool bookTool = FileTools.getTextContentTool();
                 Map<Integer, String> episodeFileMap = bookTool.getEpisodePaths(TextViewerFragment.this.currentBook);
 
@@ -241,22 +252,13 @@ public class TextViewerFragment extends BaseFragment {
                 if (currentlyReading == null || currentlyReading.file == null || currentlyReading.file.isEmpty()) {
                     return "Selected Episode is not available";
                 }
-                return bookTool.openEpisode(currentBook, currentlyReading.file);
+                String data = bookTool.openEpisode(currentBook, currentlyReading.file);
+                return processData(data);
             }
 
             @SuppressLint("DefaultLocale")
             @Override
-            protected void onPostExecute(String data) {
-                if (data != null && data.length() < 200) {
-                    showToast(data);
-                    data = null;
-                }
-                if (data == null) {
-                    data = "<html><head></head><body>No Content Found.</body></html>";
-                } else {
-                    // TODO: 15.06.2019 escape # with %23 (chromium complains about it, but is # even there?
-                    data = data.replaceAll("#", "%23");
-                }
+            protected void onPostExecute(CharSequence data) {
                 if (currentlyReading != null) {
                     if (currentlyReading.getPartialIndex() > 0) {
                         setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));

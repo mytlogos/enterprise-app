@@ -89,11 +89,11 @@ public class BaseFragment extends Fragment {
         return false;
     }
 
-    void showToast(String msg) {
+    void showToast(CharSequence msg) {
         showToast(msg, Toast.LENGTH_SHORT);
     }
 
-    void showToast(String msg, int duration) {
+    void showToast(CharSequence msg, int duration) {
         Toast.makeText(requireContext(), msg, duration).show();
     }
 
