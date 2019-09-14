@@ -27,6 +27,7 @@ import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUnReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
+import com.mytlogos.enterprise.background.room.model.RoomWorkerEvent;
 import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.HomeStats;
@@ -34,6 +35,7 @@ import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.ReadEpisode;
 import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
+import com.mytlogos.enterprise.model.WorkerEvent;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -312,6 +314,16 @@ public class RoomConverter {
                 input.getTotalIndex(),
                 input.getPartialIndex(),
                 new ArrayList<>(input.getReleases())
+        );
+    }
+
+    public RoomWorkerEvent convert(WorkerEvent event) {
+        return event == null ? null : new RoomWorkerEvent(
+                event.getEvent(),
+                event.getUuid(),
+                event.getWorkerName(),
+                event.getArguments(),
+                event.getDateTime()
         );
     }
 }

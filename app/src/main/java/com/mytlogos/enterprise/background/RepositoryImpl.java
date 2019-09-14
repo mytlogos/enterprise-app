@@ -51,6 +51,7 @@ import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.model.WorkerEvent;
 import com.mytlogos.enterprise.service.DownloadWorker;
 import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
@@ -914,6 +915,21 @@ public class RepositoryImpl implements Repository {
     public void downloadAll(int mediumId, Context context) {
         Collection<Integer> episodeIds = this.storage.getAllEpisodes(mediumId);
         DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds);
+    }
+
+    @Override
+    public void addWorkerEvent(WorkerEvent event) {
+        TaskManager.runTask(() -> this.storage.addWorkerEvent(event));
+    }
+
+    @Override
+    public LiveData<PagedList<WorkerEvent>> getWorkerEvents() {
+        return this.storage.getWorkerEvents();
+    }
+
+    @Override
+    public void clearWorkerEvents() {
+        TaskManager.runTask(this.storage::clearWorkerEvents);
     }
 
     @Override

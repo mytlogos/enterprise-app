@@ -74,6 +74,7 @@ import com.mytlogos.enterprise.model.SpaceMedium;
 import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.model.WorkerEvent;
 import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.tools.Utils;
 
@@ -102,6 +103,7 @@ public class RoomStorage implements DatabaseStorage {
     private final RoomDanglingDao roomDanglingDao;
     private final MediumProgressDao mediumProgressDao;
     private final DataStructureDao dataStructureDao;
+    private final WorkerEventDao workerEventDao;
     private boolean loading = false;
     private final ToDownloadDao toDownloadDao;
 
@@ -122,6 +124,7 @@ public class RoomStorage implements DatabaseStorage {
         mediumProgressDao = database.mediumProgressDao();
         failedEpisodesDao = database.failedEpisodesDao();
         dataStructureDao = database.dataStructureDao();
+        workerEventDao = database.workerEventDao();
         userLiveData = this.userDao.getUser();
     }
 
@@ -656,6 +659,22 @@ public class RoomStorage implements DatabaseStorage {
     @Override
     public void removeParts(Collection<Integer> partIds) {
         this.partDao.deletePerId(partIds);
+    }
+
+    @Override
+    public void addWorkerEvent(WorkerEvent event) {
+        RoomConverter converter = new RoomConverter();
+        this.workerEventDao.insert(converter.convert(event));
+    }
+
+    @Override
+    public LiveData<PagedList<WorkerEvent>> getWorkerEvents() {
+        return new LivePagedListBuilder<>(this.workerEventDao.getAll(), 50).build();
+    }
+
+    @Override
+    public void clearWorkerEvents() {
+        this.workerEventDao.clearAll();
     }
 
     @Override

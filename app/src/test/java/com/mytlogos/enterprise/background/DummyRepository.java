@@ -36,6 +36,7 @@ import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.model.WorkerEvent;
 import com.mytlogos.enterprise.tools.Sortings;
 
 import org.joda.time.DateTime;
@@ -620,6 +621,21 @@ public final class DummyRepository implements Repository {
 
     @Override
     public void downloadAll(int mediumId, Context context) {
+
+    }
+
+    @Override
+    public void addWorkerEvent(WorkerEvent event) {
+
+    }
+
+    @Override
+    public LiveData<PagedList<WorkerEvent>> getWorkerEvents() {
+        return null;
+    }
+
+    @Override
+    public void clearWorkerEvents() {
 
     }
 

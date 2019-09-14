@@ -16,7 +16,6 @@ import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
-import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -44,7 +43,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
-public class DownloadWorker extends Worker {
+public class DownloadWorker extends MonitorableWorker {
     private static final String UNIQUE = "DOWNLOAD_WORKER";
     // TODO: 08.08.2019 use this for sdk >= 28
     private static final String CHANNEL_ID = "DOWNLOAD_CHANNEL";
@@ -63,6 +62,11 @@ public class DownloadWorker extends Worker {
     public DownloadWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
         DownloadWorker.uuids.add(this.getId());
+    }
+
+    @Override
+    String getWorkerName() {
+        return "DownloadWorker";
     }
 
     public static void enqueueDownloadTask(Context context) {

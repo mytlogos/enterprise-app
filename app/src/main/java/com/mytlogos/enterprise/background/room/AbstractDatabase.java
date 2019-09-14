@@ -12,6 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.mytlogos.enterprise.background.room.model.RoomDanglingMedium;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomEpisodeEvent;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
 import com.mytlogos.enterprise.background.room.model.RoomFailedEpisode;
@@ -27,6 +28,7 @@ import com.mytlogos.enterprise.background.room.model.RoomPartEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
+import com.mytlogos.enterprise.background.room.model.RoomWorkerEvent;
 
 
 @Database(
@@ -37,9 +39,9 @@ import com.mytlogos.enterprise.background.room.model.RoomUser;
                 RoomExternalMediaList.ExternalListMediaJoin.class, RoomToDownload.class,
                 RoomMediumInWait.class, RoomDanglingMedium.class, RoomFailedEpisode.class,
                 RoomNotification.class, RoomMediumProgress.class, RoomMediumPart.class,
-                RoomPartEpisode.class
+                RoomPartEpisode.class, RoomWorkerEvent.class, RoomEpisodeEvent.class
         },
-        version = 12
+        version = 14
 )
 @TypeConverters({Converters.class})
 public abstract class AbstractDatabase extends RoomDatabase {
@@ -94,6 +96,8 @@ public abstract class AbstractDatabase extends RoomDatabase {
     public abstract MediumProgressDao mediumProgressDao();
 
     public abstract DataStructureDao dataStructureDao();
+
+    public abstract WorkerEventDao workerEventDao();
 
     private static Migration[] migrations() {
         return new Migration[]{
@@ -193,6 +197,66 @@ public abstract class AbstractDatabase extends RoomDatabase {
                         database.execSQL(
                                 "CREATE INDEX index_RoomPartEpisode_partId " +
                                         "ON RoomPartEpisode (partId);"
+                        );
+                    }
+                },
+                new Migration(12, 13) {
+                    @Override
+                    public void migrate(@NonNull SupportSQLiteDatabase database) {
+                        database.execSQL("CREATE TABLE IF NOT EXISTS RoomWorkerEvent " +
+                                "(" +
+                                "workerName TEXT NOT NULL, uuid TEXT NOT NULL, " +
+                                "event INTEGER NOT NULL, arguments TEXT, dateTime TEXT NOT NULL, " +
+                                "PRIMARY KEY(`event`, `uuid`, `dateTime`)" +
+                                ")"
+                        );
+                        database.execSQL("CREATE TABLE IF NOT EXISTS RoomEpisodeEvent " +
+                                "(" +
+                                "episodeId INTEGER NOT NULL, mediumId INTEGER NOT NULL, " +
+                                "event INTEGER NOT NULL, dateTime TEXT NOT NULL, " +
+                                "PRIMARY KEY(`event`, `episodeId`, `dateTime`), " +
+                                "FOREIGN KEY(`episodeId`) REFERENCES `RoomEpisode`(`episodeId`) " +
+                                "ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                                "FOREIGN KEY(`mediumId`) REFERENCES `RoomMedium`(`mediumId`) " +
+                                "ON UPDATE NO ACTION ON DELETE CASCADE)"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomWorkerEvent_dateTime " +
+                                        "ON RoomWorkerEvent (dateTime);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomWorkerEvent_uuid " +
+                                        "ON RoomWorkerEvent (uuid);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomWorkerEvent_event " +
+                                        "ON RoomWorkerEvent (event);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomEpisodeEvent_episodeId " +
+                                        "ON RoomEpisodeEvent (episodeId);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomEpisodeEvent_mediumId " +
+                                        "ON RoomEpisodeEvent (mediumId);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomEpisodeEvent_event " +
+                                        "ON RoomEpisodeEvent (event);"
+                        );
+                        database.execSQL(
+                                "CREATE INDEX index_RoomEpisodeEvent_dateTime " +
+                                        "ON RoomEpisodeEvent (dateTime);"
+                        );
+                    }
+                },
+                new Migration(13, 14) {
+                    @Override
+                    public void migrate(@NonNull SupportSQLiteDatabase database) {
+                        database.execSQL("DELETE FROM RoomWorkerEvent");
+                        database.execSQL(
+                                "CREATE UNIQUE INDEX index_RoomWorkerEvent_event_uuid " +
+                                        "ON RoomWorkerEvent (event,uuid);"
                         );
                     }
                 }

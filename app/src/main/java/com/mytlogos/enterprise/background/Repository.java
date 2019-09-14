@@ -35,6 +35,7 @@ import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.model.WorkerEvent;
 import com.mytlogos.enterprise.tools.Sortings;
 
 import org.joda.time.DateTime;
@@ -279,4 +280,10 @@ public interface Repository {
     void downloadSingle(int episodeId, int mediumId, Context context);
 
     void downloadAll(int mediumId, Context context);
+
+    void addWorkerEvent(WorkerEvent event);
+
+    LiveData<PagedList<WorkerEvent>> getWorkerEvents();
+
+    void clearWorkerEvents();
 }

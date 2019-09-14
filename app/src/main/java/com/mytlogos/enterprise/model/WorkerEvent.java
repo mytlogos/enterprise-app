@@ -1,34 +1,19 @@
-package com.mytlogos.enterprise.background.room.model;
+package com.mytlogos.enterprise.model;
 
 import androidx.annotation.NonNull;
-import androidx.room.Entity;
-import androidx.room.Index;
-
-import com.mytlogos.enterprise.model.Event;
+import androidx.room.Ignore;
 
 import org.joda.time.DateTime;
 
-@Entity(
-        primaryKeys = {"event", "uuid", "dateTime"},
-        indices = {
-                @Index(value = "event"),
-                @Index(value = "uuid"),
-                @Index(value = "dateTime"),
-                @Index(value = {"event", "uuid"}, unique = true),
-        }
-)
-public class RoomWorkerEvent {
+public class WorkerEvent {
     @Event.WorkerEvent
     private final int event;
-    @NonNull
     private final String uuid;
-    @NonNull
     private final String workerName;
     private final String arguments;
-    @NonNull
     private final DateTime dateTime;
 
-    public RoomWorkerEvent(@Event.WorkerEvent int event, @NonNull String uuid, @NonNull String workerName, String arguments, @NonNull DateTime dateTime) {
+    public WorkerEvent(@Event.WorkerEvent int event, String uuid, String workerName, String arguments, DateTime dateTime) {
         this.event = event;
         this.uuid = uuid;
         this.workerName = workerName;
@@ -36,12 +21,20 @@ public class RoomWorkerEvent {
         this.dateTime = dateTime;
     }
 
+    @Ignore
+    public WorkerEvent(@Event.WorkerEvent int event, String uuid, String workerName, String arguments) {
+        this(event, uuid, workerName, arguments, DateTime.now());
+    }
+
     @Event.WorkerEvent
     public int getEvent() {
         return event;
     }
 
-    @NonNull
+    public String getUuid() {
+        return uuid;
+    }
+
     public String getWorkerName() {
         return workerName;
     }
@@ -50,14 +43,8 @@ public class RoomWorkerEvent {
         return arguments;
     }
 
-    @NonNull
     public DateTime getDateTime() {
         return dateTime;
-    }
-
-    @NonNull
-    public String getUuid() {
-        return uuid;
     }
 
     @Override
@@ -65,32 +52,32 @@ public class RoomWorkerEvent {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        RoomWorkerEvent that = (RoomWorkerEvent) o;
+        WorkerEvent that = (WorkerEvent) o;
 
         if (getEvent() != that.getEvent()) return false;
-        if (!getUuid().equals(that.getUuid()))
+        if (getUuid() != null ? !getUuid().equals(that.getUuid()) : that.getUuid() != null)
             return false;
         if (getWorkerName() != null ? !getWorkerName().equals(that.getWorkerName()) : that.getWorkerName() != null)
             return false;
         if (getArguments() != null ? !getArguments().equals(that.getArguments()) : that.getArguments() != null)
             return false;
-        return getDateTime().equals(that.getDateTime());
+        return getDateTime() != null ? getDateTime().equals(that.getDateTime()) : that.getDateTime() == null;
     }
 
     @Override
     public int hashCode() {
         int result = getEvent();
-        result = 31 * result + getUuid().hashCode();
+        result = 31 * result + (getUuid() != null ? getUuid().hashCode() : 0);
         result = 31 * result + (getWorkerName() != null ? getWorkerName().hashCode() : 0);
         result = 31 * result + (getArguments() != null ? getArguments().hashCode() : 0);
-        result = 31 * result + getDateTime().hashCode();
+        result = 31 * result + (getDateTime() != null ? getDateTime().hashCode() : 0);
         return result;
     }
 
     @NonNull
     @Override
     public String toString() {
-        return "RoomWorkerEvent{" +
+        return "WorkerEvent{" +
                 "event=" + event +
                 ", uuid='" + uuid + '\'' +
                 ", workerName='" + workerName + '\'' +

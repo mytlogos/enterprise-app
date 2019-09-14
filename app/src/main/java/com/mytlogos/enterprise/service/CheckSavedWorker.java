@@ -11,7 +11,6 @@ import androidx.work.Constraints;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
-import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
 import com.mytlogos.enterprise.R;
@@ -29,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class CheckSavedWorker extends Worker {
+public class CheckSavedWorker extends MonitorableWorker {
     static final String CHECK_SAVED_WORKER = "CHECK_SAVED_WORKER";
     // TODO: 08.08.2019 use this for sdk >= 28
     static final String CHANNEL_ID = "CHECK_SAVED_WORKER";
@@ -43,6 +42,11 @@ public class CheckSavedWorker extends Worker {
 
     public CheckSavedWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+    }
+
+    @Override
+    String getWorkerName() {
+        return "CheckSavedWorker";
     }
 
     public static void checkLocal(Context context) {
@@ -60,6 +64,7 @@ public class CheckSavedWorker extends Worker {
     static OneTimeWorkRequest getWorkRequest() {
         return new OneTimeWorkRequest.Builder(CheckSavedWorker.class).build();
     }
+
 
     @NonNull
     @Override

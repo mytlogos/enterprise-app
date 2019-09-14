@@ -45,6 +45,7 @@ public class Statistics extends BaseFragment {
             fragments = new Fragment[getCount()];
         }
 
+        @NonNull
         @Override
         public Fragment getItem(int position) {
             Fragment fragment = fragments[position];
@@ -52,6 +53,10 @@ public class Statistics extends BaseFragment {
             if (fragment == null) {
                 if (position == 0) {
                     fragments[0] = fragment = new SpaceViewFragment();
+                } else if (position == 1) {
+                    fragments[1] = fragment = new WorkerViewFragment();
+                } else {
+                    throw new IllegalArgumentException("unknown tab position: " + position);
                 }
             }
             return fragment;
@@ -65,12 +70,18 @@ public class Statistics extends BaseFragment {
 
         @Override
         public int getCount() {
-            return 1;
+            return 2;
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
-            return "Space Usage";
+            if (position == 0) {
+                return "Space Usage";
+            } else if (position == 1) {
+                return "Worker View";
+            } else {
+                throw new IllegalArgumentException("unknown tab position: " + position);
+            }
         }
     }
 }

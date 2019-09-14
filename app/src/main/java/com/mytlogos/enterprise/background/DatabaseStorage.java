@@ -22,6 +22,7 @@ import com.mytlogos.enterprise.model.SpaceMedium;
 import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.model.WorkerEvent;
 import com.mytlogos.enterprise.tools.Sortings;
 
 import org.joda.time.DateTime;
@@ -194,4 +195,10 @@ public interface DatabaseStorage {
     void removeEpisodes(List<Integer> episodeIds);
 
     void removeParts(Collection<Integer> partIds);
+
+    void addWorkerEvent(WorkerEvent event);
+
+    LiveData<PagedList<WorkerEvent>> getWorkerEvents();
+
+    void clearWorkerEvents();
 }

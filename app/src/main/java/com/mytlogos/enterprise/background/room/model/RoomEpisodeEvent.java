@@ -5,6 +5,8 @@ import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
 
+import com.mytlogos.enterprise.model.Event;
+
 import org.joda.time.DateTime;
 
 @Entity(
@@ -26,23 +28,26 @@ import org.joda.time.DateTime;
         indices = {
                 @Index(value = "event"),
                 @Index(value = "episodeId"),
+                @Index(value = "mediumId"),
                 @Index(value = "dateTime"),
         }
 )
 public class RoomEpisodeEvent {
+    @Event.EpisodeEvent
     private final int event;
     private final int episodeId;
     private final int mediumId;
     @NonNull
     private final DateTime dateTime;
 
-    public RoomEpisodeEvent(int event, int episodeId, int mediumId, @NonNull DateTime dateTime) {
+    public RoomEpisodeEvent(@Event.EpisodeEvent int event, int episodeId, int mediumId, @NonNull DateTime dateTime) {
         this.event = event;
         this.episodeId = episodeId;
         this.mediumId = mediumId;
         this.dateTime = dateTime;
     }
 
+    @Event.EpisodeEvent
     public int getEvent() {
         return event;
     }

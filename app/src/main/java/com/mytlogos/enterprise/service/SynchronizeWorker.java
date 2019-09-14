@@ -12,7 +12,6 @@ import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
-import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -24,7 +23,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
-public class SynchronizeWorker extends Worker {
+public class SynchronizeWorker extends MonitorableWorker {
     static final String SYNCHRONIZE_WORKER = "SYNCHRONIZE_WORKER";
     // TODO: 08.08.2019 use this for sdk >= 28
     private static final String CHANNEL_ID = "SYNC_CHANNEL";
@@ -55,6 +54,11 @@ public class SynchronizeWorker extends Worker {
     public SynchronizeWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
         uuid = this.getId();
+    }
+
+    @Override
+    String getWorkerName() {
+        return "SynchronizeWorker";
     }
 
     public static void enqueueOneTime(Context context) {
