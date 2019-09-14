@@ -53,12 +53,8 @@ public class TextReaderFragmentText extends TextViewerFragment {
         });
         this.setHasOptionsMenu(true);
         this.scrollView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-            if (scrollY < oldScrollY) {
-                // if scrolling up
-                this.hideBars(oldScrollY, scrollY);
-            } else if (scrollY > oldScrollY) {
-                // if scrolling down
-                this.hideBars(oldScrollY, scrollY);
+            if (scrollY != oldScrollY) {
+                this.scrollHideHelper.hideGroups(oldScrollY, scrollY, this.navigationView, null, this.appbar, null);
             }
         });
         this.textDisplay.setOnClickListener(v -> this.toggleReadingMode());
