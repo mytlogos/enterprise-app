@@ -10,7 +10,6 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -42,7 +41,6 @@ public class TextViewerFragment extends BaseFragment {
     private int currentEpisode;
     private String currentBook;
     private WebView webView;
-    private boolean readingMode = false;
     private DateTime lastReadingModeChange = null;
     List<ReadableEpisode> readableEpisodes = new ArrayList<>();
     ReadableEpisode currentlyReading;
@@ -103,35 +101,14 @@ public class TextViewerFragment extends BaseFragment {
         return view;
     }
 
-    void enableReadingMode(boolean enable) {
-        DateTime now = DateTime.now();
-        if (this.lastReadingModeChange != null && this.lastReadingModeChange.isAfter(now.minusMillis(200))) {
-            return;
-        }
-        this.lastReadingModeChange = now;
-        this.navigationView.setVisibility(enable ? View.INVISIBLE : View.VISIBLE);
-        ActionBar bar = this.getMainActivity().getSupportActionBar();
-
-        if (bar != null) {
-            if (enable) {
-                bar.hide();
-            } else {
-                bar.show();
-            }
-        }
-        this.readingMode = enable;
-    }
-
     @Override
     public void onDestroy() {
         super.onDestroy();
-
-        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) this.appbar.getLayoutParams();
-        params.topMargin = 0;
+        this.scrollHideHelper.showGroups(this.navigationView, null, this.appbar, null);
     }
 
     void toggleReadingMode() {
-        enableReadingMode(!this.readingMode);
+        this.scrollHideHelper.toggleGroups(this.navigationView, null, this.appbar, null);
     }
 
     void navigateEpisode(SwipyRefreshLayoutDirection direction) {
