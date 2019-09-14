@@ -48,6 +48,8 @@ public class TextViewerFragment extends BaseFragment {
     SwipyRefreshLayout swipeLayout;
     BottomNavigationView navigationView;
     View appbar;
+    private int previousScrollDiff = 0;
+    private long lastScroll;
 
 
     /**
@@ -129,13 +131,22 @@ public class TextViewerFragment extends BaseFragment {
     }
 
     void hideBars(int oldY, int newY) {
-        setAppBarParams(oldY, newY);
-        setNavBarParams(oldY, newY);
+        int diff = newY - oldY;
+        long currentTime = System.currentTimeMillis();
+        long lastScrollTimeDiff = currentTime - this.lastScroll;
+
+        if (lastScrollTimeDiff < 100 && diff < 10 && Integer.signum(diff) != Integer.signum(this.previousScrollDiff)) {
+            return;
+        }
+        setAppBarParams(diff);
+        setNavBarParams(diff);
+        this.lastScroll = currentTime;
+        this.previousScrollDiff = diff;
     }
 
-    private void setNavBarParams(int oldY, int newY) {
+    private void setNavBarParams(int diffY) {
         ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) this.navigationView.getLayoutParams();
-        layoutParams.bottomMargin = layoutParams.bottomMargin - (newY - oldY);
+        layoutParams.bottomMargin = layoutParams.bottomMargin - diffY;
 
         int minBottomMargin = -navigationView.getHeight();
         int maxBottomMargin = 0;
@@ -145,14 +156,12 @@ public class TextViewerFragment extends BaseFragment {
         } else if (layoutParams.bottomMargin > maxBottomMargin) {
             layoutParams.bottomMargin = maxBottomMargin;
         }
-        System.out.println(layoutParams.bottomMargin);
         this.navigationView.setLayoutParams(layoutParams);
-        System.out.println(((ViewGroup.MarginLayoutParams) this.navigationView.getLayoutParams()).bottomMargin);
     }
 
-    private void setAppBarParams(int oldY, int newY) {
+    private void setAppBarParams(int diffY) {
         ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) this.appbar.getLayoutParams();
-        layoutParams.topMargin = layoutParams.topMargin - (newY - oldY);
+        layoutParams.topMargin = layoutParams.topMargin - diffY;
 
         int minTopMargin = -appbar.getHeight();
         int maxTopMargin = 0;
