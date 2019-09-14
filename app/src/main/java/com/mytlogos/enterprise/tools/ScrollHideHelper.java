@@ -96,7 +96,6 @@ public class ScrollHideHelper {
         animator.setDuration(200);
         animator.addUpdateListener(animation -> {
             Object value = animation.getAnimatedValue();
-            System.out.println("animated value: " + value);
 
             if (value instanceof Integer) {
                 ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
