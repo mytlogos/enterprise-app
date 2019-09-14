@@ -19,6 +19,7 @@ import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.model.SimpleEpisode;
 import com.mytlogos.enterprise.tools.FileTools;
+import com.mytlogos.enterprise.tools.ScrollHideHelper;
 import com.mytlogos.enterprise.tools.TextContentTool;
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout;
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
@@ -48,8 +49,7 @@ public class TextViewerFragment extends BaseFragment {
     SwipyRefreshLayout swipeLayout;
     BottomNavigationView navigationView;
     View appbar;
-    private int previousScrollDiff = 0;
-    private long lastScroll;
+    final ScrollHideHelper scrollHideHelper = new ScrollHideHelper();
 
 
     /**
@@ -128,50 +128,6 @@ public class TextViewerFragment extends BaseFragment {
 
         ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) this.appbar.getLayoutParams();
         params.topMargin = 0;
-    }
-
-    void hideBars(int oldY, int newY) {
-        int diff = newY - oldY;
-        long currentTime = System.currentTimeMillis();
-        long lastScrollTimeDiff = currentTime - this.lastScroll;
-
-        if (lastScrollTimeDiff < 100 && diff < 10 && Integer.signum(diff) != Integer.signum(this.previousScrollDiff)) {
-            return;
-        }
-        setAppBarParams(diff);
-        setNavBarParams(diff);
-        this.lastScroll = currentTime;
-        this.previousScrollDiff = diff;
-    }
-
-    private void setNavBarParams(int diffY) {
-        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) this.navigationView.getLayoutParams();
-        layoutParams.bottomMargin = layoutParams.bottomMargin - diffY;
-
-        int minBottomMargin = -navigationView.getHeight();
-        int maxBottomMargin = 0;
-
-        if (layoutParams.bottomMargin < minBottomMargin) {
-            layoutParams.bottomMargin = minBottomMargin;
-        } else if (layoutParams.bottomMargin > maxBottomMargin) {
-            layoutParams.bottomMargin = maxBottomMargin;
-        }
-        this.navigationView.setLayoutParams(layoutParams);
-    }
-
-    private void setAppBarParams(int diffY) {
-        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) this.appbar.getLayoutParams();
-        layoutParams.topMargin = layoutParams.topMargin - diffY;
-
-        int minTopMargin = -appbar.getHeight();
-        int maxTopMargin = 0;
-
-        if (layoutParams.topMargin < minTopMargin) {
-            layoutParams.topMargin = minTopMargin;
-        } else if (layoutParams.topMargin > maxTopMargin) {
-            layoutParams.topMargin = maxTopMargin;
-        }
-        this.appbar.setLayoutParams(layoutParams);
     }
 
     void toggleReadingMode() {
