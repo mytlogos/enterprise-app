@@ -229,4 +229,12 @@
     <string name="decrement_font">Decrement Font</string>
     <string name="default_zero">0</string>
     <string name="episode_locked">Episode Locked</string>
+    <string name="additional_info">Additional Info</string>
+    <string name="release_rate">Release Rate</string>
+    <string name="last_episode">Last Episode</string>
+    <string name="average_release">Average Release</string>
+    <string name="state_tl">Translation State</string>
+    <string name="state_origin">State in COO</string>
+    <string name="current_read_episode">Seen last</string>
+    <string name="not_available">N/A</string>
 </resources>

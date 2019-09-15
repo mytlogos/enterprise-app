@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_marginLeft="8dp"
@@ -35,40 +36,29 @@
 
         <RadioButton
             android:id="@+id/text_medium"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="@string/text" />
 
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-
         <RadioButton
             android:id="@+id/video_medium"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="@string/video" />
 
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-
         <RadioButton
             android:id="@+id/image_medium"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="@string/image" />
 
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-
         <RadioButton
             android:id="@+id/audio_medium"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="@string/audio" />
     </RadioGroup>
@@ -78,6 +68,117 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
 
+        android:padding="5dp"
         android:text="@string/auto_download_title" />
+
+    <TextView
+        android:id="@+id/additional_info_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:background="@drawable/sharp_border"
+        android:drawableEnd="@drawable/ic_plus_box_dark"
+        android:text="@string/additional_info" />
+
+    <TableLayout
+        android:id="@+id/additional_info_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="4dp"
+        android:visibility="gone"
+        android:orientation="vertical">
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/series" />
+            <TextView android:id="@+id/series" />
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/universe"/>
+            <TextView
+                android:id="@+id/universe"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/current_read_episode"/>
+            <TextView
+                android:id="@+id/currentRead"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/last_episode"/>
+            <TextView
+                android:id="@+id/lastEpisode"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/last_updated"/>
+            <TextView
+                android:id="@+id/lastUpdated"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/average_release"/>
+            <TextView
+                android:id="@+id/average_release"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/author"/>
+            <TextView
+                android:id="@+id/author"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/artist"/>
+            <TextView
+                android:id="@+id/artist"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/state_tl"/>
+            <TextView
+                android:id="@+id/stateTl"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/state_origin"/>
+            <TextView
+                android:id="@+id/stateOrigin"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/country_of_origin"/>
+            <TextView
+                android:id="@+id/countryOfOrigin"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow android:background="@drawable/bottom_border">
+            <TextView android:text="@string/language_of_origin"/>
+            <TextView
+                android:id="@+id/languageOfOrigin"
+                android:text="@string/not_available"/>
+        </TableRow>
+        <TableRow>
+            <TextView android:text="@string/language"/>
+            <TextView
+                android:id="@+id/lang"
+                android:text="@string/not_available"/>
+        </TableRow>
+    </TableLayout>
+
+    <TextView
+        android:id="@+id/release_rate_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:background="@drawable/sharp_border"
+        android:drawableEnd="@drawable/ic_plus_box_dark"
+        android:text="@string/release_rate" />
+
+    <ViewStub
+        android:id="@+id/release_rate_stub"
+        android:inflatedId="@id/release_rate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout="@layout/release_rate_layout" />
 
 </LinearLayout>

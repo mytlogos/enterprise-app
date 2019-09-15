@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.ui;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.KeyEvent;
@@ -11,6 +12,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.Switch;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,13 +20,16 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.mytlogos.enterprise.R;
+import com.mytlogos.enterprise.TimeAgo;
 import com.mytlogos.enterprise.model.MediumSetting;
 import com.mytlogos.enterprise.model.MediumType;
 import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.viewmodel.ListsViewModel;
 
-public class MediumSettings extends BaseFragment {
+import org.joda.time.DateTime;
+
+public class MediumSettingFragment extends BaseFragment {
     private ListsViewModel mediumViewModel;
     private LiveData<MediumSetting> liveMediumSettings;
     private Button openTocButton;
@@ -34,10 +39,26 @@ public class MediumSettings extends BaseFragment {
     private RadioButton videoMedium;
     private RadioButton audioMedium;
     private Switch autoDownload;
+    private TextView series;
+    private TextView universe;
+    private TextView currentRead;
+    private TextView lastEpisode;
+    private TextView lastUpdated;
+    private TextView average_release;
+    private TextView author;
+    private TextView artist;
+    private TextView stateTl;
+    private TextView stateOrigin;
+    private TextView countryOfOrigin;
+    private TextView languageOfOrigin;
+    private TextView lang;
+    private TextView additionalInfoBox;
+    private TextView releaseRateBox;
+    private View additionalInfoContainer;
     private static final String ID = "mediumId";
 
-    static MediumSettings newInstance(int id) {
-        MediumSettings settings = new MediumSettings();
+    static MediumSettingFragment newInstance(int id) {
+        MediumSettingFragment settings = new MediumSettingFragment();
         Bundle bundle = new Bundle();
         bundle.putInt(ID, id);
         settings.setArguments(bundle);
@@ -68,7 +89,24 @@ public class MediumSettings extends BaseFragment {
         this.videoMedium = view.findViewById(R.id.video_medium);
         this.audioMedium = view.findViewById(R.id.audio_medium);
         this.autoDownload = view.findViewById(R.id.auto_download);
+        this.series = view.findViewById(R.id.series);
+        this.universe = view.findViewById(R.id.universe);
+        this.currentRead = view.findViewById(R.id.currentRead);
+        this.lastEpisode = view.findViewById(R.id.lastEpisode);
+        this.lastUpdated = view.findViewById(R.id.lastUpdated);
+        this.average_release = view.findViewById(R.id.average_release);
+        this.author = view.findViewById(R.id.author);
+        this.artist = view.findViewById(R.id.artist);
+        this.stateTl = view.findViewById(R.id.stateTl);
+        this.stateOrigin = view.findViewById(R.id.stateOrigin);
+        this.countryOfOrigin = view.findViewById(R.id.countryOfOrigin);
+        this.languageOfOrigin = view.findViewById(R.id.languageOfOrigin);
+        this.lang = view.findViewById(R.id.lang);
+        this.additionalInfoBox = view.findViewById(R.id.additional_info_box);
+        this.additionalInfoContainer = view.findViewById(R.id.additional_info_container);
+        this.releaseRateBox = view.findViewById(R.id.release_rate_box);
         this.checkSupportedMedia();
+
 
         this.openTocButton.setOnClickListener(v -> {
             if (this.mediumSettings() == null) {
@@ -76,6 +114,7 @@ public class MediumSettings extends BaseFragment {
             }
             this.getMainActivity().switchWindow(TocFragment.newInstance(mediumId), true);
         });
+        this.additionalInfoBox.setOnClickListener(v -> toggleBox(this.additionalInfoContainer, this.additionalInfoBox));
 
         this.editName.setOnEditorActionListener((v, actionId, event) -> handleEditorEvent(this.editName, actionId, event));
 
@@ -87,6 +126,20 @@ public class MediumSettings extends BaseFragment {
         this.autoDownload.setOnCheckedChangeListener((buttonView, isChecked) -> handleAutoDownloadChanges(isChecked));
         this.setTitle("Medium Settings");
         return view;
+    }
+
+    private void toggleBox(View container, TextView box) {
+        int visibility;
+        int drawable;
+        if (container.getVisibility() == View.GONE) {
+            drawable = R.drawable.ic_minus_box_dark;
+            visibility = View.VISIBLE;
+        } else {
+            drawable = R.drawable.ic_plus_box_dark;
+            visibility = View.GONE;
+        }
+        container.setVisibility(visibility);
+        box.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, drawable, 0);
     }
 
     private void checkSupportedMedia() {
@@ -116,6 +169,7 @@ public class MediumSettings extends BaseFragment {
         return this.liveMediumSettings.getValue();
     }
 
+    @SuppressLint("SetTextI18n")
     private void handleNewMediumSetting(MediumSetting mediumSetting) {
         if (mediumSetting == null) {
             this.openTocButton.setEnabled(false);
@@ -127,6 +181,20 @@ public class MediumSettings extends BaseFragment {
             this.audioMedium.setEnabled(false);
 
             this.autoDownload.setEnabled(false);
+
+            this.series.setText(R.string.not_available);
+            this.universe.setText(R.string.not_available);
+            this.currentRead.setText(R.string.not_available);
+            this.lastEpisode.setText(R.string.not_available);
+            this.lastUpdated.setText(R.string.not_available);
+            this.average_release.setText(R.string.not_available);
+            this.author.setText(R.string.not_available);
+            this.artist.setText(R.string.not_available);
+            this.stateTl.setText(R.string.not_available);
+            this.stateOrigin.setText(R.string.not_available);
+            this.countryOfOrigin.setText(R.string.not_available);
+            this.languageOfOrigin.setText(R.string.not_available);
+            this.lang.setText(R.string.not_available);
         } else {
             this.setTitle("Settings - " + mediumSetting.getTitle());
             this.editName.setText(mediumSetting.getTitle());
@@ -144,7 +212,28 @@ public class MediumSettings extends BaseFragment {
             this.imageMedium.setEnabled(true);
             this.videoMedium.setEnabled(true);
             this.audioMedium.setEnabled(true);
+
+
+            this.series.setText(this.defaultText(mediumSetting.getSeries()));
+            this.universe.setText(this.defaultText(mediumSetting.getUniverse()));
+            // TODO: 15.09.2019 check whether this id or index and change method name to reflect that
+            this.currentRead.setText(Integer.toString(mediumSetting.getCurrentReadEpisode()));
+            this.lastEpisode.setText(Integer.toString(mediumSetting.getLastEpisode()));
+            this.lastUpdated.setText(this.defaultText(TimeAgo.toRelative(mediumSetting.getLastUpdated(), DateTime.now())));
+            // TODO: 15.09.2019 calculate average
+            this.average_release.setText(R.string.not_available);
+            this.author.setText(this.defaultText(mediumSetting.getAuthor()));
+            this.artist.setText(this.defaultText(mediumSetting.getArtist()));
+            this.stateTl.setText((Integer.toString(mediumSetting.getStateTL())));
+            this.stateOrigin.setText(Integer.toString(mediumSetting.getStateOrigin()));
+            this.countryOfOrigin.setText(this.defaultText(mediumSetting.getCountryOfOrigin()));
+            this.languageOfOrigin.setText(this.defaultText(mediumSetting.getLanguageOfOrigin()));
+            this.lang.setText(this.defaultText(mediumSetting.getLang()));
         }
+    }
+
+    private String defaultText(String text) {
+        return text == null || text.isEmpty() ? "N/A" : text;
     }
 
     private void addMediumListener(RadioButton button, int mediumType) {

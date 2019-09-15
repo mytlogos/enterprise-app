@@ -182,7 +182,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.item_setting) {
             int mediumId = Objects.requireNonNull(this.getArguments()).getInt(MEDIUM_ID);
-            MediumSettings fragment = MediumSettings.newInstance(mediumId);
+            MediumSettingFragment fragment = MediumSettingFragment.newInstance(mediumId);
             this.getMainActivity().switchWindow(fragment, true);
             return true;
         }

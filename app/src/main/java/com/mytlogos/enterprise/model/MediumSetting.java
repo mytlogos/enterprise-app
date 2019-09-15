@@ -109,6 +109,85 @@ public class MediumSetting {
         return toDownload;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        MediumSetting that = (MediumSetting) o;
+
+        if (getMediumId() != that.getMediumId()) return false;
+        if (getMedium() != that.getMedium()) return false;
+        if (getStateTL() != that.getStateTL()) return false;
+        if (getStateOrigin() != that.getStateOrigin()) return false;
+        if (getCurrentRead() != that.getCurrentRead()) return false;
+        if (getCurrentReadEpisode() != that.getCurrentReadEpisode()) return false;
+        if (getLastEpisode() != that.getLastEpisode()) return false;
+        if (isToDownload() != that.isToDownload()) return false;
+        if (getTitle() != null ? !getTitle().equals(that.getTitle()) : that.getTitle() != null)
+            return false;
+        if (getAuthor() != null ? !getAuthor().equals(that.getAuthor()) : that.getAuthor() != null)
+            return false;
+        if (getArtist() != null ? !getArtist().equals(that.getArtist()) : that.getArtist() != null)
+            return false;
+        if (getCountryOfOrigin() != null ? !getCountryOfOrigin().equals(that.getCountryOfOrigin()) : that.getCountryOfOrigin() != null)
+            return false;
+        if (getLanguageOfOrigin() != null ? !getLanguageOfOrigin().equals(that.getLanguageOfOrigin()) : that.getLanguageOfOrigin() != null)
+            return false;
+        if (getLang() != null ? !getLang().equals(that.getLang()) : that.getLang() != null)
+            return false;
+        if (getSeries() != null ? !getSeries().equals(that.getSeries()) : that.getSeries() != null)
+            return false;
+        if (getUniverse() != null ? !getUniverse().equals(that.getUniverse()) : that.getUniverse() != null)
+            return false;
+        return getLastUpdated() != null ? getLastUpdated().equals(that.getLastUpdated()) : that.getLastUpdated() == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getTitle() != null ? getTitle().hashCode() : 0;
+        result = 31 * result + getMediumId();
+        result = 31 * result + (getAuthor() != null ? getAuthor().hashCode() : 0);
+        result = 31 * result + (getArtist() != null ? getArtist().hashCode() : 0);
+        result = 31 * result + getMedium();
+        result = 31 * result + getStateTL();
+        result = 31 * result + getStateOrigin();
+        result = 31 * result + (getCountryOfOrigin() != null ? getCountryOfOrigin().hashCode() : 0);
+        result = 31 * result + (getLanguageOfOrigin() != null ? getLanguageOfOrigin().hashCode() : 0);
+        result = 31 * result + (getLang() != null ? getLang().hashCode() : 0);
+        result = 31 * result + (getSeries() != null ? getSeries().hashCode() : 0);
+        result = 31 * result + (getUniverse() != null ? getUniverse().hashCode() : 0);
+        result = 31 * result + getCurrentRead();
+        result = 31 * result + getCurrentReadEpisode();
+        result = 31 * result + getLastEpisode();
+        result = 31 * result + (getLastUpdated() != null ? getLastUpdated().hashCode() : 0);
+        result = 31 * result + (isToDownload() ? 1 : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "MediumSetting{" +
+                "title='" + title + '\'' +
+                ", mediumId=" + mediumId +
+                ", author='" + author + '\'' +
+                ", artist='" + artist + '\'' +
+                ", medium=" + medium +
+                ", stateTL=" + stateTL +
+                ", stateOrigin=" + stateOrigin +
+                ", countryOfOrigin='" + countryOfOrigin + '\'' +
+                ", languageOfOrigin='" + languageOfOrigin + '\'' +
+                ", lang='" + lang + '\'' +
+                ", series='" + series + '\'' +
+                ", universe='" + universe + '\'' +
+                ", currentRead=" + currentRead +
+                ", currentReadEpisode=" + currentReadEpisode +
+                ", lastEpisode=" + lastEpisode +
+                ", lastUpdated=" + lastUpdated +
+                ", toDownload=" + toDownload +
+                '}';
+    }
+
     public static class MediumSettingBuilder {
         private String title;
         private int mediumId;
@@ -205,21 +284,6 @@ public class MediumSetting {
 
         public MediumSettingBuilder setCurrentRead(int currentRead) {
             this.currentRead = currentRead;
-            return this;
-        }
-
-        public MediumSettingBuilder setCurrentReadEpisode(int currentReadEpisode) {
-            this.currentReadEpisode = currentReadEpisode;
-            return this;
-        }
-
-        public MediumSettingBuilder setLastEpisode(int lastEpisode) {
-            this.lastEpisode = lastEpisode;
-            return this;
-        }
-
-        public MediumSettingBuilder setLastUpdated(DateTime lastUpdated) {
-            this.lastUpdated = lastUpdated;
             return this;
         }
 

@@ -2,4 +2,5 @@
 <resources>
     <item name="sectioning_adapter_tag_key_view_viewholder" type="id" />
     <item name="BASE_ID" type="id" />
+    <item name="release_rate" type="id" />
 </resources>
