@@ -37,7 +37,7 @@ import com.mytlogos.enterprise.service.SynchronizeWorker;
 import com.mytlogos.enterprise.ui.Home;
 import com.mytlogos.enterprise.ui.ListsFragment;
 import com.mytlogos.enterprise.ui.MediaInWaitListFragment;
-import com.mytlogos.enterprise.ui.MediumFragment;
+import com.mytlogos.enterprise.ui.MediumListFragment;
 import com.mytlogos.enterprise.ui.NewsFragment;
 import com.mytlogos.enterprise.viewmodel.UserViewModel;
 
@@ -304,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements
                 fragment = new ListsFragment();
                 break;
             case R.id.medium:
-                fragment = new MediumFragment();
+                fragment = new MediumListFragment();
                 break;
             case R.id.mediaInWait:
                 fragment = new MediaInWaitListFragment();

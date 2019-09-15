@@ -52,7 +52,7 @@ import eu.davidea.flexibleadapter.items.IFlexible;
 import eu.davidea.flexibleadapter.utils.DrawableUtils;
 import eu.davidea.viewholders.FlexibleViewHolder;
 
-public class MediumFragment extends BaseListFragment<MediumItem, MediumViewModel> {
+public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewModel> {
     private boolean inMoveMediumMode;
     private ActionMode.Callback callback = new ActionMode.Callback() {
         @Override
@@ -75,11 +75,11 @@ public class MediumFragment extends BaseListFragment<MediumItem, MediumViewModel
                 Context context = Objects.requireNonNull(getContext());
                 AlertDialog.Builder builder = new AlertDialog.Builder(context);
 
-                ListsViewModel listsViewModel = new ViewModelProvider(MediumFragment.this)
+                ListsViewModel listsViewModel = new ViewModelProvider(MediumListFragment.this)
                         .get(ListsViewModel.class);
 
                 ArrayAdapter<MediaList> adapter = new TextOnlyListAdapter<>(
-                        MediumFragment.this,
+                        MediumListFragment.this,
                         listsViewModel.getInternLists(),
                         MediaList::getName
                 );

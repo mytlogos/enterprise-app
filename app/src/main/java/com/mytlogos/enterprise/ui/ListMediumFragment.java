@@ -87,10 +87,10 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
             for (Integer selectedPosition : selectedPositions) {
                 IFlexible flexible = getFlexibleAdapter().getItem(selectedPosition);
 
-                if (!(flexible instanceof MediumFragment.FlexibleMediumItem)) {
+                if (!(flexible instanceof MediumListFragment.FlexibleMediumItem)) {
                     continue;
                 }
-                MediumItem mediumItem = ((MediumFragment.FlexibleMediumItem) flexible).item;
+                MediumItem mediumItem = ((MediumListFragment.FlexibleMediumItem) flexible).item;
 
                 if (mediumItem != null) {
                     selectedMediaIds.add(mediumItem.getMediumId());
@@ -145,10 +145,10 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
                 for (Integer selectedPosition : selectedPositions) {
                     IFlexible flexible = getFlexibleAdapter().getItem(selectedPosition);
 
-                    if (!(flexible instanceof MediumFragment.FlexibleMediumItem)) {
+                    if (!(flexible instanceof MediumListFragment.FlexibleMediumItem)) {
                         continue;
                     }
-                    MediumItem mediumItem = ((MediumFragment.FlexibleMediumItem) flexible).item;
+                    MediumItem mediumItem = ((MediumListFragment.FlexibleMediumItem) flexible).item;
 
                     if (mediumItem != null) {
                         selectedMediaIds.add(mediumItem.getMediumId());
@@ -269,10 +269,10 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
         }
         IFlexible item = this.getFlexibleAdapter().getItem(position);
 
-        if (!(item instanceof MediumFragment.FlexibleMediumItem)) {
+        if (!(item instanceof MediumListFragment.FlexibleMediumItem)) {
             return false;
         }
-        MediumItem mediumItem = ((MediumFragment.FlexibleMediumItem) item).item;
+        MediumItem mediumItem = ((MediumListFragment.FlexibleMediumItem) item).item;
 
         if (mediumItem != null) {
             TocFragment fragment = TocFragment.newInstance(mediumItem.getMediumId());
@@ -341,7 +341,7 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
             if (item == null) {
                 break;
             }
-            flexibles.add(new MediumFragment.FlexibleMediumItem(item));
+            flexibles.add(new MediumListFragment.FlexibleMediumItem(item));
         }
         return flexibles;
     }
