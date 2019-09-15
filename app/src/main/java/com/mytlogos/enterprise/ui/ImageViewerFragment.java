@@ -10,7 +10,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -29,8 +28,6 @@ import com.mytlogos.enterprise.model.ChapterPage;
 import com.mytlogos.enterprise.model.SimpleEpisode;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.ImageContentTool;
-import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout;
-import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
 
 import java.io.File;
 import java.security.MessageDigest;
@@ -46,15 +43,9 @@ import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
 import eu.davidea.flexibleadapter.items.IFlexible;
 import eu.davidea.viewholders.FlexibleViewHolder;
 
-public class ImageViewerFragment extends BaseFragment {
-    private static final String MEDIUM = "MEDIUM_FILE";
-    private static final String START_EPISODE = "START_EPISODE";
-
+public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.ReadableEpisode> {
     private int currentEpisode;
     private String currentBook;
-    private List<ReadableEpisode> readableEpisodes = new ArrayList<>();
-    private ReadableEpisode currentlyReading;
-    private SwipyRefreshLayout swipeLayout;
     private FlexibleAdapter<IFlexible<ViewHolder>> adapter;
 
 
@@ -84,11 +75,26 @@ public class ImageViewerFragment extends BaseFragment {
     }
 
     @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        Bundle bundle = new Bundle();
+        bundle.putInt(START_EPISODE, currentEpisode);
+        bundle.putString(MEDIUM, currentBook);
+        this.setArguments(bundle);
+    }
+
+    @Override
+    int getLayoutRes() {
+        return R.layout.image_reader_fragment;
+    }
+
+    @NonNull
+    @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        swipeLayout = (SwipyRefreshLayout) inflater.inflate(R.layout.image_reader_fragment, container, false);
-        RecyclerView recyclerView = swipeLayout.findViewById(R.id.list);
+        View view = super.onCreateView(inflater, container, savedInstanceState);
+        RecyclerView recyclerView = view.findViewById(R.id.list);
 
         this.adapter = new FlexibleAdapter<>(null);
         LinearLayoutManager manager = new LinearLayoutManager(getContext());
@@ -96,46 +102,22 @@ public class ImageViewerFragment extends BaseFragment {
 
         DividerItemDecoration decoration = new DividerItemDecoration(requireContext(), manager.getOrientation());
         recyclerView.addItemDecoration(decoration);
-
-        recyclerView.setAdapter(adapter);
-
-        swipeLayout.setOnRefreshListener(direction -> {
-            if (this.currentlyReading == null) {
-                if (!this.readableEpisodes.isEmpty()) {
-                    this.currentlyReading = this.readableEpisodes.get(0);
-                }
-            } else {
-                int index = this.readableEpisodes.indexOf(currentlyReading);
-                if (direction == SwipyRefreshLayoutDirection.TOP) {
-                    index--;
-                } else if (direction == SwipyRefreshLayoutDirection.BOTTOM) {
-                    index++;
-                } else {
-                    System.out.println("Unknown swipe direction in TextViewerFragment, neither top or bottom");
-                    this.swipeLayout.setRefreshing(false);
-                    return;
-                }
-                if (index >= this.readableEpisodes.size()) {
-                    // TODO: 26.07.2019 check with if there are more episodes and save them
-                    showToast("You are already reading the last saved item", Toast.LENGTH_LONG);
-                    this.swipeLayout.setRefreshing(false);
-                    return;
-                } else if (index < 0) {
-                    // TODO: 26.07.2019 check with if there are more episodes and save them
-                    showToast("You are already reading the first saved item", Toast.LENGTH_LONG);
-                    this.swipeLayout.setRefreshing(false);
-                    return;
-                }
-                this.currentlyReading = this.readableEpisodes.get(index);
-                this.updateImageList();
-                this.swipeLayout.setRefreshing(false);
-            }
+        this.adapter.addListener((FlexibleAdapter.OnItemClickListener) (view1, position) -> {
+            this.toggleReadingMode();
+            return false;
         });
+
+        recyclerView.setAdapter(this.adapter);
+        recyclerView.setOnScrollChangeListener(
+                (v, scrollX, scrollY, oldScrollX, oldScrollY) ->
+                        this.onScroll(scrollX, scrollY, oldScrollX, oldScrollY)
+        );
         this.loadEpisodes();
-        return swipeLayout;
+        return view;
     }
 
-    private void updateImageList() {
+    @Override
+    void updateContent() {
         if (this.currentlyReading != null) {
             List<IFlexible<ViewHolder>> flexibles = new ArrayList<>();
 
@@ -152,10 +134,10 @@ public class ImageViewerFragment extends BaseFragment {
             }
             this.adapter.updateDataSet(flexibles);
 
-            if (currentlyReading.getPartialIndex() > 0) {
-                setTitle(String.format("Episode %s.%s", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
+            if (this.currentlyReading.getPartialIndex() > 0) {
+                setTitle(String.format("Episode %s.%s", this.currentlyReading.getTotalIndex(), this.currentlyReading.getPartialIndex()));
             } else {
-                setTitle(String.format("Episode %s", currentlyReading.getTotalIndex()));
+                setTitle(String.format("Episode %s", this.currentlyReading.getTotalIndex()));
             }
         } else {
             // TODO: 06.08.2019 display an empty episode indicator?
@@ -241,8 +223,10 @@ public class ImageViewerFragment extends BaseFragment {
 
         private ViewHolder(View view, FlexibleAdapter adapter) {
             super(view, adapter);
-            emptyText = view.findViewById(R.id.empty_view);
-            imageView = view.findViewById(R.id.image);
+            this.emptyText = view.findViewById(R.id.empty_view);
+            this.imageView = view.findViewById(R.id.image);
+            this.emptyText.setOnClickListener(this);
+            this.imageView.setOnClickListener(this);
         }
     }
 
@@ -311,7 +295,7 @@ public class ImageViewerFragment extends BaseFragment {
             @Override
             protected void onPostExecute(Void data) {
                 swipeLayout.setRefreshing(false);
-                updateImageList();
+                updateContent();
             }
 
             @Override

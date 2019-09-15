@@ -11,8 +11,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 public class ScrollHideHelper {
-    private int previousScrollDiff = 0;
-    private long lastScroll;
+    private int previousScrollDiffY;
+    private long lastScrollY;
+    private long lastScrollX;
+    private int previousScrollDiffX;
     static final int BOTTOM = 1;
     static final int TOP = 2;
     static final int RIGHT = 3;
@@ -24,28 +26,33 @@ public class ScrollHideHelper {
 
     }
 
-    public void hideGroups(int oldY, int newY, View bottom, View left, View top, View right) {
-        int diff = newY - oldY;
+    public void hideGroups(int oldX, int newX, int oldY, int newY, View bottom, View left, View top, View right) {
+        int diffY = newY - oldY;
         long currentTime = System.currentTimeMillis();
-        long lastScrollTimeDiff = currentTime - this.lastScroll;
+        long lastScrollTimeDiffY = currentTime - this.lastScrollY;
 
-        if (lastScrollTimeDiff < 100 && diff < 10 && Integer.signum(diff) != Integer.signum(this.previousScrollDiff)) {
-            return;
+        if (lastScrollTimeDiffY >= 100 || diffY >= 10 || Integer.signum(diffY) == Integer.signum(this.previousScrollDiffY)) {
+            if (bottom != null) {
+                this.setHideViewGroupParams(diffY, bottom, BOTTOM);
+            }
+            if (top != null) {
+                this.setHideViewGroupParams(diffY, top, TOP);
+            }
+            this.lastScrollY = currentTime;
+            this.previousScrollDiffY = diffY;
         }
-        if (bottom != null) {
-            this.setHideViewGroupParams(diff, bottom, BOTTOM);
+        int diffX = newX - oldX;
+        long lastScrollTimeDiffX = currentTime - this.lastScrollX;
+        if (lastScrollTimeDiffX >= 100 || diffX >= 10 || Integer.signum(diffX) == Integer.signum(this.previousScrollDiffX)) {
+            if (left != null) {
+                this.setHideViewGroupParams(diffX, left, LEFT);
+            }
+            if (right != null) {
+                this.setHideViewGroupParams(diffX, right, RIGHT);
+            }
+            this.lastScrollX = currentTime;
+            this.previousScrollDiffX = diffX;
         }
-        if (top != null) {
-            this.setHideViewGroupParams(diff, top, TOP);
-        }
-        if (left != null) {
-            this.setHideViewGroupParams(diff, left, LEFT);
-        }
-        if (right != null) {
-            this.setHideViewGroupParams(diff, right, RIGHT);
-        }
-        this.lastScroll = currentTime;
-        this.previousScrollDiff = diff;
     }
 
     public void toggleGroups(View bottom, View left, View top, View right) {
@@ -149,8 +156,8 @@ public class ScrollHideHelper {
         view.setLayoutParams(layoutParams);
     }
 
-    private void setHideViewGroupParams(int diffY, View view, @Direction int direction) {
-        if (diffY == 0) {
+    private void setHideViewGroupParams(int diff, View view, @Direction int direction) {
+        if (diff == 0) {
             return;
         }
         ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
@@ -166,7 +173,7 @@ public class ScrollHideHelper {
         } else {
             throw new IllegalArgumentException("unknown direction: " + direction);
         }
-        margin = margin - diffY;
+        margin = margin - diff;
 
         int minMargin = (direction == BOTTOM || direction == TOP) ? -view.getHeight() : -view.getWidth();
         int maxMargin = 0;
