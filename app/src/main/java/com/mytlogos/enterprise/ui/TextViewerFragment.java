@@ -2,30 +2,34 @@ package com.mytlogos.enterprise.ui;
 
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.WebView;
+import android.widget.EditText;
+import android.widget.ScrollView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.text.HtmlCompat;
 import androidx.fragment.app.Fragment;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.model.SimpleEpisode;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.TextContentTool;
-import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout;
-import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
 
-import org.joda.time.DateTime;
+import org.jsoup.Jsoup;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -34,19 +38,12 @@ import java.util.Map;
  * Use the {@link TextViewerFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class TextViewerFragment extends BaseFragment {
-    private static final String MEDIUM = "MEDIUM_FILE";
-    private static final String START_EPISODE = "START_EPISODE";
+public class TextViewerFragment extends ViewerFragment<TextViewerFragment.ReadableEpisode> {
+    private TextView textDisplay;
+    private ScrollView scrollView;
 
     private int currentEpisode;
     private String currentBook;
-    private WebView webView;
-    private boolean readingMode = false;
-    private DateTime lastReadingModeChange = null;
-    List<ReadableEpisode> readableEpisodes = new ArrayList<>();
-    ReadableEpisode currentlyReading;
-    SwipyRefreshLayout swipeLayout;
-    BottomNavigationView navigationView;
 
 
     /**
@@ -56,7 +53,7 @@ public class TextViewerFragment extends BaseFragment {
      * @return A new instance of fragment TextViewerFragment.
      */
     public static TextViewerFragment newInstance(int startEpisode, String zipFile) {
-        TextViewerFragment fragment = new TextReaderFragmentText();
+        TextViewerFragment fragment = new TextViewerFragment();
         Bundle args = new Bundle();
         args.putInt(START_EPISODE, startEpisode);
         args.putString(MEDIUM, zipFile);
@@ -74,85 +71,43 @@ public class TextViewerFragment extends BaseFragment {
         }
     }
 
+    @NonNull
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.text_reader_fragment, container, false);
-        this.webView = view.findViewById(R.id.web_view);
-        this.swipeLayout = view.findViewById(R.id.swiper);
-        this.swipeLayout.setOnRefreshListener(this::navigateEpisode);
-        this.navigationView = view.findViewById(R.id.navigation);
-        this.navigationView.setOnNavigationItemSelectedListener(item -> {
-            if (item.getItemId() == R.id.left_nav) {
-                navigateEpisode(SwipyRefreshLayoutDirection.TOP);
-            } else if (item.getItemId() == R.id.right_nav) {
-                navigateEpisode(SwipyRefreshLayoutDirection.BOTTOM);
-            } else {
-                System.out.println("unknown MenuItem for Text Navigation: " + item.getItemId());
-                showToast("Unknown MenuItem");
-            }
-            return true;
-        });
-        this.webView.setOnClickListener(v -> this.toggleReadingMode());
+        View view = super.onCreateView(inflater, container, savedInstanceState);
+        this.textDisplay = view.findViewById(R.id.display);
+        this.scrollView = view.findViewById(R.id.scroller);
+        this.textDisplay.setMovementMethod(new ScrollingMovementMethod());
+        this.setHasOptionsMenu(true);
+        this.scrollView.setOnScrollChangeListener(
+                (v, scrollX, scrollY, oldScrollX, oldScrollY) ->
+                        this.onScroll(scrollX, scrollY, oldScrollX, oldScrollY)
+        );
+        this.textDisplay.setOnClickListener(v -> this.toggleReadingMode());
         this.loadZip();
         return view;
     }
 
-    void enableReadingMode(boolean enable) {
-        DateTime now = DateTime.now();
-        if (this.lastReadingModeChange != null && this.lastReadingModeChange.isAfter(now.minusMillis(200))) {
-            return;
-        }
-        this.lastReadingModeChange = now;
-        this.navigationView.setVisibility(enable ? View.INVISIBLE : View.VISIBLE);
-        ActionBar bar = this.getMainActivity().getSupportActionBar();
-
-        if (bar != null) {
-            if (enable) {
-                bar.hide();
-            } else {
-                bar.show();
-            }
-        }
-        this.readingMode = enable;
+    @Override
+    int getLayoutRes() {
+        return R.layout.fragment_reader_text;
     }
 
-    void toggleReadingMode() {
-        enableReadingMode(!this.readingMode);
-    }
-
-    void navigateEpisode(SwipyRefreshLayoutDirection direction) {
-        if (this.currentlyReading == null) {
-            if (this.readableEpisodes.isEmpty()) {
-                return;
-            } else {
-                this.currentlyReading = this.readableEpisodes.get(0);
-            }
-        } else {
-            int index = this.readableEpisodes.indexOf(currentlyReading);
-            if (direction == SwipyRefreshLayoutDirection.TOP) {
-                index--;
-            } else if (direction == SwipyRefreshLayoutDirection.BOTTOM) {
-                index++;
-            } else {
-                System.out.println("Unknown swipe direction in TextViewerFragment, neither top or bottom");
-                return;
-            }
-            if (index >= this.readableEpisodes.size()) {
-                // TODO: 26.07.2019 check with if there are more episodes and save them
-                showToast("You are already reading the last saved episode");
-                this.swipeLayout.setRefreshing(false);
-                return;
-            } else if (index < 0) {
-                // TODO: 26.07.2019 check with if there are more episodes and save them
-                showToast("You are already reading the first saved episode");
-                this.swipeLayout.setRefreshing(false);
-                return;
-            }
-            this.currentlyReading = this.readableEpisodes.get(index);
-        }
+    @Override
+    void updateContent() {
         new OpenEpisodeTask().execute();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        Bundle bundle = new Bundle();
+        bundle.putInt(START_EPISODE, currentEpisode);
+        bundle.putString(MEDIUM, currentBook);
+        this.setArguments(bundle);
     }
 
     static class ReadableEpisode extends SimpleEpisode {
@@ -164,30 +119,96 @@ public class TextViewerFragment extends BaseFragment {
         }
     }
 
-    void displayData(CharSequence data) {
-        if (data instanceof String) {
-            webView.loadData(
-                    (String) data,
-                    "text/html; charset=utf-8",
-                    "UTF-8"
-            );
+    @SuppressLint("DefaultLocale")
+    private void displayData(CharSequence data) {
+        if (currentlyReading != null) {
+            if (currentlyReading.getPartialIndex() > 0) {
+                setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
+            } else {
+                setTitle(String.format("Episode %d", currentlyReading.getTotalIndex()));
+            }
         } else {
-            showToast("Error while loading Episode, Contact Dev and hit him");
+            setTitle("No Episode found");
         }
+        // this does not work really, can't scroll to the bottom
+        // and displays characters like ' or ´ incorrectly
+        textDisplay.setText(data);
+        scrollView.scrollTo(0, 0);
     }
 
-    CharSequence processData(String data) {
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.text_viewer_menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.font) {
+            changeFont();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void changeFont() {
+        Activity context = requireActivity();
+        @SuppressLint("InflateParams")
+        View view = context.getLayoutInflater().inflate(R.layout.change_font, null);
+        EditText fontTextView = view.findViewById(R.id.font_size);
+        fontTextView.setText(this.textDisplay.getTextSize() + "");
+
+        view.findViewById(R.id.increment_font).setOnClickListener(v -> {
+            try {
+                int currentFont = Integer.parseInt(fontTextView.getText().toString());
+                currentFont++;
+
+                if (currentFont > 40) {
+                    currentFont = 14;
+                }
+                fontTextView.setText(currentFont + "");
+                this.textDisplay.setTextSize(currentFont);
+            } catch (NumberFormatException e) {
+                fontTextView.setText("0");
+            }
+        });
+        view.findViewById(R.id.decrement_font).setOnClickListener(v -> {
+            try {
+                int currentFont = Integer.parseInt(fontTextView.getText().toString());
+                currentFont--;
+
+                if (currentFont < 2) {
+                    currentFont = 14;
+                }
+
+                fontTextView.setText(currentFont + "");
+                this.textDisplay.setTextSize(currentFont);
+            } catch (NumberFormatException e) {
+                fontTextView.setText("0");
+            }
+        });
+        new AlertDialog.Builder(context)
+                .setView(view)
+                .setTitle("Modify Font")
+                .show();
+    }
+
+    private CharSequence processData(String data) {
         if (data != null && data.length() < 200) {
             showToast(data);
             data = null;
         }
         if (data == null) {
-            data = "<html><head></head><body>No Content Found.</body></html>";
+            return "No Content Found.";
         } else {
-            // TODO: 15.06.2019 escape # with %23 (chromium complains about it, but is # even there?
-            data = data.replaceAll("#", "%23");
+            try {
+//            text = new HtmlToPlainText().getPlainText(Jsoup.parse(data).body());
+                String html = Jsoup.parse(data).body().html();
+                return HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY);
+            } catch (Exception ignored) {
+                return data;
+            }
         }
-        return data;
     }
 
     @SuppressLint("StaticFieldLeak")
@@ -200,24 +221,14 @@ public class TextViewerFragment extends BaseFragment {
             return processData(data);
         }
 
-        @SuppressLint("DefaultLocale")
         @Override
         protected void onPostExecute(CharSequence data) {
-            if (currentlyReading != null) {
-                if (currentlyReading.getPartialIndex() > 0) {
-                    setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
-                } else {
-                    setTitle(String.format("Episode %d", currentlyReading.getTotalIndex()));
-                }
-            } else {
-                setTitle("No Episode found");
-            }
             displayData(data);
             swipeLayout.setRefreshing(false);
         }
     }
 
-    void loadZip() {
+    private void loadZip() {
         @SuppressLint("StaticFieldLeak")
         AsyncTask<Void, Void, CharSequence> task = new AsyncTask<Void, Void, CharSequence>() {
 
@@ -259,15 +270,6 @@ public class TextViewerFragment extends BaseFragment {
             @SuppressLint("DefaultLocale")
             @Override
             protected void onPostExecute(CharSequence data) {
-                if (currentlyReading != null) {
-                    if (currentlyReading.getPartialIndex() > 0) {
-                        setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
-                    } else {
-                        setTitle(String.format("Episode %d", currentlyReading.getTotalIndex()));
-                    }
-                } else {
-                    setTitle("No Episode found");
-                }
                 displayData(data);
                 swipeLayout.setRefreshing(false);
             }
@@ -281,6 +283,6 @@ public class TextViewerFragment extends BaseFragment {
     }
 
     private void showToastError(String s) {
-        getMainActivity().runOnUiThread(() -> showToast(s));
+        requireActivity().runOnUiThread(() -> showToast(s));
     }
 }
