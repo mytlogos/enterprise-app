@@ -42,10 +42,6 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
     private TextView textDisplay;
     private ScrollView scrollView;
 
-    private int currentEpisode;
-    private String currentBook;
-
-
     /**
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
@@ -59,16 +55,6 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
         args.putString(MEDIUM, zipFile);
         fragment.setArguments(args);
         return fragment;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        if (getArguments() != null) {
-            this.currentEpisode = getArguments().getInt(START_EPISODE);
-            this.currentBook = getArguments().getString(MEDIUM);
-        }
     }
 
     @NonNull
@@ -100,16 +86,6 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
         new OpenEpisodeTask().execute();
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-
-        Bundle bundle = new Bundle();
-        bundle.putInt(START_EPISODE, currentEpisode);
-        bundle.putString(MEDIUM, currentBook);
-        this.setArguments(bundle);
-    }
-
     static class ReadableEpisode extends SimpleEpisode {
         private final String file;
 
@@ -121,19 +97,20 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
 
     @SuppressLint("DefaultLocale")
     private void displayData(CharSequence data) {
-        if (currentlyReading != null) {
-            if (currentlyReading.getPartialIndex() > 0) {
-                setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
+        if (this.currentlyReading != null) {
+            this.currentEpisode = this.currentlyReading.getEpisodeId();
+            if (this.currentlyReading.getPartialIndex() > 0) {
+                setTitle(String.format("Episode %d.%d", this.currentlyReading.getTotalIndex(), this.currentlyReading.getPartialIndex()));
             } else {
-                setTitle(String.format("Episode %d", currentlyReading.getTotalIndex()));
+                setTitle(String.format("Episode %d", this.currentlyReading.getTotalIndex()));
             }
         } else {
             setTitle("No Episode found");
         }
         // this does not work really, can't scroll to the bottom
         // and displays characters like ' or ´ incorrectly
-        textDisplay.setText(data);
-        scrollView.scrollTo(0, 0);
+        this.textDisplay.setText(data);
+        this.scrollView.scrollTo(0, 0);
     }
 
     @Override

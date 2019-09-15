@@ -21,10 +21,12 @@ import java.util.List;
 abstract class ViewerFragment<T> extends BaseFragment {
     private BottomNavigationView navigationView;
     private View appbar;
+    private final ScrollHideHelper scrollHideHelper = new ScrollHideHelper();
+    int currentEpisode;
+    String currentBook;
     SwipyRefreshLayout swipeLayout;
     List<T> readableEpisodes = new ArrayList<>();
     T currentlyReading;
-    private final ScrollHideHelper scrollHideHelper = new ScrollHideHelper();
     static final String MEDIUM = "MEDIUM_FILE";
     static final String START_EPISODE = "START_EPISODE";
 
@@ -62,9 +64,24 @@ abstract class ViewerFragment<T> extends BaseFragment {
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        if (getArguments() != null) {
+            this.currentEpisode = getArguments().getInt(START_EPISODE);
+            this.currentBook = getArguments().getString(MEDIUM);
+        }
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         this.scrollHideHelper.showGroups(this.navigationView, null, this.appbar, null);
+
+        Bundle bundle = new Bundle();
+        bundle.putInt(START_EPISODE, currentEpisode);
+        bundle.putString(MEDIUM, currentBook);
+        this.setArguments(bundle);
     }
 
     private void navigateEpisode(SwipyRefreshLayoutDirection direction) {

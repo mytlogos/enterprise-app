@@ -44,8 +44,6 @@ import eu.davidea.flexibleadapter.items.IFlexible;
 import eu.davidea.viewholders.FlexibleViewHolder;
 
 public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.ReadableEpisode> {
-    private int currentEpisode;
-    private String currentBook;
     private FlexibleAdapter<IFlexible<ViewHolder>> adapter;
 
 
@@ -62,26 +60,6 @@ public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.Read
         args.putString(MEDIUM, zipFile);
         fragment.setArguments(args);
         return fragment;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        if (getArguments() != null) {
-            this.currentEpisode = getArguments().getInt(START_EPISODE);
-            this.currentBook = getArguments().getString(MEDIUM);
-        }
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-
-        Bundle bundle = new Bundle();
-        bundle.putInt(START_EPISODE, currentEpisode);
-        bundle.putString(MEDIUM, currentBook);
-        this.setArguments(bundle);
     }
 
     @Override
@@ -119,6 +97,8 @@ public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.Read
     @Override
     void updateContent() {
         if (this.currentlyReading != null) {
+            this.currentEpisode = this.currentlyReading.getEpisodeId();
+
             List<IFlexible<ViewHolder>> flexibles = new ArrayList<>();
 
             for (int i = 1; i < this.currentlyReading.pageMap.size() + 1; i++) {
