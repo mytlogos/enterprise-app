@@ -87,10 +87,12 @@ abstract class ViewerFragment<T> extends BaseFragment {
             if (index >= this.readableEpisodes.size()) {
                 // TODO: 26.07.2019 check with if there are more episodes and save them
                 showToast("You are already reading the last saved episode");
+                swipeLayout.setRefreshing(false);
                 return;
             } else if (index < 0) {
                 // TODO: 26.07.2019 check with if there are more episodes and save them
                 showToast("You are already reading the first saved episode");
+                swipeLayout.setRefreshing(false);
                 return;
             }
             this.currentlyReading = this.readableEpisodes.get(index);

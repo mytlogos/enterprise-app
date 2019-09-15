@@ -119,18 +119,20 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
         }
     }
 
-    private void displayData(String data) {
+    @SuppressLint("DefaultLocale")
+    private void displayData(CharSequence data) {
+        if (currentlyReading != null) {
+            if (currentlyReading.getPartialIndex() > 0) {
+                setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
+            } else {
+                setTitle(String.format("Episode %d", currentlyReading.getTotalIndex()));
+            }
+        } else {
+            setTitle("No Episode found");
+        }
         // this does not work really, can't scroll to the bottom
         // and displays characters like ' or ´ incorrectly
-        CharSequence text;
-        try {
-//            text = new HtmlToPlainText().getPlainText(Jsoup.parse(data).body());
-            String html = Jsoup.parse(data).body().html();
-            text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY);
-        } catch (Exception ignored) {
-            text = data;
-        }
-        textDisplay.setText(text);
+        textDisplay.setText(data);
         scrollView.scrollTo(0, 0);
     }
 
@@ -191,37 +193,36 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
                 .show();
     }
 
+    private CharSequence processData(String data) {
+        if (data != null && data.length() < 200) {
+            showToast(data);
+            data = null;
+        }
+        if (data == null) {
+            return "No Content Found.";
+        } else {
+            try {
+//            text = new HtmlToPlainText().getPlainText(Jsoup.parse(data).body());
+                String html = Jsoup.parse(data).body().html();
+                return HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY);
+            } catch (Exception ignored) {
+                return data;
+            }
+        }
+    }
+
     @SuppressLint("StaticFieldLeak")
-    class OpenEpisodeTask extends AsyncTask<Void, Void, String> {
+    class OpenEpisodeTask extends AsyncTask<Void, Void, CharSequence> {
 
         @Override
-        protected String doInBackground(Void... voids) {
+        protected CharSequence doInBackground(Void... voids) {
             TextContentTool bookTool = FileTools.getTextContentTool();
-            return bookTool.openEpisode(currentBook, currentlyReading.file);
+            String data = bookTool.openEpisode(currentBook, currentlyReading.file);
+            return processData(data);
         }
 
-        @SuppressLint("DefaultLocale")
         @Override
-        protected void onPostExecute(String data) {
-            if (data != null && data.length() < 200) {
-                showToast(data);
-                data = null;
-            }
-            if (data == null) {
-                data = "<html><head></head><body>No Content Found.</body></html>";
-            } else {
-                // TODO: 15.06.2019 escape # with %23 (chromium complains about it, but is # even there?
-                data = data.replaceAll("#", "%23");
-            }
-            if (currentlyReading != null) {
-                if (currentlyReading.getPartialIndex() > 0) {
-                    setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
-                } else {
-                    setTitle(String.format("Episode %d", currentlyReading.getTotalIndex()));
-                }
-            } else {
-                setTitle("No Episode found");
-            }
+        protected void onPostExecute(CharSequence data) {
             displayData(data);
             swipeLayout.setRefreshing(false);
         }
@@ -229,10 +230,10 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
 
     private void loadZip() {
         @SuppressLint("StaticFieldLeak")
-        AsyncTask<Void, Void, String> task = new AsyncTask<Void, Void, String>() {
+        AsyncTask<Void, Void, CharSequence> task = new AsyncTask<Void, Void, CharSequence>() {
 
             @Override
-            protected String doInBackground(Void... voids) {
+            protected CharSequence doInBackground(Void... voids) {
                 TextContentTool bookTool = FileTools.getTextContentTool();
                 Map<Integer, String> episodeFileMap = bookTool.getEpisodePaths(TextViewerFragment.this.currentBook);
 
@@ -262,31 +263,13 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
                 if (currentlyReading == null || currentlyReading.file == null || currentlyReading.file.isEmpty()) {
                     return "Selected Episode is not available";
                 }
-                return bookTool.openEpisode(currentBook, currentlyReading.file);
+                String data = bookTool.openEpisode(currentBook, currentlyReading.file);
+                return processData(data);
             }
 
             @SuppressLint("DefaultLocale")
             @Override
-            protected void onPostExecute(String data) {
-                if (data != null && data.length() < 200) {
-                    showToast(data);
-                    data = null;
-                }
-                if (data == null) {
-                    data = "<html><head></head><body>No Content Found.</body></html>";
-                } else {
-                    // TODO: 15.06.2019 escape # with %23 (chromium complains about it, but is # even there?
-                    data = data.replaceAll("#", "%23");
-                }
-                if (currentlyReading != null) {
-                    if (currentlyReading.getPartialIndex() > 0) {
-                        setTitle(String.format("Episode %d.%d", currentlyReading.getTotalIndex(), currentlyReading.getPartialIndex()));
-                    } else {
-                        setTitle(String.format("Episode %d", currentlyReading.getTotalIndex()));
-                    }
-                } else {
-                    setTitle("No Episode found");
-                }
+            protected void onPostExecute(CharSequence data) {
                 displayData(data);
                 swipeLayout.setRefreshing(false);
             }
