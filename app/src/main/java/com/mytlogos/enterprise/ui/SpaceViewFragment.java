@@ -289,18 +289,12 @@ public class SpaceViewFragment extends BaseFragment {
     private static class SpaceDataNode {
         private final String name;
         private final long size;
-        private final int count;
         private final List<SpaceDataNode> children = new ArrayList<>();
         private SpaceDataNode parent;
 
         private SpaceDataNode(String name, long size) {
-            this(name, size, 0);
-        }
-
-        private SpaceDataNode(String name, long size, int count) {
             this.name = name;
             this.size = size;
-            this.count = count;
         }
 
         private SpaceDataNode(String name) {
@@ -344,8 +338,8 @@ public class SpaceViewFragment extends BaseFragment {
     private static class MediumNode extends SpaceDataNode {
         private final int id;
 
-        private MediumNode(String name, long size, int count, int mediumId) {
-            super(name, size, count);
+        private MediumNode(String name, long size, int mediumId) {
+            super(name, size);
             this.id = mediumId;
         }
     }
@@ -398,7 +392,6 @@ public class SpaceViewFragment extends BaseFragment {
                 SpaceDataNode mediumNode = new MediumNode(
                         medium.getTitle(),
                         bookFile.length(),
-                        medium.getSavedEpisodes(),
                         mediumId
                 );
                 for (SimpleEpisode episode : simpleEpisodes) {
