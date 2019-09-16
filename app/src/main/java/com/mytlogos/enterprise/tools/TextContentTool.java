@@ -252,6 +252,12 @@ public class TextContentTool extends ContentTool {
     }
 
     @Override
+    public long getEpisodeSize(File value, int episodeId, Map<Integer, String> episodePaths) {
+        this.episodePaths = episodePaths;
+        return this.getEpisodeSize(value, episodeId);
+    }
+
+    @Override
     public long getEpisodeSize(File value, int episodeId) {
         try (ZipFile file = new ZipFile(value)) {
 

@@ -259,4 +259,8 @@ public abstract class ContentTool {
             }
         }
     }
+
+    public long getEpisodeSize(File value, int episodeId, Map<Integer, String> episodePaths) {
+        return this.getEpisodeSize(value, episodeId);
+    }
 }

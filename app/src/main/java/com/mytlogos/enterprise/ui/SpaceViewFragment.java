@@ -397,7 +397,7 @@ public class SpaceViewFragment extends BaseFragment {
                 for (SimpleEpisode episode : simpleEpisodes) {
                     mediumNode.addChild(new EpisodeNode(
                             episode.getFormattedTitle(),
-                            contentTool.getEpisodeSize(entry.getValue(), episode.getEpisodeId()),
+                            contentTool.getEpisodeSize(entry.getValue(), episode.getEpisodeId(), episodePaths),
                             episode.getEpisodeId()
                     ));
                 }
@@ -465,19 +465,23 @@ public class SpaceViewFragment extends BaseFragment {
         return data;
     }
 
-    private SliceValue getValue(SpaceDataNode child, double size, int index, int maxIndex) {
+    private SliceValue getValue(SpaceDataNode child, double byteSize, int index, int size) {
         SliceValue value = new SliceValue();
         value.setLabel(child.name);
-        value.setValue((float) (child.getSize() / size));
+        value.setValue((float) (child.getSize() / byteSize));
 
-        int red = (-510 / maxIndex) * index + 255;
-        int blue = (510 / maxIndex) * index - 255;
-        int green = (index < (maxIndex / 2) ? blue : red) + 255;
+        if (index == 0 && size == 1) {
+            value.setColor(Color.GRAY);
+        } else {
+            int red = (-510 / size) * index + 255;
+            int blue = (510 / size) * index - 255;
+            int green = (index < (size / 2) ? blue : red) + 255;
 
-        red = red < 0 ? 0 : red > 255 ? 255 : red;
-        green = green < 0 ? 0 : green > 255 ? 255 : green;
-        blue = blue < 0 ? 0 : blue > 255 ? 255 : blue;
-        value.setColor(Color.rgb(red, green, blue));
+            red = red < 0 ? 0 : red > 255 ? 255 : red;
+            green = green < 0 ? 0 : green > 255 ? 255 : green;
+            blue = blue < 0 ? 0 : blue > 255 ? 255 : blue;
+            value.setColor(Color.rgb(red, green, blue));
+        }
 
         sliceValueSpaceDataNodeMap.put(value, child);
         return value;
