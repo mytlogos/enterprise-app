@@ -29,7 +29,7 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.mytlogos.enterprise.background.RepositoryImpl;
-import com.mytlogos.enterprise.background.UserPreferences;
+import com.mytlogos.enterprise.preferences.UserPreferences;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.service.BootReceiver;
 import com.mytlogos.enterprise.service.DownloadWorker;
