@@ -3,7 +3,7 @@ package com.mytlogos.enterprise.background;
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
 
-import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalUser;
 import com.mytlogos.enterprise.model.FailedEpisode;
@@ -83,9 +83,9 @@ public interface DatabaseStorage {
 
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediumId);
 
-    LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodes(int saved, int medium);
+    LiveData<PagedList<DisplayEpisode>> getUnreadEpisodes(int saved, int medium, int read);
 
-    LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodesGrouped(int saved, int medium);
+    LiveData<PagedList<DisplayEpisode>> getUnreadEpisodesGrouped(int saved, int medium);
 
     LiveData<List<MediaList>> getLists();
 

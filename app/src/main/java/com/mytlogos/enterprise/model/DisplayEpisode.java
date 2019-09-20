@@ -2,7 +2,7 @@ package com.mytlogos.enterprise.model;
 
 import java.util.List;
 
-public class DisplayUnreadEpisode {
+public class DisplayEpisode {
     private final int episodeId;
     private final int mediumId;
     private final String mediumTitle;
@@ -12,7 +12,7 @@ public class DisplayUnreadEpisode {
     private final boolean read;
     private final List<Release> releases;
 
-    public DisplayUnreadEpisode(int episodeId, int mediumId, String mediumTitle, int totalIndex, int partialIndex, boolean saved, boolean read, List<Release> releases) {
+    public DisplayEpisode(int episodeId, int mediumId, String mediumTitle, int totalIndex, int partialIndex, boolean saved, boolean read, List<Release> releases) {
         this.episodeId = episodeId;
         this.mediumId = mediumId;
         this.mediumTitle = mediumTitle;
@@ -60,7 +60,7 @@ public class DisplayUnreadEpisode {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        DisplayUnreadEpisode that = (DisplayUnreadEpisode) o;
+        DisplayEpisode that = (DisplayEpisode) o;
 
         return getEpisodeId() == that.getEpisodeId();
     }

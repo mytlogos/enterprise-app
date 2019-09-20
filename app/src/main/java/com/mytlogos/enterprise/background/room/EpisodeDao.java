@@ -10,11 +10,11 @@ import androidx.room.Query;
 import androidx.room.Transaction;
 import androidx.room.Update;
 
+import com.mytlogos.enterprise.background.room.model.RoomDisplayEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomUnReadEpisode;
 import com.mytlogos.enterprise.model.SimpleEpisode;
 
 import org.joda.time.DateTime;
@@ -101,12 +101,15 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId \n" +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId \n" +
             "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId \n" +
-            "WHERE progress=0\n" +
+            "WHERE CASE :read " +
+            "WHEN 0 THEN 1\n" +
+            "WHEN 1 THEN progress = 1\n" +
+            "ELSE progress < 1 END " +
             "AND (:medium = 0 OR (:medium & medium) > 0)\n" +
             "AND (:saved < 0 OR saved=:saved)\n" +
             "GROUP BY RoomEpisode.episodeId\n" +
             "ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC")
-    DataSource.Factory<Integer, RoomUnReadEpisode> getUnreadEpisodes(int saved, int medium);
+    DataSource.Factory<Integer, RoomDisplayEpisode> getDisplayEpisodes(int saved, int read, int medium);
 
     @Transaction
     @Query("SELECT * FROM \n" +
@@ -126,7 +129,7 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "ORDER BY (\n" +
             "    SELECT MIN(releaseDate) FROM RoomRelease WHERE RoomRelease.episodeId=UnreadEpisode.episodeId\n" +
             ") DESC")
-    DataSource.Factory<Integer, RoomUnReadEpisode> getUnreadEpisodesGrouped(int saved, int medium);
+    DataSource.Factory<Integer, RoomDisplayEpisode> getDisplayEpisodesGrouped(int saved, int medium);
 
     @Query("SELECT * FROM RoomEpisode WHERE episodeId=:episodeId")
     RoomEpisode getEpisode(int episodeId);

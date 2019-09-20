@@ -4,7 +4,7 @@ import androidx.room.Relation;
 
 import java.util.List;
 
-public class RoomUnReadEpisode {
+public class RoomDisplayEpisode {
     private final int episodeId;
     private final int mediumId;
     private final String mediumTitle;
@@ -15,7 +15,7 @@ public class RoomUnReadEpisode {
     @Relation(parentColumn = "episodeId", entityColumn = "episodeId")
     private final List<RoomRelease> releases;
 
-    public RoomUnReadEpisode(int episodeId, int mediumId, String mediumTitle, int totalIndex, int partialIndex, boolean saved, boolean read, List<RoomRelease> releases) {
+    public RoomDisplayEpisode(int episodeId, int mediumId, String mediumTitle, int totalIndex, int partialIndex, boolean saved, boolean read, List<RoomRelease> releases) {
         this.episodeId = episodeId;
         this.mediumId = mediumId;
         this.mediumTitle = mediumTitle;
@@ -63,7 +63,7 @@ public class RoomUnReadEpisode {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        RoomUnReadEpisode that = (RoomUnReadEpisode) o;
+        RoomDisplayEpisode that = (RoomDisplayEpisode) o;
 
         return getEpisodeId() == that.getEpisodeId();
     }
@@ -75,7 +75,7 @@ public class RoomUnReadEpisode {
 
     @Override
     public String toString() {
-        return "RoomUnReadEpisode{" +
+        return "RoomDisplayEpisode{" +
                 "episodeId=" + episodeId +
                 ", mediumId=" + mediumId +
                 ", mediumTitle='" + mediumTitle + '\'' +

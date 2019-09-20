@@ -13,6 +13,7 @@ import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.background.room.model.RoomDanglingMedium;
+import com.mytlogos.enterprise.background.room.model.RoomDisplayEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
@@ -25,9 +26,8 @@ import com.mytlogos.enterprise.background.room.model.RoomReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomUnReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
-import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediumInWait;
@@ -131,8 +131,8 @@ public class RoomConverter {
         );
     }
 
-    public DisplayUnreadEpisode convertRoomEpisode(RoomUnReadEpisode episode) {
-        return episode == null ? null : new DisplayUnreadEpisode(
+    public DisplayEpisode convertRoomEpisode(RoomDisplayEpisode episode) {
+        return episode == null ? null : new DisplayEpisode(
                 episode.getEpisodeId(),
                 episode.getMediumId(),
                 episode.getMediumTitle(),

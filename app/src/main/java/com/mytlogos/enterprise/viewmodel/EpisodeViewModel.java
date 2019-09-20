@@ -8,25 +8,25 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
 
-import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.DisplayEpisode;
 
-public class UnreadEpisodeViewModel extends RepoViewModel implements MediumFilterableViewModel {
+public class EpisodeViewModel extends RepoViewModel implements MediumFilterableViewModel {
 
-    private LiveData<PagedList<DisplayUnreadEpisode>> unReadEpisodes;
+    private LiveData<PagedList<DisplayEpisode>> unReadEpisodes;
     private MutableLiveData<Filter> filter = new MutableLiveData<>();
 
-    public UnreadEpisodeViewModel(@NonNull Application application) {
+    public EpisodeViewModel(@NonNull Application application) {
         super(application);
         filter.setValue(new Filter());
     }
 
-    public LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodes() {
+    public LiveData<PagedList<DisplayEpisode>> getUnreadEpisodes() {
         if (this.unReadEpisodes == null) {
             this.unReadEpisodes = Transformations.switchMap(filter, input -> {
                 if (input.grouped) {
                     return repository.getUnReadEpisodesGrouped(input.saved, input.medium);
                 } else {
-                    return repository.getUnReadEpisodes(input.saved, input.medium);
+                    return repository.getUnReadEpisodes(input.saved, input.medium, -1);
                 }
             });
         }
@@ -39,6 +39,10 @@ public class UnreadEpisodeViewModel extends RepoViewModel implements MediumFilte
 
     public void setGrouped(boolean grouped) {
         this.filter.setValue(new FilterBuilder(this.filter.getValue()).setGrouped(grouped).build());
+    }
+
+    public void setRead(int read) {
+        this.filter.setValue(new FilterBuilder(this.filter.getValue()).setRead(read).build());
     }
 
     @Override
@@ -57,10 +61,16 @@ public class UnreadEpisodeViewModel extends RepoViewModel implements MediumFilte
         return value != null && value.saved > 0;
     }
 
+    public boolean getRead() {
+        Filter value = this.filter.getValue();
+        return value != null && value.read > 0;
+    }
+
     private static class FilterBuilder {
         private boolean grouped;
         private int medium;
         private int saved;
+        private int read;
 
         private FilterBuilder(Filter filter) {
             if (filter == null) {
@@ -69,6 +79,7 @@ public class UnreadEpisodeViewModel extends RepoViewModel implements MediumFilte
             this.grouped = filter.grouped;
             this.saved = filter.saved;
             this.medium = filter.medium;
+            this.read = filter.read;
         }
 
         private FilterBuilder setGrouped(boolean grouped) {
@@ -86,8 +97,13 @@ public class UnreadEpisodeViewModel extends RepoViewModel implements MediumFilte
             return this;
         }
 
+        private FilterBuilder setRead(int read) {
+            this.read = read;
+            return this;
+        }
+
         private Filter build() {
-            return new Filter(this.grouped, this.medium, this.saved);
+            return new Filter(this.grouped, this.medium, this.saved, this.read);
         }
     }
 
@@ -96,15 +112,17 @@ public class UnreadEpisodeViewModel extends RepoViewModel implements MediumFilte
         private final boolean grouped;
         private final int medium;
         private final int saved;
+        private final int read;
 
-        private Filter(boolean grouped, int medium, int saved) {
+        private Filter(boolean grouped, int medium, int saved, int read) {
             this.grouped = grouped;
             this.medium = medium;
             this.saved = saved > 0 ? 1 : saved;
+            this.read = read > 0 ? 1 : read;
         }
 
         private Filter() {
-            this(false, 0, -1);
+            this(false, 0, -1, -1);
         }
     }
 

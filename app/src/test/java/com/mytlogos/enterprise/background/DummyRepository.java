@@ -16,7 +16,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
-import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalUser;
 import com.mytlogos.enterprise.model.FailedEpisode;
@@ -265,12 +265,12 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public LiveData<PagedList<DisplayUnreadEpisode>> getUnReadEpisodes(int saved, int medium) {
+    public LiveData<PagedList<DisplayEpisode>> getUnReadEpisodes(int saved, int medium, int read) {
         return null;
     }
 
     @Override
-    public LiveData<PagedList<DisplayUnreadEpisode>> getUnReadEpisodesGrouped(int saved, int medium) {
+    public LiveData<PagedList<DisplayEpisode>> getUnReadEpisodesGrouped(int saved, int medium) {
         return null;
     }
 

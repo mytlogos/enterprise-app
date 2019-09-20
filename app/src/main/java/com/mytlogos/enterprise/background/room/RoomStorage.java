@@ -54,7 +54,7 @@ import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
-import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalMediaList;
 import com.mytlogos.enterprise.model.ExternalUser;
@@ -252,19 +252,19 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodes(int saved, int medium) {
+    public LiveData<PagedList<DisplayEpisode>> getUnreadEpisodes(int saved, int medium, int read) {
         RoomConverter converter = new RoomConverter();
         return new LivePagedListBuilder<>(
-                this.episodeDao.getUnreadEpisodes(saved, medium).map(converter::convertRoomEpisode),
+                this.episodeDao.getDisplayEpisodes(saved, read, medium).map(converter::convertRoomEpisode),
                 50
         ).build();
     }
 
     @Override
-    public LiveData<PagedList<DisplayUnreadEpisode>> getUnreadEpisodesGrouped(int saved, int medium) {
+    public LiveData<PagedList<DisplayEpisode>> getUnreadEpisodesGrouped(int saved, int medium) {
         RoomConverter converter = new RoomConverter();
         return new LivePagedListBuilder<>(
-                this.episodeDao.getUnreadEpisodesGrouped(saved, medium).map(converter::convertRoomEpisode),
+                this.episodeDao.getDisplayEpisodesGrouped(saved, medium).map(converter::convertRoomEpisode),
                 50
         ).build();
     }

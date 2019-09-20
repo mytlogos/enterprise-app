@@ -22,10 +22,10 @@ import androidx.paging.PagedList;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.TaskManager;
-import com.mytlogos.enterprise.model.DisplayUnreadEpisode;
+import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.MediumType;
 import com.mytlogos.enterprise.model.Release;
-import com.mytlogos.enterprise.viewmodel.UnreadEpisodeViewModel;
+import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,7 +44,7 @@ import eu.davidea.viewholders.FlexibleViewHolder;
 /**
  * A fragment representing a list of Items.
  */
-public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode, UnreadEpisodeViewModel> {
+public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, EpisodeViewModel> {
 
     private boolean groupByMedium;
 
@@ -70,12 +70,12 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode
     }
 
     @Override
-    Class<UnreadEpisodeViewModel> getViewModelClass() {
-        return UnreadEpisodeViewModel.class;
+    Class<EpisodeViewModel> getViewModelClass() {
+        return EpisodeViewModel.class;
     }
 
     @Override
-    LiveData<PagedList<DisplayUnreadEpisode>> createPagedListLiveData() {
+    LiveData<PagedList<DisplayEpisode>> createPagedListLiveData() {
         return this.getViewModel().getUnreadEpisodes();
     }
 
@@ -103,9 +103,9 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<DisplayUnreadEpisode> list) {
+    List<IFlexible> convertToFlexibles(Collection<DisplayEpisode> list) {
         List<IFlexible> items = new ArrayList<>();
-        for (DisplayUnreadEpisode episode : list) {
+        for (DisplayEpisode episode : list) {
             if (episode == null) {
                 break;
             }
@@ -156,7 +156,7 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode
     private void toggleGroupByMedium(MenuItem item) {
         item.setChecked(!item.isChecked());
         this.groupByMedium = item.isChecked();
-        PagedList<DisplayUnreadEpisode> list = this.getLivePagedList().getValue();
+        PagedList<DisplayEpisode> list = this.getLivePagedList().getValue();
 
         if (list == null) {
             return;
@@ -165,7 +165,7 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode
         this.getFlexibleAdapter().updateDataSet(flexibles);
     }
 
-    private void openPopup(ViewHolder holder, DisplayUnreadEpisode episode) {
+    private void openPopup(ViewHolder holder, DisplayEpisode episode) {
         PopupMenu popupMenu = new PopupMenu(getContext(), holder.optionsButtonView);
 
         if (episode.isSaved()) {
@@ -206,10 +206,10 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode
     }
 
     private static class SectionableUnreadEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
-        private final DisplayUnreadEpisode episode;
+        private final DisplayEpisode episode;
         private final UnreadEpisodeFragment fragment;
 
-        SectionableUnreadEpisodeItem(@NonNull DisplayUnreadEpisode episode, UnreadEpisodeFragment fragment) {
+        SectionableUnreadEpisodeItem(@NonNull DisplayEpisode episode, UnreadEpisodeFragment fragment) {
             super(new HeaderItem(episode.getMediumTitle(), episode.getMediumId()));
             this.episode = episode;
             this.fragment = fragment;
@@ -294,10 +294,10 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayUnreadEpisode
     }
 
     private static class UnreadEpisodeItem extends AbstractFlexibleItem<ViewHolder> {
-        private final DisplayUnreadEpisode episode;
+        private final DisplayEpisode episode;
         private final UnreadEpisodeFragment fragment;
 
-        UnreadEpisodeItem(@NonNull DisplayUnreadEpisode episode, UnreadEpisodeFragment fragment) {
+        UnreadEpisodeItem(@NonNull DisplayEpisode episode, UnreadEpisodeFragment fragment) {
             this.episode = episode;
             this.fragment = fragment;
             this.setDraggable(false);
