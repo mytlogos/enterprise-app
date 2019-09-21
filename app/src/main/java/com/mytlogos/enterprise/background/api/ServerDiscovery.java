@@ -46,6 +46,8 @@ class ServerDiscovery {
                     Server now = serverFuture.getNow(null);
                     if (now != null) {
                         discoveredServer.add(now);
+                    } else if (!serverFuture.isDone()) {
+                        serverFuture.cancel(true);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -69,9 +71,46 @@ class ServerDiscovery {
     }
 
     private Server discoverLocalNetworkServerPerTcp(int local) {
+        String ipv4 = "192.168.1." + local;
+        Server server = new Server(ipv4, 3000, true, true);
+
+        if (!server.isReachable()) {
+            return null;
+        }
         // it is unknown if any tcp discovered server are dev or not, assume for now they are
-        Server server = new Server("192.168.1." + local, 3000, true, true);
-        return this.isReachable(server) ? server : null;
+        try (DatagramSocket c = new DatagramSocket()) {
+            byte[] sendData = "DISCOVER_SERVER_REQUEST_ENTERPRISE".getBytes();
+
+            int udpServerPort = 3001;
+            //Try the some 'normal' ip addresses first
+            try {
+                this.sendUDPPacket(c, sendData, udpServerPort, InetAddress.getByName(ipv4));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            //Wait for a response
+            byte[] recvBuf = new byte[15000];
+
+            DatagramPacket receivePacket = new DatagramPacket(recvBuf, recvBuf.length);
+            c.receive(receivePacket);
+
+            //Check if the message is correct
+            String message = new String(receivePacket.getData()).trim();
+
+            // the weird thing is if the message is over 34 bytes long
+            // e.g. 'DISCOVER_SERVER_RESPONSE_ENTERPRISE' the last character will be cut off
+            // either the node server does not send correctly
+            // or java client does not receive correctly
+            if ("ENTERPRISE_DEV".equals(message)) {
+                return server;
+            } else if ("ENTERPRISE_PROD".equals(message)) {
+                return new Server(ipv4, 3000, true, false);
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+        return null;
     }
 
     private Server discoverInternetServerPerUdp() {
