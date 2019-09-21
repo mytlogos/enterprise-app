@@ -128,7 +128,7 @@
     <string name="tab_text_2">Tab 2</string>
     <string name="tab_text_3">Tab 3</string>
     <string name="repeat_password">Repeat Password</string>
-    <string name="unread_chapter">Unread Chapter</string>
+    <string name="unread_chapter">Episodes</string>
     <string name="unread_news">Unread News</string>
     <string name="read_history">Read History</string>
     <string name="statistics">Statistics</string>
@@ -237,4 +237,8 @@
     <string name="state_origin">State in COO</string>
     <string name="current_read_episode">Seen last</string>
     <string name="not_available">N/A</string>
+    <string name="minimal_episode_index">Minimal Episode Index</string>
+    <string name="maximal_episode_index">Maximum Episode Index</string>
+    <string name="release_host">Release Host</string>
+    <string name="latest_release_only">Latest Release Only</string>
 </resources>

@@ -50,10 +50,6 @@ public class MediaInWaitListFragment extends BaseSwipeListFragment<MediumInWait,
 
             @Override
             public void onCreateFilter(View view, AlertDialog.Builder builder) {
-                setMediumCheckbox(view, R.id.text_medium, MediumType.TEXT);
-                setMediumCheckbox(view, R.id.audio_medium, MediumType.AUDIO);
-                setMediumCheckbox(view, R.id.video_medium, MediumType.VIDEO);
-                setMediumCheckbox(view, R.id.image_medium, MediumType.IMAGE);
             }
 
             @Override
@@ -62,16 +58,16 @@ public class MediaInWaitListFragment extends BaseSwipeListFragment<MediumInWait,
             }
 
             @Override
-            public FilterProperty[] getSearchFilterProperties() {
-                return new FilterProperty[]{
-                        new FilterProperty() {
+            public Property[] getSearchFilterProperties() {
+                return new Property[]{
+                        new TextProperty() {
                             @Override
-                            public int getSearchViewId() {
+                            public int getViewId() {
                                 return R.id.title_filter;
                             }
 
                             @Override
-                            public int getClearSearchButtonId() {
+                            public int getClearViewId() {
                                 return R.id.clear_title;
                             }
 
@@ -85,14 +81,14 @@ public class MediaInWaitListFragment extends BaseSwipeListFragment<MediumInWait,
                                 getViewModel().setTitleFilter(newFilter);
                             }
                         },
-                        new FilterProperty() {
+                        new TextProperty() {
                             @Override
-                            public int getSearchViewId() {
+                            public int getViewId() {
                                 return R.id.host_filter;
                             }
 
                             @Override
-                            public int getClearSearchButtonId() {
+                            public int getClearViewId() {
                                 return R.id.clear_host;
                             }
 

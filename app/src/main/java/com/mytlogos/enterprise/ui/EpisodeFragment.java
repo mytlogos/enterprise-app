@@ -8,30 +8,25 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.TaskManager;
-import com.mytlogos.enterprise.model.DisplayEpisode;
-import com.mytlogos.enterprise.model.MediumType;
-import com.mytlogos.enterprise.model.Release;
+import com.mytlogos.enterprise.model.DisplayRelease;
+import com.mytlogos.enterprise.tools.Utils;
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
@@ -44,7 +39,7 @@ import eu.davidea.viewholders.FlexibleViewHolder;
 /**
  * A fragment representing a list of Items.
  */
-public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, EpisodeViewModel> {
+public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeViewModel> {
 
     private boolean groupByMedium;
 
@@ -52,7 +47,7 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
      * Mandatory empty constructor for the fragment manager to instantiate the
      * fragment (e.g. upon screen orientation changes).
      */
-    public UnreadEpisodeFragment() {
+    public EpisodeFragment() {
     }
 
     @Override
@@ -65,7 +60,7 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = super.onCreateView(inflater, container, savedInstanceState);
-        this.setTitle("Unread Chapters");
+        this.setTitle("Chapters");
         return view;
     }
 
@@ -75,24 +70,136 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
     }
 
     @Override
-    LiveData<PagedList<DisplayEpisode>> createPagedListLiveData() {
-        return this.getViewModel().getUnreadEpisodes();
+    LiveData<PagedList<DisplayRelease>> createPagedListLiveData() {
+        return this.getViewModel().getDisplayEpisodes();
     }
 
     @Nullable
     @Override
     Filterable createFilterable() {
         return new Filterable() {
-            @Override
-            public void onCreateFilter(View view, AlertDialog.Builder builder) {
-                setMediumCheckbox(view, R.id.text_medium, MediumType.TEXT);
-                setMediumCheckbox(view, R.id.audio_medium, MediumType.AUDIO);
-                setMediumCheckbox(view, R.id.video_medium, MediumType.VIDEO);
-                setMediumCheckbox(view, R.id.image_medium, MediumType.IMAGE);
 
-                CheckBox box = view.findViewById(R.id.saved);
-                box.setChecked(getViewModel().getSaved());
-                box.setOnCheckedChangeListener((buttonView, isChecked) -> getViewModel().setSaved(isChecked ? 1 : -1));
+            @Override
+            public Property[] getSearchFilterProperties() {
+                return new Property[]{
+                        new TextProperty() {
+                            @Override
+                            public int getViewId() {
+                                return R.id.minIndex;
+                            }
+
+                            @Override
+                            public String get() {
+                                return getViewModel().getMinIndex() + "";
+                            }
+
+                            @Override
+                            public void set(String newFilter) {
+
+                                try {
+                                    int index = Integer.parseInt(newFilter);
+                                    getViewModel().setMinIndex(index);
+                                } catch (NumberFormatException e) {
+                                    showToast("Invalid Input");
+                                }
+                            }
+                        },
+                        new TextProperty() {
+                            @Override
+                            public int getViewId() {
+                                return R.id.maxIndex;
+                            }
+
+                            @Override
+                            public String get() {
+                                return getViewModel().getMaxIndex() + "";
+                            }
+
+                            @Override
+                            public void set(String newFilter) {
+                                try {
+                                    int index = Integer.parseInt(newFilter);
+                                    getViewModel().setMaxIndex(index);
+                                } catch (NumberFormatException e) {
+                                    showToast("Invalid Input");
+                                }
+                            }
+                        },
+                        new TextProperty() {
+                            @Override
+                            public int getViewId() {
+                                return R.id.host_filter;
+                            }
+
+                            @Override
+                            public String get() {
+                                return getViewModel().getHost();
+                            }
+
+                            @Override
+                            public void set(String newFilter) {
+                                getViewModel().setHost(newFilter == null ? null : newFilter.toLowerCase());
+                            }
+                        },
+                        new PositionProperty() {
+                            @Override
+                            public int getViewId() {
+                                return R.id.read;
+                            }
+
+                            @Override
+                            public Integer get() {
+                                return getViewModel().getRead();
+                            }
+
+                            @Override
+                            public int[] positionalMapping() {
+                                return new int[]{-1, 1, 0};
+                            }
+
+                            @Override
+                            public void set(Integer value) {
+                                getViewModel().setRead(value);
+                            }
+                        },
+                        new PositionProperty() {
+                            @Override
+                            public int getViewId() {
+                                return R.id.saved;
+                            }
+
+                            @Override
+                            public int[] positionalMapping() {
+                                return new int[]{-1, 1, 0};
+                            }
+
+                            @Override
+                            public Integer get() {
+                                return getViewModel().getSaved();
+                            }
+
+                            @Override
+                            public void set(Integer value) {
+                                getViewModel().setSaved(value);
+                            }
+                        },
+                        new BooleanProperty() {
+                            @Override
+                            public int getViewId() {
+                                return R.id.latest_only;
+                            }
+
+                            @Override
+                            public Boolean get() {
+                                return getViewModel().isLatestOnly();
+                            }
+
+                            @Override
+                            public void set(Boolean newFilter) {
+                                getViewModel().setLatestOnly(newFilter);
+                            }
+                        }
+                };
             }
 
             @Override
@@ -103,16 +210,16 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<DisplayEpisode> list) {
+    List<IFlexible> convertToFlexibles(Collection<DisplayRelease> list) {
         List<IFlexible> items = new ArrayList<>();
-        for (DisplayEpisode episode : list) {
+        for (DisplayRelease episode : list) {
             if (episode == null) {
                 break;
             }
             if (groupByMedium) {
-                items.add(new SectionableUnreadEpisodeItem(episode, this));
+                items.add(new SectionableEpisodeItem(episode, this));
             } else {
-                items.add(new UnreadEpisodeItem(episode, this));
+                items.add(new EpisodeItem(episode, this));
             }
         }
         return items;
@@ -141,10 +248,10 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
 
 
         int mediumId;
-        if (item instanceof UnreadEpisodeItem) {
-            mediumId = ((UnreadEpisodeItem) item).episode.getMediumId();
-        } else if (item instanceof SectionableUnreadEpisodeItem) {
-            mediumId = ((SectionableUnreadEpisodeItem) item).episode.getMediumId();
+        if (item instanceof EpisodeItem) {
+            mediumId = ((EpisodeItem) item).episode.getMediumId();
+        } else if (item instanceof SectionableEpisodeItem) {
+            mediumId = ((SectionableEpisodeItem) item).episode.getMediumId();
         } else {
             return false;
         }
@@ -156,7 +263,7 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
     private void toggleGroupByMedium(MenuItem item) {
         item.setChecked(!item.isChecked());
         this.groupByMedium = item.isChecked();
-        PagedList<DisplayEpisode> list = this.getLivePagedList().getValue();
+        PagedList<DisplayRelease> list = this.getLivePagedList().getValue();
 
         if (list == null) {
             return;
@@ -165,7 +272,7 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
         this.getFlexibleAdapter().updateDataSet(flexibles);
     }
 
-    private void openPopup(ViewHolder holder, DisplayEpisode episode) {
+    private void openPopup(ViewHolder holder, DisplayRelease episode) {
         PopupMenu popupMenu = new PopupMenu(getContext(), holder.optionsButtonView);
 
         if (episode.isSaved()) {
@@ -189,27 +296,17 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
                 .getMenu()
                 .add("Open in Browser")
                 .setOnMenuItemClickListener(item -> {
-                    List<Release> releases = episode.getReleases();
-                    List<String> urls = new ArrayList<>();
-
-                    for (Release release : releases) {
-                        String url = release.getUrl();
-
-                        if (url != null && !url.isEmpty()) {
-                            urls.add(url);
-                        }
-                    }
-                    this.openInBrowser(urls);
+                    this.openInBrowser(episode.getUrl());
                     return true;
                 });
         popupMenu.show();
     }
 
-    private static class SectionableUnreadEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
-        private final DisplayEpisode episode;
-        private final UnreadEpisodeFragment fragment;
+    private static class SectionableEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
+        private final DisplayRelease episode;
+        private final EpisodeFragment fragment;
 
-        SectionableUnreadEpisodeItem(@NonNull DisplayEpisode episode, UnreadEpisodeFragment fragment) {
+        SectionableEpisodeItem(@NonNull DisplayRelease episode, EpisodeFragment fragment) {
             super(new HeaderItem(episode.getMediumTitle(), episode.getMediumId()));
             this.episode = episode;
             this.fragment = fragment;
@@ -221,9 +318,9 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (!(o instanceof SectionableUnreadEpisodeItem)) return false;
+            if (!(o instanceof SectionableEpisodeItem)) return false;
 
-            SectionableUnreadEpisodeItem other = (SectionableUnreadEpisodeItem) o;
+            SectionableEpisodeItem other = (SectionableEpisodeItem) o;
             return this.episode.equals(other.episode);
         }
 
@@ -245,11 +342,9 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
         @SuppressLint("DefaultLocale")
         @Override
         public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            Optional<Release> maxRelease = this.episode.getReleases().stream().max(Comparator.comparing(Release::getReleaseDate));
-
-            holder.metaView.setText(maxRelease.map(release -> release.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss")).orElse("Not available"));
+            holder.metaView.setText(episode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
             holder.novelView.setText(this.episode.getMediumTitle());
-            holder.contentView.setText(maxRelease.map(Release::getTitle).orElse("Not available"));
+            holder.contentView.setText(episode.getTitle());
             holder.optionsButtonView.setOnClickListener(v -> this.fragment.openPopup(holder, episode));
         }
     }
@@ -293,11 +388,11 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
         }
     }
 
-    private static class UnreadEpisodeItem extends AbstractFlexibleItem<ViewHolder> {
-        private final DisplayEpisode episode;
-        private final UnreadEpisodeFragment fragment;
+    private static class EpisodeItem extends AbstractFlexibleItem<ViewHolder> {
+        private final DisplayRelease episode;
+        private final EpisodeFragment fragment;
 
-        UnreadEpisodeItem(@NonNull DisplayEpisode episode, UnreadEpisodeFragment fragment) {
+        EpisodeItem(@NonNull DisplayRelease episode, EpisodeFragment fragment) {
             this.episode = episode;
             this.fragment = fragment;
             this.setDraggable(false);
@@ -308,9 +403,9 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (!(o instanceof SectionableUnreadEpisodeItem)) return false;
+            if (!(o instanceof SectionableEpisodeItem)) return false;
 
-            SectionableUnreadEpisodeItem other = (SectionableUnreadEpisodeItem) o;
+            SectionableEpisodeItem other = (SectionableEpisodeItem) o;
             return this.episode.getEpisodeId() == other.episode.getEpisodeId();
         }
 
@@ -334,18 +429,18 @@ public class UnreadEpisodeFragment extends BaseListFragment<DisplayEpisode, Epis
         public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            Optional<Release> maxRelease = this.episode.getReleases().stream().max(Comparator.comparing(Release::getReleaseDate));
 
-            holder.metaView.setText(maxRelease.map(release -> release.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss")).orElse("Not available"));
-            holder.novelView.setText(episode.getMediumTitle());
+            holder.metaView.setText(episode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
+            holder.novelView.setText(this.episode.getMediumTitle());
 
-            String title = maxRelease.map(Release::getTitle).orElse("Not available");
+            String title = episode.getTitle();
 
             if (episode.getPartialIndex() > 0) {
                 title = String.format("#%d.%d - %s", episode.getTotalIndex(), episode.getPartialIndex(), title);
             } else {
                 title = String.format("#%d - %s", episode.getTotalIndex(), title);
             }
+            title = String.format("%s (%s) ", title, Utils.getDomain(episode.getUrl()));
             holder.contentView.setText(title);
 
             holder.optionsButtonView.setOnClickListener(v -> this.fragment.openPopup(holder, episode));

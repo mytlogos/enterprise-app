@@ -24,7 +24,7 @@ public class Home extends BaseFragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.home, container, false);
 
-        this.addClickListener(view, R.id.chapter, new UnreadEpisodeFragment());
+        this.addClickListener(view, R.id.chapter, new EpisodeFragment());
         this.addClickListener(view, R.id.news, new NewsFragment());
         this.addClickListener(view, R.id.history, new ReadHistoryFragment());
         this.addClickListener(view, R.id.list, new ListsFragment());

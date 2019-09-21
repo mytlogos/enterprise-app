@@ -29,7 +29,6 @@ import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.TimeAgo;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediumItem;
-import com.mytlogos.enterprise.model.MediumType;
 import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.viewmodel.ListsViewModel;
 import com.mytlogos.enterprise.viewmodel.MediumViewModel;
@@ -231,11 +230,6 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
             @SuppressLint("SetTextI18n")
             @Override
             public void onCreateFilter(View view, AlertDialog.Builder builder) {
-                setMediumCheckbox(view, R.id.text_medium, MediumType.TEXT);
-                setMediumCheckbox(view, R.id.audio_medium, MediumType.AUDIO);
-                setMediumCheckbox(view, R.id.video_medium, MediumType.VIDEO);
-                setMediumCheckbox(view, R.id.image_medium, MediumType.IMAGE);
-
                 int minEpisodeFilter = getViewModel().getMinEpisodeFilter();
                 setNumberTextField(view, R.id.text_min_episode, minEpisodeFilter, 0);
 
@@ -249,16 +243,16 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
             }
 
             @Override
-            public FilterProperty[] getSearchFilterProperties() {
-                return new FilterProperty[]{
-                        new FilterProperty() {
+            public Property[] getSearchFilterProperties() {
+                return new Property[]{
+                        new TextProperty() {
                             @Override
-                            public int getSearchViewId() {
+                            public int getViewId() {
                                 return R.id.title_filter;
                             }
 
                             @Override
-                            public int getClearSearchButtonId() {
+                            public int getClearViewId() {
                                 return R.id.clear_title;
                             }
 
@@ -272,14 +266,14 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
                                 getViewModel().setTitleFilter(newFilter);
                             }
                         },
-                        new FilterProperty() {
+                        new TextProperty() {
                             @Override
-                            public int getSearchViewId() {
+                            public int getViewId() {
                                 return R.id.author_filter;
                             }
 
                             @Override
-                            public int getClearSearchButtonId() {
+                            public int getClearViewId() {
                                 return R.id.clear_author;
                             }
 

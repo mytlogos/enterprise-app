@@ -8,11 +8,11 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
 
-import com.mytlogos.enterprise.model.DisplayEpisode;
+import com.mytlogos.enterprise.model.DisplayRelease;
 
 public class EpisodeViewModel extends RepoViewModel implements MediumFilterableViewModel {
 
-    private LiveData<PagedList<DisplayEpisode>> unReadEpisodes;
+    private LiveData<PagedList<DisplayRelease>> episodes;
     private MutableLiveData<Filter> filter = new MutableLiveData<>();
 
     public EpisodeViewModel(@NonNull Application application) {
@@ -20,17 +20,18 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
         filter.setValue(new Filter());
     }
 
-    public LiveData<PagedList<DisplayEpisode>> getUnreadEpisodes() {
-        if (this.unReadEpisodes == null) {
-            this.unReadEpisodes = Transformations.switchMap(filter, input -> {
-                if (input.grouped) {
-                    return repository.getUnReadEpisodesGrouped(input.saved, input.medium);
-                } else {
-                    return repository.getUnReadEpisodes(input.saved, input.medium, -1);
-                }
+    public LiveData<PagedList<DisplayRelease>> getDisplayEpisodes() {
+        if (this.episodes == null) {
+            this.episodes = Transformations.switchMap(filter, input -> {
+                System.out.println("filtering episodes after: " + input);
+//                if (input.grouped) {
+//                    return repository.getDisplayEpisodesGrouped(input.saved, input.medium);
+//                } else {
+                    return repository.getDisplayEpisodes(input.saved, input.medium, input.read, input.minIndex, input.maxIndex, input.latestOnly);
+//                }
             });
         }
-        return this.unReadEpisodes;
+        return this.episodes;
     }
 
     public void setSaved(int saved) {
@@ -45,6 +46,22 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
         this.filter.setValue(new FilterBuilder(this.filter.getValue()).setRead(read).build());
     }
 
+    public void setMinIndex(int minIndex) {
+        this.filter.setValue(new FilterBuilder(this.filter.getValue()).setMinIndex(minIndex).build());
+    }
+
+    public void setMaxIndex(int maxIndex) {
+        this.filter.setValue(new FilterBuilder(this.filter.getValue()).setMaxIndex(maxIndex).build());
+    }
+
+    public void setHost(String host) {
+        this.filter.setValue(new FilterBuilder(this.filter.getValue()).setHost(host).build());
+    }
+
+    public void setLatestOnly(boolean latestOnly) {
+        this.filter.setValue(new FilterBuilder(this.filter.getValue()).setLatestOnly(latestOnly).build());
+    }
+
     @Override
     public void setMediumFilter(int filter) {
         this.filter.setValue(new FilterBuilder(this.filter.getValue()).setMedium(filter).build());
@@ -56,14 +73,33 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
         return value == null ? 0 : value.medium;
     }
 
-    public boolean getSaved() {
+    public int getSaved() {
         Filter value = this.filter.getValue();
-        return value != null && value.saved > 0;
+        return value != null ? value.saved : -1;
     }
 
-    public boolean getRead() {
+    public int getRead() {
         Filter value = this.filter.getValue();
-        return value != null && value.read > 0;
+        return value != null ? value.read : -1;
+    }
+
+    public int getMaxIndex() {
+        Filter value = this.filter.getValue();
+        return value != null ? value.maxIndex : -1;
+    }
+
+    public int getMinIndex() {
+        Filter value = this.filter.getValue();
+        return value != null ? value.minIndex : -1;
+    }
+
+    public String getHost() {
+        Filter value = this.filter.getValue();
+        return value != null ? value.host : null;
+    }
+    public boolean isLatestOnly() {
+        Filter value = this.filter.getValue();
+        return value != null && value.latestOnly;
     }
 
     private static class FilterBuilder {
@@ -71,6 +107,10 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
         private int medium;
         private int saved;
         private int read;
+        private int minIndex;
+        private int maxIndex;
+        private String host;
+        private boolean latestOnly;
 
         private FilterBuilder(Filter filter) {
             if (filter == null) {
@@ -80,6 +120,10 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
             this.saved = filter.saved;
             this.medium = filter.medium;
             this.read = filter.read;
+            this.maxIndex = filter.maxIndex;
+            this.minIndex = filter.minIndex;
+            this.host = filter.host;
+            this.latestOnly = filter.latestOnly;
         }
 
         private FilterBuilder setGrouped(boolean grouped) {
@@ -102,8 +146,28 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
             return this;
         }
 
+        public FilterBuilder setMinIndex(int minIndex) {
+            this.minIndex = minIndex;
+            return this;
+        }
+
+        public FilterBuilder setMaxIndex(int maxIndex) {
+            this.maxIndex = maxIndex;
+            return this;
+        }
+
+        public FilterBuilder setHost(String host) {
+            this.host = host;
+            return this;
+        }
+
+        public FilterBuilder setLatestOnly(boolean latestOnly) {
+            this.latestOnly = latestOnly;
+            return this;
+        }
+
         private Filter build() {
-            return new Filter(this.grouped, this.medium, this.saved, this.read);
+            return new Filter(this.grouped, this.medium, this.saved, this.read, this.minIndex, this.maxIndex, this.host, this.latestOnly);
         }
     }
 
@@ -113,16 +177,38 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
         private final int medium;
         private final int saved;
         private final int read;
+        private final int minIndex;
+        private final int maxIndex;
+        private final String host;
+        private final boolean latestOnly;
 
-        private Filter(boolean grouped, int medium, int saved, int read) {
+        private Filter(boolean grouped, int medium, int saved, int read, int minIndex, int maxIndex, String host, boolean latestOnly) {
             this.grouped = grouped;
             this.medium = medium;
             this.saved = saved > 0 ? 1 : saved;
             this.read = read > 0 ? 1 : read;
+            this.minIndex = minIndex;
+            this.maxIndex = maxIndex;
+            this.host = host;
+            this.latestOnly = latestOnly;
         }
 
         private Filter() {
-            this(false, 0, -1, -1);
+            this(false, 0, -1, -1, -1, -1, null, false);
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return "Filter{" +
+                    "grouped=" + grouped +
+                    ", medium=" + medium +
+                    ", saved=" + saved +
+                    ", read=" + read +
+                    ", minIndex=" + minIndex +
+                    ", maxIndex=" + maxIndex +
+                    ", host='" + host + '\'' +
+                    '}';
         }
     }
 

@@ -3,6 +3,8 @@ package com.mytlogos.enterprise.ui;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -136,43 +138,114 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
         return fragmentRoot;
     }
 
+    private void setSearchViewFilter(SearchView searchView, TextProperty textProperty, View clearView) {
+        String filter = textProperty.get();
+
+        searchView.setQuery(filter, false);
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                textProperty.set(newText);
+                return false;
+            }
+        });
+
+        if (clearView != null) {
+            clearView.setOnClickListener(v -> searchView.setQuery("", true));
+        }
+    }
+
+    private void setSpinner(Spinner spinner, PositionProperty property) {
+        Integer value = property.get();
+        int[] values = property.positionalMapping();
+        int selected = 0;
+        for (int index = 0, valuesLength = values.length; index < valuesLength; index++) {
+            int i = values[index];
+            if (i == value) {
+                selected = index;
+            }
+        }
+        spinner.setSelection(selected);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                property.set(values[position]);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+    }
+
+    private void setEditText(EditText editText, TextProperty property) {
+        editText.setText(property.get());
+        editText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                property.set(s.toString());
+            }
+        });
+    }
+
+    private void setCheckbox(CheckBox checkBox, BooleanProperty property) {
+        checkBox.setChecked(property.get());
+        checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> property.set(isChecked));
+    }
+
     private void openFilter() {
         LayoutInflater inflater = this.getLayoutInflater();
         @SuppressLint("InflateParams")
         View view = inflater.inflate(this.filterable.getFilterLayout(), null);
 
         if (this.filterable.getSearchFilterProperties() != null) {
+            for (Property property : this.filterable.getSearchFilterProperties()) {
+                View filterView = view.findViewById(property.getViewId());
 
-            for (FilterProperty filterProperty : this.filterable.getSearchFilterProperties()) {
-                SearchView searchView = view.findViewById(filterProperty.getSearchViewId());
-
-                String filter = filterProperty.get();
-                searchView.setQuery(filter, false);
-
-                searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-                    @Override
-                    public boolean onQueryTextSubmit(String query) {
-                        return false;
-                    }
-
-                    @Override
-                    public boolean onQueryTextChange(String newText) {
-                        filterProperty.set(newText);
-                        return false;
-                    }
-                });
-
-                int clearSearchButtonId = filterProperty.getClearSearchButtonId();
+                int clearSearchButtonId = property.getClearViewId();
+                ImageButton clearTitleButton = null;
 
                 if (clearSearchButtonId != View.NO_ID) {
-                    ImageButton clearTitleButton = view.findViewById(clearSearchButtonId);
-                    clearTitleButton.setOnClickListener(v -> searchView.setQuery("", true));
+                    clearTitleButton = view.findViewById(clearSearchButtonId);
+                }
+
+                if (filterView instanceof SearchView) {
+                    SearchView searchView = (SearchView) filterView;
+                    this.setSearchViewFilter(searchView, (TextProperty) property, clearTitleButton);
+                } else if (filterView instanceof Spinner) {
+                    this.setSpinner(((Spinner) filterView), (PositionProperty) property);
+                } else if (filterView instanceof EditText) {
+                    this.setEditText(((EditText) filterView), (TextProperty) property);
+                } else if (filterView instanceof CheckBox) {
+                    this.setCheckbox(((CheckBox) filterView), (BooleanProperty) property);
                 }
             }
         }
         AlertDialog.Builder builder = new AlertDialog
                 .Builder(this.getMainActivity())
                 .setView(view);
+
+        setMediumCheckbox(view, R.id.text_medium, MediumType.TEXT);
+        setMediumCheckbox(view, R.id.audio_medium, MediumType.AUDIO);
+        setMediumCheckbox(view, R.id.video_medium, MediumType.VIDEO);
+        setMediumCheckbox(view, R.id.image_medium, MediumType.IMAGE);
 
         this.filterable.onCreateFilter(view, builder);
         builder
@@ -329,7 +402,10 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
     }
 
     interface Filterable {
-        void onCreateFilter(View view, AlertDialog.Builder builder);
+
+        default void onCreateFilter(View view, AlertDialog.Builder builder) {
+
+        }
 
         int getFilterLayout();
 
@@ -337,21 +413,36 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
 
         }
 
-        default FilterProperty[] getSearchFilterProperties() {
-            return new FilterProperty[0];
+        default Property[] getSearchFilterProperties() {
+            return new Property[0];
         }
     }
 
-    interface FilterProperty {
+    interface Property<E> {
         @IdRes
-        int getSearchViewId();
+        int getViewId();
 
         @IdRes
-        int getClearSearchButtonId();
+        default int getClearViewId() {
+            return View.NO_ID;
+        }
 
-        String get();
+        E get();
 
-        void set(String newFilter);
+        void set(E newFilter);
+    }
+
+
+    interface TextProperty extends Property<String> {
+
+    }
+
+    interface BooleanProperty extends Property<Boolean> {
+
+    }
+
+    interface PositionProperty extends Property<Integer> {
+        int[] positionalMapping();
     }
 
     @Nullable
@@ -405,7 +496,7 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
         return values;
     }
 
-    public <E> void setStringSpinner(View view, @IdRes int resId, LinkedHashMap<String, E> valueMap, Consumer<E> consumer) {
+    <E> void setStringSpinner(View view, @IdRes int resId, LinkedHashMap<String, E> valueMap, Consumer<E> consumer) {
         String[] items = valueMap.keySet().toArray(new String[0]);
 
         Spinner readSpinner = view.findViewById(resId);
@@ -425,7 +516,6 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
 
             }
         });
-
     }
 
     LinkedHashMap<String, Sortings> getSortMap() {
@@ -455,15 +545,25 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
         builder.create().show();
     }
 
-    void setMediumCheckbox(View view, @IdRes int boxId, int type) {
+    private void setMediumCheckbox(View view, @IdRes int boxId, @MediumType.Medium int type) {
         ViewModel model = getViewModel();
         if (!(model instanceof MediumFilterableViewModel)) {
-            throw new IllegalStateException("ViewModel not instance of MediumFilterableViewModel");
+            return;
         }
         MediumFilterableViewModel filterableViewModel = (MediumFilterableViewModel) model;
         int medium = filterableViewModel.getMediumFilter();
 
         CheckBox box = view.findViewById(boxId);
+
+        if (box == null) {
+            throw new IllegalStateException(String.format(
+                    "%s extends %s,expected a filter checkbox with id: %d",
+                    model.getClass().getSimpleName(),
+                    MediumFilterableViewModel.class.getCanonicalName(),
+                    boxId
+            ));
+        }
+
         box.setChecked(MediumType.is(medium, type));
         box.setOnCheckedChangeListener((buttonView, isChecked) -> {
             int filter = filterableViewModel.getMediumFilter();

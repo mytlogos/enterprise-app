@@ -32,6 +32,7 @@ import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.background.room.RoomStorage;
 import com.mytlogos.enterprise.model.DisplayEpisode;
+import com.mytlogos.enterprise.model.DisplayRelease;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalUser;
 import com.mytlogos.enterprise.model.FailedEpisode;
@@ -572,13 +573,13 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public LiveData<PagedList<DisplayEpisode>> getUnReadEpisodes(int saved, int medium, int read) {
-        return this.storage.getUnreadEpisodes(saved, medium, read);
+    public LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(int saved, int medium, int read, int minIndex, int maxIndex, boolean latestOnly) {
+        return this.storage.getDisplayEpisodes(saved, medium, read, minIndex, maxIndex, latestOnly);
     }
 
     @Override
-    public LiveData<PagedList<DisplayEpisode>> getUnReadEpisodesGrouped(int saved, int medium) {
-        return this.storage.getUnreadEpisodesGrouped(saved, medium);
+    public LiveData<PagedList<DisplayEpisode>> getDisplayEpisodesGrouped(int saved, int medium) {
+        return this.storage.getDisplayEpisodesGrouped(saved, medium);
     }
 
     @Override

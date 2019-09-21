@@ -9,4 +9,16 @@
         <item>reply</item>
         <item>reply_all</item>
     </string-array>
+
+    <string-array name="saved_filter">
+        <item>Ignore Saved Status</item>
+        <item>Saved Only</item>
+        <item>Unsaved Only</item>
+    </string-array>
+
+    <string-array name="read_filter">
+        <item>Ignore Read Status</item>
+        <item>Read Only</item>
+        <item>Unread Only</item>
+    </string-array>
 </resources>
