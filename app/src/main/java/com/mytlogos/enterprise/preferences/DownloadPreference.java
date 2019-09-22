@@ -7,8 +7,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-import static com.mytlogos.enterprise.preferences.UserPreferences.IGNORE_INT_VALUE;
-
 public class DownloadPreference extends BasePreference {
     private final Map<String, Set<BiConsumer<Integer, Integer>>> map = new HashMap<>();
 

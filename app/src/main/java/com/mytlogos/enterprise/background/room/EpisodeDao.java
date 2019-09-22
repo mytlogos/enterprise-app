@@ -72,10 +72,10 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "WHEN 8 THEN 3 " +
             "ELSE 5 " +
             "END, " +
-            "RoomEpisode.combiIndex LIMIT 50) " +
+            "RoomEpisode.combiIndex LIMIT CASE WHEN :limit < 0 THEN 0 ELSE :limit END) " +
             "as RoomEpisode " +
             "WHERE saved = 0")
-    List<Integer> getDownloadableEpisodes(Integer mediumId);
+    List<Integer> getDownloadableEpisodes(Integer mediumId, int limit);
 
     @Query("SELECT RoomEpisode.episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +

@@ -4,6 +4,7 @@ import android.content.SharedPreferences;
 
 class BasePreference {
     final SharedPreferences preferences;
+    public static int IGNORE_INT_VALUE = -1;
 
     BasePreference(SharedPreferences preferences) {
         this.preferences = preferences;

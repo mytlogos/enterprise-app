@@ -381,6 +381,18 @@ public class ImageContentTool extends ContentTool {
         return size;
     }
 
+    @Override
+    public double getAverageEpisodeSize(int mediumId) {
+        String itemPath = this.getItemPath(mediumId);
+        double sum = 0;
+
+        File[] files = new File(itemPath).listFiles();
+        for (File file : files) {
+            sum += file.length();
+        }
+        return files.length == 0 ? 0 : sum / files.length;
+    }
+
     public Map<Integer, Set<ChapterPage>> getEpisodePagePaths(String mediumDir) {
         File file = new File(mediumDir);
 

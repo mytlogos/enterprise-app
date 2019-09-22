@@ -9,7 +9,6 @@ public class UserPreferences {
     private static String LOGGED_STATUS = "user_login_status";
     private static String LOGGED_USER = "user_login_uuid";
     private SharedPreferences sharedPreferences;
-    public static int IGNORE_INT_VALUE = -1;
 
     private UserPreferences(Context context) {
         if (INSTANCE != null) {
@@ -25,7 +24,7 @@ public class UserPreferences {
         return INSTANCE;
     }
 
-    public DownloadPreference getDownloadPrefrence() {
+    public DownloadPreference getDownloadPreference() {
         return new DownloadPreference(this.sharedPreferences);
     }
 

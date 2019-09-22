@@ -129,7 +129,7 @@ public interface Repository {
 
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediaIds);
 
-    List<Integer> getDownloadableEpisodes(Integer mediumId);
+    List<Integer> getDownloadableEpisodes(Integer mediumId, int limit);
 
     LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(int saved, int medium, int read, int minIndex, int maxIndex, boolean latestOnly);
 
