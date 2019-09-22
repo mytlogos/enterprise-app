@@ -243,8 +243,8 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public List<Integer> getDownloadableEpisodes(Integer mediumId) {
-        return this.episodeDao.getDownloadableEpisodes(mediumId);
+    public List<Integer> getDownloadableEpisodes(Integer mediumId, int limit) {
+        return this.episodeDao.getDownloadableEpisodes(mediumId, limit);
     }
 
     @Override

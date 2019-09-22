@@ -24,12 +24,14 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.mytlogos.enterprise.background.RepositoryImpl;
-import com.mytlogos.enterprise.background.UserPreferences;
+import com.mytlogos.enterprise.preferences.UserPreferences;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.service.BootReceiver;
 import com.mytlogos.enterprise.service.DownloadWorker;
@@ -45,7 +47,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements
-        NavigationView.OnNavigationItemSelectedListener {
+        NavigationView.OnNavigationItemSelectedListener, PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
 
     private final SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener = this::handlePreferences;
     private UserViewModel viewModel;
@@ -229,7 +231,7 @@ public class MainActivity extends AppCompatActivity implements
 
         switch (item.getItemId()) {
             case R.id.action_settings:
-                activityClass = SettingsActivity.class;
+                activityClass = SettingsFragment.class;
                 selected = true;
                 break;
             case R.id.logout:
@@ -316,7 +318,7 @@ public class MainActivity extends AppCompatActivity implements
                 activityClass = AddListActivity.class;
                 break;
             case R.id.settings:
-                activityClass = SettingsActivity.class;
+                activityClass = SettingsFragment.class;
                 break;
         }
         boolean selected = false;
@@ -394,5 +396,17 @@ public class MainActivity extends AppCompatActivity implements
 
             }
         }
+    }
+
+    @Override
+    public boolean onPreferenceStartFragment(PreferenceFragmentCompat caller, Preference pref) {
+        // Instantiate the new Fragment
+        final Bundle args = pref.getExtras();
+        final Fragment fragment = getSupportFragmentManager().getFragmentFactory().instantiate(
+                getClassLoader(),
+                pref.getFragment());
+        fragment.setTargetFragment(caller, 0);
+        switchWindow(fragment, args, true);
+        return true;
     }
 }

@@ -80,4 +80,9 @@ public class AudioContentTool extends ContentTool {
     public long getEpisodeSize(File value, int episodeId) {
         throw new IllegalStateException("Not yet implemented");
     }
+
+    @Override
+    public double getAverageEpisodeSize(int mediumId) {
+        throw new IllegalStateException("Not yet implemented");
+    }
 }

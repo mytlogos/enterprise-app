@@ -263,4 +263,6 @@ public abstract class ContentTool {
     public long getEpisodeSize(File value, int episodeId, Map<Integer, String> episodePaths) {
         return this.getEpisodeSize(value, episodeId);
     }
+
+    public abstract double getAverageEpisodeSize(int mediumId);
 }

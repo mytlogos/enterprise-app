@@ -258,6 +258,36 @@ public class TextContentTool extends ContentTool {
     }
 
     @Override
+    public double getAverageEpisodeSize(int mediumId) {
+        String path = this.getItemPath(mediumId);
+        if (path == null || path.isEmpty()) {
+            return 0;
+        }
+        try (ZipFile file = new ZipFile(path)) {
+            if (episodePaths == null) {
+                episodePaths = this.getEpisodePaths(path);
+            }
+            double sum = 0;
+            Collection<String> values = episodePaths.values();
+            for (String entryName : values) {
+                if (entryName == null) {
+                    continue;
+                }
+                ZipEntry entry = file.getEntry(entryName);
+
+                if (entry == null) {
+                    continue;
+                }
+                sum += entry.getCompressedSize();
+            }
+            return values.isEmpty() ? 0 : sum / values.size();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    @Override
     public long getEpisodeSize(File value, int episodeId) {
         try (ZipFile file = new ZipFile(value)) {
 

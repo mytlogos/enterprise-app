@@ -30,6 +30,8 @@ import com.mytlogos.enterprise.model.NotificationItem;
 import com.mytlogos.enterprise.model.SimpleEpisode;
 import com.mytlogos.enterprise.model.SimpleMedium;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.preferences.DownloadPreference;
+import com.mytlogos.enterprise.preferences.UserPreferences;
 import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.NotEnoughSpaceException;
@@ -39,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -187,6 +190,10 @@ public class DownloadWorker extends Worker {
                     cleanUp();
                     return Result.failure();
                 }
+                notificationManager.notify(
+                        downloadNotificationId,
+                        builder.setContentTitle("Getting Data for Download").build()
+                );
                 if (this.getInputData().equals(Data.EMPTY)) {
                     this.download(repository);
                 } else {
@@ -204,6 +211,35 @@ public class DownloadWorker extends Worker {
         }
         cleanUp();
         return Result.success();
+    }
+
+    private void filterMediumConstraints(MediumDownload mediumDownload) {
+        DownloadPreference downloadPreference = UserPreferences.get(this.getApplicationContext()).getDownloadPreference();
+        int type = mediumDownload.mediumType;
+        int sizeLimitMB = downloadPreference.getDownloadLimitSize(type);
+        int id = mediumDownload.id;
+        sizeLimitMB = Math.min(sizeLimitMB, downloadPreference.getMediumDownloadLimitSize(id));
+
+        double maxSize = sizeLimitMB * 1024D * 1024D;
+
+        for (ContentTool tool : this.contentTools) {
+            if (MediumType.is(type, tool.getMedium())) {
+                double averageEpisodeSize = tool.getAverageEpisodeSize(id);
+                String path = tool.getItemPath(id);
+                int size = tool.getEpisodePaths(path).keySet().size();
+
+                double totalSize = averageEpisodeSize * size;
+
+                for (Iterator<Integer> iterator = mediumDownload.toDownloadEpisodes.iterator(); iterator.hasNext(); ) {
+                    totalSize += averageEpisodeSize;
+
+                    if (totalSize > maxSize) {
+                        iterator.remove();
+                    }
+                }
+                break;
+            }
+        }
     }
 
     private void download(Repository repository) {
@@ -234,6 +270,7 @@ public class DownloadWorker extends Worker {
 
         Set<MediumDownload> mediumDownloads = new HashSet<>();
         int downloadCount = 0;
+        DownloadPreference downloadPreference = UserPreferences.get(this.getApplicationContext()).getDownloadPreference();
 
         for (Integer mediumId : toDownloadMedia) {
             // TODO: 26.07.2019 check whether the episodes are downloaded in the correct order
@@ -243,7 +280,8 @@ public class DownloadWorker extends Worker {
             }
             SimpleMedium medium = repository.getSimpleMedium(mediumId);
 
-            List<Integer> episodeIds = repository.getDownloadableEpisodes(mediumId);
+            int count = downloadPreference.getDownloadLimitCount(medium.getMedium());
+            List<Integer> episodeIds = repository.getDownloadableEpisodes(mediumId, count);
             Set<Integer> uniqueEpisodes = new HashSet<>(episodeIds);
 
             if (uniqueEpisodes.isEmpty()) {
@@ -259,16 +297,20 @@ public class DownloadWorker extends Worker {
                 uniqueEpisodes.remove(failedEpisode.getEpisodeId());
             }
 
-            if (uniqueEpisodes.isEmpty()) {
-                continue;
-            }
-
-            mediumDownloads.add(new MediumDownload(
+            MediumDownload download = new MediumDownload(
                     uniqueEpisodes,
                     mediumId,
                     medium.getMedium(),
                     medium.getTitle()
-            ));
+            );
+
+            this.filterMediumConstraints(download);
+
+            if (download.toDownloadEpisodes.isEmpty()) {
+                continue;
+            }
+
+            mediumDownloads.add(download);
             downloadCount += uniqueEpisodes.size();
         }
         if (!mediumDownloads.isEmpty()) {

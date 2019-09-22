@@ -568,8 +568,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public List<Integer> getDownloadableEpisodes(Integer mediumId) {
-        return this.storage.getDownloadableEpisodes(mediumId);
+    public List<Integer> getDownloadableEpisodes(Integer mediumId, int limit) {
+        return this.storage.getDownloadableEpisodes(mediumId, limit);
     }
 
     @Override

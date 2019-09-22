@@ -80,7 +80,7 @@ public interface DatabaseStorage {
 
     LiveData<List<Integer>> getLiveExternalListItems(Integer externalListId);
 
-    List<Integer> getDownloadableEpisodes(Integer mediumId);
+    List<Integer> getDownloadableEpisodes(Integer mediumId, int limit);
 
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediumId);
 

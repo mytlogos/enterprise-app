@@ -39,7 +39,7 @@
             android:name=".AddListActivity"
             android:parentActivityName=".MainActivity" />
         <activity
-            android:name=".SettingsActivity"
+            android:name=".SettingsFragment"
             android:label="@string/title_activity_settings"
             android:parentActivityName=".MainActivity" />
         <activity

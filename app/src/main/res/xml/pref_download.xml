@@ -5,4 +5,77 @@
         android:key="enable_download"
         android:summary="@string/enable_download_summary"
         android:title="@string/enable_download" />
+
+    <PreferenceCategory
+        android:title="Text Medium Limits"
+        android:dependency="enable_download">
+
+        <EditTextPreference
+            android:defaultValue="100"
+            android:inputType="numberDecimal|numberSigned"
+            android:title="Text Download Count Limit"
+            android:summary="How Many Text Episodes should be downloaded for each Medium"
+            android:key="download-medium-1-count"/>
+
+        <EditTextPreference
+            android:defaultValue="-1"
+            android:inputType="numberDecimal|numberSigned"
+            android:title="Text Download Space Limit"
+            android:summary="How much Space Text Episodes for each Medium should use up (MB). Negative Values means no limit"
+            android:key="download-medium-1-space"/>
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="Image Medium Limits"
+        android:dependency="enable_download">
+
+        <EditTextPreference
+            android:defaultValue="10"
+            android:inputType="numberDecimal|numberSigned"
+            android:title="Image Download Count Limit"
+            android:summary="How Many Image Episodes should be downloaded for each Medium"
+            android:key="download-medium-8-count"/>
+
+        <EditTextPreference
+            android:defaultValue="-1"
+            android:inputType="numberDecimal|numberSigned"
+            android:title="Image Download Space Limit"
+            android:summary="How much Space Image Episodes for each Medium should use up (MB). Negative Values means no limit"
+            android:key="download-medium-8-space"/>
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="Video Medium Limits"
+        android:dependency="enable_download">
+
+        <EditTextPreference
+            android:defaultValue="5"
+            android:inputType="numberDecimal|numberSigned"
+            android:title="Video Download Count Limit"
+            android:summary="How Many Video Episodes should be downloaded for each Medium"
+            android:key="download-medium-4-count"/>
+
+        <EditTextPreference
+            android:defaultValue="-1"
+            android:inputType="numberDecimal|numberSigned"
+            android:title="Video Download Space Limit"
+            android:summary="How much Space Video Episodes for each Medium should use up (MB). Negative Values means no limit"
+            android:key="download-medium-4-space"/>
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="Audio Medium Limits"
+        android:dependency="enable_download">
+
+        <EditTextPreference
+            android:defaultValue="20"
+            android:inputType="numberDecimal|numberSigned"
+            android:title="Audio Download Count Limit"
+            android:summary="How Many Audio Episodes should be downloaded for each Medium"
+            android:key="download-medium-2-count"/>
+
+        <EditTextPreference
+            android:defaultValue="-1"
+            android:title="Audio Download Space Limit"
+            android:inputType="numberDecimal|numberSigned"
+            android:summary="How much Space Audio Episodes for each Medium should use up (MB). Negative Values means no limit"
+            android:key="download-medium-2-space"/>
+    </PreferenceCategory>
 </PreferenceScreen>

@@ -18,6 +18,9 @@ interface BasicApi {
     @GET
     Call<ClientSimpleUser> checkLogin(@Url String url);
 
+    @GET("{start}/dev")
+    Call<Boolean> checkDev(@Path(value = "start", encoded = true) String url);
+
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/login")
     Call<ClientUser> login(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);

@@ -1,5 +1,10 @@
 package com.mytlogos.enterprise.background.api;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import org.joda.time.DateTime;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -16,6 +21,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import okhttp3.OkHttpClient;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 class ServerDiscovery {
 
@@ -77,36 +87,26 @@ class ServerDiscovery {
         if (!server.isReachable()) {
             return null;
         }
-        // it is unknown if any tcp discovered server are dev or not, assume for now they are
-        try (DatagramSocket c = new DatagramSocket()) {
-            byte[] sendData = "DISCOVER_SERVER_REQUEST_ENTERPRISE".getBytes();
+        try {
+            Gson gson = new GsonBuilder()
+                    .registerTypeHierarchyAdapter(DateTime.class, new GsonAdapter.DateTimeAdapter())
+                    .create();
+            OkHttpClient client = new OkHttpClient
+                    .Builder()
+                    .readTimeout(20, TimeUnit.SECONDS)
+                    .build();
 
-            int udpServerPort = 3001;
-            //Try the some 'normal' ip addresses first
-            try {
-                this.sendUDPPacket(c, sendData, udpServerPort, InetAddress.getByName(ipv4));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            Retrofit retrofit = new Retrofit.Builder()
+                    .baseUrl(server.getAddress())
+                    .client(client)
+                    .addConverterFactory(GsonConverterFactory.create(gson))
+                    .build();
 
-            //Wait for a response
-            byte[] recvBuf = new byte[15000];
+            BasicApi apiImpl = retrofit.create(BasicApi.class);
+            Response<Boolean> devResponse = apiImpl.checkDev("api").execute();
 
-            DatagramPacket receivePacket = new DatagramPacket(recvBuf, recvBuf.length);
-            c.receive(receivePacket);
-
-            //Check if the message is correct
-            String message = new String(receivePacket.getData()).trim();
-
-            // the weird thing is if the message is over 34 bytes long
-            // e.g. 'DISCOVER_SERVER_RESPONSE_ENTERPRISE' the last character will be cut off
-            // either the node server does not send correctly
-            // or java client does not receive correctly
-            if ("ENTERPRISE_DEV".equals(message)) {
-                return server;
-            } else if ("ENTERPRISE_PROD".equals(message)) {
-                return new Server(ipv4, 3000, true, false);
-            }
+            boolean isDev = devResponse.body() != null && devResponse.body();
+            return new Server(ipv4, 3000, true, isDev);
         } catch (IOException ex) {
             ex.printStackTrace();
         }

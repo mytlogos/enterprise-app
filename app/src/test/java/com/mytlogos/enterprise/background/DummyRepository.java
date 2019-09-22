@@ -261,7 +261,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public List<Integer> getDownloadableEpisodes(Integer mediumId) {
+    public List<Integer> getDownloadableEpisodes(Integer mediumId, int limit) {
         return null;
     }
 
