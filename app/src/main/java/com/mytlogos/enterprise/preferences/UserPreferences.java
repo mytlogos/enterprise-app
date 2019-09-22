@@ -9,6 +9,7 @@ public class UserPreferences {
     private static String LOGGED_STATUS = "user_login_status";
     private static String LOGGED_USER = "user_login_uuid";
     private SharedPreferences sharedPreferences;
+    public static int IGNORE_INT_VALUE = -1;
 
     private UserPreferences(Context context) {
         if (INSTANCE != null) {
@@ -17,29 +18,33 @@ public class UserPreferences {
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
     }
 
-    public static UserPreferences getInstance(Context context) {
+    public static UserPreferences get(Context context) {
         if (INSTANCE == null) {
             INSTANCE = new UserPreferences(context);
         }
         return INSTANCE;
     }
 
+    public DownloadPreference getDownloadPrefrence() {
+        return new DownloadPreference(this.sharedPreferences);
+    }
+
     public static boolean getLoggedStatus(Context context) {
-        return UserPreferences.getInstance(context).sharedPreferences.getBoolean(LOGGED_STATUS, false);
+        return UserPreferences.get(context).sharedPreferences.getBoolean(LOGGED_STATUS, false);
     }
 
     public static String getLoggedUuid(Context context) {
-        return UserPreferences.getInstance(context).sharedPreferences.getString(LOGGED_USER, null);
+        return UserPreferences.get(context).sharedPreferences.getString(LOGGED_USER, null);
     }
 
     public static void putLoggedStatus(Context context, boolean loggedIn) {
-        SharedPreferences.Editor editor = UserPreferences.getInstance(context).sharedPreferences.edit();
+        SharedPreferences.Editor editor = UserPreferences.get(context).sharedPreferences.edit();
         editor.putBoolean(LOGGED_STATUS, loggedIn);
         editor.apply();
     }
 
     public static void putLoggedUuid(Context context, String uuid) {
-        SharedPreferences.Editor editor = UserPreferences.getInstance(context).sharedPreferences.edit();
+        SharedPreferences.Editor editor = UserPreferences.get(context).sharedPreferences.edit();
         editor.putString(LOGGED_USER, uuid);
         editor.apply();
     }

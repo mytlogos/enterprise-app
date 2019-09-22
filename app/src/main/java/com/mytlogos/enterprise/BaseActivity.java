@@ -81,7 +81,7 @@ public abstract class BaseActivity extends AppCompatActivity implements Navigati
                 activityClass = AddListActivity.class;
                 break;
             case R.id.settings:
-                activityClass = SettingsActivity.class;
+                fragment = new SettingsFragment();
                 break;
         }
         boolean selected = false;

@@ -14,7 +14,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.mytlogos.enterprise.MainActivity;
 import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.SettingsActivity;
+import com.mytlogos.enterprise.SettingsFragment;
 import com.mytlogos.enterprise.viewmodel.UserViewModel;
 
 public class Home extends BaseFragment {
@@ -33,7 +33,7 @@ public class Home extends BaseFragment {
         this.addClickListener(view, R.id.statistics, new Statistics());
         this.addClickListener(view, R.id.notifications, new NotificationFragment());
         this.addClickListener(view, R.id.external_user, new ExternalUserListFragment());
-        this.addClickListener(view, R.id.settings, SettingsActivity.class);
+        this.addClickListener(view, R.id.settings, new SettingsFragment());
         this.addClickListener(view, R.id.logout, MainActivity::logout);
 
         UserViewModel viewModel = new ViewModelProvider(this).get(UserViewModel.class);
