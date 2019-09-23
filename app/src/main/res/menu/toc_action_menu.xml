@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/select_between"
+        android:icon="@drawable/ic_library_add_bright"
+        android:title="@string/select_all_between"
+        app:showAsAction="ifRoom|collapseActionView" />
+
+    <item
+        android:id="@+id/clear"
+        android:icon="@drawable/ic_close_bright"
+        android:title="@string/select_all_between"
+        app:showAsAction="ifRoom|collapseActionView" />
+
+</menu>

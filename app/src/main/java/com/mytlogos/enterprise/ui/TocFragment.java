@@ -82,6 +82,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
                 return false;
             }
             getLayoutInflater().inflate(R.layout.bottom_navigation, this.relativeLayout);
+            mode.getMenuInflater().inflate(R.menu.toc_action_menu, menu);
             this.navigationView = this.relativeLayout.findViewById(R.id.navigation);
             this.navigationView.inflateMenu(R.menu.toc_menu);
             this.navigationView.setItemIconTintList(new ColorStateList(
@@ -131,6 +132,47 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
 
         @Override
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            FlexibleAdapter<IFlexible> adapter = getFlexibleAdapter();
+            switch (item.getItemId()) {
+                case R.id.clear:
+                    adapter.clearSelection();
+                    return true;
+                case R.id.select_between:
+                    List<Integer> positions = adapter.getSelectedPositions();
+                    int highest = -1;
+                    int lowest = Integer.MAX_VALUE;
+
+                    if (positions.isEmpty()) {
+                        return true;
+                    }
+                    for (Integer position : positions) {
+                        highest = Math.max(position, highest);
+                        lowest = Math.min(position, lowest);
+                    }
+                    if (highest < 0) {
+                        System.err.println("A selected positions which are not positive");
+                        return true;
+                    }
+                    List<IFlexible> items = adapter.getCurrentItems();
+                    List<FlexibleViewHolder> holders = new ArrayList<>(adapter.getAllBoundViewHolders());
+
+                    for (int i = lowest; i <= highest && i < items.size(); i++) {
+                        if (!adapter.isSelected(i)) {
+                            adapter.toggleSelection(i);
+                            // hacky fix as adapter.toggleSelection alone
+                            // does not show animation and state visibly (no change seen)
+                            for (FlexibleViewHolder holder : holders) {
+                                int position = holder.getFlexibleAdapterPosition();
+
+                                if (position == i) {
+                                    holder.toggleActivation();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    return true;
+            }
             return false;
         }
 
