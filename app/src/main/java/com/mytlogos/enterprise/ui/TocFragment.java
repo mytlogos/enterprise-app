@@ -189,6 +189,25 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     }
 
     @Override
+    int getPosition(String text) {
+        int position = super.getPosition(text);
+        LiveData<PagedList<TocEpisode>> list = this.getLivePagedList();
+        PagedList<TocEpisode> value = list.getValue();
+
+        if (value == null || position < 0) {
+            return position;
+        }
+        Sortings sort = getViewModel().getSort();
+        if (sort == Sortings.INDEX_DESC) {
+            position = value.size() - position;
+        } else if (sort != Sortings.INDEX_ASC) {
+            showToast("Unknown Sort");
+            position = -1;
+        }
+        return position;
+    }
+
+    @Override
     Class<TocEpisodeViewModel> getViewModelClass() {
         return TocEpisodeViewModel.class;
     }

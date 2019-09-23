@@ -33,6 +33,11 @@ public class TocEpisodeViewModel extends FilterableViewModel implements Sortable
         this.sortFilterLiveData.setValue(new Builder(value).setSortings(sort).createSortFilter());
     }
 
+    public Sortings getSort() {
+        SortFilter value = this.sortFilterLiveData.getValue();
+        return value == null ? Sortings.INDEX_DESC : value.sortings;
+    }
+
     public void setReadFilter(byte readFilter) {
         SortFilter value = this.sortFilterLiveData.getValue();
         this.sortFilterLiveData.setValue(new Builder(value).setRead(readFilter).createSortFilter());
@@ -120,7 +125,7 @@ public class TocEpisodeViewModel extends FilterableViewModel implements Sortable
                 repository.downloadAll(mediumId, this.getApplication());
                 break;
             case CURRENT:
-                repository.downloadSingle(episodeId, mediumId,this.getApplication() );
+                repository.downloadSingle(episodeId, mediumId, this.getApplication());
                 break;
             case CURRENT_AND_ONWARDS:
                 repository.downloadHigherIndex(combiIndex, mediumId, this.getApplication());

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -64,6 +65,7 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
     private View listContainer;
     private ViewGroup fragmentRoot;
     private Filterable filterable;
+    private int scrollToWhenLoaded = -1;
     private PagedList.Callback callback = new PagedList.Callback() {
         @Override
         public void onChanged(int position, int count) {
@@ -71,12 +73,14 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
             if (pagedList == null) {
                 return;
             }
-            List<Value> values = pagedList.subList(position, position + count);
-            List<IFlexible> newItems = convertToFlexible(values);
+            BaseListFragment<Value, ViewModel> fragment = BaseListFragment.this;
 
-            FlexibleAdapter<IFlexible> adapter = getFlexibleAdapter();
+            List<Value> values = pagedList.subList(position, position + count);
+            List<IFlexible> newItems = fragment.convertToFlexible(values);
+
+            FlexibleAdapter<IFlexible> adapter = fragment.getFlexibleAdapter();
             newItems.removeAll(adapter.getCurrentItems());
-            BaseListFragment.this.flexibleAdapter.onLoadMoreComplete(newItems);
+            adapter.onLoadMoreComplete(newItems);
 
             int previouslyUnloaded = 0;
             for (int i = 0; i < position; i++) {
@@ -94,6 +98,17 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
                 if (!flexible.equals(newFlexible)) {
                     int oldIndex = currentItems.indexOf(newFlexible);
                     adapter.moveItem(oldIndex, currentIndex);
+                }
+            }
+
+            int scrollTo = fragment.scrollToWhenLoaded;
+
+            if (scrollTo >= 0) {
+                if (pagedList.get(scrollTo) != null) {
+                    fragment.scrollToWhenLoaded = -1;
+                    adapter.smoothScrollToPosition(scrollTo);
+                } else if (scrollTo < position) {
+                    adapter.smoothScrollToPosition(position);
                 }
             }
         }
@@ -317,6 +332,7 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
         if (sortMap != null && !sortMap.isEmpty()) {
             inflater.inflate(R.menu.sort_menu, menu);
         }
+        inflater.inflate(R.menu.base_list_menu, menu);
     }
 
     @Override
@@ -327,6 +343,9 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
                 return true;
             case R.id.sort_menu:
                 onSortMenuClicked();
+                return true;
+            case R.id.go_to:
+                onGotoItemClicked();
                 return true;
         }
         return super.onOptionsItemSelected(item);
@@ -412,12 +431,13 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
 
     }
 
+    @SuppressWarnings("WeakerAccess")
     void onFlexibleCreated(FlexibleAdapter<IFlexible> adapter) {
 
     }
 
     @SuppressLint("SetTextI18n")
-    public void setNumberTextField(View view, @IdRes int id, int value, int minValue) {
+    void setNumberTextField(View view, @IdRes int id, int value, int minValue) {
         EditText minEpisodeRead = view.findViewById(id);
 
         if (value < minValue) {
@@ -544,16 +564,90 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
         });
     }
 
+    @SuppressWarnings("WeakerAccess")
+    void onGotoItemClicked() {
+        Context context = this.requireContext();
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Go to Item");
+
+        View inputView = createGotoView(context);
+        builder.setView(inputView);
+
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            int position = getPosition(inputView);
+
+            if (position < 0) {
+                return;
+            }
+            LiveData<PagedList<Value>> liveData = getLivePagedList();
+            PagedList<Value> list = liveData.getValue();
+
+            if (list == null) {
+                showToast("Cannot go anywhere: No Data available.");
+                return;
+            }
+            int loadAround = Math.min(position, list.size() - 1);
+            // we know it is an integer key (it always is with room)
+            Integer lastKey = (Integer) list.getLastKey();
+            // we know the pageSize is 50 (it is always 50)
+            int pageSize = 50;
+            // this is a unnecessary safety check for lint
+            int startKey = lastKey == null ? 0 : lastKey;
+
+            if (startKey < loadAround) {
+                this.scrollToWhenLoaded = loadAround;
+
+                for (int i = startKey; i <= loadAround; i += pageSize) {
+                    list.loadAround(i);
+                }
+            } else {
+                int upperLimit = this.flexibleAdapter.getCurrentItems().size() - 1;
+                loadAround = Math.min(loadAround, upperLimit);
+                this.flexibleAdapter.smoothScrollToPosition(loadAround);
+            }
+        });
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+
+        builder.show();
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    View createGotoView(Context context) {
+        final EditText input = new EditText(context);
+        input.setInputType(InputType.TYPE_NUMBER_FLAG_DECIMAL | InputType.TYPE_NUMBER_FLAG_SIGNED);
+        return input;
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    int getPosition(View view) {
+        if (view instanceof EditText) {
+            return getPosition(((EditText) view).getText().toString());
+        } else {
+            throw new IllegalArgumentException("Expected EditText: Got " + view);
+        }
+    }
+
+    int getPosition(String text) {
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            showToast("Cannot go anywhere: expected an Integer");
+            return -1;
+        }
+    }
+
     LinkedHashMap<String, Sortings> getSortMap() {
         return new LinkedHashMap<>();
     }
 
+    @SuppressWarnings("WeakerAccess")
     void onSortingChanged(Sortings sortings) {
         if (this.getViewModel() instanceof SortableViewModel) {
             ((SortableViewModel) this.getViewModel()).setSort(sortings);
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     void onSortMenuClicked() {
         LinkedHashMap<String, Sortings> map = getSortMap();
         String[] strings = map.keySet().toArray(new String[0]);
