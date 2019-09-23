@@ -64,14 +64,60 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
     private View listContainer;
     private ViewGroup fragmentRoot;
     private Filterable filterable;
+    private PagedList.Callback callback = new PagedList.Callback() {
+        @Override
+        public void onChanged(int position, int count) {
+            PagedList<Value> pagedList = getLivePagedList().getValue();
+            if (pagedList == null) {
+                return;
+            }
+            List<Value> values = pagedList.subList(position, position + count);
+            List<IFlexible> newItems = convertToFlexible(values);
+
+            FlexibleAdapter<IFlexible> adapter = getFlexibleAdapter();
+            newItems.removeAll(adapter.getCurrentItems());
+            BaseListFragment.this.flexibleAdapter.onLoadMoreComplete(newItems);
+
+            int previouslyUnloaded = 0;
+            for (int i = 0; i < position; i++) {
+                if (pagedList.get(i) == null) {
+                    previouslyUnloaded++;
+                }
+            }
+            int startIndex = position - previouslyUnloaded;
+            List<IFlexible> currentItems = adapter.getCurrentItems();
+
+            for (int currentIndex = startIndex, newIndex = 0; currentIndex < currentItems.size() && newIndex < newItems.size(); currentIndex++, newIndex++) {
+                IFlexible flexible = currentItems.get(currentIndex);
+                IFlexible newFlexible = newItems.get(newIndex);
+
+                if (!flexible.equals(newFlexible)) {
+                    int oldIndex = currentItems.indexOf(newFlexible);
+                    adapter.moveItem(oldIndex, currentIndex);
+                }
+            }
+        }
+
+        @Override
+        public void onInserted(int position, int count) {
+            System.out.println(String.format("Position: %s and Count: %s - Inserted", position, count));
+        }
+
+        @Override
+        public void onRemoved(int position, int count) {
+            System.out.println(String.format("Position: %s and Count: %s - Removed", position, count));
+        }
+    };
     private final Observer<PagedList<Value>> pagedListObserver = items -> {
         if (checkEmptyList(items, this.fragmentRoot, this.listContainer)) {
             System.out.println("empty dataset");
-            flexibleAdapter.updateDataSet(null);
+            this.flexibleAdapter.updateDataSet(null);
             return;
         }
         List<IFlexible> flexibles = convertToFlexible(items);
-        flexibleAdapter.updateDataSet(flexibles);
+        this.flexibleAdapter.updateDataSet(flexibles);
+        List<Value> snapshot = items.snapshot();
+        items.addWeakCallback(snapshot, this.callback);
     };
     private RecyclerView recyclerView;
 
@@ -312,28 +358,7 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
             flexibleAdapter.onLoadMoreComplete(null);
             return;
         }
-        List<Value> snapshot = pagedList.snapshot();
         pagedList.loadAround(lastPosition);
-        pagedList.addWeakCallback(snapshot, new PagedList.Callback() {
-            @Override
-            public void onChanged(int position, int count) {
-                List<Value> values = pagedList.subList(position, position + count);
-                List<IFlexible> newItems = convertToFlexible(values);
-
-                newItems.removeAll(getFlexibleAdapter().getCurrentItems());
-                flexibleAdapter.onLoadMoreComplete(newItems);
-            }
-
-            @Override
-            public void onInserted(int position, int count) {
-                System.out.println(String.format("Position: %s and Count: %s - Inserted", position, count));
-            }
-
-            @Override
-            public void onRemoved(int position, int count) {
-                System.out.println(String.format("Position: %s and Count: %s - Removed", position, count));
-            }
-        });
         System.out.println("loading more");
     }
 
