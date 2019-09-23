@@ -43,6 +43,7 @@ import org.joda.time.DateTime;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -247,7 +248,7 @@ public interface Repository {
 
     void deleteLocalEpisodesWithHigherIndex(double combiIndex, int mediumId, Application application) throws IOException;
 
-    void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException;
+    void deleteLocalEpisodes(Set<Integer> episodeId, int mediumId, Application application) throws IOException;
 
     void addProgressListener(Consumer<Integer> consumer);
 
@@ -269,7 +270,7 @@ public interface Repository {
 
     void reloadHigherIndex(double combiIndex, int mediumId) throws Exception;
 
-    void reloadSingle(int episodeId) throws Exception;
+    void reload(Set<Integer> episodeId) throws Exception;
 
     void reloadAll(int mediumId) throws IOException;
 
@@ -277,7 +278,7 @@ public interface Repository {
 
     void downloadHigherIndex(double combiIndex, int mediumId, Context context);
 
-    void downloadSingle(int episodeId, int mediumId, Context context);
+    void download(Set<Integer> episodeId, int mediumId, Context context);
 
     void downloadAll(int mediumId, Context context);
 }

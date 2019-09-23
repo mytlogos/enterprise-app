@@ -12,6 +12,8 @@ import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.ui.ActionCount;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Set;
 
 public class TocEpisodeViewModel extends FilterableViewModel implements SortableViewModel {
     private MutableLiveData<SortFilter> sortFilterLiveData = new MutableLiveData<>();
@@ -68,72 +70,96 @@ public class TocEpisodeViewModel extends FilterableViewModel implements Sortable
         return this.repositoryToc;
     }
 
-    public void deleteLocalEpisode(int episodeId, double combiIndex, ActionCount count, int mediumId) throws IOException {
+    public void deleteLocalEpisode(Set<Integer> episodeIds, List<Double> combiIndices, ActionCount count, int mediumId) throws IOException {
         switch (count) {
             case ALL:
                 repository.deleteAllLocalEpisodes(mediumId, this.getApplication());
                 break;
             case CURRENT:
-                repository.deleteLocalEpisode(episodeId, mediumId, this.getApplication());
+                repository.deleteLocalEpisodes(episodeIds, mediumId, this.getApplication());
                 break;
             case CURRENT_AND_ONWARDS:
-                repository.deleteLocalEpisodesWithHigherIndex(combiIndex, mediumId, this.getApplication());
+                double lowest = getLowest(combiIndices);
+                repository.deleteLocalEpisodesWithHigherIndex(lowest, mediumId, this.getApplication());
                 break;
             case CURRENT_AND_PREVIOUSLY:
-                repository.deleteLocalEpisodesWithLowerIndex(combiIndex, mediumId, this.getApplication());
+                double highest = getHighest(combiIndices);
+                repository.deleteLocalEpisodesWithLowerIndex(highest, mediumId, this.getApplication());
                 break;
         }
     }
 
-    public void updateRead(int episodeId, double combiIndex, ActionCount count, int mediumId, boolean read) throws Exception {
+    public void updateRead(Set<Integer> episodeIds, List<Double> combiIndices, ActionCount count, int mediumId, boolean read) throws Exception {
         switch (count) {
             case ALL:
                 repository.updateAllRead(mediumId, read);
                 break;
             case CURRENT:
-                repository.updateRead(episodeId, read);
+                repository.updateRead(episodeIds, read);
                 break;
             case CURRENT_AND_ONWARDS:
-                repository.updateReadWithHigherIndex(combiIndex, read, mediumId);
+                double lowest = getLowest(combiIndices);
+                repository.updateReadWithHigherIndex(lowest, read, mediumId);
                 break;
             case CURRENT_AND_PREVIOUSLY:
-                repository.updateReadWithLowerIndex(combiIndex, read, mediumId);
+                double highest = getHighest(combiIndices);
+                repository.updateReadWithLowerIndex(highest, read, mediumId);
                 break;
         }
     }
 
-    public void reload(int episodeId, double combiIndex, ActionCount count, int mediumId) throws Exception {
+    public void reload(Set<Integer> episodeIds, List<Double> combiIndices, ActionCount count, int mediumId) throws Exception {
         switch (count) {
             case ALL:
                 repository.reloadAll(mediumId);
                 break;
             case CURRENT:
-                repository.reloadSingle(episodeId);
+                repository.reload(episodeIds);
                 break;
             case CURRENT_AND_ONWARDS:
-                repository.reloadHigherIndex(combiIndex, mediumId);
+                double lowest = getLowest(combiIndices);
+                repository.reloadHigherIndex(lowest, mediumId);
                 break;
             case CURRENT_AND_PREVIOUSLY:
-                repository.reloadLowerIndex(combiIndex, mediumId);
+                double highest = getHighest(combiIndices);
+                repository.reloadLowerIndex(highest, mediumId);
                 break;
         }
     }
 
-    public void download(int episodeId, double combiIndex, ActionCount count, int mediumId) {
+    public void download(Set<Integer> episodeIds, List<Double> combiIndices, ActionCount count, int mediumId) {
         switch (count) {
             case ALL:
                 repository.downloadAll(mediumId, this.getApplication());
                 break;
             case CURRENT:
-                repository.downloadSingle(episodeId, mediumId, this.getApplication());
+                repository.download(episodeIds, mediumId, this.getApplication());
                 break;
             case CURRENT_AND_ONWARDS:
-                repository.downloadHigherIndex(combiIndex, mediumId, this.getApplication());
+                double lowest = getLowest(combiIndices);
+                repository.downloadHigherIndex(lowest, mediumId, this.getApplication());
                 break;
             case CURRENT_AND_PREVIOUSLY:
-                repository.downloadLowerIndex(combiIndex, mediumId, this.getApplication());
+                double highest = getHighest(combiIndices);
+                repository.downloadLowerIndex(highest, mediumId, this.getApplication());
                 break;
         }
+    }
+
+    private double getLowest(List<Double> combiIndices) {
+        double lowest = Integer.MAX_VALUE;
+        for (Double index : combiIndices) {
+            lowest = Math.min(index, lowest);
+        }
+        return lowest;
+    }
+
+    private double getHighest(List<Double> combiIndices) {
+        double highest = Integer.MAX_VALUE;
+        for (Double index : combiIndices) {
+            highest = Math.max(index, highest);
+        }
+        return highest;
     }
 
     private static class Builder {

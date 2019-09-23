@@ -775,11 +775,6 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException {
-        this.deleteLocalEpisodes(Collections.singleton(episodeId), mediumId, application);
-    }
-
-    @Override
     public void addProgressListener(Consumer<Integer> consumer) {
         this.loadWorker.addProgressListener(consumer);
     }
@@ -832,8 +827,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void reloadSingle(int episodeId) throws Exception {
-        this.reloadEpisodes(Collections.singleton(episodeId));
+    public void reload(Set<Integer> episodeIds) throws Exception {
+        this.reloadEpisodes(episodeIds);
     }
 
     @Override
@@ -907,8 +902,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void downloadSingle(int episodeId, int mediumId, Context context) {
-        DownloadWorker.enqueueDownloadTask(context, mediumId, Collections.singleton(episodeId));
+    public void download(Set<Integer> episodeIds, int mediumId, Context context) {
+        DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds);
     }
 
     @Override
@@ -941,7 +936,8 @@ public class RepositoryImpl implements Repository {
         this.deleteLocalEpisodes(new HashSet<>(episodes), mediumId, application);
     }
 
-    private void deleteLocalEpisodes(Set<Integer> episodeIds, int mediumId, Application application) throws IOException {
+    @Override
+    public void deleteLocalEpisodes(Set<Integer> episodeIds, int mediumId, Application application) throws IOException {
         int medium = this.getMediumType(mediumId);
 
         ContentTool contentTool = FileTools.getContentTool(medium, application);

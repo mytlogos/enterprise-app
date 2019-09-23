@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.ActionMode;
@@ -23,6 +24,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.mytlogos.enterprise.R;
@@ -36,24 +38,28 @@ import com.mytlogos.enterprise.viewmodel.TocEpisodeViewModel;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
+import eu.davidea.flexibleadapter.SelectableAdapter;
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
 import eu.davidea.flexibleadapter.items.IFlexible;
+import eu.davidea.flexibleadapter.utils.DrawableUtils;
 import eu.davidea.viewholders.FlexibleViewHolder;
 
 /**
  * A fragment representing a list of Items.
  * <p/>
  */
-public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewModel> implements ItemListener {
+public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewModel> {
 
     private static final String MEDIUM_ID = "mediumId";
     private int mediumId;
@@ -113,6 +119,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
             });
             this.navigationView.setSelectedItemId(R.id.mark_read);
             actionType = ActionType.MARK_READ;
+            getFlexibleAdapter().setMode(SelectableAdapter.Mode.MULTI);
             inActionMode = true;
             return true;
         }
@@ -132,6 +139,8 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
             Objects.requireNonNull(getMainActivity().getSupportActionBar()).show();
             this.relativeLayout.removeView(this.navigationView);
             actionType = null;
+            getFlexibleAdapter().setMode(SelectableAdapter.Mode.IDLE);
+            getFlexibleAdapter().clearSelection();
             inActionMode = false;
         }
     };
@@ -261,7 +270,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     @Override
     public boolean onItemClick(View view, int position) {
         if (this.inActionMode) {
-            displayActionModeActions(position);
+            displayActionModeActions();
             return false;
         }
         IFlexible flexible = getFlexibleAdapter().getItem(position);
@@ -289,22 +298,34 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         if (!inActionMode) {
             System.out.println("starting action mode");
             this.getMainActivity().startActionMode(callback);
+            getFlexibleAdapter().addSelection(position);
+        } else {
+            if (position != RecyclerView.NO_POSITION) {
+                getFlexibleAdapter().toggleSelection(position);
+            }
         }
     }
 
-    private void displayActionModeActions(int position) {
+    private void displayActionModeActions() {
         if (actionType == null) {
             System.err.println("not action type selected");
             showToast("An Error occurred, cannot open Action Popup");
             return;
         }
-        IFlexible flexible = getFlexibleAdapter().getItem(position);
 
-        if (!(flexible instanceof ListItem)) {
+        List<TocEpisode> items = new ArrayList<>();
+
+        for (Integer position : getFlexibleAdapter().getSelectedPositions()) {
+            IFlexible item = getFlexibleAdapter().getItem(position);
+
+            if (item instanceof ListItem) {
+                items.add(((ListItem) item).item);
+            }
+        }
+        if (items.isEmpty()) {
             return;
         }
-        ListItem item = (ListItem) flexible;
-        TocEpisode mItem = item.item;
+        TocEpisode firstItem = items.get(0);
 
         Map<String, ActionCount> actionCountMap = new HashMap<>();
         for (ActionCount value : ActionCount.values()) {
@@ -336,27 +357,29 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         }
         title += ":";
 
-        switch (this.actionType) {
-            case DOWNLOAD:
-                if (mItem.isSaved()) {
-                    menuItems.remove(0);
-                }
-                break;
-            case MARK_READ:
-                if (mItem.getProgress() == 1) {
-                    menuItems.remove(0);
-                }
-                break;
-            case MARK_UNREAD:
-                if (mItem.getProgress() < 1) {
-                    menuItems.remove(0);
-                }
-                break;
-            case DELETE_SAVED_EPISODE:
-                if (!mItem.isSaved()) {
-                    menuItems.remove(0);
-                }
-                break;
+        if (items.size() == 1) {
+            switch (this.actionType) {
+                case DOWNLOAD:
+                    if (firstItem.isSaved()) {
+                        menuItems.remove(0);
+                    }
+                    break;
+                case MARK_READ:
+                    if (firstItem.getProgress() == 1) {
+                        menuItems.remove(0);
+                    }
+                    break;
+                case MARK_UNREAD:
+                    if (firstItem.getProgress() < 1) {
+                        menuItems.remove(0);
+                    }
+                    break;
+                case DELETE_SAVED_EPISODE:
+                    if (!firstItem.isSaved()) {
+                        menuItems.remove(0);
+                    }
+                    break;
+            }
         }
         new AlertDialog
                 .Builder(requireContext())
@@ -368,21 +391,20 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
                     if (count == null) {
                         showToast("Unknown MenuItem");
                     } else {
-                        this.handle(item.item, actionType, count);
+                        this.handle(items, actionType, count);
                     }
                 })
                 .show();
     }
 
-    @Override
-    public boolean handle(TocEpisode item, ActionType type, ActionCount count) {
-        new ChangeEpisodeReadStatus(type, item, mediumId, count, this.getItems(), this.getContext(), getViewModel()).execute();
+    public boolean handle(List<TocEpisode> items, ActionType type, ActionCount count) {
+        new ChangeEpisodeReadStatus(type, items, mediumId, count, this.getItems(), this.getContext(), getViewModel()).execute();
         return true;
     }
 
     private static class ChangeEpisodeReadStatus extends AsyncTask<Void, Void, Void> {
         private final ActionType type;
-        private final TocEpisode episode;
+        private final List<TocEpisode> selected;
         private final int mediumId;
         private final ActionCount count;
         private final List<TocEpisode> episodes;
@@ -391,9 +413,9 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
         private final TocEpisodeViewModel viewModel;
         private String errorMessage;
 
-        private ChangeEpisodeReadStatus(ActionType type, TocEpisode episode, int mediumId, ActionCount count, List<TocEpisode> episodes, Context context, TocEpisodeViewModel viewModel) {
+        private ChangeEpisodeReadStatus(ActionType type, List<TocEpisode> selected, int mediumId, ActionCount count, List<TocEpisode> episodes, Context context, TocEpisodeViewModel viewModel) {
             this.type = type;
-            this.episode = episode;
+            this.selected = selected;
             this.mediumId = mediumId;
             this.count = count;
             this.episodes = episodes;
@@ -403,27 +425,33 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
 
         @Override
         protected Void doInBackground(Void... voids) {
-            if (mediumId <= 0 || episode == null || episodes == null) {
+            if (mediumId <= 0 || selected == null || selected.isEmpty() || episodes == null) {
                 return null;
             }
             try {
-                int episodeId = episode.getEpisodeId();
-                double combiIndex = Double.parseDouble(episode.getTotalIndex() + "." + episode.getPartialIndex());
+                Set<Integer> episodeIds = new HashSet<>();
+                List<Double> indices = new ArrayList<>();
+
+                for (TocEpisode tocEpisode : this.selected) {
+                    episodeIds.add(tocEpisode.getEpisodeId());
+                    double combiIndex = Double.parseDouble(tocEpisode.getTotalIndex() + "." + tocEpisode.getPartialIndex());
+                    indices.add(combiIndex);
+                }
                 switch (this.type) {
                     case MARK_READ:
-                        this.viewModel.updateRead(episodeId, combiIndex, this.count, this.mediumId, true);
+                        this.viewModel.updateRead(episodeIds, indices, this.count, this.mediumId, true);
                         break;
                     case MARK_UNREAD:
-                        this.viewModel.updateRead(episodeId, combiIndex, this.count, this.mediumId, false);
+                        this.viewModel.updateRead(episodeIds, indices, this.count, this.mediumId, false);
                         break;
                     case DELETE_SAVED_EPISODE:
-                        this.viewModel.deleteLocalEpisode(episodeId, combiIndex, this.count, this.mediumId);
+                        this.viewModel.deleteLocalEpisode(episodeIds, indices, this.count, this.mediumId);
                         break;
                     case DOWNLOAD:
-                        this.viewModel.download(episodeId, combiIndex, this.count, this.mediumId);
+                        this.viewModel.download(episodeIds, indices, this.count, this.mediumId);
                         break;
                     case RELOAD:
-                        this.viewModel.reload(episodeId, combiIndex, this.count, this.mediumId);
+                        this.viewModel.reload(episodeIds, indices, this.count, this.mediumId);
                         break;
                 }
             } catch (Exception e) {
@@ -449,7 +477,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
             this.item = item;
             this.setDraggable(false);
             this.setSwipeable(false);
-            this.setSelectable(false);
+            this.setSelectable(true);
         }
 
         @Override
@@ -511,6 +539,12 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
             holder.episodeReadIcon.setAlpha(this.item.getProgress() == 1 ? 1 : 0.25f);
             holder.openLocalIcon.setAlpha(this.item.isSaved() ? 1 : 0.25f);
             holder.openBrowserIcon.setAlpha(hasOnline ? 1 : 0.25f);
+
+            Drawable drawable = DrawableUtils.getSelectableBackgroundCompat(
+                    Color.WHITE,             // normal background
+                    Color.GRAY, // pressed background
+                    Color.BLACK);                 // ripple color
+            DrawableUtils.setBackgroundCompat(holder.itemView, drawable);
         }
 
     }
@@ -537,6 +571,11 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
             this.textContentView = view.findViewById(R.id.content);
         }
 
+
+        @Override
+        protected boolean shouldAddSelectionInActionMode() {
+            return true;
+        }
 
         @NonNull
         @Override

@@ -127,7 +127,7 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
 
         @Override
         public void onDestroyActionMode(ActionMode mode) {
-            getMainActivity().getSupportActionBar().show();
+            Objects.requireNonNull(getMainActivity().getSupportActionBar()).show();
             getFlexibleAdapter().setMode(SelectableAdapter.Mode.IDLE);
             getFlexibleAdapter().clearSelection();
             System.out.println("destroyed action mode");
@@ -148,9 +148,9 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
         if (!inMoveMediumMode) {
             inMoveMediumMode = true;
             System.out.println("starting move mode");
-            getFlexibleAdapter().addSelection(position);
-
             ActionMode mode = this.getMainActivity().startActionMode(callback);
+
+            getFlexibleAdapter().addSelection(position);
             System.out.println("mode: " + mode);
         }
     }

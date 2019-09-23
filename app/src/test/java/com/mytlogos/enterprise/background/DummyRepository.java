@@ -44,6 +44,7 @@ import org.joda.time.DateTime;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -540,7 +541,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void deleteLocalEpisode(int episodeId, int mediumId, Application application) throws IOException {
+    public void deleteLocalEpisodes(Set<Integer> episodeId, int mediumId, Application application) throws IOException {
 
     }
 
@@ -595,7 +596,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void reloadSingle(int episodeId) {
+    public void reload(Set<Integer> episodeId) {
 
     }
 
@@ -615,7 +616,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void downloadSingle(int episodeId, int mediumId, Context context) {
+    public void download(Set<Integer> episodeId, int mediumId, Context context) {
 
     }
 
