@@ -211,7 +211,7 @@ public interface Repository {
 
     List<String> getReleaseLinks(int episodeId);
 
-    void syncUser();
+    void syncUser() throws IOException;
 
     void clearLocalMediaData();
 

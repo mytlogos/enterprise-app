@@ -1199,24 +1199,20 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void syncUser() {
-        try {
-            Response<ClientUser> user = this.client.getUser().execute();
-            ClientUser body = user.body();
+    public void syncUser() throws IOException {
+        Response<ClientUser> user = this.client.getUser().execute();
+        ClientUser body = user.body();
 
-            if (!user.isSuccessful()) {
-                try (ResponseBody responseBody = user.errorBody()) {
-                    if (responseBody != null) {
-                        System.out.println(responseBody.string());
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+        if (!user.isSuccessful()) {
+            try (ResponseBody responseBody = user.errorBody()) {
+                if (responseBody != null) {
+                    System.out.println(responseBody.string());
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            this.persister.persist(body);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+        this.persister.persist(body);
     }
 
     @Override
