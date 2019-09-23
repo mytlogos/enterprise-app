@@ -305,6 +305,7 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
         PagedList<Value> pagedList = livePagedList.getValue();
 
         if (pagedList == null) {
+            flexibleAdapter.onLoadMoreComplete(null);
             return;
         }
         if (lastPosition >= pagedList.size()) {
