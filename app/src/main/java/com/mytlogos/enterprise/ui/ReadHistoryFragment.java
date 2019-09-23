@@ -19,8 +19,6 @@ import com.mytlogos.enterprise.model.ReadEpisode;
 import com.mytlogos.enterprise.model.Release;
 import com.mytlogos.enterprise.viewmodel.ReadEpisodeViewModel;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
@@ -68,17 +66,8 @@ public class ReadHistoryFragment extends BaseListFragment<ReadEpisode, ReadEpiso
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<ReadEpisode> list) {
-        List<IFlexible> items = new ArrayList<>();
-
-        for (ReadEpisode episode : list) {
-            if (episode == null) {
-                break;
-            }
-            items.add(new ReadEpisodeItem(episode, this));
-        }
-
-        return items;
+    IFlexible createFlexible(ReadEpisode readEpisode) {
+        return new ReadEpisodeItem(readEpisode, this);
     }
 
     private static class SectionableReadEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {

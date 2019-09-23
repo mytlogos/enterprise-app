@@ -13,8 +13,6 @@ import com.mytlogos.enterprise.model.ExternalUser;
 import com.mytlogos.enterprise.tools.Utils;
 import com.mytlogos.enterprise.viewmodel.ExternalUserViewModel;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
@@ -34,16 +32,8 @@ public class ExternalUserListFragment extends BaseListFragment<ExternalUser, Ext
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<ExternalUser> list) {
-        List<IFlexible> flexibles = new ArrayList<>();
-
-        for (ExternalUser user : list) {
-            if (user == null) {
-                break;
-            }
-            flexibles.add(new UserItem(user));
-        }
-        return flexibles;
+    IFlexible createFlexible(ExternalUser externalUser) {
+        return new UserItem(externalUser);
     }
 
     @Override

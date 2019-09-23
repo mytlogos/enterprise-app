@@ -36,7 +36,6 @@ import com.mytlogos.enterprise.viewmodel.MediumViewModel;
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -192,17 +191,8 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<MediumItem> list) {
-        List<IFlexible> items = new ArrayList<>();
-
-        for (MediumItem item : list) {
-            if (item == null) {
-                break;
-            }
-            items.add(new FlexibleMediumItem(item));
-        }
-
-        return items;
+    IFlexible createFlexible(MediumItem mediumItem) {
+        return new FlexibleMediumItem(mediumItem);
     }
 
     @Override

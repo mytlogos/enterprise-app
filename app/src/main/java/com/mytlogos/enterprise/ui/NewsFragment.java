@@ -21,7 +21,6 @@ import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -139,21 +138,10 @@ public class NewsFragment extends BaseSwipeListFragment<News, NewsViewModel> {
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<News> list) {
-        if (list == null) {
-            return null;
-        }
-
-        List<IFlexible> items = new ArrayList<>();
-        for (News news : list) {
-            if (news == null) {
-                break;
-            }
-            NewsItem item = new NewsItem(news);
-            item.listener = this.attachedListener;
-            items.add(item);
-        }
-        return items;
+    IFlexible createFlexible(News news) {
+        NewsItem item = new NewsItem(news);
+        item.listener = this.attachedListener;
+        return item;
     }
 
     @Override

@@ -33,7 +33,6 @@ import com.mytlogos.enterprise.viewmodel.ListMediaViewModel;
 import com.mytlogos.enterprise.viewmodel.ListsViewModel;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -334,17 +333,7 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<MediumItem> list) {
-        List<IFlexible> flexibles = new ArrayList<>();
-
-        for (MediumItem item : list) {
-            if (item == null) {
-                break;
-            }
-            flexibles.add(new MediumListFragment.FlexibleMediumItem(item));
-        }
-        return flexibles;
+    IFlexible createFlexible(MediumItem mediumItem) {
+        return new MediumListFragment.FlexibleMediumItem(mediumItem);
     }
-
-
 }

@@ -26,7 +26,6 @@ import com.mytlogos.enterprise.viewmodel.ListsViewModel;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -171,15 +170,9 @@ public class ListsFragment extends BaseListFragment<MediaList, ListsViewModel> {
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<MediaList> list) {
-        List<IFlexible> items = new ArrayList<>();
-
-        for (MediaList mediaList : list) {
-            items.add(new ListItem(mediaList));
-        }
-        return items;
+    IFlexible createFlexible(MediaList mediaList) {
+        return new ListItem(mediaList);
     }
-
 
     @NonNull
     @Override

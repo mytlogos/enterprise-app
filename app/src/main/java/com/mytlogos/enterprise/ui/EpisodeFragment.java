@@ -24,8 +24,6 @@ import com.mytlogos.enterprise.model.DisplayRelease;
 import com.mytlogos.enterprise.tools.Utils;
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -210,19 +208,12 @@ public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeVie
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<DisplayRelease> list) {
-        List<IFlexible> items = new ArrayList<>();
-        for (DisplayRelease episode : list) {
-            if (episode == null) {
-                break;
-            }
-            if (groupByMedium) {
-                items.add(new SectionableEpisodeItem(episode, this));
-            } else {
-                items.add(new EpisodeItem(episode, this));
-            }
+    IFlexible createFlexible(DisplayRelease displayRelease) {
+        if (groupByMedium) {
+            return new SectionableEpisodeItem(displayRelease, this);
+        } else {
+            return new EpisodeItem(displayRelease, this);
         }
-        return items;
     }
 
     @Override
@@ -268,7 +259,7 @@ public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeVie
         if (list == null) {
             return;
         }
-        List<IFlexible> flexibles = this.convertToFlexibles(list);
+        List<IFlexible> flexibles = this.convertToFlexible(list);
         this.getFlexibleAdapter().updateDataSet(flexibles);
     }
 
@@ -429,7 +420,6 @@ public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeVie
         public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-
             holder.metaView.setText(episode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
             holder.novelView.setText(this.episode.getMediumTitle());
 

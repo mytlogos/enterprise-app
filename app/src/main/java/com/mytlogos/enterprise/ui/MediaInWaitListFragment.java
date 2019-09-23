@@ -22,8 +22,6 @@ import com.mytlogos.enterprise.viewmodel.MediaInWaitListViewModel;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -131,16 +129,8 @@ public class MediaInWaitListFragment extends BaseSwipeListFragment<MediumInWait,
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<MediumInWait> mediumItems) {
-        List<IFlexible> items = new ArrayList<>();
-
-        for (MediumInWait item : mediumItems) {
-            if (item == null) {
-                break;
-            }
-            items.add(new MediumItem(item));
-        }
-        return items;
+    IFlexible createFlexible(MediumInWait mediumInWait) {
+        return new MediumItem(mediumInWait);
     }
 
     @Override

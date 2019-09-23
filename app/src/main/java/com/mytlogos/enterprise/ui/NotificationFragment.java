@@ -17,10 +17,8 @@ import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.model.NotificationItem;
 import com.mytlogos.enterprise.viewmodel.NotificationViewModel;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
@@ -47,12 +45,8 @@ public class NotificationFragment extends BaseListFragment<NotificationItem, Not
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<NotificationItem> list) {
-        return list
-                .stream()
-                .filter(Objects::nonNull)
-                .map(FlexibleNotification::new)
-                .collect(Collectors.toList());
+    IFlexible createFlexible(NotificationItem notificationItem) {
+        return new FlexibleNotification(notificationItem);
     }
 
     @Override

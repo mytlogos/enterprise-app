@@ -70,7 +70,7 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
             flexibleAdapter.updateDataSet(null);
             return;
         }
-        List<IFlexible> flexibles = convertToFlexibles(items);
+        List<IFlexible> flexibles = convertToFlexible(items);
         flexibleAdapter.updateDataSet(flexibles);
     };
     private RecyclerView recyclerView;
@@ -317,7 +317,7 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
             @Override
             public void onChanged(int position, int count) {
                 List<Value> values = pagedList.subList(position, position + count);
-                List<IFlexible> newItems = convertToFlexibles(values);
+                List<IFlexible> newItems = convertToFlexible(values);
 
                 newItems.removeAll(getFlexibleAdapter().getCurrentItems());
                 flexibleAdapter.onLoadMoreComplete(newItems);
@@ -582,7 +582,18 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
 
     abstract LiveData<PagedList<Value>> createPagedListLiveData();
 
-    abstract List<IFlexible> convertToFlexibles(Collection<Value> list);
+    List<IFlexible> convertToFlexible(Collection<Value> list) {
+        List<IFlexible> items = new ArrayList<>();
+        for (Value value : list) {
+            if (value == null) {
+                continue;
+            }
+            items.add(this.createFlexible(value));
+        }
+        return items;
+    }
+
+    abstract IFlexible createFlexible(Value value);
 
     private ViewModel createViewModel() {
         return new ViewModelProvider(this).get(getViewModelClass());

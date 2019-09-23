@@ -5,7 +5,7 @@ android {
     defaultConfig {
         applicationId "com.mytlogos.enterprise"
         minSdkVersion 24
-        //noinspection ExpiredTargetSdkVersion
+        //noinspection OldTargetApi,ExpiredTargetSdkVersion
         targetSdkVersion 26
         versionCode 1
         versionName "1.0"

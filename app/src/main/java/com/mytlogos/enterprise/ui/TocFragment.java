@@ -34,7 +34,6 @@ import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.viewmodel.TocEpisodeViewModel;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -200,12 +199,8 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     }
 
     @Override
-    List<IFlexible> convertToFlexibles(Collection<TocEpisode> list) {
-        return list
-                .stream()
-                .filter(Objects::nonNull)
-                .map(ListItem::new)
-                .collect(Collectors.toList());
+    IFlexible createFlexible(TocEpisode tocEpisode) {
+        return new ListItem(tocEpisode);
     }
 
     @Nullable
@@ -450,7 +445,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
 
         @Override
         public int hashCode() {
-            return this.item.getEpisodeId();
+            return this.item.hashCode();
         }
 
         @Override
