@@ -108,7 +108,7 @@ public class DownloadWorker extends Worker {
     }
 
     public static boolean isRunning(Application application) {
-        for (UUID uuid : DownloadWorker.uuids) {
+        for (UUID uuid : new HashSet<>(DownloadWorker.uuids)) {
             ListenableFuture<WorkInfo> infoFuture = WorkManager.getInstance(application).getWorkInfoById(uuid);
             try {
                 WorkInfo info = infoFuture.get();
