@@ -107,8 +107,7 @@ class ServerDiscovery {
 
             boolean isDev = devResponse.body() != null && devResponse.body();
             return new Server(ipv4, 3000, true, isDev);
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        } catch (IOException ignored) {
         }
         return null;
     }
