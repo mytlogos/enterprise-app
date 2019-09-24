@@ -139,6 +139,7 @@ public class SynchronizeWorker extends Worker {
 
             builder
                     .setContentTitle("Synchronization complete")
+                    .setProgress(1, 1, false)
                     .setContentText(null);
 
             notificationManager.notify(syncNotificationId, builder.build());
@@ -147,6 +148,7 @@ public class SynchronizeWorker extends Worker {
 
             builder
                     .setContentTitle("Synchronization failed")
+                    .setProgress(0, 0, false)
                     .setContentText(null);
 
             notificationManager.notify(syncNotificationId, builder.build());

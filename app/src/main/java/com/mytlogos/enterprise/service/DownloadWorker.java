@@ -42,6 +42,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -52,7 +53,6 @@ public class DownloadWorker extends Worker {
     // TODO: 08.08.2019 use this for sdk >= 28
     private static final String CHANNEL_ID = "DOWNLOAD_CHANNEL";
 
-    private static final int maxEpisodeLimit = 50;
     private static final int maxPackageSize = 1;
     private static final String mediumId = "mediumId";
     private static final String episodeIds = "episodeIds";
@@ -190,7 +190,10 @@ public class DownloadWorker extends Worker {
                 }
                 this.notificationManager.notify(
                         this.downloadNotificationId,
-                        this.builder.setContentTitle("Getting Data for Download").build()
+                        this.builder
+                                .setContentTitle("Getting Data for Download")
+                                .setProgress(0, 0, true)
+                                .build()
                 );
                 if (this.getInputData().equals(Data.EMPTY)) {
                     this.download(repository);
@@ -278,16 +281,11 @@ public class DownloadWorker extends Worker {
         DownloadPreference downloadPreference = UserPreferences.get(this.getApplicationContext()).getDownloadPreference();
 
         for (Integer mediumId : toDownloadMedia) {
-            // TODO: 26.07.2019 check whether the episodes are downloaded in the correct order
-            //  so that there aren't gaps in the episodes one can't read
-            if (repository.countSavedUnreadEpisodes(mediumId) >= maxEpisodeLimit) {
-                continue;
-            }
             SimpleMedium medium = repository.getSimpleMedium(mediumId);
 
             int count = downloadPreference.getDownloadLimitCount(medium.getMedium());
             List<Integer> episodeIds = repository.getDownloadableEpisodes(mediumId, count);
-            Set<Integer> uniqueEpisodes = new HashSet<>(episodeIds);
+            Set<Integer> uniqueEpisodes = new LinkedHashSet<>(episodeIds);
 
             if (uniqueEpisodes.isEmpty()) {
                 continue;
@@ -351,7 +349,7 @@ public class DownloadWorker extends Worker {
 
     /**
      * Download episodes for each medium id,
-     * up to an episode limit initialized in {@link #maxEpisodeLimit}.
+     * up to an episode limit defined in {@link DownloadPreference}.
      */
     private void downloadEpisodes(Set<MediumDownload> episodeIds, Repository repository, int downloadCount) {
         this.builder

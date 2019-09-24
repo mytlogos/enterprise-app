@@ -589,8 +589,7 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
             int loadAround = Math.min(position, list.size() - 1);
             // we know it is an integer key (it always is with room)
             Integer lastKey = (Integer) list.getLastKey();
-            // we know the pageSize is 50 (it is always 50)
-            int pageSize = 50;
+            int pageSize = list.getConfig().pageSize;
             // this is a unnecessary safety check for lint
             int startKey = lastKey == null ? 0 : lastKey;
 
