@@ -2,6 +2,8 @@ package com.mytlogos.enterprise.preferences;
 
 import android.content.SharedPreferences;
 
+import com.mytlogos.enterprise.model.MediumType;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -18,8 +20,28 @@ public class DownloadPreference extends BasePreference {
         return this.preferences.getBoolean("enable_download", true);
     }
 
+    private int getDefaultMediumCountLimit(int medium) {
+        int limit = Integer.MAX_VALUE;
+        if (MediumType.is(medium, MediumType.TEXT)) {
+            limit = Math.min(limit, 100);
+        }
+        if (MediumType.is(medium, MediumType.IMAGE)) {
+            limit = Math.min(limit, 10);
+        }
+        if (MediumType.is(medium, MediumType.VIDEO)) {
+            limit = Math.min(limit, 5);
+        }
+        if (MediumType.is(medium, MediumType.IMAGE)) {
+            limit = Math.min(limit, 20);
+        }
+        if (limit == Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("unknown mediumType: " + medium);
+        }
+        return limit;
+    }
+
     public int getDownloadLimitCount(int medium) {
-        return this.getInt("download-medium-" + medium + "-count", IGNORE_INT_VALUE);
+        return this.getInt("download-medium-" + medium + "-count", this.getDefaultMediumCountLimit(medium));
     }
 
     public int getDownloadLimitSize(int medium) {

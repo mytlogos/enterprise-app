@@ -66,6 +66,12 @@ public class DownloadWorker extends Worker {
     public DownloadWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
         DownloadWorker.uuids.add(this.getId());
+        this.notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
+        this.builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);
+        this.builder
+                .setContentTitle("Download in Progress...")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
     }
 
     public static void enqueueDownloadTask(Context context) {
@@ -153,14 +159,6 @@ public class DownloadWorker extends Worker {
             return Result.retry();
         }
 
-        notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
-        builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);
-        builder
-                .setContentTitle("Download in Progress...")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-
-        // todo read limit from settings
         try {
             synchronized (UNIQUE) {
                 Repository repository = RepositoryImpl.getInstance(application);
@@ -175,24 +173,24 @@ public class DownloadWorker extends Worker {
                     return Result.retry();
                 }
                 if (!repository.isClientOnline()) {
-                    notificationManager.notify(
-                            downloadNotificationId,
-                            builder.setContentTitle("Server not in reach").build()
+                    this.notificationManager.notify(
+                            this.downloadNotificationId,
+                            this.builder.setContentTitle("Server not in reach").build()
                     );
                     cleanUp();
                     return Result.failure();
                 }
                 if (!FileTools.writable(application)) {
-                    notificationManager.notify(
-                            downloadNotificationId,
-                            builder.setContentTitle("Not enough free space").build()
+                    this.notificationManager.notify(
+                            this.downloadNotificationId,
+                            this.builder.setContentTitle("Not enough free space").build()
                     );
                     cleanUp();
                     return Result.failure();
                 }
-                notificationManager.notify(
-                        downloadNotificationId,
-                        builder.setContentTitle("Getting Data for Download").build()
+                this.notificationManager.notify(
+                        this.downloadNotificationId,
+                        this.builder.setContentTitle("Getting Data for Download").build()
                 );
                 if (this.getInputData().equals(Data.EMPTY)) {
                     this.download(repository);
@@ -202,9 +200,9 @@ public class DownloadWorker extends Worker {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            notificationManager.notify(
-                    downloadNotificationId,
-                    builder.setContentTitle("Download failed").setContentText(null).build()
+            this.notificationManager.notify(
+                    this.downloadNotificationId,
+                    this.builder.setContentTitle("Download failed").setContentText(null).build()
             );
             cleanUp();
             return Result.failure();
@@ -220,12 +218,19 @@ public class DownloadWorker extends Worker {
         int id = mediumDownload.id;
         sizeLimitMB = Math.min(sizeLimitMB, downloadPreference.getMediumDownloadLimitSize(id));
 
+        if (sizeLimitMB < 0) {
+            return;
+        }
         double maxSize = sizeLimitMB * 1024D * 1024D;
 
         for (ContentTool tool : this.contentTools) {
             if (MediumType.is(type, tool.getMedium())) {
                 double averageEpisodeSize = tool.getAverageEpisodeSize(id);
                 String path = tool.getItemPath(id);
+
+                if (path == null || path.isEmpty()) {
+                    break;
+                }
                 int size = tool.getEpisodePaths(path).keySet().size();
 
                 double totalSize = averageEpisodeSize * size;
@@ -315,6 +320,15 @@ public class DownloadWorker extends Worker {
         }
         if (!mediumDownloads.isEmpty()) {
             this.downloadEpisodes(mediumDownloads, repository, downloadCount);
+        } else {
+            this.notificationManager.notify(
+                    this.downloadNotificationId,
+                    this.builder
+                            .setContentTitle("Nothing to Download")
+                            .setContentText(null)
+                            .setProgress(0, 0, false)
+                            .build()
+            );
         }
     }
 
@@ -340,10 +354,10 @@ public class DownloadWorker extends Worker {
      * up to an episode limit initialized in {@link #maxEpisodeLimit}.
      */
     private void downloadEpisodes(Set<MediumDownload> episodeIds, Repository repository, int downloadCount) {
-        builder
+        this.builder
                 .setContentTitle("Download in Progress [0/" + downloadCount + "]")
                 .setProgress(downloadCount, 0, true);
-        notificationManager.notify(downloadNotificationId, builder.build());
+        this.notificationManager.notify(downloadNotificationId, builder.build());
 
         Collection<DownloadPackage> episodePackages = getDownloadPackages(episodeIds, repository);
 
@@ -434,9 +448,9 @@ public class DownloadWorker extends Worker {
     }
 
     private void stopDownload() {
-        notificationManager.notify(
-                downloadNotificationId,
-                builder
+        this.notificationManager.notify(
+                this.downloadNotificationId,
+                this.builder
                         .setContentTitle("Download stopped")
                         .setContentText(null)
                         .build()
@@ -449,7 +463,7 @@ public class DownloadWorker extends Worker {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        notificationManager.cancel(downloadNotificationId);
+        this.notificationManager.cancel(downloadNotificationId);
         DownloadWorker.uuids.remove(this.getId());
     }
 
@@ -474,10 +488,10 @@ public class DownloadWorker extends Worker {
 
     private void updateProgress(int downloadCount, int successFull, int notSuccessFull) {
         int progress = successFull + notSuccessFull;
-        builder.setContentTitle(String.format("Download in Progress [%s/%s]", progress, downloadCount));
-        builder.setContentText(String.format("Failed: %s", notSuccessFull));
-        builder.setProgress(downloadCount, progress, false);
-        notificationManager.notify(downloadNotificationId, builder.build());
+        this.builder.setContentTitle(String.format("Download in Progress [%s/%s]", progress, downloadCount));
+        this.builder.setContentText(String.format("Failed: %s", notSuccessFull));
+        this.builder.setProgress(downloadCount, progress, false);
+        this.notificationManager.notify(this.downloadNotificationId, this.builder.build());
     }
 
     private static class MediumDownload {

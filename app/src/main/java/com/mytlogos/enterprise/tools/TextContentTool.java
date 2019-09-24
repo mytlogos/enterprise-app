@@ -119,7 +119,7 @@ public class TextContentTool extends ContentTool {
     @Override
     public Map<Integer, String> getEpisodePaths(String mediumPath) {
         if (mediumPath == null || !mediumPath.endsWith(".epub")) {
-            throw new IllegalArgumentException("'%s' is not a epub");
+            throw new IllegalArgumentException(String.format("'%s' is not a epub", mediumPath));
         }
         try (ZipFile file = new ZipFile(mediumPath)) {
             String markerFile = "content.opf";
