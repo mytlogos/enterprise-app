@@ -485,7 +485,12 @@ public class Client {
     }
 
     public boolean isOnline() {
-        return this.server != null && this.server.isReachable();
+        try {
+            this.server = getServer();
+            return this.server != null;
+        } catch (NotConnectedException e) {
+            return false;
+        }
     }
 
     private static class ErrorCall<T> implements Call<T> {
@@ -527,7 +532,7 @@ public class Client {
     }
 
 
-    private Server getServer() throws IOException {
+    private synchronized Server getServer() throws NotConnectedException {
         String ssid = this.identificator.getSSID();
 
         if (ssid.isEmpty()) {
@@ -551,4 +556,3 @@ public class Client {
         R call(T apiImpl, String url);
     }
 }
-// todo check if server is online or not
