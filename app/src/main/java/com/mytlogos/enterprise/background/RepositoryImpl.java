@@ -11,7 +11,6 @@ import androidx.paging.PagedList;
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator;
 import com.mytlogos.enterprise.background.api.Client;
 import com.mytlogos.enterprise.background.api.NetworkIdentificator;
-import com.mytlogos.enterprise.background.api.NotConnectedException;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
@@ -137,7 +136,7 @@ public class RepositoryImpl implements Repository {
                             // ask the database what data it has, to check if it needs to be loaded from the server
                             INSTANCE.loadLoadedData();
 
-                            Call<ClientSimpleUser> call = INSTANCE.applyClient(Client::checkLogin);
+                            Call<ClientSimpleUser> call = INSTANCE.client.checkLogin();
 
                             if (call != null) {
                                 ClientSimpleUser clientUser = call.execute().body();
@@ -149,9 +148,6 @@ public class RepositoryImpl implements Repository {
                             }
                             Log.i(RepositoryImpl.class.getSimpleName(), "successful query");
                         } catch (IOException e) {
-                            if (e.getCause() instanceof NotConnectedException) {
-                                INSTANCE.clientOnline = false;
-                            }
                             Log.e(RepositoryImpl.class.getSimpleName(), "failed query", e);
                         }
                     });
@@ -164,18 +160,6 @@ public class RepositoryImpl implements Repository {
     @FunctionalInterface
     private interface FunctionEx<T, R> {
         R apply(T t) throws IOException;
-    }
-
-
-    private <T> T applyClient(FunctionEx<Client, T> function) throws IOException {
-        try {
-            T result = function.apply(this.client);
-            this.clientOnline = true;
-            return result;
-        } catch (NotConnectedException e) {
-            this.clientOnline = false;
-            throw new NotConnectedException(e);
-        }
     }
 
     @Override
@@ -596,14 +580,14 @@ public class RepositoryImpl implements Repository {
     public CompletableFuture<String> updateListName(MediaListSetting listSetting, String text) {
         return TaskManager.runCompletableTask(() -> {
             try {
-                this.executeCall(this.client.updateList(new ClientMediaList(
+                this.client.updateList(new ClientMediaList(
                         listSetting.getUuid(),
                         listSetting.getListId(),
                         text,
                         listSetting.getMedium(),
                         new int[0]
-                )));
-                ClientListQuery query = this.executeCall(this.client.getList(listSetting.getListId())).body();
+                ));
+                ClientListQuery query = this.client.getList(listSetting.getListId()).execute().body();
                 this.persister.persist(query).finish();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -624,7 +608,7 @@ public class RepositoryImpl implements Repository {
                         newMediumType,
                         new int[0]
                 ));
-                ClientListQuery query = this.executeCall(this.client.getList(listSetting.getListId())).body();
+                ClientListQuery query = this.client.getList(listSetting.getListId()).execute().body();
                 this.persister.persist(query).finish();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -632,17 +616,6 @@ public class RepositoryImpl implements Repository {
             }
             return "";
         });
-    }
-
-    private <T> Response<T> executeCall(Call<T> call) throws IOException {
-        try {
-            Response<T> response = call.execute();
-            clientOnline = true;
-            return response;
-        } catch (IOException e) {
-            this.clientOnline = false;
-            throw new IOException(e);
-        }
     }
 
     @Override
@@ -682,7 +655,7 @@ public class RepositoryImpl implements Repository {
                         mediumSettings.getSeries(),
                         mediumSettings.getUniverse()
                 ));
-                ClientMedium medium = this.executeCall(this.client.getMedium(mediumSettings.getMediumId())).body();
+                ClientMedium medium = this.client.getMedium(mediumSettings.getMediumId()).execute().body();
                 this.persister.persist(medium).finish();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -1175,6 +1148,26 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
+    public CompletableFuture<Boolean> moveItemFromList(int oldListId, int newListId, int mediumId) {
+        return TaskManager.runCompletableTask(() -> {
+            try {
+                Response<Boolean> response = this.client.updateListMedia(oldListId, newListId, mediumId).execute();
+                Boolean success = response.body();
+
+                if (success != null && success) {
+                    this.storage.removeItemFromList(oldListId, mediumId);
+                    this.storage.addItemsToList(newListId, Collections.singleton(mediumId));
+                    return true;
+                }
+                return false;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return false;
+        });
+    }
+
+    @Override
     public LiveData<PagedList<ExternalUser>> getExternalUser() {
         return this.storage.getExternalUser();
     }
@@ -1241,7 +1234,6 @@ public class RepositoryImpl implements Repository {
         return this.storage.getFailedEpisodes(episodeIds);
     }
 
-
     @Override
     public void addNotification(NotificationItem notification) {
         this.storage.addNotification(notification);
@@ -1267,27 +1259,6 @@ public class RepositoryImpl implements Repository {
         TaskManager.runAsyncTask(this.storage::clearFailEpisodes);
     }
 
-
-    @Override
-    public CompletableFuture<Boolean> moveItemFromList(int oldListId, int newListId, int mediumId) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                Response<Boolean> response = this.client.updateListMedia(oldListId, newListId, mediumId).execute();
-                Boolean success = response.body();
-
-                if (success != null && success) {
-                    this.storage.removeItemFromList(oldListId, mediumId);
-                    this.storage.addItemsToList(newListId, Collections.singleton(mediumId));
-                    return true;
-                }
-                return false;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return false;
-        });
-    }
-
     @Override
     public LiveData<List<MediaList>> getListSuggestion(String name) {
         return this.storage.getListSuggestion(name);
@@ -1307,6 +1278,4 @@ public class RepositoryImpl implements Repository {
     public LiveData<List<MediumItem>> getAllDanglingMedia() {
         return this.storage.getAllDanglingMedia();
     }
-
 }
-
