@@ -80,6 +80,9 @@ public class TimeAgo {
     }
 
     public static String toRelative(DateTime start, DateTime end) {
+        if (start == null || end == null) {
+            return null;
+        }
         return toRelative(end.getMillis() - start.getMillis());
     }
 }
