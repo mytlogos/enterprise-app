@@ -51,7 +51,6 @@ public interface ExternalMediaListDao extends MultiBaseDao<RoomExternalMediaList
             "FROM RoomExternalMediaList")
     LiveData<List<RoomExternListView>> getExternalListViews();
 
-
     @Query("SELECT RoomExternalMediaList.externalListId as listId,RoomExternalMediaList.uuid,url,medium,name,toDownload, " +
             "(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size " +
             "FROM RoomExternalMediaList " +
@@ -60,6 +59,15 @@ public interface ExternalMediaListDao extends MultiBaseDao<RoomExternalMediaList
             "as RoomToDownload ON RoomToDownload.externalListId=RoomExternalMediaList.externalListId " +
             "WHERE RoomExternalMediaList.externalListId=:id")
     LiveData<ExternalMediaListSetting> getExternalListSetting(int id);
+
+    @Query("SELECT RoomExternalMediaList.externalListId as listId,RoomExternalMediaList.uuid,url,medium,name,toDownload, " +
+            "(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size " +
+            "FROM RoomExternalMediaList " +
+            "LEFT JOIN " +
+            "(SELECT externalListId,1 as toDownload FROM RoomToDownload WHERE externalListId > 0) " +
+            "as RoomToDownload ON RoomToDownload.externalListId=RoomExternalMediaList.externalListId " +
+            "WHERE RoomExternalMediaList.externalListId=:id")
+    ExternalMediaListSetting getExternalListSettingNow(int id);
 
     @Query("SELECT mediumId FROM ExternalListMediaJoin WHERE listId=:externalListId")
     LiveData<List<Integer>> getLiveExternalListItems(Integer externalListId);

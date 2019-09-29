@@ -225,6 +225,42 @@ public interface MediumDao extends MultiBaseDao<RoomMedium> {
             "WHERE RoomMedium.mediumId=:mediumId")
     LiveData<MediumSetting> getMediumSettings(int mediumId);
 
+
+    @Query("SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, " +
+            "countryOfOrigin, languageOfOrigin, lang, series, universe, toDownload, " +
+            "(" +
+            "    SELECT RoomEpisode.combiIndex \n" +
+            "    FROM RoomEpisode\n" +
+            "    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId\n" +
+            "    WHERE RoomPart.mediumId=RoomMedium.mediumId AND RoomEpisode.progress=1" +
+            "    ORDER BY RoomEpisode.combiIndex DESC" +
+            "    LIMIT 1" +
+            ") as currentReadEpisode," +
+            "(" +
+            "   SELECT episodeId FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId " +
+            "   WHERE mediumId=RoomMedium.mediumId " +
+            "   ORDER BY RoomEpisode.combiIndex DESC " +
+            "   LIMIT 1" +
+            ") as currentRead, " +
+            "(" +
+            "   SELECT MAX(RoomEpisode.combiIndex) FROM RoomEpisode " +
+            "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
+            "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
+            ") as lastEpisode, " +
+            "(" +
+            "   SELECT MAX(RoomRelease.releaseDate) FROM RoomEpisode " +
+            "   INNER JOIN RoomRelease ON RoomEpisode.episodeId=RoomRelease.episodeId " +
+            "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
+            "   WHERE RoomPart.mediumId=RoomMedium.mediumId" +
+            ") as lastUpdated " +
+            "FROM RoomMedium " +
+            "LEFT JOIN " +
+            "(SELECT mediumId,1 as toDownload FROM RoomToDownload WHERE mediumId > 0) " +
+            "as RoomToDownload ON RoomToDownload.mediumId=RoomMedium.mediumId " +
+            "WHERE RoomMedium.mediumId=:mediumId")
+    MediumSetting getMediumSettingsNow(int mediumId);
+
     @Query("SELECT title, medium, mediumId FROM RoomMedium " +
             "WHERE medium=:medium AND INSTR(lower(title), :title) ORDER BY title LIMIT 10")
     LiveData<List<SimpleMedium>> getSuggestions(String title, int medium);

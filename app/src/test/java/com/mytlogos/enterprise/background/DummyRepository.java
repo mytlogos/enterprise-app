@@ -312,7 +312,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public CompletableFuture<String> updateMediumType(MediumSetting mediumSettings) {
+    public CompletableFuture<String> updateMedium(MediumSetting mediumSettings) {
         return null;
     }
 

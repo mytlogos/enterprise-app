@@ -14,6 +14,7 @@ import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.background.room.model.RoomDanglingMedium;
 import com.mytlogos.enterprise.background.room.model.RoomDisplayEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomEditEvent;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
@@ -34,6 +35,7 @@ import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.ReadEpisode;
 import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
+import com.mytlogos.enterprise.model.User;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -112,6 +114,10 @@ public class RoomConverter {
 
     public Collection<RoomMediumInWait> convertMediaInWait(Collection<MediumInWait> medium) {
         return this.convert(medium, this::convert);
+    }
+
+    public Collection<RoomEditEvent> convertEditEvents(Collection<EditEvent> events) {
+        return this.convert(events, this::convert);
     }
 
     private <R, T> List<R> convert(Collection<T> values, Function<T, R> converter) {
@@ -312,6 +318,29 @@ public class RoomConverter {
                 input.getTotalIndex(),
                 input.getPartialIndex(),
                 new ArrayList<>(input.getReleases())
+        );
+    }
+
+    public RoomEditEvent convert(EditEvent event) {
+        return event == null
+                ? null
+                : event instanceof RoomEditEvent
+                ? (RoomEditEvent) event
+                : new RoomEditEvent(
+                event.getId(),
+                event.getObjectType(),
+                event.getEventType(),
+                event.getDateTime(),
+                event.getFirstValue(),
+                event.getSecondValue()
+        );
+    }
+
+    public User convert(RoomUser user) {
+        return user == null ? null : new User(
+                user.getUuid(),
+                user.getSession(),
+                user.getName()
         );
     }
 }

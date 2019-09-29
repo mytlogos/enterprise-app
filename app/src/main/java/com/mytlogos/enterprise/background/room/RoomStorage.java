@@ -13,6 +13,7 @@ import com.mytlogos.enterprise.background.ClientConsumer;
 import com.mytlogos.enterprise.background.ClientModelPersister;
 import com.mytlogos.enterprise.background.DatabaseStorage;
 import com.mytlogos.enterprise.background.DependantGenerator;
+import com.mytlogos.enterprise.background.EditEvent;
 import com.mytlogos.enterprise.background.LoadData;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RoomConverter;
@@ -35,6 +36,7 @@ import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
 import com.mytlogos.enterprise.background.resourceLoader.DependencyTask;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
+import com.mytlogos.enterprise.background.room.model.RoomEditEvent;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternListView;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
@@ -103,32 +105,40 @@ public class RoomStorage implements DatabaseStorage {
     private final RoomDanglingDao roomDanglingDao;
     private final MediumProgressDao mediumProgressDao;
     private final DataStructureDao dataStructureDao;
-    private boolean loading = false;
     private final ToDownloadDao toDownloadDao;
+    private final EditDao editDao;
+    private boolean loading = false;
 
     public RoomStorage(Application application) {
         AbstractDatabase database = AbstractDatabase.getInstance(application);
-        userDao = database.userDao();
-        newsDao = database.newsDao();
-        externalUserDao = database.externalUserDao();
-        externalMediaListDao = database.externalMediaListDao();
-        mediaListDao = database.mediaListDao();
-        mediumDao = database.mediumDao();
-        partDao = database.partDao();
-        episodeDao = database.episodeDao();
-        toDownloadDao = database.toDownloadDao();
-        mediumInWaitDao = database.roomMediumInWaitDao();
-        roomDanglingDao = database.roomDanglingDao();
-        notificationDao = database.notificationDao();
-        mediumProgressDao = database.mediumProgressDao();
-        failedEpisodesDao = database.failedEpisodesDao();
-        dataStructureDao = database.dataStructureDao();
-        userLiveData = this.userDao.getUser();
+        this.userDao = database.userDao();
+        this.newsDao = database.newsDao();
+        this.externalUserDao = database.externalUserDao();
+        this.externalMediaListDao = database.externalMediaListDao();
+        this.mediaListDao = database.mediaListDao();
+        this.mediumDao = database.mediumDao();
+        this.partDao = database.partDao();
+        this.episodeDao = database.episodeDao();
+        this.toDownloadDao = database.toDownloadDao();
+        this.mediumInWaitDao = database.roomMediumInWaitDao();
+        this.roomDanglingDao = database.roomDanglingDao();
+        this.notificationDao = database.notificationDao();
+        this.mediumProgressDao = database.mediumProgressDao();
+        this.failedEpisodesDao = database.failedEpisodesDao();
+        this.dataStructureDao = database.dataStructureDao();
+        this.editDao = database.editDao();
+        this.userLiveData = this.userDao.getUser();
     }
 
     @Override
     public LiveData<User> getUser() {
         return this.userLiveData;
+    }
+
+    @Override
+    public User getUserNow() {
+        RoomConverter converter = new RoomConverter();
+        return converter.convert(this.userDao.getUserNow());
     }
 
     @Override
@@ -343,6 +353,14 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
+    public MediaListSetting getListSettingNow(int id, boolean isExternal) {
+        if (isExternal) {
+            return this.externalMediaListDao.getExternalListSettingNow(id);
+        }
+        return this.mediaListDao.getListSettingsNow(id);
+    }
+
+    @Override
     public void updateToDownload(boolean add, ToDownload toDownload) {
         if (add) {
             this.toDownloadDao.insert(new RoomConverter().convert(toDownload));
@@ -369,6 +387,11 @@ public class RoomStorage implements DatabaseStorage {
     @Override
     public LiveData<MediumSetting> getMediumSettings(int mediumId) {
         return this.mediumDao.getMediumSettings(mediumId);
+    }
+
+    @Override
+    public MediumSetting getMediumSettingsNow(int mediumId) {
+        return this.mediumDao.getMediumSettingsNow(mediumId);
     }
 
     @Override
@@ -656,6 +679,36 @@ public class RoomStorage implements DatabaseStorage {
     @Override
     public void removeParts(Collection<Integer> partIds) {
         this.partDao.deletePerId(partIds);
+    }
+
+    @Override
+    public void insertEditEvent(EditEvent event) {
+        RoomConverter converter = new RoomConverter();
+        RoomEditEvent roomEditEvent = converter.convert(event);
+        this.editDao.insert(roomEditEvent);
+    }
+
+    @Override
+    public void insertEditEvent(Collection<EditEvent> events) {
+        RoomConverter converter = new RoomConverter();
+        Collection<RoomEditEvent> roomEditEvent = converter.convertEditEvents(events);
+        this.editDao.insertBulk(roomEditEvent);
+    }
+
+    @Override
+    public List<Integer> getReadEpisodes(Collection<Integer> episodeIds, boolean read) {
+        return this.episodeDao.getReadEpisodes(episodeIds, read);
+    }
+
+    @Override
+    public List<? extends EditEvent> getEditEvents() {
+        return this.editDao.getAll();
+    }
+
+    @Override
+    public void removeEditEvents(Collection<EditEvent> editEvents) {
+        RoomConverter converter = new RoomConverter();
+        this.editDao.deleteBulk(converter.convertEditEvents(editEvents));
     }
 
     @Override

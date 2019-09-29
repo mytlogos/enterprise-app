@@ -59,7 +59,7 @@ public class ListsViewModel extends RepoViewModel {
     }
 
     public CompletableFuture<String> updateMedium(MediumSetting mediumSettings) {
-        return repository.updateMediumType(mediumSettings);
+        return repository.updateMedium(mediumSettings);
     }
 
     public CompletableFuture<Boolean> moveMediumToList(int oldListId, int newListId, Collection<Integer> ids) {
