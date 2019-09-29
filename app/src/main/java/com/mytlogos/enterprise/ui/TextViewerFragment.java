@@ -28,8 +28,6 @@ import com.mytlogos.enterprise.model.SimpleEpisode;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.TextContentTool;
 
-import org.jsoup.Jsoup;
-
 import java.util.List;
 import java.util.Map;
 
@@ -179,9 +177,7 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
             return "No Content Found.";
         } else {
             try {
-//            text = new HtmlToPlainText().getPlainText(Jsoup.parse(data).body());
-                String html = Jsoup.parse(data).body().html();
-                return HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY);
+                return HtmlCompat.fromHtml(data, HtmlCompat.FROM_HTML_MODE_LEGACY);
             } catch (Exception ignored) {
                 return data;
             }
