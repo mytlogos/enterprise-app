@@ -150,7 +150,7 @@ public interface Repository {
 
     LiveData<MediumSetting> getMediumSettings(int mediumId);
 
-    CompletableFuture<String> updateMediumType(MediumSetting mediumSettings);
+    CompletableFuture<String> updateMedium(MediumSetting mediumSettings);
 
     LiveData<PagedList<TocEpisode>> getToc(int mediumId, Sortings sortings, byte read, byte saved);
 
@@ -232,7 +232,7 @@ public interface Repository {
 
     void clearFailEpisodes();
 
-    void updateRead(int episodeId, boolean read) throws IOException;
+    void updateRead(int episodeId, boolean read) throws Exception;
 
     void updateRead(Collection<Integer> episodeIds, boolean read) throws Exception;
 

@@ -1,4 +1,4 @@
-package com.mytlogos.enterprise.service;
+package com.mytlogos.enterprise.worker;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

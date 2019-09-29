@@ -277,4 +277,9 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
 
     @Query("DELETE FROM RoomEpisode WHERE episodeId IN (:ids)")
     void deletePerId(List<Integer> ids);
+
+    @Query("SELECT episodeId FROM RoomEpisode WHERE " +
+            "CASE WHEN :read = 0 THEN progress < 1 ELSE progress = 1 END " +
+            "AND episodeId IN (:episodeIds)")
+    List<Integer> getReadEpisodes(Collection<Integer> episodeIds, boolean read);
 }

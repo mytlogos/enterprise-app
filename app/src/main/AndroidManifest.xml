@@ -52,12 +52,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity> <!-- Receiver -->
-        <receiver android:name=".service.BootReceiver">
+        <receiver android:name=".worker.BootReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".service.DateChangeReceiver">
+        <receiver android:name=".worker.DateChangeReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.DATE_CHANGED" />
             </intent-filter>

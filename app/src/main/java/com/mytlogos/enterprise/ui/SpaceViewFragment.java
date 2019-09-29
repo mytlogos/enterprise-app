@@ -21,7 +21,7 @@ import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.model.SimpleEpisode;
 import com.mytlogos.enterprise.model.SpaceMedium;
-import com.mytlogos.enterprise.service.CheckSavedWorker;
+import com.mytlogos.enterprise.worker.CheckSavedWorker;
 import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
 

@@ -11,6 +11,7 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.mytlogos.enterprise.background.room.model.RoomDanglingMedium;
+import com.mytlogos.enterprise.background.room.model.RoomEditEvent;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
@@ -37,9 +38,9 @@ import com.mytlogos.enterprise.background.room.model.RoomUser;
                 RoomExternalMediaList.ExternalListMediaJoin.class, RoomToDownload.class,
                 RoomMediumInWait.class, RoomDanglingMedium.class, RoomFailedEpisode.class,
                 RoomNotification.class, RoomMediumProgress.class, RoomMediumPart.class,
-                RoomPartEpisode.class
+                RoomPartEpisode.class, RoomEditEvent.class
         },
-        version = 12
+        version = 13
 )
 @TypeConverters({Converters.class})
 public abstract class AbstractDatabase extends RoomDatabase {
@@ -94,6 +95,8 @@ public abstract class AbstractDatabase extends RoomDatabase {
     public abstract MediumProgressDao mediumProgressDao();
 
     public abstract DataStructureDao dataStructureDao();
+
+    public abstract EditDao editDao();
 
     private static Migration[] migrations() {
         return new Migration[]{
@@ -193,6 +196,19 @@ public abstract class AbstractDatabase extends RoomDatabase {
                         database.execSQL(
                                 "CREATE INDEX index_RoomPartEpisode_partId " +
                                         "ON RoomPartEpisode (partId);"
+                        );
+                    }
+                },
+                new Migration(12, 13) {
+                    @Override
+                    public void migrate(@NonNull SupportSQLiteDatabase database) {
+                        database.execSQL("CREATE TABLE IF NOT EXISTS RoomEditEvent " +
+                                "(" +
+                                "id INTEGER NOT NULL, objectType INTEGER NOT NULL, " +
+                                "eventType INTEGER NOT NULL, dateTime TEXT NOT NULL, " +
+                                "firstValue TEXT, secondValue TEXT," +
+                                "PRIMARY KEY(`id`, `objectType`, `eventType`, `dateTime`)" +
+                                ") "
                         );
                     }
                 }
