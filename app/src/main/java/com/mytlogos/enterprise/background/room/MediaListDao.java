@@ -65,6 +65,15 @@ public interface MediaListDao extends MultiBaseDao<RoomMediaList> {
             "WHERE RoomMediaList.listId=:id")
     LiveData<MediaListSetting> getListSettings(int id);
 
+    @Query("SELECT RoomMediaList.listId,RoomMediaList.uuid,medium,name,toDownload, " +
+            "   (SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size " +
+            "FROM RoomMediaList " +
+            "LEFT JOIN " +
+            "   (SELECT listId,1 as toDownload FROM RoomToDownload WHERE listId > 0) " +
+            "as RoomToDownload ON RoomToDownload.listId=RoomMediaList.listId " +
+            "WHERE RoomMediaList.listId=:id")
+    MediaListSetting getListSettingsNow(int id);
+
     @Query("SELECT 1 WHERE :listName IN (SELECT name FROM RoomMediaList)")
     boolean listExists(String listName);
 

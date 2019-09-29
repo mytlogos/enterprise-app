@@ -42,6 +42,8 @@ import java.util.List;
 public interface DatabaseStorage {
     LiveData<User> getUser();
 
+    User getUserNow();
+
     LiveData<HomeStats> getHomeStats();
 
     void deleteAllUser();
@@ -96,11 +98,15 @@ public interface DatabaseStorage {
 
     LiveData<? extends MediaListSetting> getListSetting(int id, boolean isExternal);
 
+    MediaListSetting getListSettingNow(int id, boolean isExternal);
+
     void updateToDownload(boolean add, ToDownload toDownload);
 
     LiveData<PagedList<MediumItem>> getAllMedia(Sortings sortings, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes);
 
     LiveData<MediumSetting> getMediumSettings(int mediumId);
+
+    MediumSetting getMediumSettingsNow(int mediumId);
 
     LiveData<PagedList<TocEpisode>> getToc(int mediumId, Sortings sortings, byte read, byte saved);
 
@@ -195,4 +201,14 @@ public interface DatabaseStorage {
     void removeEpisodes(List<Integer> episodeIds);
 
     void removeParts(Collection<Integer> partIds);
+
+    List<Integer> getReadEpisodes(Collection<Integer> episodeIds, boolean read);
+
+    void insertEditEvent(EditEvent event);
+
+    void insertEditEvent(Collection<EditEvent> events);
+
+    List<? extends EditEvent> getEditEvents();
+
+    void removeEditEvents(Collection<EditEvent> editEvents);
 }

@@ -15,7 +15,6 @@ import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
@@ -23,7 +22,6 @@ import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
-import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 import com.mytlogos.enterprise.background.resourceLoader.BlockingLoadWorker;
@@ -51,11 +49,11 @@ import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
-import com.mytlogos.enterprise.service.DownloadWorker;
 import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.tools.Utils;
+import com.mytlogos.enterprise.worker.DownloadWorker;
 
 import org.joda.time.DateTime;
 
@@ -70,7 +68,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import okhttp3.ResponseBody;
-import retrofit2.Call;
 import retrofit2.Response;
 
 public class RepositoryImpl implements Repository {
@@ -81,7 +78,7 @@ public class RepositoryImpl implements Repository {
     private final DatabaseStorage storage;
     private final LoadData loadedData;
     private final LoadWorker loadWorker;
-    private boolean clientOnline = true;
+    private final EditService editService;
 
     private RepositoryImpl(Application application) {
         this.storage = new RoomStorage(application);
@@ -105,6 +102,7 @@ public class RepositoryImpl implements Repository {
                 this.persister,
                 dependantGenerator
         );
+        this.editService = new EditService(this.client, this.storage, this.persister);
     }
 
     /**
@@ -136,16 +134,14 @@ public class RepositoryImpl implements Repository {
                             // ask the database what data it has, to check if it needs to be loaded from the server
                             INSTANCE.loadLoadedData();
 
-                            Call<ClientSimpleUser> call = INSTANCE.client.checkLogin();
+                            Response<ClientSimpleUser> call = INSTANCE.client.checkLogin();
 
-                            if (call != null) {
-                                ClientSimpleUser clientUser = call.execute().body();
+                            ClientSimpleUser clientUser = call.body();
 
-                                if (clientUser != null) {
-                                    INSTANCE.client.setAuthentication(clientUser.getUuid(), clientUser.getSession());
-                                }
-                                INSTANCE.persister.persist(clientUser).finish();
+                            if (clientUser != null) {
+                                INSTANCE.client.setAuthentication(clientUser.getUuid(), clientUser.getSession());
                             }
+                            INSTANCE.persister.persist(clientUser).finish();
                             Log.i(RepositoryImpl.class.getSimpleName(), "successful query");
                         } catch (IOException e) {
                             Log.e(RepositoryImpl.class.getSimpleName(), "failed query", e);
@@ -155,11 +151,6 @@ public class RepositoryImpl implements Repository {
             }
         }
         return INSTANCE;
-    }
-
-    @FunctionalInterface
-    private interface FunctionEx<T, R> {
-        R apply(T t) throws IOException;
     }
 
     @Override
@@ -201,27 +192,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void updateUser(UpdateUser updateUser) {
-        TaskManager.runTask(() -> {
-            User value = this.storageUserLiveData.getValue();
-
-            if (value == null) {
-                throw new IllegalArgumentException("cannot change user when none is logged in");
-            }
-            ClientUpdateUser user = new ClientUpdateUser(
-                    value.getUuid(), updateUser.getName(),
-                    updateUser.getPassword(),
-                    updateUser.getNewPassword()
-            );
-            try {
-                Boolean body = this.client.updateUser(user).execute().body();
-
-                if (body != null && body) {
-                    this.persister.persist(user);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
+        this.editService.updateUser(updateUser);
     }
 
     @Override
@@ -238,7 +209,7 @@ public class RepositoryImpl implements Repository {
      */
     @Override
     public void login(String email, String password) throws IOException {
-        Response<ClientUser> response = this.client.login(email, password).execute();
+        Response<ClientUser> response = this.client.login(email, password);
         ClientUser user = response.body();
 
         if (user != null) {
@@ -257,7 +228,7 @@ public class RepositoryImpl implements Repository {
      */
     @Override
     public void register(String email, String password) throws IOException {
-        Response<ClientUser> response = this.client.register(email, password).execute();
+        Response<ClientUser> response = this.client.register(email, password);
         ClientUser user = response.body();
 
         if (user != null) {
@@ -272,15 +243,14 @@ public class RepositoryImpl implements Repository {
     public void logout() {
         TaskManager.runTask(() -> {
             try {
-                Response<Boolean> response = client.logout().execute();
+                Response<Boolean> response = this.client.logout();
                 if (!response.isSuccessful()) {
                     System.out.println("Log out was not successful: " + response.message());
                 }
-                storage.deleteAllUser();
             } catch (IOException e) {
-                storage.deleteAllUser();
                 e.printStackTrace();
             }
+            storage.deleteAllUser();
         });
     }
 
@@ -288,7 +258,7 @@ public class RepositoryImpl implements Repository {
     @Override
     public void loadAllMedia() {
         try {
-            Response<List<Integer>> response = this.client.getAllMedia().execute();
+            Response<List<Integer>> response = this.client.getAllMedia();
             List<Integer> mediaIds = response.body();
 
             if (mediaIds == null) {
@@ -315,7 +285,7 @@ public class RepositoryImpl implements Repository {
     public List<ClientEpisode> loadEpisodeSync(Collection<Integer> episodeIds) {
         try {
             System.out.println("loading episodes: " + episodeIds + " on " + Thread.currentThread());
-            return this.client.getEpisodes(episodeIds).execute().body();
+            return this.client.getEpisodes(episodeIds).body();
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -331,7 +301,7 @@ public class RepositoryImpl implements Repository {
     public List<ClientMedium> loadMediaSync(Collection<Integer> mediaIds) {
         try {
             System.out.println("loading media: " + mediaIds + " on " + Thread.currentThread());
-            return this.client.getMedia(mediaIds).execute().body();
+            return this.client.getMedia(mediaIds).body();
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -347,7 +317,7 @@ public class RepositoryImpl implements Repository {
     public List<ClientPart> loadPartSync(Collection<Integer> partIds) {
         try {
             System.out.println("loading parts: " + partIds + " on " + Thread.currentThread());
-            return this.client.getParts(partIds).execute().body();
+            return this.client.getParts(partIds).body();
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -363,7 +333,7 @@ public class RepositoryImpl implements Repository {
     public ClientMultiListQuery loadMediaListSync(Collection<Integer> listIds) {
         try {
             System.out.println("loading lists: " + listIds + " on " + Thread.currentThread());
-            return this.client.getLists(listIds).execute().body();
+            return this.client.getLists(listIds).body();
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -396,7 +366,7 @@ public class RepositoryImpl implements Repository {
     public List<ClientExternalUser> loadExternalUserSync(Collection<String> externalUuids) {
         try {
             System.out.println("loading ExternalUser: " + externalUuids + " on " + Thread.currentThread());
-            return this.client.getExternalUser(externalUuids).execute().body();
+            return this.client.getExternalUser(externalUuids).body();
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -412,7 +382,7 @@ public class RepositoryImpl implements Repository {
     public List<ClientNews> loadNewsSync(Collection<Integer> newsIds) {
         try {
             System.out.println("loading News: " + newsIds + " on " + Thread.currentThread());
-            return this.client.getNews(newsIds).execute().body();
+            return this.client.getNews(newsIds).body();
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -436,7 +406,8 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void refreshNews(DateTime latest) throws IOException {
-        List<ClientNews> news = this.client.getNews(latest, null).execute().body();
+        List<ClientNews> news = this.client.getNews(latest, null).body();
+
         if (news != null) {
             this.persister.persistNews(news);
         }
@@ -444,7 +415,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void loadInvalidated() throws IOException {
-        List<InvalidatedData> invalidatedData = this.client.getInvalidated().execute().body();
+        List<InvalidatedData> invalidatedData = this.client.getInvalidated().body();
 
         if (invalidatedData == null || invalidatedData.isEmpty()) {
             return;
@@ -483,7 +454,7 @@ public class RepositoryImpl implements Repository {
         }
 
         if (userUpdated) {
-            ClientSimpleUser user = this.client.checkLogin().execute().body();
+            ClientSimpleUser user = this.client.checkLogin().body();
             this.persister.persist(user);
         }
         loadWorker.work();
@@ -518,7 +489,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public List<ClientDownloadedEpisode> downloadEpisodes(Collection<Integer> episodeIds) throws IOException {
-        return this.client.downloadEpisodes(episodeIds).execute().body();
+        return this.client.downloadEpisodes(episodeIds).body();
     }
 
     @Override
@@ -577,45 +548,13 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public CompletableFuture<String> updateListName(MediaListSetting listSetting, String text) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                this.client.updateList(new ClientMediaList(
-                        listSetting.getUuid(),
-                        listSetting.getListId(),
-                        text,
-                        listSetting.getMedium(),
-                        new int[0]
-                ));
-                ClientListQuery query = this.client.getList(listSetting.getListId()).execute().body();
-                this.persister.persist(query).finish();
-            } catch (IOException e) {
-                e.printStackTrace();
-                return "Could not update List";
-            }
-            return "";
-        });
+    public CompletableFuture<String> updateListName(MediaListSetting listSetting, String newName) {
+        return this.editService.updateListName(listSetting, newName);
     }
 
     @Override
     public CompletableFuture<String> updateListMedium(MediaListSetting listSetting, int newMediumType) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                this.client.updateList(new ClientMediaList(
-                        listSetting.getUuid(),
-                        listSetting.getListId(),
-                        listSetting.getName(),
-                        newMediumType,
-                        new int[0]
-                ));
-                ClientListQuery query = this.client.getList(listSetting.getListId()).execute().body();
-                this.persister.persist(query).finish();
-            } catch (IOException e) {
-                e.printStackTrace();
-                return "Could not update List";
-            }
-            return "";
-        });
+        return this.editService.updateListMedium(listSetting, newMediumType);
     }
 
     @Override
@@ -634,35 +573,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public CompletableFuture<String> updateMediumType(MediumSetting mediumSettings) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                this.client.updateMedia(new ClientMedium(
-                        new int[0],
-                        new int[0],
-                        mediumSettings.getCurrentRead(),
-                        new int[0],
-                        mediumSettings.getMediumId(),
-                        mediumSettings.getCountryOfOrigin(),
-                        mediumSettings.getLanguageOfOrigin(),
-                        mediumSettings.getAuthor(),
-                        mediumSettings.getTitle(),
-                        mediumSettings.getMedium(),
-                        mediumSettings.getArtist(),
-                        mediumSettings.getLang(),
-                        mediumSettings.getStateOrigin(),
-                        mediumSettings.getStateTL(),
-                        mediumSettings.getSeries(),
-                        mediumSettings.getUniverse()
-                ));
-                ClientMedium medium = this.client.getMedium(mediumSettings.getMediumId()).execute().body();
-                this.persister.persist(medium).finish();
-            } catch (IOException e) {
-                e.printStackTrace();
-                return "Could not update Medium";
-            }
-            return "";
-        });
+    public CompletableFuture<String> updateMedium(MediumSetting mediumSettings) {
+        return this.editService.updateMedium(mediumSettings);
     }
 
     @Override
@@ -677,8 +589,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void loadMediaInWaitSync() throws IOException {
-        Response<List<ClientMediumInWait>> response = this.client.getMediumInWait().execute();
-        List<ClientMediumInWait> medium = response.body();
+        List<ClientMediumInWait> medium = this.client.getMediumInWait().body();
 
         if (medium != null && !medium.isEmpty()) {
             this.storage.clearMediaInWait();
@@ -693,14 +604,14 @@ public class RepositoryImpl implements Repository {
         if (value == null || value.getUuid().isEmpty()) {
             throw new IllegalStateException("user is not authenticated");
         }
-        Response<ClientMediaList> response = this.client.addList(new ClientMediaList(
+        ClientMediaList mediaList = new ClientMediaList(
                 value.getUuid(),
                 0,
                 list.getName(),
                 list.getMedium(),
                 new int[0]
-        )).execute();
-        ClientMediaList clientMediaList = response.body();
+        );
+        ClientMediaList clientMediaList = this.client.addList(mediaList).body();
 
         if (clientMediaList == null) {
             throw new IllegalArgumentException("adding list failed");
@@ -739,12 +650,6 @@ public class RepositoryImpl implements Repository {
     @Override
     public List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids) {
         return this.storage.getSimpleEpisodes(ids);
-    }
-
-    @Override
-    public void updateAllRead(int mediumId, boolean read) throws Exception {
-        Collection<Integer> episodeIds = this.storage.getAllEpisodes(mediumId);
-        this.updateRead(episodeIds, read);
     }
 
     @Override
@@ -806,8 +711,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void reloadAll(int mediumId) throws IOException {
-        Response<ClientMedium> response = this.client.getMedium(mediumId).execute();
-        ClientMedium medium = response.body();
+        ClientMedium medium = this.client.getMedium(mediumId).body();
 
         if (medium == null) {
             System.err.println("missing medium: " + mediumId);
@@ -819,8 +723,7 @@ public class RepositoryImpl implements Repository {
         for (int part : parts) {
             partIds.add(part);
         }
-        Response<List<ClientPart>> partResponse = this.client.getParts(partIds).execute();
-        List<ClientPart> partBody = partResponse.body();
+        List<ClientPart> partBody = this.client.getParts(partIds).body();
 
         if (partBody == null) {
             return;
@@ -840,8 +743,7 @@ public class RepositoryImpl implements Repository {
 
     private void reloadEpisodes(Collection<Integer> episodeIds) throws Exception {
         Utils.doPartitioned(episodeIds, integers -> {
-            Response<List<ClientEpisode>> response = this.client.getEpisodes(integers).execute();
-            List<ClientEpisode> episodes = response.body();
+            List<ClientEpisode> episodes = this.client.getEpisodes(integers).body();
 
             if (episodes == null) {
                 return true;
@@ -886,12 +788,6 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void updateReadWithHigherIndex(double combiIndex, boolean read, int mediumId) throws Exception {
-        List<Integer> episodeIds = this.storage.getEpisodeIdsWithHigherIndex(combiIndex, mediumId, read);
-        this.updateRead(episodeIds, read);
-    }
-
-    @Override
     public void deleteLocalEpisodesWithLowerIndex(double combiIndex, int mediumId, Application application) throws IOException {
         Collection<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithLowerIndex(combiIndex, mediumId);
         this.deleteLocalEpisodes(new HashSet<>(episodeIds), mediumId, application);
@@ -924,22 +820,25 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void updateRead(int episodeId, boolean read) throws IOException {
-        this.client.addProgress(episodeId, read ? 1 : 0).execute();
-        this.storage.updateProgress(Collections.singletonList(episodeId), read ? 1 : 0);
+    public void updateReadWithHigherIndex(double combiIndex, boolean read, int mediumId) throws Exception {
+        List<Integer> episodeIds = this.storage.getEpisodeIdsWithHigherIndex(combiIndex, mediumId, read);
+        this.updateRead(episodeIds, read);
+    }
+
+    @Override
+    public void updateAllRead(int mediumId, boolean read) throws Exception {
+        Collection<Integer> episodeIds = this.storage.getAllEpisodes(mediumId);
+        this.updateRead(episodeIds, read);
+    }
+
+    @Override
+    public void updateRead(int episodeId, boolean read) throws Exception {
+        this.editService.updateRead(Collections.singletonList(episodeId), read);
     }
 
     @Override
     public void updateRead(Collection<Integer> episodeIds, boolean read) throws Exception {
-        Utils.doPartitioned(episodeIds, ids -> {
-            Response<Boolean> response = this.client.addProgress(ids, read ? 1 : 0).execute();
-
-            if (!response.isSuccessful() || response.body() == null || !response.body()) {
-                return true;
-            }
-            this.storage.updateProgress(ids, read ? 1 : 0);
-            return false;
-        });
+        this.editService.updateRead(episodeIds, read);
     }
 
     @Override
@@ -987,8 +886,7 @@ public class RepositoryImpl implements Repository {
                 }
             }
             try {
-                Response<Boolean> response = this.client.consumeMediumInWait(selectedMedium.getMediumId(), others).execute();
-                Boolean success = response.body();
+                Boolean success = this.client.consumeMediumInWait(selectedMedium.getMediumId(), others).body();
 
                 if (success != null && success) {
                     this.storage.deleteMediaInWait(mediumInWaits);
@@ -1024,8 +922,7 @@ public class RepositoryImpl implements Repository {
             }
             Integer listId = list == null ? null : list.getListId();
             try {
-                Response<ClientMedium> response = this.client.createFromMediumInWait(medium, others, listId).execute();
-                ClientMedium clientMedium = response.body();
+                ClientMedium clientMedium = this.client.createFromMediumInWait(medium, others, listId).body();
 
                 if (clientMedium == null) {
                     return false;
@@ -1053,118 +950,27 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public CompletableFuture<Boolean> moveMediaToList(int oldListId, int listId, Collection<Integer> ids) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                // to prevent duplicates
-                Collection<Integer> items = this.storage.getListItems(listId);
-                ids.removeAll(items);
-
-                // adding nothing cannot fail
-                if (ids.isEmpty()) {
-                    return true;
-                }
-                Collection<Integer> successMove = new ArrayList<>();
-
-                for (Integer id : ids) {
-                    Response<Boolean> response = this.client.updateListMedia(oldListId, listId, id).execute();
-                    Boolean success = response.body();
-
-                    if (success != null && success) {
-                        successMove.add(id);
-                    }
-                }
-                this.storage.moveItemsToList(oldListId, listId, successMove);
-                return !successMove.isEmpty();
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-        });
+        return this.editService.moveMediaToList(oldListId, listId, ids);
     }
 
     @Override
     public CompletableFuture<Boolean> removeItemFromList(int listId, int mediumId) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                Response<Boolean> response = this.client.deleteListMedia(listId, mediumId).execute();
-                Boolean success = response.body();
-
-                if (success != null && success) {
-                    this.storage.removeItemFromList(listId, mediumId);
-                    this.storage.insertDanglingMedia(Collections.singleton(mediumId));
-                    return true;
-                }
-                return false;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return false;
-        });
+        return this.editService.removeItemFromList(listId, Collections.singleton(mediumId));
     }
 
     @Override
     public CompletableFuture<Boolean> removeItemFromList(int listId, Collection<Integer> mediumId) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                Response<Boolean> response = this.client.deleteListMedia(listId, mediumId).execute();
-                Boolean success = response.body();
-
-                if (success != null && success) {
-                    this.storage.removeItemFromList(listId, mediumId);
-                    this.storage.insertDanglingMedia(mediumId);
-                    return true;
-                }
-                return false;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return false;
-        });
+        return this.editService.removeItemFromList(listId, mediumId);
     }
 
     @Override
     public CompletableFuture<Boolean> addMediumToList(int listId, Collection<Integer> ids) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                // to prevent duplicates
-                Collection<Integer> items = this.storage.getListItems(listId);
-                ids.removeAll(items);
-
-                // adding nothing cannot fail
-                if (ids.isEmpty()) {
-                    return true;
-                }
-                Response<Boolean> response = this.client.addListMedia(listId, ids).execute();
-                if (response.body() == null || !response.body()) {
-                    return false;
-                }
-                this.storage.addItemsToList(listId, ids);
-                return true;
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-        });
+        return this.editService.addMediumToList(listId, ids);
     }
 
     @Override
     public CompletableFuture<Boolean> moveItemFromList(int oldListId, int newListId, int mediumId) {
-        return TaskManager.runCompletableTask(() -> {
-            try {
-                Response<Boolean> response = this.client.updateListMedia(oldListId, newListId, mediumId).execute();
-                Boolean success = response.body();
-
-                if (success != null && success) {
-                    this.storage.removeItemFromList(oldListId, mediumId);
-                    this.storage.addItemsToList(newListId, Collections.singleton(mediumId));
-                    return true;
-                }
-                return false;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return false;
-        });
+        return this.editService.moveItemFromList(oldListId, newListId, mediumId);
     }
 
     @Override
@@ -1189,7 +995,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void syncUser() throws IOException {
-        Response<ClientUser> user = this.client.getUser().execute();
+        Response<ClientUser> user = this.client.getUser();
         ClientUser body = user.body();
 
         if (!user.isSuccessful()) {
