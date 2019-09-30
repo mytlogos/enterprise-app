@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -95,6 +96,95 @@ public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.Read
     }
 
     @Override
+    int getScrolledViewId() {
+        return R.id.list;
+    }
+
+    @Override
+    float getCurrentProgress() {
+        return this.currentlyReading != null ? this.currentlyReading.getProgress() : 0;
+    }
+
+    @Override
+    void saveProgress(float progress) {
+        if (this.currentEpisode > 0) {
+            RepositoryImpl.getInstance().updateProgress(this.currentEpisode, progress);
+        }
+    }
+
+    @Override
+    void onScroll(int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+        super.onScroll(scrollX, scrollY, oldScrollX, oldScrollY);
+        if (this.currentlyReading == null) {
+            return;
+        }
+        float progress = this.calculateProgressByScroll(scrollY, scrollX);
+        this.updateProgress(progress);
+    }
+
+    @Override
+    float calculateProgressByScroll(int scrollY, int scrollX) {
+        int childCount = this.adapter.getRecyclerView().getChildCount();
+
+        if (childCount == 0) {
+            return 0;
+        }
+        List<View> visibleChildren = new ArrayList<>();
+
+        for (int i = 0; i < childCount; i++) {
+            View child = this.adapter.getRecyclerView().getChildAt(i);
+            if (child == null) {
+                continue;
+            }
+            int height = child.getHeight();
+
+            if (height > 0) {
+                visibleChildren.add(child);
+            }
+        }
+        if (visibleChildren.isEmpty()) {
+            return 0;
+        }
+
+        Rect lastVisibleRect = null;
+        View lastVisibleView = null;
+
+        for (int i = visibleChildren.size() - 1; i >= 0; i--) {
+            Rect rect = new Rect();
+
+            View view = visibleChildren.get(i);
+            view.getLocalVisibleRect(rect);
+
+            if (rect.bottom > 0) {
+                lastVisibleRect = rect;
+                lastVisibleView = view;
+                break;
+            }
+        }
+
+        if (lastVisibleRect == null || lastVisibleView.getHeight() <= 0) {
+            return 0;
+        }
+        int lastVisiblePosition = -1;
+        for (FlexibleViewHolder holder : this.adapter.getAllBoundViewHolders()) {
+            if (holder.getFrontView() == lastVisibleView) {
+                lastVisiblePosition = holder.getFlexibleAdapterPosition();
+                break;
+            }
+        }
+        int itemCount = this.adapter.getItemCount();
+        int viewedItems = 0;
+        if (lastVisiblePosition > 0) {
+            viewedItems = lastVisiblePosition;
+        }
+        float viewedProgress = viewedItems / ((float) itemCount);
+        // todo height may be negative (doc), but when?
+        //  check how the case where it is negative should be treated
+        float lastItemProgress = Math.abs(lastVisibleRect.height()) / ((float) lastVisibleView.getHeight() * itemCount);
+        return viewedProgress + lastItemProgress;
+    }
+
+    @Override
     void updateContent() {
         if (this.currentlyReading != null) {
             this.currentEpisode = this.currentlyReading.getEpisodeId();
@@ -123,6 +213,7 @@ public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.Read
             // TODO: 06.08.2019 display an empty episode indicator?
             System.out.println("empty episode");
         }
+        onLoadFinished();
     }
 
 
@@ -274,7 +365,6 @@ public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.Read
             @SuppressLint("DefaultLocale")
             @Override
             protected void onPostExecute(Void data) {
-                swipeLayout.setRefreshing(false);
                 updateContent();
             }
 

@@ -281,4 +281,6 @@ public interface Repository {
     void download(Set<Integer> episodeId, int mediumId, Context context);
 
     void downloadAll(int mediumId, Context context);
+
+    void updateProgress(int episodeId, float progress);
 }

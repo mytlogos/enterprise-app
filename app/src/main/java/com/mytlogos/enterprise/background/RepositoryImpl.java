@@ -788,6 +788,11 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
+    public void updateProgress(int episodeId, float progress) {
+        TaskManager.runTask(() -> this.storage.updateProgress(Collections.singleton(episodeId), progress));
+    }
+
+    @Override
     public void deleteLocalEpisodesWithLowerIndex(double combiIndex, int mediumId, Application application) throws IOException {
         Collection<Integer> episodeIds = this.storage.getSavedEpisodeIdsWithLowerIndex(combiIndex, mediumId);
         this.deleteLocalEpisodes(new HashSet<>(episodeIds), mediumId, application);

@@ -65,13 +65,30 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
         this.scrollView = view.findViewById(R.id.scroller);
         this.textDisplay.setMovementMethod(new ScrollingMovementMethod());
         this.setHasOptionsMenu(true);
-        this.scrollView.setOnScrollChangeListener(
+        /*this.scrollView.setOnScrollChangeListener(
                 (v, scrollX, scrollY, oldScrollX, oldScrollY) ->
                         this.onScroll(scrollX, scrollY, oldScrollX, oldScrollY)
-        );
+        );*/
         this.textDisplay.setOnClickListener(v -> this.toggleReadingMode());
         this.loadZip();
         return view;
+    }
+
+    @Override
+    int getScrolledViewId() {
+        return R.id.scroller;
+    }
+
+    @Override
+    float getCurrentProgress() {
+        return this.currentlyReading != null ? this.currentlyReading.getProgress() : 0;
+    }
+
+    @Override
+    void saveProgress(float progress) {
+        if (this.currentEpisode > 0) {
+            RepositoryImpl.getInstance().updateProgress(this.currentEpisode, progress);
+        }
     }
 
     @Override
@@ -197,7 +214,7 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
         @Override
         protected void onPostExecute(CharSequence data) {
             displayData(data);
-            swipeLayout.setRefreshing(false);
+            onLoadFinished();
         }
     }
 
@@ -244,7 +261,7 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
             @Override
             protected void onPostExecute(CharSequence data) {
                 displayData(data);
-                swipeLayout.setRefreshing(false);
+                onLoadFinished();
             }
 
             @Override

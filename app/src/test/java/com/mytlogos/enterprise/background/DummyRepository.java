@@ -626,6 +626,11 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
+    public void updateProgress(int episodeId, float progress) {
+
+    }
+
+    @Override
     public void updateReadWithHigherIndex(double episodeId, boolean read, int mediumId) {
 
     }
