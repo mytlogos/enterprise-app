@@ -155,7 +155,7 @@ public class TocEpisodeViewModel extends FilterableViewModel implements Sortable
     }
 
     private double getHighest(List<Double> combiIndices) {
-        double highest = Integer.MAX_VALUE;
+        double highest = Integer.MIN_VALUE;
         for (Double index : combiIndices) {
             highest = Math.max(index, highest);
         }
