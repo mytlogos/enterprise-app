@@ -116,10 +116,9 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
                         showToast("Unknown Selected Item");
                         return false;
                 }
+                displayActionModeActions();
                 return true;
             });
-            this.navigationView.setSelectedItemId(R.id.mark_read);
-            actionType = ActionType.MARK_READ;
             getFlexibleAdapter().setMode(SelectableAdapter.Mode.MULTI);
             inActionMode = true;
             return true;
@@ -312,7 +311,10 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     @Override
     public boolean onItemClick(View view, int position) {
         if (this.inActionMode) {
-            displayActionModeActions();
+            if (position != RecyclerView.NO_POSITION) {
+                getFlexibleAdapter().toggleSelection(position);
+                return true;
+            }
             return false;
         }
         IFlexible flexible = getFlexibleAdapter().getItem(position);
@@ -338,7 +340,6 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     @Override
     public void onItemLongClick(int position) {
         if (!inActionMode) {
-            System.out.println("starting action mode");
             this.getMainActivity().startActionMode(callback);
             getFlexibleAdapter().addSelection(position);
         } else {
