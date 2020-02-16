@@ -214,7 +214,9 @@ public interface Repository {
 
     void syncUser() throws IOException;
 
-    void clearLocalMediaData();
+    void syncWithTime(Context context) throws IOException;
+
+    void clearLocalMediaData(Context context);
 
     LiveData<PagedList<NotificationItem>> getNotifications();
 

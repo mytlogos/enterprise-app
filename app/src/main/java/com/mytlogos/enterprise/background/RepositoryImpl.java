@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.background;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
 import android.util.Log;
@@ -11,6 +12,7 @@ import androidx.paging.PagedList;
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator;
 import com.mytlogos.enterprise.background.api.Client;
 import com.mytlogos.enterprise.background.api.NetworkIdentificator;
+import com.mytlogos.enterprise.background.api.model.ClientChangedEntities;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
@@ -21,7 +23,9 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
+import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 import com.mytlogos.enterprise.background.resourceLoader.BlockingLoadWorker;
@@ -49,6 +53,7 @@ import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
 import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.preferences.UserPreferences;
 import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.Sortings;
@@ -61,8 +66,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -998,6 +1005,96 @@ public class RepositoryImpl implements Repository {
         return this.storage.getReleaseLinks(episodeId);
     }
 
+    private <T> T checkAndGetBody(Response<T> response) throws IOException {
+        T body = response.body();
+
+        if (body == null) {
+            String errorMsg = response.errorBody() != null ? response.errorBody().string() : null;
+            throw new IOException(String.format("No Body, Http-Code %d, ErrorBody: %s", response.code(), errorMsg));
+        }
+        return body;
+    }
+
+    private <T> Map<Integer, T> mapStringToInt(Map<String, T> map) {
+        @SuppressLint("UseSparseArrays")
+        Map<Integer, T> result = new HashMap<>();
+
+        for (Map.Entry<String, T> entry : map.entrySet()) {
+            result.put(Integer.parseInt(entry.getKey()), entry.getValue());
+        }
+        return result;
+    }
+
+    @Override
+    public void syncWithTime(Context context) throws IOException {
+        DateTime lastSync = UserPreferences.getLastSync(context);
+        syncChanged(lastSync);
+        syncDeleted(lastSync);
+        UserPreferences.setLastSync(context, DateTime.now());
+    }
+
+    private void syncChanged(DateTime lastSync) throws IOException {
+        Response<ClientChangedEntities> changedEntitiesResponse = this.client.getNew(lastSync);
+        ClientChangedEntities changedEntities = checkAndGetBody(changedEntitiesResponse);
+
+        // persist all new or updated entities, media to releases needs to be in this order
+        this.persister.persistMedia(changedEntities.media);
+        this.persister.persistParts(changedEntities.parts);
+        this.persister.persistEpisodes(changedEntities.episodes);
+        this.persister.persistReleases(changedEntities.releases);
+        this.persister.persistMediaLists(changedEntities.lists);
+        this.persister.persistExternalUsers(changedEntities.extUser);
+        this.persister.persistExternalMediaLists(changedEntities.extLists);
+        this.persister.persistMediaInWait(changedEntities.mediaInWait);
+        this.persister.persistNews(changedEntities.news);
+    }
+
+    private void syncDeleted(DateTime lastSync) throws IOException {
+        Response<ClientStat> statResponse = this.client.getStats(lastSync);
+        ClientStat statBody = checkAndGetBody(statResponse);
+
+        ClientStat.ParsedStat parsedStat = statBody.parse();
+        this.persister.persist(parsedStat);
+
+        ReloadPart reloadPart = this.storage.checkReload(parsedStat);
+
+        if (!reloadPart.loadPartEpisodes.isEmpty()) {
+            Response<Map<String, List<Integer>>> partEpisodesResponse = this.client.getPartEpisodes(reloadPart.loadPartEpisodes);
+            Map<String, List<Integer>> partStringEpisodes = checkAndGetBody(partEpisodesResponse);
+
+            Map<Integer, List<Integer>> partEpisodes = mapStringToInt(partStringEpisodes);
+
+            this.persister.deleteLeftoverEpisodes(partEpisodes);
+
+            reloadPart = this.storage.checkReload(parsedStat);
+        }
+
+
+        if (!reloadPart.loadPartReleases.isEmpty()) {
+            Response<Map<String, List<ClientSimpleRelease>>> partReleasesResponse = this.client.getPartReleases(reloadPart.loadPartReleases);
+
+            Map<String, List<ClientSimpleRelease>> partStringReleases = checkAndGetBody(partReleasesResponse);
+
+            Map<Integer, List<ClientSimpleRelease>> partReleases = mapStringToInt(partStringReleases);
+            this.persister.deleteLeftoverReleases(partReleases);
+            reloadPart = this.storage.checkReload(parsedStat);
+        }
+
+        if (!reloadPart.loadPartEpisodes.isEmpty()) {
+            throw new IllegalStateException(String.format(
+                    "Episodes of %d Parts to load even after running once",
+                    reloadPart.loadPartEpisodes.size()
+            ));
+        }
+
+        if (!reloadPart.loadPartReleases.isEmpty()) {
+            throw new IllegalStateException(String.format(
+                    "Releases of %d Parts to load even after running once",
+                    reloadPart.loadPartReleases.size()
+            ));
+        }
+    }
+
     @Override
     public void syncUser() throws IOException {
         Response<ClientUser> user = this.client.getUser();
@@ -1022,7 +1119,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public void clearLocalMediaData() {
+    public void clearLocalMediaData(Context context) {
+        UserPreferences.setLastSync(null, new DateTime(0));
         TaskManager.runTask(() -> {
             this.loadedData.getPart().clear();
             this.loadedData.getEpisodes().clear();

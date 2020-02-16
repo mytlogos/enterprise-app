@@ -278,7 +278,7 @@ public class MainActivity extends AppCompatActivity implements
         new AlertDialog.Builder(this)
                 .setTitle("Are you sure you want to clear local Media Data?")
                 .setPositiveButton("Yes", (dialog, which) -> {
-                    RepositoryImpl.getInstance().clearLocalMediaData();
+                    RepositoryImpl.getInstance().clearLocalMediaData(this);
                     SynchronizeWorker.enqueueOneTime(this.getApplication());
                 })
                 .setNegativeButton("Cancel", null)

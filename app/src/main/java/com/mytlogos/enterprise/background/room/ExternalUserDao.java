@@ -8,6 +8,7 @@ import androidx.room.Query;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
 import com.mytlogos.enterprise.model.ExternalUser;
 
+import java.util.Collection;
 import java.util.List;
 
 @Dao
@@ -21,4 +22,7 @@ public interface ExternalUserDao extends MultiBaseDao<RoomExternalUser> {
 
     @Query("SELECT COUNT(uuid) FROM RoomExternalUser")
     LiveData<Integer> countUser();
+
+    @Query("DELETE FROM RoomExternalUser WHERE uuid IN (:uuids)")
+    void delete(Collection<String> uuids);
 }

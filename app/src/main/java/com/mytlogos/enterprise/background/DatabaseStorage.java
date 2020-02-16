@@ -3,6 +3,7 @@ package com.mytlogos.enterprise.background;
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
 
+import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.DisplayRelease;
 import com.mytlogos.enterprise.model.Episode;
@@ -211,4 +212,6 @@ public interface DatabaseStorage {
     List<? extends EditEvent> getEditEvents();
 
     void removeEditEvents(Collection<EditEvent> editEvents);
+
+    ReloadPart checkReload(ClientStat.ParsedStat parsedStat);
 }

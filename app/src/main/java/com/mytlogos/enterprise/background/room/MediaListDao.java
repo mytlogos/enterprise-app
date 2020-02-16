@@ -48,6 +48,9 @@ public interface MediaListDao extends MultiBaseDao<RoomMediaList> {
     @Query("SELECT mediumId FROM MediaListMediaJoin WHERE listId=:listId")
     List<Integer> getListItems(Integer listId);
 
+    @Query("SELECT listId,mediumId FROM MediaListMediaJoin")
+    List<RoomMediaList.MediaListMediaJoin> getListItems();
+
     @Query("SELECT mediumId FROM MediaListMediaJoin WHERE listId=:listId")
     LiveData<List<Integer>> getLiveListItems(Integer listId);
 
@@ -96,4 +99,7 @@ public interface MediaListDao extends MultiBaseDao<RoomMediaList> {
 
     @Query("DELETE FROM MediaListMediaJoin WHERE listId=:listId AND mediumId IN (:mediumId)")
     void removeJoin(int listId, Collection<Integer> mediumId);
+
+    @Query("DELETE FROM RoomMediaList WHERE listId IN (:listIds)")
+    void delete(Collection<Integer> listIds);
 }

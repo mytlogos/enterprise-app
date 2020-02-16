@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mytlogos.enterprise.background.api.model.AddClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.Authentication;
+import com.mytlogos.enterprise.background.api.model.ClientChangedEntities;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
@@ -14,7 +15,9 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
+import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
@@ -137,6 +140,19 @@ public class Client {
     public Response<ClientUser> getUser() throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
         return this.query(UserApi.class, (apiImpl, url) -> apiImpl.getUser(url, body));
+    }
+
+    public Response<ClientStat> getStats(DateTime since) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("date", since);
+        return this.query(UserApi.class, (apiImpl, url) -> apiImpl.getStats(url, body));
+    }
+
+
+    public Response<ClientChangedEntities> getNew(DateTime lastSync) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("date", lastSync);
+        return this.query(UserApi.class, (apiImpl, url) -> apiImpl.getNew(url, body));
     }
 
     private Map<String, Object> userAuthenticationMap() {
@@ -396,6 +412,18 @@ public class Client {
         Map<String, Object> body = this.userAuthenticationMap();
         body.put("part", part);
         return this.query(PartApi.class, (apiImpl, url) -> apiImpl.updatePart(url, body));
+    }
+
+    public Response<Map<String, List<Integer>>> getPartEpisodes(Collection<Integer> partIds) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("part", partIds);
+        return this.query(PartApi.class, (apiImpl, url) -> apiImpl.getPartItems(url, body));
+    }
+
+    public Response<Map<String, List<ClientSimpleRelease>>> getPartReleases(Collection<Integer> partIds) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("part", partIds);
+        return this.query(PartApi.class, (apiImpl, url) -> apiImpl.getPartReleases(url, body));
     }
 
     public Response<ClientEpisode> getEpisode(int episodeId) throws IOException {

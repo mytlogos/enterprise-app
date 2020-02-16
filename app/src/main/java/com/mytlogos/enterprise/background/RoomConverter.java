@@ -123,6 +123,9 @@ public class RoomConverter {
     private <R, T> List<R> convert(Collection<T> values, Function<T, R> converter) {
         List<R> list = new ArrayList<>();
 
+        if (values == null) {
+            return list;
+        }
         for (T t : values) {
             list.add(converter.apply(t));
         }

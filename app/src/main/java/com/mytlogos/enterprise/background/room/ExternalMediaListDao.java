@@ -9,6 +9,7 @@ import androidx.room.Query;
 
 import com.mytlogos.enterprise.background.room.model.RoomExternListView;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
+import com.mytlogos.enterprise.background.room.model.RoomListUser;
 import com.mytlogos.enterprise.model.ExternalMediaListSetting;
 
 import java.util.Collection;
@@ -77,4 +78,13 @@ public interface ExternalMediaListDao extends MultiBaseDao<RoomExternalMediaList
 
     @Query("SELECT COUNT(externalListId) FROM RoomExternalMediaList")
     LiveData<Integer> countLists();
+
+    @Query("SELECT listId, mediumId FROM ExternalListMediaJoin")
+    List<RoomExternalMediaList.ExternalListMediaJoin> getListItems();
+
+    @Query("SELECT externalListId as listId, uuid FROM RoomExternalMediaList")
+    List<RoomListUser> getListUser();
+
+    @Query("DELETE FROM RoomExternalMediaList WHERE externalListId IN (:listIds)")
+    void delete(Collection<Integer> listIds);
 }

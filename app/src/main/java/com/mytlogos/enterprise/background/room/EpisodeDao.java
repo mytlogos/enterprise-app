@@ -12,8 +12,11 @@ import androidx.room.Update;
 
 import com.mytlogos.enterprise.background.room.model.RoomDisplayEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomPartEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomPartStat;
 import com.mytlogos.enterprise.background.room.model.RoomReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
+import com.mytlogos.enterprise.background.room.model.RoomSimpleRelease;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
 import com.mytlogos.enterprise.model.DisplayRelease;
 import com.mytlogos.enterprise.model.SimpleEpisode;
@@ -282,4 +285,18 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "CASE WHEN :read = 0 THEN progress < 1 ELSE progress = 1 END " +
             "AND episodeId IN (:episodeIds)")
     List<Integer> getReadEpisodes(Collection<Integer> episodeIds, boolean read);
+
+    @Query("SELECT partId, count(RoomEpisode.episodeId) as episodeCount, " +
+            "sum(RoomEpisode.episodeId) as episodeSum, count(url) as releaseCount " +
+            "FROM RoomEpisode LEFT JOIN RoomRelease ON RoomEpisode.episodeId=RoomRelease.episodeId " +
+            "GROUP BY partId")
+    List<RoomPartStat> getStat();
+
+    @Query("SELECT partId, episodeId FROM RoomEpisode WHERE partId IN (:partIds)")
+    List<RoomPartEpisode> getEpisodes(Collection<Integer> partIds);
+
+    @Query("SELECT partId, RoomEpisode.episodeId, RoomRelease.url " +
+            "FROM RoomEpisode INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId " +
+            "WHERE partId IN (:partIds)")
+    List<RoomSimpleRelease> getReleases(Collection<Integer> partIds);
 }

@@ -12,7 +12,9 @@ import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
+import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
@@ -31,6 +33,7 @@ import com.mytlogos.enterprise.model.ToDownload;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class DummyClientModelPersister implements ClientModelPersister {
     private final Collection<ClientConsumer<?>> consumer = new ArrayList<>();
@@ -184,6 +187,11 @@ public class DummyClientModelPersister implements ClientModelPersister {
             );
         }
         return this.persist(filteredEpisodes);
+    }
+
+    @Override
+    public ClientModelPersister persistReleases(Collection<ClientRelease> releases) {
+        return null;
     }
 
     @Override
@@ -493,6 +501,11 @@ public class DummyClientModelPersister implements ClientModelPersister {
     }
 
     @Override
+    public ClientModelPersister persist(ClientStat.ParsedStat stat) {
+        return this;
+    }
+
+    @Override
     public ClientModelPersister persist(ClientListQuery query) {
         this.persist(query.getMedia());
         this.persist(query.getList());
@@ -533,6 +546,16 @@ public class DummyClientModelPersister implements ClientModelPersister {
     @Override
     public ClientModelPersister persist(ClientSimpleUser user) {
         return null;
+    }
+
+    @Override
+    public void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes) {
+
+    }
+
+    @Override
+    public void deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
+
     }
 
     @Override

@@ -20,6 +20,7 @@ import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 
+import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -119,23 +120,8 @@ public class SynchronizeWorker extends Worker {
             repository.addProgressListener(this.progressListener);
 
             notificationManager.notify(syncNotificationId, builder.build());
-            repository.syncUser();
-
-            if (this.isStopped()) {
-                return this.stopSynchronize();
-            }
-
-            builder.setContentText("Updating Content data");
-            notificationManager.notify(syncNotificationId, builder.build());
-            repository.loadInvalidated();
-
-            if (this.isStopped()) {
-                return this.stopSynchronize();
-            }
-
-            builder.setContentText("Loading new Media");
-            notificationManager.notify(syncNotificationId, builder.build());
-            repository.loadAllMedia();
+//            if (syncWithInvalidation(repository)) return this.stopSynchronize();
+            syncWithTime(repository);
 
             builder
                     .setContentTitle("Synchronization complete")
@@ -144,12 +130,13 @@ public class SynchronizeWorker extends Worker {
 
             notificationManager.notify(syncNotificationId, builder.build());
         } catch (Exception e) {
+            String contentText = e instanceof IOException ? "Error between App and Server" : "Local Error";
             e.printStackTrace();
 
             builder
                     .setContentTitle("Synchronization failed")
                     .setProgress(0, 0, false)
-                    .setContentText(null);
+                    .setContentText(contentText);
 
             notificationManager.notify(syncNotificationId, builder.build());
             cleanUp();
@@ -157,6 +144,32 @@ public class SynchronizeWorker extends Worker {
         }
         cleanUp();
         return Result.success();
+    }
+
+    boolean syncWithTime(Repository repository) throws IOException {
+        repository.syncWithTime(this.getApplicationContext());
+        return false;
+    }
+
+    boolean syncWithInvalidation(Repository repository) throws IOException {
+        repository.syncUser();
+
+        if (this.isStopped()) {
+            return true;
+        }
+
+        builder.setContentText("Updating Content data");
+        notificationManager.notify(syncNotificationId, builder.build());
+        repository.loadInvalidated();
+
+        if (this.isStopped()) {
+            return true;
+        }
+
+        builder.setContentText("Loading new Media");
+        notificationManager.notify(syncNotificationId, builder.build());
+        repository.loadAllMedia();
+        return false;
     }
 
     private Result stopSynchronize() {

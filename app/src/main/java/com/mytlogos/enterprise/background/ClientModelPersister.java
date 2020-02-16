@@ -11,7 +11,10 @@ import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
+import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
@@ -20,6 +23,7 @@ import com.mytlogos.enterprise.model.ToDownload;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public interface ClientModelPersister {
     Collection<ClientConsumer<?>> getConsumer();
@@ -29,6 +33,8 @@ public interface ClientModelPersister {
     }
 
     ClientModelPersister persistEpisodes(Collection<ClientEpisode> episode);
+
+    ClientModelPersister persistReleases(Collection<ClientRelease> releases);
 
     default ClientModelPersister persist(ClientMediaList... mediaLists) {
         return this.persistMediaLists(Arrays.asList(mediaLists));
@@ -96,6 +102,8 @@ public interface ClientModelPersister {
 
     ClientModelPersister persistReadEpisodes(Collection<ClientReadEpisode> readMedia);
 
+    ClientModelPersister persist(ClientStat.ParsedStat stat);
+
     void finish();
 
     ClientModelPersister persist(ToDownload toDownload);
@@ -103,4 +111,8 @@ public interface ClientModelPersister {
     void persistMediaInWait(List<ClientMediumInWait> medium);
 
     ClientModelPersister persist(ClientSimpleUser user);
+
+    void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes);
+
+    void deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases);
 }

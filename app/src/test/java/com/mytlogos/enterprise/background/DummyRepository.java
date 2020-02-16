@@ -476,7 +476,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void clearLocalMediaData() {
+    public void clearLocalMediaData(Context context) {
 
     }
 
@@ -627,6 +627,11 @@ public final class DummyRepository implements Repository {
 
     @Override
     public void updateProgress(int episodeId, float progress) {
+
+    }
+
+    @Override
+    public void syncWithTime(Context context) {
 
     }
 

@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.background.room;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 
 import androidx.lifecycle.LiveData;
@@ -15,6 +16,7 @@ import com.mytlogos.enterprise.background.DatabaseStorage;
 import com.mytlogos.enterprise.background.DependantGenerator;
 import com.mytlogos.enterprise.background.EditEvent;
 import com.mytlogos.enterprise.background.LoadData;
+import com.mytlogos.enterprise.background.ReloadPart;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RoomConverter;
 import com.mytlogos.enterprise.background.TaskManager;
@@ -29,7 +31,10 @@ import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
+import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
@@ -42,6 +47,7 @@ import com.mytlogos.enterprise.background.room.model.RoomExternListView;
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
 import com.mytlogos.enterprise.background.room.model.RoomFailedEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomListUser;
 import com.mytlogos.enterprise.background.room.model.RoomMediaList;
 import com.mytlogos.enterprise.background.room.model.RoomMedium;
 import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
@@ -51,8 +57,10 @@ import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomNotification;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomPartEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomPartStat;
 import com.mytlogos.enterprise.background.room.model.RoomProgressComparison;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
+import com.mytlogos.enterprise.background.room.model.RoomSimpleRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
@@ -84,8 +92,13 @@ import org.joda.time.DateTime;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class RoomStorage implements DatabaseStorage {
@@ -153,7 +166,7 @@ public class RoomStorage implements DatabaseStorage {
 
     @Override
     public ClientModelPersister getPersister(Repository repository, LoadData loadedData) {
-        return new RoomModelPersister(loadedData, repository);
+        return new RoomPersister(loadedData);
     }
 
     @Override
@@ -712,6 +725,40 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
+    public ReloadPart checkReload(ClientStat.ParsedStat parsedStat) {
+        List<RoomPartStat> roomStats = this.episodeDao.getStat();
+
+        @SuppressLint("UseSparseArrays")
+        Map<Integer, ClientStat.Partstat> partStats = new HashMap<>();
+
+        for (Map<Integer, ClientStat.Partstat> value : parsedStat.media.values()) {
+            partStats.putAll(value);
+        }
+
+        List<Integer> loadEpisode = new LinkedList<>();
+        List<Integer> loadRelease = new LinkedList<>();
+
+        for (RoomPartStat roomStat : roomStats) {
+            ClientStat.Partstat partstat = partStats.get(roomStat.partId);
+
+            if (partstat == null) {
+                throw new IllegalStateException(String.format(
+                        "Local Part %s does not exist on Server, missing local Part Deletion",
+                        roomStat.partId
+                ));
+            }
+
+            if (partstat.episodeCount != roomStat.episodeCount
+                    || partstat.episodeSum != roomStat.episodeSum) {
+                loadEpisode.add(roomStat.partId);
+            } else if (partstat.releaseCount != roomStat.releaseCount) {
+                loadRelease.add(roomStat.partId);
+            }
+        }
+        return new ReloadPart(loadEpisode, loadRelease);
+    }
+
+    @Override
     public void syncProgress() {
         List<RoomProgressComparison> all = this.mediumProgressDao.getComparison();
 
@@ -977,6 +1024,421 @@ public class RoomStorage implements DatabaseStorage {
         }
     }
 
+    private class RoomPersister implements ClientModelPersister {
+        private final LoadData loadedData;
+        private final LoadWorkGenerator generator;
+
+        RoomPersister(LoadData loadedData) {
+            this.loadedData = loadedData;
+            this.generator = new LoadWorkGenerator(loadedData);
+        }
+
+        @Override
+        public Collection<com.mytlogos.enterprise.background.ClientConsumer<?>> getConsumer() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public ClientModelPersister persistEpisodes(Collection<ClientEpisode> episodes) {
+            LoadWorkGenerator.FilteredEpisodes filteredEpisodes = this.generator.filterEpisodes(episodes);
+            return this.persist(filteredEpisodes);
+        }
+
+        @Override
+        public ClientModelPersister persistReleases(Collection<ClientRelease> releases) {
+            RoomConverter converter = new RoomConverter(this.loadedData);
+            RoomStorage.this.episodeDao.insertBulkRelease(converter.convertReleases(releases));
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persist(LoadWorkGenerator.FilteredEpisodes filteredEpisodes) {
+            RoomConverter converter = new RoomConverter(this.loadedData);
+
+            List<RoomEpisode> list = converter.convertEpisodes(filteredEpisodes.newEpisodes);
+            List<RoomEpisode> update = converter.convertEpisodes(filteredEpisodes.updateEpisodes);
+
+            RoomStorage.this.episodeDao.insertBulk(list);
+            RoomStorage.this.episodeDao.updateBulk(update);
+
+            for (RoomEpisode episode : list) {
+                this.loadedData.getEpisodes().add(episode.getEpisodeId());
+            }
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persistMediaLists(Collection<ClientMediaList> mediaLists) {
+            LoadWorkGenerator.FilteredMediaList filteredMediaList = this.generator.filterMediaLists(mediaLists);
+            RoomConverter converter = new RoomConverter(this.loadedData);
+            return this.persist(filteredMediaList, converter);
+        }
+
+        @Override
+        public ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList) {
+            return this.persist(filteredMediaList, new RoomConverter(this.loadedData));
+        }
+
+
+        private ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList, RoomConverter converter) {
+            List<RoomMediaList> list = converter.convertMediaList(filteredMediaList.newList);
+            List<RoomMediaList> update = converter.convertMediaList(filteredMediaList.updateList);
+
+            RoomStorage.this.mediaListDao.insertBulk(list);
+            RoomStorage.this.mediaListDao.updateBulk(update);
+            for (RoomMediaList mediaList : list) {
+                this.loadedData.getMediaList().add(mediaList.listId);
+            }
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persistExternalMediaLists(Collection<ClientExternalMediaList> externalMediaLists) {
+            LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList = this.generator.filterExternalMediaLists(externalMediaLists);
+            RoomConverter converter = new RoomConverter(this.loadedData);
+            return this.persist(filteredExtMediaList, converter);
+        }
+
+        @Override
+        public ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList) {
+            return this.persist(filteredExtMediaList, new RoomConverter(this.loadedData));
+        }
+
+        private ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList, RoomConverter converter) {
+            List<RoomExternalMediaList> list = converter.convertExternalMediaList(filteredExtMediaList.newList);
+            List<RoomExternalMediaList> update = converter.convertExternalMediaList(filteredExtMediaList.updateList);
+
+            RoomStorage.this.externalMediaListDao.insertBulk(list);
+            RoomStorage.this.externalMediaListDao.updateBulk(update);
+
+            for (RoomExternalMediaList mediaList : list) {
+                this.loadedData.getExternalMediaList().add(mediaList.externalListId);
+            }
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persistExternalUsers(Collection<ClientExternalUser> externalUsers) {
+            LoadWorkGenerator.FilteredExternalUser filteredExternalUser = this.generator.filterExternalUsers(externalUsers);
+            return this.persist(filteredExternalUser);
+        }
+
+        @Override
+        public ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser) {
+            RoomConverter converter = new RoomConverter(this.loadedData);
+            return this.persist(filteredExternalUser, converter);
+        }
+
+        private ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser, RoomConverter converter) {
+            List<RoomExternalUser> newUser = converter.convertExternalUser(filteredExternalUser.newUser);
+            List<RoomExternalUser> updatedUser = converter.convertExternalUser(filteredExternalUser.updateUser);
+
+            RoomStorage.this.externalUserDao.insertBulk(newUser);
+            RoomStorage.this.externalUserDao.updateBulk(updatedUser);
+
+            for (RoomExternalUser user : newUser) {
+                this.loadedData.getExternalUser().add(user.uuid);
+            }
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persistMedia(Collection<ClientMedium> media) {
+            LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterMedia(media);
+            return persist(filteredMedia);
+        }
+
+        @Override
+        public ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia) {
+            RoomConverter converter = new RoomConverter(this.loadedData);
+
+            List<RoomMedium> newMedia = converter.convertMedia(filteredMedia.newMedia);
+            List<RoomMedium> updatedMedia = converter.convertMedia(filteredMedia.updateMedia);
+
+            RoomStorage.this.mediumDao.insertBulk(newMedia);
+            RoomStorage.this.mediumDao.updateBulk(updatedMedia);
+
+            for (RoomMedium medium : newMedia) {
+                this.loadedData.getMedia().add(medium.getMediumId());
+            }
+
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persistNews(Collection<ClientNews> news) {
+            List<RoomNews> newNews = new ArrayList<>();
+            List<RoomNews> updatedNews = new ArrayList<>();
+            RoomConverter converter = new RoomConverter();
+
+            for (ClientNews clientNews : news) {
+                RoomNews roomNews = converter.convert(clientNews);
+                if (this.loadedData.getNews().contains(clientNews.getId())) {
+                    updatedNews.add(roomNews);
+                } else {
+                    newNews.add(roomNews);
+                }
+            }
+            RoomStorage.this.newsDao.insertNews(newNews);
+            RoomStorage.this.newsDao.updateNews(updatedNews);
+
+            for (RoomNews roomNews : newNews) {
+                this.loadedData.getNews().add(roomNews.getNewsId());
+            }
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persistParts(Collection<ClientPart> parts) {
+            LoadWorkGenerator.FilteredParts filteredParts = this.generator.filterParts(parts);
+            return persist(filteredParts);
+        }
+
+        @Override
+        public ClientModelPersister persist(LoadWorkGenerator.FilteredParts filteredParts) {
+            RoomConverter converter = new RoomConverter();
+
+            List<RoomPart> newParts = converter.convertParts(filteredParts.newParts);
+            List<RoomPart> updatedParts = converter.convertParts(filteredParts.updateParts);
+
+            RoomStorage.this.partDao.insertBulk(newParts);
+            RoomStorage.this.partDao.updateBulk(updatedParts);
+
+            for (RoomPart part : newParts) {
+                this.loadedData.getPart().add(part.getPartId());
+            }
+
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persistReadEpisodes(Collection<ClientReadEpisode> readEpisodes) {
+            LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes = this.generator.filterReadEpisodes(readEpisodes);
+            return this.persist(filteredReadEpisodes);
+        }
+
+        @Override
+        public ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes) {
+            for (ClientReadEpisode readEpisode : filteredReadEpisodes.episodeList) {
+                RoomStorage.this.episodeDao.updateProgress(
+                        readEpisode.getEpisodeId(),
+                        readEpisode.getProgress(),
+                        readEpisode.getReadDate()
+                );
+            }
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persist(ClientListQuery query) {
+            this.persist(query.getMedia());
+            this.persist(query.getList());
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persist(ClientMultiListQuery query) {
+            this.persist(query.getMedia());
+            this.persist(query.getList());
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persistToDownloads(Collection<ToDownload> toDownloads) {
+            List<RoomToDownload> roomToDownloads = new RoomConverter().convertToDownload(toDownloads);
+            RoomStorage.this.toDownloadDao.insertBulk(roomToDownloads);
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persist(ClientUpdateUser user) {
+            User value = RoomStorage.this.userLiveData.getValue();
+            if (value == null) {
+                throw new IllegalArgumentException("cannot update user if none is stored in the database");
+            }
+            if (!user.getUuid().equals(value.getUuid())) {
+                throw new IllegalArgumentException("cannot update user which do not share the same uuid");
+            }
+            // at the moment the only thing that can change for the user on client side is the name
+            if (user.getName().equals(value.getName())) {
+                return this;
+            }
+            RoomStorage.this.userDao.update(new RoomUser(user.getName(), value.getUuid(), value.getSession()));
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persist(ToDownload toDownload) {
+            RoomStorage.this.toDownloadDao.insert(new RoomConverter().convert(toDownload));
+            return this;
+        }
+
+        @Override
+        public void persistMediaInWait(List<ClientMediumInWait> medium) {
+            RoomStorage.this.mediumInWaitDao.insertBulk(new RoomConverter().convertClientMediaInWait(medium));
+        }
+
+        @Override
+        public ClientModelPersister persist(ClientSimpleUser user) {
+            // short cut version
+            if (user == null) {
+                RoomStorage.this.deleteAllUser();
+                return this;
+            }
+            RoomConverter converter = new RoomConverter();
+            RoomUser newRoomUser = converter.convert(user);
+
+            RoomUser currentUser = RoomStorage.this.userDao.getUserNow();
+
+            if (currentUser != null && newRoomUser.getUuid().equals(currentUser.getUuid())) {
+                // update user, so previous one wont be deleted
+                RoomStorage.this.userDao.update(newRoomUser);
+            } else {
+                RoomStorage.this.userDao.deleteAllUser();
+                // persist user
+                RoomStorage.this.userDao.insert(newRoomUser);
+            }
+
+            return this;
+        }
+
+        @Override
+        public void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes) {
+            List<RoomPartEpisode> episodes = RoomStorage.this.episodeDao.getEpisodes(partEpisodes.keySet());
+
+            List<Integer> deleteEpisodes = new LinkedList<>();
+
+            episodes.forEach(roomPartEpisode -> {
+                List<Integer> episodeIds = partEpisodes.get(roomPartEpisode.getPartId());
+
+                if (episodeIds == null || !episodeIds.contains(roomPartEpisode.getEpisodeId())) {
+                    deleteEpisodes.add(roomPartEpisode.getEpisodeId());
+                }
+            });
+
+            RoomStorage.this.episodeDao.deletePerId(deleteEpisodes);
+        }
+
+        @Override
+        public void deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
+            List<RoomSimpleRelease> episodes = RoomStorage.this.episodeDao.getReleases(partReleases.keySet());
+
+            List<RoomRelease> deleteRelease = new LinkedList<>();
+            DateTime now = DateTime.now();
+
+            episodes.forEach(release -> {
+                List<ClientSimpleRelease> releases = partReleases.get(release.partId);
+
+                boolean found = false;
+
+                if (releases != null) {
+                    for (ClientSimpleRelease simpleRelease : releases) {
+                        if (simpleRelease.id == release.episodeId && Objects.equals(simpleRelease.url, release.url)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    deleteRelease.add(new RoomRelease(release.episodeId, "", release.url, now, false));
+                }
+            });
+
+            RoomStorage.this.episodeDao.deleteBulkRelease(deleteRelease);
+        }
+
+        @Override
+        public ClientModelPersister persist(ClientUser clientUser) {
+            // short cut version
+            if (clientUser == null) {
+                RoomStorage.this.deleteAllUser();
+                return this;
+            }
+
+            RoomConverter converter = new RoomConverter();
+            RoomUser newRoomUser = converter.convert(clientUser);
+
+            RoomUser currentUser = RoomStorage.this.userDao.getUserNow();
+
+            if (currentUser != null && newRoomUser.getUuid().equals(currentUser.getUuid())) {
+                // update user, so previous one wont be deleted
+                RoomStorage.this.userDao.update(newRoomUser);
+            } else {
+                RoomStorage.this.userDao.deleteAllUser();
+                // persist user
+                RoomStorage.this.userDao.insert(newRoomUser);
+            }
+
+            // persist lists
+            this.persist(clientUser.getLists());
+            // persist externalUser
+            this.persist(clientUser.getExternalUser());
+
+            return this;
+        }
+
+        @Override
+        public ClientModelPersister persist(ClientStat.ParsedStat stat) {
+            /*
+            * Remove any Join not defined in stat.lists
+            * Remove any Join not defined in stat.exLists
+            * Remove any ExList not defined for a user in stat.exUser
+            * Remove any ExList which is not a key in stat.exLists
+            * Remove any List which is not a key in stat.Lists
+            * Remove any ExUser which is not a key in stat.exUser
+            */
+            List<RoomMediaList.MediaListMediaJoin> listJoins = RoomStorage.this.mediaListDao.getListItems();
+            List<RoomExternalMediaList.ExternalListMediaJoin> exListJoins = RoomStorage.this.externalMediaListDao.getListItems();
+            List<RoomListUser> listUser = RoomStorage.this.externalMediaListDao.getListUser();
+
+            Set<Integer> deletedLists = new HashSet<>();
+            Set<Integer> deletedExLists = new HashSet<>();
+            Set<String> deletedExUser = new HashSet<>();
+
+            listJoins.removeIf(join -> {
+                List<Integer> currentListItems = stat.lists.get(join.listId);
+                if (currentListItems == null) {
+                    deletedLists.add(join.listId);
+                    return true;
+                }
+                return currentListItems.contains(join.mediumId);
+            });
+
+            exListJoins.removeIf(join -> {
+                List<Integer> currentListItems = stat.extLists.get(join.listId);
+                if (currentListItems == null) {
+                    deletedExLists.add(join.listId);
+                    return true;
+                }
+                return currentListItems.contains(join.mediumId);
+            });
+
+            listUser.forEach(roomListUser -> {
+                List<Integer> listIds = stat.extUser.get(roomListUser.getUuid());
+                if (listIds == null) {
+                    deletedExUser.add(roomListUser.getUuid());
+                    return;
+                }
+                if (!listIds.contains(roomListUser.getListId())) {
+                    deletedLists.add(roomListUser.getListId());
+                }
+            });
+
+            RoomStorage.this.externalMediaListDao.removeJoin(exListJoins);
+            RoomStorage.this.mediaListDao.removeJoin(listJoins);
+
+            RoomStorage.this.externalMediaListDao.delete(deletedExLists);
+            RoomStorage.this.mediaListDao.delete(deletedLists);
+            RoomStorage.this.externalUserDao.delete(deletedExUser);
+            return this;
+        }
+
+        @Override
+        public void finish() {
+
+        }
+    }  
 
     private class RoomModelPersister implements ClientModelPersister {
         private final Collection<ClientConsumer<?>> consumer = new ArrayList<>();
@@ -1118,6 +1580,13 @@ public class RoomStorage implements DatabaseStorage {
             }
 
             return persist(filteredEpisodes);
+        }
+
+        @Override
+        public ClientModelPersister persistReleases(Collection<ClientRelease> releases) {
+            RoomConverter converter = new RoomConverter(this.loadedData);
+            RoomStorage.this.episodeDao.insertBulkRelease(converter.convertReleases(releases));
+            return this;
         }
 
         @Override
@@ -1467,6 +1936,11 @@ public class RoomStorage implements DatabaseStorage {
         }
 
         @Override
+        public ClientModelPersister persist(ClientStat.ParsedStat stat) {
+            return this;
+        }
+
+        @Override
         public ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes) {
             for (ClientReadEpisode readEpisode : filteredReadEpisodes.episodeList) {
                 RoomStorage.this.episodeDao.updateProgress(
@@ -1549,6 +2023,16 @@ public class RoomStorage implements DatabaseStorage {
             }
 
             return this;
+        }
+
+        @Override
+        public void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes) {
+
+        }
+
+        @Override
+        public void deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
+
         }
 
         @Override
