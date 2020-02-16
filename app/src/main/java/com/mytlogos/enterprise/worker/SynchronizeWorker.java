@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
+import com.mytlogos.enterprise.background.api.NotConnectedException;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -130,7 +131,16 @@ public class SynchronizeWorker extends Worker {
 
             notificationManager.notify(syncNotificationId, builder.build());
         } catch (Exception e) {
-            String contentText = e instanceof IOException ? "Error between App and Server" : "Local Error";
+            String contentText;
+            if (e instanceof IOException) {
+                if (e instanceof NotConnectedException) {
+                    contentText = "Not connected with Server";
+                } else {
+                    contentText = "Error between App and Server";
+                }
+            } else {
+                contentText = "Local Error";
+            }
             e.printStackTrace();
 
             builder
