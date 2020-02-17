@@ -20,6 +20,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.paging.PagedList;
@@ -114,7 +115,10 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
                                 // TODO: 29.07.2019 replace toast with undoable snackbar
                                 mode.finish();
                             }
-                            requireActivity().runOnUiThread(() -> showToast(text));
+                            FragmentActivity activity = getActivity();
+                            if (activity != null) {
+                                activity.runOnUiThread(() -> showToast(text));
+                            }
                         });
                     });
 
