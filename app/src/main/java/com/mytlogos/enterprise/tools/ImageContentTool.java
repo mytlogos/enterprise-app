@@ -283,8 +283,14 @@ public class ImageContentTool extends ContentTool {
             int responseCode = httpURLConnection.getResponseCode();
 
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                System.err.println("invalid response for " + link);
-                return;
+                httpURLConnection = (HttpURLConnection) url.openConnection();
+                httpURLConnection.setDoInput(true);
+                httpURLConnection.connect();
+                responseCode = httpURLConnection.getResponseCode();
+
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    throw new IOException("could not get resource successfully: " + link);
+                }
             }
 
             try (BufferedInputStream in = new BufferedInputStream(httpURLConnection.getInputStream())) {
