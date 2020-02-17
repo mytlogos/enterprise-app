@@ -11,6 +11,7 @@ public class UserPreferences {
     private static String LOGGED_STATUS = "user_login_status";
     private static String LOGGED_USER = "user_login_uuid";
     private static String LAST_SYNC = "last_time_sync";
+    private static String EPISODES_FILTER = "episodes_filter";
     private SharedPreferences sharedPreferences;
 
     private UserPreferences(Context context) {
@@ -29,6 +30,16 @@ public class UserPreferences {
 
     public DownloadPreference getDownloadPreference() {
         return new DownloadPreference(this.sharedPreferences);
+    }
+
+    public static String getEpisodesFilter(Context context) {
+        return UserPreferences.get(context).sharedPreferences.getString(EPISODES_FILTER, null);
+    }
+
+    public static void setEpisodesFilter(Context context, String filter) {
+        SharedPreferences.Editor editor = UserPreferences.get(context).sharedPreferences.edit();
+        editor.putString(EPISODES_FILTER, filter);
+        editor.apply();
     }
 
     public static DateTime getLastSync(Context context) {

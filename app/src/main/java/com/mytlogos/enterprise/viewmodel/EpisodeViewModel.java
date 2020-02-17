@@ -8,7 +8,9 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
 
+import com.google.gson.Gson;
 import com.mytlogos.enterprise.model.DisplayRelease;
+import com.mytlogos.enterprise.preferences.UserPreferences;
 
 public class EpisodeViewModel extends RepoViewModel implements MediumFilterableViewModel {
 
@@ -17,12 +19,18 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
 
     public EpisodeViewModel(@NonNull Application application) {
         super(application);
-        filter.setValue(new Filter());
+        String episodesFilter = UserPreferences.getEpisodesFilter(application);
+        Filter filter = new Gson().fromJson(episodesFilter, Filter.class);
+        this.filter.setValue(filter != null ? filter : new Filter());
+        this.filter.observeForever(newFilter -> {
+            String json = new Gson().toJson(newFilter);
+            UserPreferences.setEpisodesFilter(application, json);
+        });
     }
 
     public LiveData<PagedList<DisplayRelease>> getDisplayEpisodes() {
         if (this.episodes == null) {
-            this.episodes = Transformations.switchMap(filter, input -> {
+            this.episodes = Transformations.switchMap(this.filter, input -> {
                 System.out.println("filtering episodes after: " + input);
 //                if (input.grouped) {
 //                    return repository.getDisplayEpisodesGrouped(input.saved, input.medium);
