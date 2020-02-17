@@ -39,7 +39,6 @@ import eu.davidea.flexibleadapter.FlexibleAdapter;
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
 import eu.davidea.flexibleadapter.items.IFilterable;
 import eu.davidea.flexibleadapter.items.IFlexible;
-import eu.davidea.viewholders.FlexibleViewHolder;
 
 public class MediaInWaitFragment extends BaseFragment {
 
@@ -305,7 +304,7 @@ public class MediaInWaitFragment extends BaseFragment {
         return adapter;
     }
 
-    private static class FlexibleMediumInWait extends AbstractFlexibleItem<ViewHolder> {
+    private static class FlexibleMediumInWait extends AbstractFlexibleItem<CloseableTextViewHolder> {
         private final MediumInWait mediumInWait;
 
         private FlexibleMediumInWait(MediumInWait mediumInWait) {
@@ -333,12 +332,12 @@ public class MediaInWaitFragment extends BaseFragment {
         }
 
         @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view, adapter);
+        public CloseableTextViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
+            return new CloseableTextViewHolder(view, adapter);
         }
 
         @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
+        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, CloseableTextViewHolder holder, int position, List<Object> payloads) {
             String domain = Utils.getDomain(this.mediumInWait.getLink());
 
             String title = String.format("%s (%s)", this.mediumInWait.getTitle(), domain);
@@ -346,7 +345,7 @@ public class MediaInWaitFragment extends BaseFragment {
         }
     }
 
-    private static class FlexibleMedium extends AbstractFlexibleItem<ViewHolder> {
+    private static class FlexibleMedium extends AbstractFlexibleItem<CloseableTextViewHolder> {
         private final SimpleMedium medium;
 
         private FlexibleMedium(SimpleMedium medium) {
@@ -374,17 +373,17 @@ public class MediaInWaitFragment extends BaseFragment {
         }
 
         @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view, adapter);
+        public CloseableTextViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
+            return new CloseableTextViewHolder(view, adapter);
         }
 
         @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
+        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, CloseableTextViewHolder holder, int position, List<Object> payloads) {
             holder.textView.setText(this.medium.getTitle());
         }
     }
 
-    private static class FlexibleMediumInWaitSuggestion extends AbstractFlexibleItem<ViewHolder> implements IFilterable<MediumInWaitSimpleFilter> {
+    private static class FlexibleMediumInWaitSuggestion extends AbstractFlexibleItem<CloseableTextViewHolder> implements IFilterable<MediumInWaitSimpleFilter> {
         private final MediumInWait mediumInWait;
 
         private FlexibleMediumInWaitSuggestion(MediumInWait mediumInWait) {
@@ -412,12 +411,12 @@ public class MediaInWaitFragment extends BaseFragment {
         }
 
         @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view, adapter);
+        public CloseableTextViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
+            return new CloseableTextViewHolder(view, adapter);
         }
 
         @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
+        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, CloseableTextViewHolder holder, int position, List<Object> payloads) {
             String domain = Utils.getDomain(this.mediumInWait.getLink());
 
             String title = String.format("%s (%s)", this.mediumInWait.getTitle(), domain);
@@ -433,14 +432,4 @@ public class MediaInWaitFragment extends BaseFragment {
         }
     }
 
-    private static class ViewHolder extends FlexibleViewHolder {
-        private TextView textView;
-
-        private ViewHolder(View view, FlexibleAdapter adapter) {
-            super(view, adapter);
-            textView = view.findViewById(R.id.text);
-            View closeButton = view.findViewById(R.id.close);
-            closeButton.setOnClickListener(v -> adapter.removeItem(this.getFlexibleAdapterPosition()));
-        }
-    }
 }
