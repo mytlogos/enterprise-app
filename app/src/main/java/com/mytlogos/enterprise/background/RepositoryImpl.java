@@ -1030,8 +1030,8 @@ public class RepositoryImpl implements Repository {
     public void syncWithTime(Context context) throws IOException {
         DateTime lastSync = UserPreferences.getLastSync(context);
         syncChanged(lastSync);
-        syncDeleted(lastSync);
         UserPreferences.setLastSync(context, DateTime.now());
+        syncDeleted();
     }
 
     private void syncChanged(DateTime lastSync) throws IOException {
@@ -1050,8 +1050,8 @@ public class RepositoryImpl implements Repository {
         this.persister.persistNews(changedEntities.news);
     }
 
-    private void syncDeleted(DateTime lastSync) throws IOException {
-        Response<ClientStat> statResponse = this.client.getStats(lastSync);
+    private void syncDeleted() throws IOException {
+        Response<ClientStat> statResponse = this.client.getStats();
         ClientStat statBody = checkAndGetBody(statResponse);
 
         ClientStat.ParsedStat parsedStat = statBody.parse();

@@ -142,9 +142,8 @@ public class Client {
         return this.query(UserApi.class, (apiImpl, url) -> apiImpl.getUser(url, body));
     }
 
-    public Response<ClientStat> getStats(DateTime since) throws IOException {
+    public Response<ClientStat> getStats() throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();
-        body.put("date", since);
         return this.query(UserApi.class, (apiImpl, url) -> apiImpl.getStats(url, body));
     }
 
@@ -539,7 +538,7 @@ public class Client {
                     .create();
             OkHttpClient client = new OkHttpClient
                     .Builder()
-                    .readTimeout(20, TimeUnit.SECONDS)
+                    .readTimeout(60, TimeUnit.SECONDS)
                     .build();
 
             retrofit = new Retrofit.Builder()
