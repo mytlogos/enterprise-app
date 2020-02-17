@@ -277,20 +277,51 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     Filterable createFilterable() {
         return new Filterable() {
             @Override
-            public void onCreateFilter(View view, AlertDialog.Builder builder) {
-                LinkedHashMap<String, Byte> readValueMap = new LinkedHashMap<>();
-                readValueMap.put("No Filter", (byte) -1);
-                readValueMap.put("Read only", (byte) 1);
-                readValueMap.put("Unread only", (byte) 0);
+            public Property[] getSearchFilterProperties() {
+                return new Property[]{
+                        new PositionProperty() {
+                            @Override
+                            public int getViewId() {
+                                return R.id.read;
+                            }
 
-                setStringSpinner(view, R.id.read, readValueMap, saved -> getViewModel().setReadFilter(saved));
+                            @Override
+                            public Integer get() {
+                                return (int) getViewModel().getReadFilter();
+                            }
 
-                LinkedHashMap<String, Byte> savedValueMap = new LinkedHashMap<>();
-                savedValueMap.put("No Filter", (byte) -1);
-                savedValueMap.put("Saved only", (byte) 1);
-                savedValueMap.put("Not Saved only", (byte) 0);
+                            @Override
+                            public int[] positionalMapping() {
+                                return new int[]{1, 0, -1};
+                            }
 
-                setStringSpinner(view, R.id.saved, savedValueMap, saved -> getViewModel().setSavedFilter(saved));
+                            @Override
+                            public void set(Integer value) {
+                                getViewModel().setReadFilter(value.byteValue());
+                            }
+                        },
+                        new PositionProperty() {
+                            @Override
+                            public int getViewId() {
+                                return R.id.saved;
+                            }
+
+                            @Override
+                            public int[] positionalMapping() {
+                                return new int[]{1, 0, -1};
+                            }
+
+                            @Override
+                            public Integer get() {
+                                return (int) getViewModel().getSavedFilter();
+                            }
+
+                            @Override
+                            public void set(Integer value) {
+                                getViewModel().setSavedFilter(value.byteValue());
+                            }
+                        },
+                };
             }
 
             @Override

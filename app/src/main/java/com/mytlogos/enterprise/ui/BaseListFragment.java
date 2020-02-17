@@ -16,6 +16,7 @@ import android.widget.AdapterView;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.RadioGroup;
 import android.widget.Spinner;
 
 import androidx.annotation.IdRes;
@@ -271,6 +272,29 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
         checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> property.set(isChecked));
     }
 
+    private void setRadiogroup(RadioGroup view, PositionProperty property) {
+        Integer value = property.get();
+        int[] values = property.positionalMapping();
+        int selected = -1;
+
+        for (int index = 0, valuesLength = values.length; index < valuesLength; index++) {
+            int i = values[index];
+            if (i == value) {
+                selected = index;
+                break;
+            }
+        }
+        if (selected >= 0) {
+            int id = view.getChildAt(selected).getId();
+            view.check(id);
+        }
+        view.setOnCheckedChangeListener((group, checkedId) -> {
+            View radioButton = group.findViewById(checkedId);
+            int index = group.indexOfChild(radioButton);
+            property.set(values[index]);
+        });
+    }
+
     private void openFilter() {
         LayoutInflater inflater = this.getLayoutInflater();
         @SuppressLint("InflateParams")
@@ -292,6 +316,8 @@ abstract class BaseListFragment<Value, ViewModel extends AndroidViewModel> exten
                     this.setSearchViewFilter(searchView, (TextProperty) property, clearTitleButton);
                 } else if (filterView instanceof Spinner) {
                     this.setSpinner(((Spinner) filterView), (PositionProperty) property);
+                } else if (filterView instanceof RadioGroup) {
+                    this.setRadiogroup(((RadioGroup) filterView), (PositionProperty) property);
                 } else if (filterView instanceof EditText) {
                     this.setEditText(((EditText) filterView), (TextProperty) property);
                 } else if (filterView instanceof CheckBox) {

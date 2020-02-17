@@ -247,4 +247,8 @@
     <string name="zero_percent">0%</string>
     <string name="left_navigation">Left Navigation</string>
     <string name="right_navigation">Right Navigation</string>
+    <string name="ignore">Ignore</string>
+    <string name="no">No</string>
+    <string name="yes">Yes</string>
+    <string name="saved_status">Saved Status</string>
 </resources>

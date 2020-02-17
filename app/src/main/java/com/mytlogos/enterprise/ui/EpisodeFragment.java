@@ -152,7 +152,7 @@ public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeVie
 
                             @Override
                             public int[] positionalMapping() {
-                                return new int[]{-1, 1, 0};
+                                return new int[]{1, 0, -1};
                             }
 
                             @Override
@@ -168,7 +168,7 @@ public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeVie
 
                             @Override
                             public int[] positionalMapping() {
-                                return new int[]{-1, 1, 0};
+                                return new int[]{1, 0, -1};
                             }
 
                             @Override
