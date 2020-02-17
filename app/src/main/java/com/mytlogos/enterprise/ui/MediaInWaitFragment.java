@@ -439,6 +439,8 @@ public class MediaInWaitFragment extends BaseFragment {
         private ViewHolder(View view, FlexibleAdapter adapter) {
             super(view, adapter);
             textView = view.findViewById(R.id.text);
+            View closeButton = view.findViewById(R.id.close);
+            closeButton.setOnClickListener(v -> adapter.removeItem(this.getFlexibleAdapterPosition()));
         }
     }
 }
