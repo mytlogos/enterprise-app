@@ -286,8 +286,8 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
             "AND episodeId IN (:episodeIds)")
     List<Integer> getReadEpisodes(Collection<Integer> episodeIds, boolean read);
 
-    @Query("SELECT partId, count(RoomEpisode.episodeId) as episodeCount, " +
-            "sum(RoomEpisode.episodeId) as episodeSum, count(url) as releaseCount " +
+    @Query("SELECT partId, count(DISTINCT RoomEpisode.episodeId) as episodeCount, " +
+            "sum(DISTINCT RoomEpisode.episodeId) as episodeSum, count(url) as releaseCount " +
             "FROM RoomEpisode LEFT JOIN RoomRelease ON RoomEpisode.episodeId=RoomRelease.episodeId " +
             "GROUP BY partId")
     List<RoomPartStat> getStat();
