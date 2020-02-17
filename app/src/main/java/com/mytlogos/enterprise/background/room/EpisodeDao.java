@@ -99,42 +99,42 @@ public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
 
     @Query("SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,\n" +
             "RoomMedium.mediumId,RoomMedium.title as mediumTitle, \n" +
-            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read \n, " +
-            "RoomRelease.*" +
+            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read, RoomRelease.*\n" +
             "FROM RoomEpisode \n" +
             "INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId \n" +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId \n" +
             "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId \n" +
-            "WHERE CASE :read " +
+            "WHERE CASE :read \n" +
             "WHEN 0 THEN progress < 1\n" +
             "WHEN 1 THEN progress = 1\n" +
-            "ELSE 1 END " +
+            "ELSE 1 END \n" +
+            "AND (:listEmpty OR RoomMedium.mediumId IN (SELECT mediumId FROM MediaListMediaJoin WHERE listId IN (:listIds)))\n" +
             "AND (:medium = 0 OR (:medium & medium) > 0)\n" +
             "AND (:saved < 0 OR saved=:saved)\n" +
             "AND (:minIndex < 0 OR RoomEpisode.combiIndex >= :minIndex)\n" +
             "AND (:maxIndex < 0 OR RoomEpisode.combiIndex <= :maxIndex)\n" +
             "ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC")
-    DataSource.Factory<Integer, DisplayRelease> getDisplayEpisodes(int saved, int read, int medium, int minIndex, int maxIndex);
+    DataSource.Factory<Integer, DisplayRelease> getDisplayEpisodes(int saved, int read, int medium, int minIndex, int maxIndex, Collection<Integer> listIds, boolean listEmpty);
 
     @Query("SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,\n" +
             "RoomMedium.mediumId,RoomMedium.title as mediumTitle, \n" +
-            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read \n, " +
-            "RoomRelease.*" +
+            "CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read, RoomRelease.*\n" +
             "FROM RoomEpisode \n" +
             "INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId \n" +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId \n" +
             "INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId \n" +
-            "WHERE CASE :read " +
+            "WHERE CASE :read \n" +
             "WHEN 0 THEN progress < 1\n" +
             "WHEN 1 THEN progress = 1\n" +
-            "ELSE 1 END " +
+            "ELSE 1 END \n" +
+            "AND (:listEmpty OR RoomMedium.mediumId IN (SELECT mediumId FROM MediaListMediaJoin WHERE listId IN (:listIds)))\n" +
             "AND (:medium = 0 OR (:medium & medium) > 0)\n" +
             "AND (:saved < 0 OR saved=:saved)\n" +
             "AND (:minIndex < 0 OR RoomEpisode.combiIndex >= :minIndex)\n" +
             "AND (:maxIndex < 0 OR RoomEpisode.combiIndex <= :maxIndex)\n" +
             "GROUP BY RoomEpisode.episodeId \n" +
             "ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC")
-    DataSource.Factory<Integer, DisplayRelease> getDisplayEpisodesLatestOnly(int saved, int read, int medium, int minIndex, int maxIndex);
+    DataSource.Factory<Integer, DisplayRelease> getDisplayEpisodesLatestOnly(int saved, int read, int medium, int minIndex, int maxIndex, Collection<Integer> listIds, boolean listEmpty);
 
     @Transaction
     @Query("SELECT * FROM \n" +

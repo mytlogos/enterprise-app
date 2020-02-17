@@ -25,6 +25,7 @@ import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.tools.Sortings;
+import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 
 import org.joda.time.DateTime;
 
@@ -87,7 +88,7 @@ public interface DatabaseStorage {
 
     List<Integer> getDownloadableEpisodes(Collection<Integer> mediumId);
 
-    LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(int saved, int medium, int read, int minIndex, int maxIndex, boolean latestOnly);
+    LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(EpisodeViewModel.Filter filter);
 
     LiveData<PagedList<DisplayEpisode>> getDisplayEpisodesGrouped(int saved, int medium);
 

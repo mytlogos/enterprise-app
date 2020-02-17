@@ -87,6 +87,7 @@ import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.tools.Utils;
+import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 
 import org.joda.time.DateTime;
 
@@ -276,10 +277,10 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(int saved, int medium, int read, int minIndex, int maxIndex, boolean latestOnly) {
-        DataSource.Factory<Integer, DisplayRelease> factory = latestOnly
-                ? this.episodeDao.getDisplayEpisodesLatestOnly(saved, read, medium, minIndex, maxIndex)
-                : this.episodeDao.getDisplayEpisodes(saved, read, medium, minIndex, maxIndex);
+    public LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(EpisodeViewModel.Filter filter) {
+        DataSource.Factory<Integer, DisplayRelease> factory = filter.latestOnly
+                ? this.episodeDao.getDisplayEpisodesLatestOnly(filter.saved, filter.read, filter.medium, filter.minIndex, filter.maxIndex, filter.filterListIds, filter.filterListIds.isEmpty())
+                : this.episodeDao.getDisplayEpisodes(filter.saved, filter.read, filter.medium, filter.minIndex, filter.maxIndex, filter.filterListIds, filter.filterListIds.isEmpty());
         return new LivePagedListBuilder<>(factory, 50).build();
     }
 
@@ -1381,13 +1382,13 @@ public class RoomStorage implements DatabaseStorage {
         @Override
         public ClientModelPersister persist(ClientStat.ParsedStat stat) {
             /*
-            * Remove any Join not defined in stat.lists
-            * Remove any Join not defined in stat.exLists
-            * Remove any ExList not defined for a user in stat.exUser
-            * Remove any ExList which is not a key in stat.exLists
-            * Remove any List which is not a key in stat.Lists
-            * Remove any ExUser which is not a key in stat.exUser
-            */
+             * Remove any Join not defined in stat.lists
+             * Remove any Join not defined in stat.exLists
+             * Remove any ExList not defined for a user in stat.exUser
+             * Remove any ExList which is not a key in stat.exLists
+             * Remove any List which is not a key in stat.Lists
+             * Remove any ExUser which is not a key in stat.exUser
+             */
             List<RoomMediaList.MediaListMediaJoin> listJoins = RoomStorage.this.mediaListDao.getListItems();
             List<RoomExternalMediaList.ExternalListMediaJoin> exListJoins = RoomStorage.this.externalMediaListDao.getListItems();
             List<RoomListUser> listUser = RoomStorage.this.externalMediaListDao.getListUser();
@@ -1438,7 +1439,7 @@ public class RoomStorage implements DatabaseStorage {
         public void finish() {
 
         }
-    }  
+    }
 
     private class RoomModelPersister implements ClientModelPersister {
         private final Collection<ClientConsumer<?>> consumer = new ArrayList<>();

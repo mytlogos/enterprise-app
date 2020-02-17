@@ -20,6 +20,7 @@ import com.mytlogos.enterprise.model.DisplayRelease;
 import com.mytlogos.enterprise.model.Episode;
 import com.mytlogos.enterprise.model.ExternalUser;
 import com.mytlogos.enterprise.model.FailedEpisode;
+import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.model.MediaListSetting;
 import com.mytlogos.enterprise.model.MediumInWait;
@@ -34,9 +35,9 @@ import com.mytlogos.enterprise.model.SpaceMedium;
 import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.UpdateUser;
-import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.tools.Sortings;
+import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 
 import org.joda.time.DateTime;
 
@@ -132,7 +133,7 @@ public interface Repository {
 
     List<Integer> getDownloadableEpisodes(Integer mediumId, int limit);
 
-    LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(int saved, int medium, int read, int minIndex, int maxIndex, boolean latestOnly);
+    LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(EpisodeViewModel.Filter filter);
 
     LiveData<PagedList<DisplayEpisode>> getDisplayEpisodesGrouped(int saved, int medium);
 

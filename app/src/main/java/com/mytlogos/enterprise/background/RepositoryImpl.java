@@ -58,6 +58,7 @@ import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.tools.Utils;
+import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 import com.mytlogos.enterprise.worker.DownloadWorker;
 
 import org.joda.time.DateTime;
@@ -535,8 +536,8 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(int saved, int medium, int read, int minIndex, int maxIndex, boolean latestOnly) {
-        return this.storage.getDisplayEpisodes(saved, medium, read, minIndex, maxIndex, latestOnly);
+    public LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(EpisodeViewModel.Filter filter) {
+        return this.storage.getDisplayEpisodes(filter);
     }
 
     @Override

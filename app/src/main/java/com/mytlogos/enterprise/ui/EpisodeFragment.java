@@ -1,6 +1,8 @@
 package com.mytlogos.enterprise.ui;
 
 import android.annotation.SuppressLint;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -14,24 +16,35 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
+import androidx.recyclerview.widget.DividerItemDecoration;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.TaskManager;
 import com.mytlogos.enterprise.model.DisplayRelease;
+import com.mytlogos.enterprise.model.ExternalMediaList;
+import com.mytlogos.enterprise.model.MediaList;
 import com.mytlogos.enterprise.tools.Utils;
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import eu.davidea.flexibleadapter.FlexibleAdapter;
+import eu.davidea.flexibleadapter.SelectableAdapter;
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
 import eu.davidea.flexibleadapter.items.AbstractHeaderItem;
 import eu.davidea.flexibleadapter.items.AbstractSectionableItem;
 import eu.davidea.flexibleadapter.items.IFlexible;
+import eu.davidea.flexibleadapter.utils.DrawableUtils;
 import eu.davidea.viewholders.FlexibleViewHolder;
 
 /**
@@ -201,11 +214,172 @@ public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeVie
             }
 
             @Override
+            public void onCreateFilter(View view, AlertDialog.Builder builder) {
+                RecyclerView recycler = view.findViewById(R.id.listsFilter);
+                LiveData<List<MediaList>> lists = getViewModel().getLists();
+
+                LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
+                recycler.setLayoutManager(layoutManager);
+
+                DividerItemDecoration decoration = new DividerItemDecoration(requireContext(), layoutManager.getOrientation());
+                recycler.addItemDecoration(decoration);
+
+                FlexibleAdapter<IFlexible> flexibleAdapter = new FlexibleAdapter<>(null);
+
+                this.updateRecycler(flexibleAdapter, lists.getValue());
+
+                lists.observe(EpisodeFragment.this, mediaLists -> updateRecycler(flexibleAdapter, mediaLists));
+
+                flexibleAdapter.setMode(SelectableAdapter.Mode.MULTI);
+                flexibleAdapter.addListener((FlexibleAdapter.OnItemClickListener) (view1, position) -> {
+                    flexibleAdapter.toggleSelection(position);
+
+                    List<Integer> listIds = new ArrayList<>();
+
+                    for (Integer selectedPosition : flexibleAdapter.getSelectedPositions()) {
+                        FlexibleListItem item = flexibleAdapter.getItem(selectedPosition, FlexibleListItem.class);
+                        listIds.add(Objects.requireNonNull(item).mediaList.getListId());
+                    }
+                    getViewModel().setFilterListIds(listIds);
+                    sortFlexibleList(flexibleAdapter);
+                    return true;
+                });
+
+                recycler.setAdapter(flexibleAdapter);
+            }
+
+            void updateRecycler(FlexibleAdapter<IFlexible> flexibleAdapter, List<MediaList> mediaLists) {
+                System.out.println("List: " + mediaLists);
+                if (mediaLists == null) {
+                    return;
+                }
+                List<Integer> shouldListIds = getViewModel().getFilterListIds();
+
+                Collections.sort(mediaLists, (o1, o2) -> {
+                    boolean selected1 = shouldListIds.contains(o1.getListId());
+                    boolean selected2 = shouldListIds.contains(o2.getListId());
+                    if (selected1 == selected2) {
+                        return o1.getName().compareTo(o2.getName());
+                    } else {
+                        return selected1 ? -1 : 1;
+                    }
+                });
+
+                List<IFlexible> flexibles = new ArrayList<>(mediaLists.size());
+
+                for (MediaList mediaList : mediaLists) {
+                    flexibles.add(new FlexibleListItem(mediaList));
+                }
+
+                flexibleAdapter.updateDataSet(flexibles);
+                List<IFlexible> currentItems = flexibleAdapter.getCurrentItems();
+
+                for (int i = 0, currentItemsSize = currentItems.size(); i < currentItemsSize; i++) {
+                    FlexibleListItem item = (FlexibleListItem) currentItems.get(i);
+
+                    if (shouldListIds.contains(item.mediaList.getListId())) {
+                        flexibleAdapter.addSelection(i);
+                    } else {
+                        flexibleAdapter.removeSelection(i);
+                    }
+                }
+            }
+
+            private void sortFlexibleList(FlexibleAdapter<IFlexible> flexibleAdapter) {
+                List<IFlexible> list = new ArrayList<>(flexibleAdapter.getCurrentItems());
+                List<Integer> listIds = getViewModel().getFilterListIds();
+
+                Collections.sort(list, (o1, o2) -> {
+                    FlexibleListItem item1 = (FlexibleListItem) o1;
+                    FlexibleListItem item2 = (FlexibleListItem) o2;
+
+                    boolean selected1 = listIds.contains(item1.mediaList.getListId());
+                    boolean selected2 = listIds.contains(item2.mediaList.getListId());
+                    if (selected1 == selected2) {
+                        return item1.mediaList.getName().compareTo(item2.mediaList.getName());
+                    } else {
+                        return selected1 ? -1 : 1;
+                    }
+                });
+                flexibleAdapter.updateDataSet(list);
+
+                for (int i = 0, currentItemsSize = list.size(); i < currentItemsSize; i++) {
+                    FlexibleListItem item = (FlexibleListItem) list.get(i);
+
+                    if (listIds.contains(item.mediaList.getListId())) {
+                        flexibleAdapter.addSelection(i);
+                    } else {
+                        flexibleAdapter.removeSelection(i);
+                    }
+                }
+            }
+
+            @Override
             public int getFilterLayout() {
                 return R.layout.filter_unread_episode_layout;
             }
         };
     }
+
+    private static class FlexibleListItem extends AbstractFlexibleItem<TextOnlyViewHolder> {
+        private final MediaList mediaList;
+
+        private FlexibleListItem(MediaList mediaList) {
+            this.mediaList = mediaList;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            FlexibleListItem that = (FlexibleListItem) o;
+
+            return mediaList.equals(that.mediaList);
+        }
+
+        @Override
+        public int hashCode() {
+            return mediaList.hashCode();
+        }
+
+        @Override
+        public int getLayoutRes() {
+            return R.layout.text_only_item;
+        }
+
+        @Override
+        public TextOnlyViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
+            return new TextOnlyViewHolder(view, adapter);
+        }
+
+        @Override
+        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, TextOnlyViewHolder holder, int position, List<Object> payloads) {
+            String listSource = mediaList instanceof ExternalMediaList ? "External" : "Internal";
+            String title = String.format("%s (%s)", this.mediaList.getName(), listSource);
+            holder.textView.setText(title);
+
+            Drawable drawable = DrawableUtils.getSelectableBackgroundCompat(
+                    Color.WHITE,             // normal background
+                    Color.GRAY, // pressed background
+                    Color.BLACK);                 // ripple color
+            DrawableUtils.setBackgroundCompat(holder.itemView, drawable);
+        }
+    }
+
+    private static class TextOnlyViewHolder extends FlexibleViewHolder {
+        private TextView textView;
+
+        TextOnlyViewHolder(View view, FlexibleAdapter adapter) {
+            super(view, adapter);
+            textView = (TextView) view;
+            ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) textView.getLayoutParams();
+            params.setMargins(0, 0, 0, 0);
+            textView.setTextSize(15);
+            textView.requestLayout();
+        }
+    }
+
 
     @Override
     IFlexible createFlexible(DisplayRelease displayRelease) {
