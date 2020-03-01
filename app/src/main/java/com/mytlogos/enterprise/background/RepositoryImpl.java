@@ -23,6 +23,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
@@ -1040,14 +1041,115 @@ public class RepositoryImpl implements Repository {
 
         // persist all new or updated entities, media to releases needs to be in this order
         this.persister.persistMedia(changedEntities.media);
-        this.persister.persistParts(changedEntities.parts);
-        this.persister.persistEpisodes(changedEntities.episodes);
-        this.persister.persistReleases(changedEntities.releases);
+        this.persistParts(changedEntities.parts);
+        this.persistEpisodes(changedEntities.episodes);
+        this.persistReleases(changedEntities.releases);
         this.persister.persistMediaLists(changedEntities.lists);
         this.persister.persistExternalUsers(changedEntities.extUser);
-        this.persister.persistExternalMediaLists(changedEntities.extLists);
+        this.persistExternalLists(changedEntities.extLists);
         this.persister.persistMediaInWait(changedEntities.mediaInWait);
         this.persister.persistNews(changedEntities.news);
+    }
+
+    private void persistParts(Collection<ClientPart> parts) throws IOException {
+        Collection<Integer> missingIds = new HashSet<>();
+        Collection<ClientPart> loadingParts = new HashSet<>();
+
+        parts.removeIf(part -> {
+            if (!this.loadedData.getMedia().contains(part.getMediumId())) {
+                missingIds.add(part.getMediumId());
+                loadingParts.add(part);
+                return true;
+            }
+            return false;
+        });
+
+        this.persister.persistParts(parts);
+        if (missingIds.isEmpty()) {
+            return;
+        }
+        List<ClientMedium> parents = this.client.getMedia(missingIds).body();
+        if (parents == null) {
+            throw new NullPointerException("missing Media");
+        }
+        this.persister.persistMedia(parents);
+        this.persister.persistParts(loadingParts);
+    }
+
+    private void persistEpisodes(Collection<ClientEpisode> episodes) throws IOException {
+        Collection<Integer> missingIds = new HashSet<>();
+        Collection<ClientEpisode> loading = new HashSet<>();
+
+        episodes.removeIf(value -> {
+            if (!this.loadedData.getMedia().contains(value.getPartId())) {
+                missingIds.add(value.getPartId());
+                loading.add(value);
+                return true;
+            }
+            return false;
+        });
+
+        this.persister.persistEpisodes(episodes);
+        if (missingIds.isEmpty()) {
+            return;
+        }
+        List<ClientPart> parents = this.client.getParts(missingIds).body();
+        if (parents == null) {
+            throw new NullPointerException("missing Parts");
+        }
+        this.persistParts(parents);
+        this.persister.persistEpisodes(loading);
+    }
+
+    private void persistReleases(Collection<ClientRelease> releases) throws IOException {
+        Collection<Integer> missingIds = new HashSet<>();
+        Collection<ClientRelease> loading = new HashSet<>();
+
+        releases.removeIf(value -> {
+            if (!this.loadedData.getMedia().contains(value.getEpisodeId())) {
+                missingIds.add(value.getEpisodeId());
+                loading.add(value);
+                return true;
+            }
+            return false;
+        });
+
+        this.persister.persistReleases(releases);
+        if (missingIds.isEmpty()) {
+            return;
+        }
+        List<ClientEpisode> parents = this.client.getEpisodes(missingIds).body();
+        if (parents == null) {
+            throw new NullPointerException("missing Episodes");
+        }
+        this.persistEpisodes(parents);
+        this.persister.persistReleases(loading);
+    }
+
+    private void persistExternalLists(Collection<ClientExternalMediaList> externalMediaLists) throws IOException {
+        Collection<String> missingIds = new HashSet<>();
+        Collection<ClientExternalMediaList> loading = new HashSet<>();
+
+        externalMediaLists.removeIf(value -> {
+            if (!this.loadedData.getExternalUser().contains(value.getUuid())) {
+                missingIds.add(value.getUuid());
+                loading.add(value);
+                return true;
+            }
+            return false;
+        });
+
+        this.persister.persistExternalMediaLists(externalMediaLists);
+        if (missingIds.isEmpty()) {
+            return;
+        }
+        List<ClientExternalUser> parents = this.client.getExternalUser(missingIds).body();
+
+        if (parents == null) {
+            throw new NullPointerException("missing ExternalUser");
+        }
+        this.persister.persistExternalUsers(parents);
+        this.persister.persistExternalMediaLists(loading);
     }
 
     private void syncDeleted() throws IOException {
@@ -1065,6 +1167,24 @@ public class RepositoryImpl implements Repository {
 
             Map<Integer, List<Integer>> partEpisodes = mapStringToInt(partStringEpisodes);
 
+            Collection<Integer> missingEpisodes = new HashSet<>();
+
+            for (Map.Entry<Integer, List<Integer>> entry : partEpisodes.entrySet()) {
+                for (Integer episodeId : entry.getValue()) {
+                    if (!this.loadedData.getEpisodes().contains(episodeId)) {
+                        missingEpisodes.add(episodeId);
+                    }
+                }
+            }
+            if (!missingEpisodes.isEmpty()) {
+                List<ClientEpisode> episodes = this.client.getEpisodes(missingEpisodes).body();
+
+                if (episodes == null) {
+                    throw new NullPointerException("missing Episodes");
+                }
+                this.persistEpisodes(episodes);
+            }
+
             this.persister.deleteLeftoverEpisodes(partEpisodes);
 
             reloadPart = this.storage.checkReload(parsedStat);
@@ -1077,22 +1197,93 @@ public class RepositoryImpl implements Repository {
             Map<String, List<ClientSimpleRelease>> partStringReleases = checkAndGetBody(partReleasesResponse);
 
             Map<Integer, List<ClientSimpleRelease>> partReleases = mapStringToInt(partStringReleases);
-            this.persister.deleteLeftoverReleases(partReleases);
+
+            Collection<Integer> missingEpisodes = new HashSet<>();
+
+            for (Map.Entry<Integer, List<ClientSimpleRelease>> entry : partReleases.entrySet()) {
+                for (ClientSimpleRelease release : entry.getValue()) {
+                    if (!this.loadedData.getEpisodes().contains(release.id)) {
+                        missingEpisodes.add(release.id);
+                    }
+                }
+            }
+            if (!missingEpisodes.isEmpty()) {
+                List<ClientEpisode> episodes = this.client.getEpisodes(missingEpisodes).body();
+
+                if (episodes == null) {
+                    throw new NullPointerException("missing Episodes");
+                }
+                this.persistEpisodes(episodes);
+            }
+            Collection<Integer> episodesToLoad = this.persister.deleteLeftoverReleases(partReleases);
+
+            if (!episodesToLoad.isEmpty()) {
+                try {
+                    Utils.doPartitioned(episodesToLoad, ids -> {
+                        List<ClientEpisode> episodes = this.client.getEpisodes(ids).body();
+
+                        if (episodes == null) {
+                            throw new NullPointerException("missing Episodes");
+                        }
+                        this.persistEpisodes(episodes);
+                        return false;
+                    });
+                } catch (Exception e) {
+                    if (e instanceof IOException) {
+                        throw new IOException(e);
+                    } else {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            reloadPart = this.storage.checkReload(parsedStat);
+        }
+
+        // as even now some errors crop up, just load all this shit and dump it in 100er steps
+        if (!reloadPart.loadPartEpisodes.isEmpty() || !reloadPart.loadPartReleases.isEmpty()) {
+            Collection<Integer> partsToLoad = new HashSet<>();
+            partsToLoad.addAll(reloadPart.loadPartEpisodes);
+            partsToLoad.addAll(reloadPart.loadPartReleases);
+
+            try {
+                Utils.doPartitioned(partsToLoad, ids -> {
+                    List<ClientPart> parts = this.client.getParts(ids).body();
+
+                    if (parts == null) {
+                        throw new NullPointerException("missing Episodes");
+                    }
+                    this.persistParts(parts);
+                    return false;
+                });
+            } catch (Exception e) {
+                if (e instanceof IOException) {
+                    throw new IOException(e);
+                } else {
+                    e.printStackTrace();
+                }
+            }
             reloadPart = this.storage.checkReload(parsedStat);
         }
 
         if (!reloadPart.loadPartEpisodes.isEmpty()) {
-            throw new IllegalStateException(String.format(
+            @SuppressLint("DefaultLocale")
+            String msg = String.format(
                     "Episodes of %d Parts to load even after running once",
                     reloadPart.loadPartEpisodes.size()
-            ));
+            );
+            System.out.println(msg);
+            Log.e("Repository", msg);
         }
 
         if (!reloadPart.loadPartReleases.isEmpty()) {
-            throw new IllegalStateException(String.format(
+            @SuppressLint("DefaultLocale")
+            String msg = String.format(
                     "Releases of %d Parts to load even after running once",
                     reloadPart.loadPartReleases.size()
-            ));
+            );
+            System.out.println(msg);
+            Log.e("Repository", msg);
         }
     }
 

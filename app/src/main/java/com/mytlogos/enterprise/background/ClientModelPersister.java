@@ -114,5 +114,5 @@ public interface ClientModelPersister {
 
     void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes);
 
-    void deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases);
+    Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases);
 }

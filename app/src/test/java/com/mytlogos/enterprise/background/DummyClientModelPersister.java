@@ -554,8 +554,9 @@ public class DummyClientModelPersister implements ClientModelPersister {
     }
 
     @Override
-    public void deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
+    public Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
 
+        return null;
     }
 
     @Override

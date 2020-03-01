@@ -1065,6 +1065,7 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomEpisode episode : list) {
                 this.loadedData.getEpisodes().add(episode.getEpisodeId());
             }
+            this.persistReleases(filteredEpisodes.releases);
             return this;
         }
 
@@ -1140,6 +1141,8 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomExternalUser user : newUser) {
                 this.loadedData.getExternalUser().add(user.uuid);
             }
+            this.persistExternalMediaLists(filteredExternalUser.newList);
+            this.persistExternalMediaLists(filteredExternalUser.updateList);
             return this;
         }
 
@@ -1208,7 +1211,7 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomPart part : newParts) {
                 this.loadedData.getPart().add(part.getPartId());
             }
-
+            this.persistEpisodes(filteredParts.episodes);
             return this;
         }
 
@@ -1321,13 +1324,18 @@ public class RoomStorage implements DatabaseStorage {
         }
 
         @Override
-        public void deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
-            List<RoomSimpleRelease> episodes = RoomStorage.this.episodeDao.getReleases(partReleases.keySet());
+        public Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
+            List<RoomSimpleRelease> roomReleases = RoomStorage.this.episodeDao.getReleases(partReleases.keySet());
 
             List<RoomRelease> deleteRelease = new LinkedList<>();
             DateTime now = DateTime.now();
+            Collection<ClientSimpleRelease> unmatchedReleases = new HashSet<>();
 
-            episodes.forEach(release -> {
+            for (List<ClientSimpleRelease> list : partReleases.values()) {
+                unmatchedReleases.addAll(list);
+            }
+
+            roomReleases.forEach(release -> {
                 List<ClientSimpleRelease> releases = partReleases.get(release.partId);
 
                 boolean found = false;
@@ -1336,6 +1344,7 @@ public class RoomStorage implements DatabaseStorage {
                     for (ClientSimpleRelease simpleRelease : releases) {
                         if (simpleRelease.id == release.episodeId && Objects.equals(simpleRelease.url, release.url)) {
                             found = true;
+                            unmatchedReleases.remove(simpleRelease);
                             break;
                         }
                     }
@@ -1345,8 +1354,14 @@ public class RoomStorage implements DatabaseStorage {
                     deleteRelease.add(new RoomRelease(release.episodeId, "", release.url, now, false));
                 }
             });
+            Collection<Integer> episodesToLoad = new HashSet<>();
+
+            for (ClientSimpleRelease release : unmatchedReleases) {
+                episodesToLoad.add(release.id);
+            }
 
             RoomStorage.this.episodeDao.deleteBulkRelease(deleteRelease);
+            return episodesToLoad;
         }
 
         @Override
@@ -2032,8 +2047,9 @@ public class RoomStorage implements DatabaseStorage {
         }
 
         @Override
-        public void deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
+        public Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
 
+            return null;
         }
 
         @Override
