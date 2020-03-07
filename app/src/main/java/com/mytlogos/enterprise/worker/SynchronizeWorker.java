@@ -25,6 +25,7 @@ import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
 import com.mytlogos.enterprise.background.api.Client;
 import com.mytlogos.enterprise.background.api.NotConnectedException;
+import com.mytlogos.enterprise.background.api.ServerException;
 import com.mytlogos.enterprise.background.api.model.ClientChangedEntities;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
@@ -78,6 +79,16 @@ public class SynchronizeWorker extends Worker {
         notificationManager.notify(syncNotificationId, builder.build());
     };
     private static volatile UUID uuid;
+    private int mediaAddedOrUpdated = 0;
+    private int partAddedOrUpdated = 0;
+    private int episodesAddedOrUpdated = 0;
+    private int releasesAddedOrUpdated = 0;
+    private int listsAddedOrUpdated = 0;
+    private int externalUserAddedOrUpdated = 0;
+    private int externalListAddedOrUpdated = 0;
+    private int newsAddedOrUpdated = 0;
+    private int mediaInWaitAddedOrUpdated = 0;
+    private int totalAddedOrUpdated = 0;
 
     public SynchronizeWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -134,24 +145,35 @@ public class SynchronizeWorker extends Worker {
                 cleanUp();
                 return Result.retry();
             }
-            notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
-            builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);
-            builder
-                    .setContentTitle("Synchronizing...")
-                    .setContentText("Updating User")
+            this.notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
+            this.builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);
+            this.builder
+                    .setContentTitle("Start Synchronizing")
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
-            notificationManager.notify(syncNotificationId, builder.build());
+            this.notificationManager.notify(this.syncNotificationId, this.builder.build());
 //            if (syncWithInvalidation(repository)) return this.stopSynchronize();
             syncWithTime(repository);
 
-            notify(null, "Synchronization complete", 1);
+            StringBuilder builder = new StringBuilder("Added or Updated:\n");
+            append(builder, "Media: ", this.mediaAddedOrUpdated);
+            append(builder, "Parts: ", this.partAddedOrUpdated);
+            append(builder, "Episodes: ", this.episodesAddedOrUpdated);
+            append(builder, "Releases: ", this.releasesAddedOrUpdated);
+            append(builder, "MediaLists: ", this.listsAddedOrUpdated);
+            append(builder, "ExternalUser: ", this.externalUserAddedOrUpdated);
+            append(builder, "ExternalLists: ", this.externalListAddedOrUpdated);
+            append(builder, "News: ", this.newsAddedOrUpdated);
+            append(builder, "MediaInWait: ", this.mediaInWaitAddedOrUpdated);
+            notify("Synchronization complete", builder.toString(), this.totalAddedOrUpdated, true);
         } catch (Exception e) {
             String contentText;
             if (e instanceof IOException) {
                 if (e instanceof NotConnectedException) {
                     contentText = "Not connected with Server";
+                } else if (e instanceof ServerException) {
+                    contentText = "Response with Error Message";
                 } else {
                     contentText = "Error between App and Server";
                 }
@@ -160,7 +182,17 @@ public class SynchronizeWorker extends Worker {
             }
             e.printStackTrace();
 
-            notify(contentText, "Synchronization failed", 0);
+            StringBuilder builder = new StringBuilder("Added or Updated:\n");
+            append(builder, "Media: ", this.mediaAddedOrUpdated);
+            append(builder, "Parts: ", this.partAddedOrUpdated);
+            append(builder, "Episodes: ", this.episodesAddedOrUpdated);
+            append(builder, "Releases: ", this.releasesAddedOrUpdated);
+            append(builder, "MediaLists: ", this.listsAddedOrUpdated);
+            append(builder, "ExternalUser: ", this.externalUserAddedOrUpdated);
+            append(builder, "ExternalLists: ", this.externalListAddedOrUpdated);
+            append(builder, "News: ", this.newsAddedOrUpdated);
+            append(builder, "MediaInWait: ", this.mediaInWaitAddedOrUpdated);
+            notify(contentText, builder.toString(), 0, true);
             cleanUp();
             return Result.failure();
         }
@@ -168,20 +200,32 @@ public class SynchronizeWorker extends Worker {
         return Result.success();
     }
 
-    void notify(String contentText, String title, int finished) {
-        this.notify(title, contentText, finished, finished);
+    private void notify(String title, String contentText, int finished, boolean changeContent) {
+        this.notify(title, contentText, changeContent, finished, finished);
     }
 
-    void notify(String title, String contentText, int current, int total) {
+    private void notify(String title, String contentText, boolean changeContent, int current, int total) {
         this.builder
                 .setContentTitle(title)
-                .setProgress(total, current, false)
-                .setContentText(contentText);
-
+                .setProgress(total, current, false);
+        if (changeContent) {
+            this.builder.setContentText(contentText);
+        }
         this.notificationManager.notify(this.syncNotificationId, this.builder.build());
     }
 
-    boolean syncWithTime(Repository repository) throws IOException {
+    private void notify(String title, String contentText, boolean indeterminate, boolean changeContent) {
+        this.builder
+                .setContentTitle(title)
+                .setProgress(0, 0, indeterminate);
+
+        if (changeContent) {
+            this.builder.setContentText(contentText);
+        }
+        this.notificationManager.notify(this.syncNotificationId, this.builder.build());
+    }
+
+    private boolean syncWithTime(Repository repository) throws IOException {
         Client client = repository.getClient(this);
         ClientModelPersister persister = repository.getPersister(this);
 
@@ -204,19 +248,88 @@ public class SynchronizeWorker extends Worker {
 
 
     private void syncChanged(DateTime lastSync, Client client, ClientModelPersister persister, Repository repository) throws IOException {
+        this.notify("Requesting New Data", null, true, true);
         Response<ClientChangedEntities> changedEntitiesResponse = client.getNew(lastSync);
         ClientChangedEntities changedEntities = Utils.checkAndGetBody(changedEntitiesResponse);
 
+        int mediaSize = this.mediaAddedOrUpdated = changedEntities.media.size();
+        int partsSize = this.partAddedOrUpdated = changedEntities.parts.size();
+        int episodesSize = this.episodesAddedOrUpdated = changedEntities.episodes.size();
+        int releasesSize = this.releasesAddedOrUpdated = changedEntities.releases.size();
+        int listsSize = this.listsAddedOrUpdated = changedEntities.lists.size();
+        int extListSize = this.externalListAddedOrUpdated = changedEntities.extLists.size();
+        int extUserSize = this.externalUserAddedOrUpdated = changedEntities.extUser.size();
+        int newsSize = this.newsAddedOrUpdated = changedEntities.news.size();
+        int mediaInWaitSize = this.mediaInWaitAddedOrUpdated = changedEntities.mediaInWait.size();
+
+        int total = this.totalAddedOrUpdated = mediaSize + partsSize + episodesSize + releasesSize + listsSize
+                + extListSize + extUserSize + newsSize + mediaInWaitSize;
+
+        StringBuilder builder = new StringBuilder();
+        append(builder, "Media: ", mediaSize);
+        append(builder, "Parts: ", partsSize);
+        append(builder, "Episodes: ", episodesSize);
+        append(builder, "Releases: ", releasesSize);
+        append(builder, "MediaLists: ", listsSize);
+        append(builder, "ExternalUser: ", extUserSize);
+        append(builder, "ExternalLists: ", extListSize);
+        append(builder, "News: ", newsSize);
+        append(builder, "MediaInWait: ", mediaInWaitSize);
+        int current = 0;
+        this.notify("Received New Data", builder.toString(), true, current, total);
+
+        this.notify("Persisting Media", null, false, current, total);
         // persist all new or updated entities, media to releases needs to be in this order
         persister.persistMedia(changedEntities.media);
+        current += mediaSize;
+        changedEntities.media.clear();
+
+        this.notify("Persisting Parts", null, false, current, total);
         this.persistParts(changedEntities.parts, client, persister, repository);
+        current += partsSize;
+        changedEntities.parts.clear();
+
+        this.notify("Persisting Episodes", null, false, current, total);
         this.persistEpisodes(changedEntities.episodes, client, persister, repository);
+        current += episodesSize;
+        changedEntities.episodes.clear();
+
+        this.notify("Persisting Releases", null, false, current, total);
         this.persistReleases(changedEntities.releases, client, persister, repository);
+        current += releasesSize;
+        changedEntities.releases.clear();
+
+        this.notify("Persisting Lists", null, false, current, total);
         persister.persistMediaLists(changedEntities.lists);
+        current += listsSize;
+        changedEntities.lists.clear();
+
+        this.notify("Persisting ExternalUser", null, false, current, total);
         persister.persistExternalUsers(changedEntities.extUser);
+        current += extUserSize;
+        changedEntities.extUser.clear();
+
+        this.notify("Persisting External Lists", null, false, current, total);
         this.persistExternalLists(changedEntities.extLists, client, persister, repository);
+        current += extListSize;
+        changedEntities.extLists.clear();
+
+        this.notify("Persisting unused Media", null, false, current, total);
         persister.persistMediaInWait(changedEntities.mediaInWait);
+        current += mediaInWaitSize;
+        changedEntities.media.clear();
+
+        this.notify("Persisting News", null, false, current, total);
         persister.persistNews(changedEntities.news);
+        current += newsSize;
+        changedEntities.news.clear();
+        this.notify("Saved all Changes", null, false, current, total);
+    }
+
+    private void append(StringBuilder builder, String prefix, int i) {
+        if (i > 0) {
+            builder.append(prefix).append(i).append("\n");
+        }
     }
 
     private void persistParts(Collection<ClientPart> parts, Client client, ClientModelPersister persister, Repository repository) throws IOException {
@@ -333,6 +446,7 @@ public class SynchronizeWorker extends Worker {
     }
 
     private void syncDeleted(Client client, ClientModelPersister persister, Repository repository) throws IOException {
+        notify("Synchronize Deleted Items", null, true, false);
         ClientStat statBody = Utils.checkAndGetBody(client.getStats());
 
         ClientStat.ParsedStat parsedStat = statBody.parse();
@@ -456,24 +570,24 @@ public class SynchronizeWorker extends Worker {
             return true;
         }
 
-        builder.setContentText("Updating Content data");
-        notificationManager.notify(syncNotificationId, builder.build());
+        this.builder.setContentText("Updating Content data");
+        this.notificationManager.notify(this.syncNotificationId, this.builder.build());
         repository.loadInvalidated();
 
         if (this.isStopped()) {
             return true;
         }
 
-        builder.setContentText("Loading new Media");
-        notificationManager.notify(syncNotificationId, builder.build());
+        this.builder.setContentText("Loading new Media");
+        this.notificationManager.notify(this.syncNotificationId, this.builder.build());
         repository.loadAllMedia();
         return false;
     }
 
     private Result stopSynchronize() {
-        notificationManager.notify(
-                syncNotificationId,
-                builder
+        this.notificationManager.notify(
+                this.syncNotificationId,
+                this.builder
                         .setContentTitle("Synchronization stopped")
                         .setContentText(null)
                         .build()
@@ -492,8 +606,8 @@ public class SynchronizeWorker extends Worker {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        if (notificationManager != null) {
-            notificationManager.cancel(syncNotificationId);
+        if (this.notificationManager != null) {
+            this.notificationManager.cancel(this.syncNotificationId);
         }
         uuid = null;
     }
