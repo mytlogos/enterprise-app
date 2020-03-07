@@ -593,15 +593,18 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
             Optional<Release> earliestRelease = this.item.getReleases().stream().min(comparator);
             Release release = earliestRelease.orElse(null);
             String topRight;
-            String title;
 
             if (release == null) {
                 topRight = "Not available";
-                title = "Not available";
             } else {
                 topRight = release.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss");
-                title = release.getTitle();
             }
+            String title = this.item
+                    .getReleases()
+                    .stream()
+                    .map(Release::getTitle)
+                    .max((o1, o2) -> o1.length() - o2.length())
+                    .orElse("Not available");
             boolean hasOnline = this.item.getReleases().stream().anyMatch(any -> any.getUrl() != null && !any.getUrl().isEmpty());
             boolean isLocked = this.item.getReleases().stream().allMatch(Release::isLocked);
 
