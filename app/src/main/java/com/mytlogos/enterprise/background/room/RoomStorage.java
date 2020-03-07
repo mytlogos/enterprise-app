@@ -41,6 +41,7 @@ import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
 import com.mytlogos.enterprise.background.resourceLoader.DependencyTask;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
+import com.mytlogos.enterprise.background.room.model.ClientRoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomEditEvent;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternListView;
@@ -1057,10 +1058,10 @@ public class RoomStorage implements DatabaseStorage {
             RoomConverter converter = new RoomConverter(this.loadedData);
 
             List<RoomEpisode> list = converter.convertEpisodes(filteredEpisodes.newEpisodes);
-            List<RoomEpisode> update = converter.convertEpisodes(filteredEpisodes.updateEpisodes);
+            List<ClientRoomEpisode> update = converter.convertEpisodesClient(filteredEpisodes.updateEpisodes);
 
             RoomStorage.this.episodeDao.insertBulk(list);
-            RoomStorage.this.episodeDao.updateBulk(update);
+            RoomStorage.this.episodeDao.updateBulkClient(update);
 
             for (RoomEpisode episode : list) {
                 this.loadedData.getEpisodes().add(episode.getEpisodeId());

@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Update;
 
 public interface BaseDao<T> {
-    @Update(onConflict = OnConflictStrategy.REPLACE)
+    @Update
     void update(T t);
 
     @Delete

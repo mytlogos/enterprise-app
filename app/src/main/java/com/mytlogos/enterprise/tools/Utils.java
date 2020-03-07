@@ -8,6 +8,7 @@ import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PageKeyedDataSource;
 import androidx.paging.PagedList;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -89,6 +90,18 @@ public class Utils {
                 maxItem = list.size();
             }
         } while (minItem < list.size() && maxItem <= list.size());
+    }
+
+    public static <T> void doPartitionedRethrow(Collection<T> collection, FunctionEx<List<T>, Boolean> functionEx) throws IOException {
+        try {
+            doPartitioned(collection, functionEx);
+        } catch (Exception e) {
+            if (e instanceof IOException) {
+                throw new IOException(e);
+            } else {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private static class StaticDataSource<E> extends PageKeyedDataSource<Integer, E> {

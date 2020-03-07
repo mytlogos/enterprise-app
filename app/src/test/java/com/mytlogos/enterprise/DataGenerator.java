@@ -200,6 +200,7 @@ public class DataGenerator {
                 partId,
                 0,
                 0,
+                0,
                 null,
                 new ClientRelease[0]
         );

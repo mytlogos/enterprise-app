@@ -10,6 +10,7 @@ import androidx.room.Query;
 import androidx.room.Transaction;
 import androidx.room.Update;
 
+import com.mytlogos.enterprise.background.room.model.ClientRoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomDisplayEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomPartEpisode;
@@ -28,6 +29,9 @@ import java.util.List;
 
 @Dao
 public interface EpisodeDao extends MultiBaseDao<RoomEpisode> {
+
+    @Update(entity = RoomEpisode.class)
+    void updateBulkClient(Collection<ClientRoomEpisode> episodes);
 
     @Query("UPDATE RoomEpisode SET progress=:progress, readDate=:readDate WHERE episodeId=:episodeId")
     void updateProgress(int episodeId, float progress, DateTime readDate);

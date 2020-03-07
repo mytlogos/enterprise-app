@@ -8,7 +8,7 @@ import androidx.room.Update;
 import java.util.Collection;
 
 public interface MultiBaseDao<T> extends BaseDao<T> {
-    @Update(onConflict = OnConflictStrategy.REPLACE)
+    @Update
     void updateBulk(Collection<T> collection);
 
     @Delete

@@ -1,42 +1,34 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.room.model;
 
 import androidx.annotation.NonNull;
 
 import org.joda.time.DateTime;
 
-import java.util.Arrays;
-
-public class ClientEpisode {
-    private final int id;
+public class ClientRoomEpisode {
+    private final int episodeId;
     private final float progress;
     private final int partId;
     private final int totalIndex;
     private final int partialIndex;
     private final double combiIndex;
     private final DateTime readDate;
-    private final ClientRelease[] releases;
 
-    public ClientEpisode(int id, float progress, int partId, int totalIndex, int partialIndex, double combiIndex, DateTime readDate, ClientRelease[] releases) {
-        this.id = id;
+    public ClientRoomEpisode(int episodeId, float progress, int partId, int totalIndex, int partialIndex, double combiIndex, DateTime readDate) {
+        this.episodeId = episodeId;
         this.progress = progress;
         this.partId = partId;
         this.totalIndex = totalIndex;
         this.partialIndex = partialIndex;
         this.combiIndex = combiIndex;
         this.readDate = readDate;
-        this.releases = releases;
-    }
-
-    public ClientRelease[] getReleases() {
-        return releases;
     }
 
     public DateTime getReadDate() {
         return readDate;
     }
 
-    public int getId() {
-        return id;
+    public int getEpisodeId() {
+        return episodeId;
     }
 
     public int getPartId() {
@@ -62,15 +54,14 @@ public class ClientEpisode {
     @NonNull
     @Override
     public String toString() {
-        return "ClientEpisode{" +
-                "id=" + id +
+        return "ClientRoomEpisode{" +
+                "episodeId=" + episodeId +
                 ", progress=" + progress +
                 ", partId=" + partId +
                 ", totalIndex=" + totalIndex +
                 ", partialIndex=" + partialIndex +
-                ", combiIndex" + combiIndex +
+                ", combiIndex=" + combiIndex +
                 ", readDate=" + readDate +
-                ", releases=" + Arrays.toString(releases) +
                 '}';
     }
 
@@ -79,13 +70,13 @@ public class ClientEpisode {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientEpisode that = (ClientEpisode) o;
-        return id == that.id;
-    }
+        ClientRoomEpisode that = (ClientRoomEpisode) o;
 
+        return getEpisodeId() == that.getEpisodeId();
+    }
 
     @Override
     public int hashCode() {
-        return id;
+        return getEpisodeId();
     }
 }

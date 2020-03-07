@@ -12,6 +12,7 @@ import com.mytlogos.enterprise.background.api.model.ClientRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
+import com.mytlogos.enterprise.background.room.model.ClientRoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomDanglingMedium;
 import com.mytlogos.enterprise.background.room.model.RoomDisplayEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomEditEvent;
@@ -76,6 +77,10 @@ public class RoomConverter {
 
     public List<RoomEpisode> convertEpisodes(Collection<ClientEpisode> episodes) {
         return this.convert(episodes, this::convert);
+    }
+
+    public List<ClientRoomEpisode> convertEpisodesClient(Collection<ClientEpisode> episodes) {
+        return this.convert(episodes, this::convertClient);
     }
 
     public List<RoomRelease> convertReleases(Collection<ClientRelease> releases) {
@@ -171,6 +176,14 @@ public class RoomConverter {
                 episode.getTotalIndex(), episode.getPartialIndex(),
                 Double.parseDouble(String.format("%s.%s", episode.getTotalIndex(), episode.getPartialIndex())),
                 false
+        );
+    }
+
+    public ClientRoomEpisode convertClient(ClientEpisode episode) {
+        return new ClientRoomEpisode(
+                episode.getId(), episode.getProgress(), episode.getPartId(),
+                episode.getTotalIndex(), episode.getPartialIndex(),
+                episode.getCombiIndex(), episode.getReadDate()
         );
     }
 
