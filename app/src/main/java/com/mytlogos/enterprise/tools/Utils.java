@@ -8,6 +8,9 @@ import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PageKeyedDataSource;
 import androidx.paging.PagedList;
 
+import com.mytlogos.enterprise.background.api.NotConnectedException;
+import com.mytlogos.enterprise.background.api.ServerException;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -15,6 +18,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import retrofit2.Response;
 
 public class Utils {
     public static String getDomain(String url) {
@@ -95,13 +100,25 @@ public class Utils {
     public static <T> void doPartitionedRethrow(Collection<T> collection, FunctionEx<List<T>, Boolean> functionEx) throws IOException {
         try {
             doPartitioned(collection, functionEx);
+        } catch (NotConnectedException e) {
+            throw new NotConnectedException(e);
+        } catch (ServerException e) {
+            throw new ServerException(e);
+        } catch (IOException e) {
+            throw new IOException(e);
         } catch (Exception e) {
-            if (e instanceof IOException) {
-                throw new IOException(e);
-            } else {
-                throw new RuntimeException(e);
-            }
+            throw new RuntimeException(e);
         }
+    }
+
+    public static <T> T checkAndGetBody(Response<T> response) throws IOException {
+        T body = response.body();
+
+        if (body == null) {
+            String errorMsg = response.errorBody() != null ? response.errorBody().string() : null;
+            throw new ServerException(response.code(), errorMsg);
+        }
+        return body;
     }
 
     private static class StaticDataSource<E> extends PageKeyedDataSource<Integer, E> {

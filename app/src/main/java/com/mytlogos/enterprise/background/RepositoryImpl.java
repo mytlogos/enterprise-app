@@ -1,6 +1,5 @@
 package com.mytlogos.enterprise.background;
 
-import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
 import android.util.Log;
@@ -8,11 +7,11 @@ import android.util.Log;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
+import androidx.work.Worker;
 
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator;
 import com.mytlogos.enterprise.background.api.Client;
 import com.mytlogos.enterprise.background.api.NetworkIdentificator;
-import com.mytlogos.enterprise.background.api.model.ClientChangedEntities;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
@@ -23,8 +22,6 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
@@ -68,10 +65,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -267,8 +262,7 @@ public class RepositoryImpl implements Repository {
     @Override
     public void loadAllMedia() {
         try {
-            Response<List<Integer>> response = this.client.getAllMedia();
-            List<Integer> mediaIds = response.body();
+            List<Integer> mediaIds = Utils.checkAndGetBody(this.client.getAllMedia());
 
             if (mediaIds == null) {
                 return;
@@ -415,7 +409,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void refreshNews(DateTime latest) throws IOException {
-        List<ClientNews> news = this.client.getNews(latest, null).body();
+        List<ClientNews> news = Utils.checkAndGetBody(this.client.getNews(latest, null));
 
         if (news != null) {
             this.persister.persistNews(news);
@@ -598,7 +592,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void loadMediaInWaitSync() throws IOException {
-        List<ClientMediumInWait> medium = this.client.getMediumInWait().body();
+        List<ClientMediumInWait> medium = Utils.checkAndGetBody(this.client.getMediumInWait());
 
         if (medium != null && !medium.isEmpty()) {
             this.storage.clearMediaInWait();
@@ -799,6 +793,47 @@ public class RepositoryImpl implements Repository {
     @Override
     public void updateProgress(int episodeId, float progress) {
         TaskManager.runTask(() -> this.storage.updateProgress(Collections.singleton(episodeId), progress));
+    }
+
+    @Override
+    public Client getClient(Worker worker) {
+        if (worker == null || worker.isStopped()) {
+            throw new IllegalArgumentException("not an active Worker");
+        }
+        return this.client;
+    }
+
+    @Override
+    public ClientModelPersister getPersister(Worker worker) {
+        if (worker == null || worker.isStopped()) {
+            throw new IllegalArgumentException("not an active Worker");
+        }
+        return this.persister;
+    }
+
+    @Override
+    public boolean isMediumLoaded(int mediumId) {
+        return this.loadedData.getMedia().contains(mediumId);
+    }
+
+    @Override
+    public boolean isPartLoaded(int partId) {
+        return this.loadedData.getPart().contains(partId);
+    }
+
+    @Override
+    public boolean isEpisodeLoaded(int episodeId) {
+        return this.loadedData.getEpisodes().contains(episodeId);
+    }
+
+    @Override
+    public boolean isExternalUserLoaded(String uuid) {
+        return this.loadedData.getExternalUser().contains(uuid);
+    }
+
+    @Override
+    public ReloadPart checkReload(ClientStat.ParsedStat stat) {
+        return this.storage.checkReload(stat);
     }
 
     @Override
@@ -1005,286 +1040,6 @@ public class RepositoryImpl implements Repository {
     @Override
     public List<String> getReleaseLinks(int episodeId) {
         return this.storage.getReleaseLinks(episodeId);
-    }
-
-    private <T> T checkAndGetBody(Response<T> response) throws IOException {
-        T body = response.body();
-
-        if (body == null) {
-            String errorMsg = response.errorBody() != null ? response.errorBody().string() : null;
-            throw new IOException(String.format("No Body, Http-Code %d, ErrorBody: %s", response.code(), errorMsg));
-        }
-        return body;
-    }
-
-    private <T> Map<Integer, T> mapStringToInt(Map<String, T> map) {
-        @SuppressLint("UseSparseArrays")
-        Map<Integer, T> result = new HashMap<>();
-
-        for (Map.Entry<String, T> entry : map.entrySet()) {
-            result.put(Integer.parseInt(entry.getKey()), entry.getValue());
-        }
-        return result;
-    }
-
-    @Override
-    public void syncWithTime(Context context) throws IOException {
-        DateTime lastSync = UserPreferences.getLastSync(context);
-        syncChanged(lastSync);
-        UserPreferences.setLastSync(context, DateTime.now());
-        syncDeleted();
-    }
-
-    private void syncChanged(DateTime lastSync) throws IOException {
-        Response<ClientChangedEntities> changedEntitiesResponse = this.client.getNew(lastSync);
-        ClientChangedEntities changedEntities = checkAndGetBody(changedEntitiesResponse);
-
-        // persist all new or updated entities, media to releases needs to be in this order
-        this.persister.persistMedia(changedEntities.media);
-        this.persistParts(changedEntities.parts);
-        this.persistEpisodes(changedEntities.episodes);
-        this.persistReleases(changedEntities.releases);
-        this.persister.persistMediaLists(changedEntities.lists);
-        this.persister.persistExternalUsers(changedEntities.extUser);
-        this.persistExternalLists(changedEntities.extLists);
-        this.persister.persistMediaInWait(changedEntities.mediaInWait);
-        this.persister.persistNews(changedEntities.news);
-    }
-
-    private void persistParts(Collection<ClientPart> parts) throws IOException {
-        Collection<Integer> missingIds = new HashSet<>();
-        Collection<ClientPart> loadingParts = new HashSet<>();
-
-        parts.removeIf(part -> {
-            if (!this.loadedData.getMedia().contains(part.getMediumId())) {
-                missingIds.add(part.getMediumId());
-                loadingParts.add(part);
-                return true;
-            }
-            return false;
-        });
-
-        this.persister.persistParts(parts);
-        if (missingIds.isEmpty()) {
-            return;
-        }
-        List<ClientMedium> parents = this.client.getMedia(missingIds).body();
-        if (parents == null) {
-            throw new NullPointerException("missing Media");
-        }
-        this.persister.persistMedia(parents);
-        this.persister.persistParts(loadingParts);
-    }
-
-    private void persistEpisodes(Collection<ClientEpisode> episodes) throws IOException {
-        Collection<Integer> missingIds = new HashSet<>();
-        Collection<ClientEpisode> loading = new HashSet<>();
-
-        episodes.removeIf(value -> {
-            if (!this.loadedData.getMedia().contains(value.getPartId())) {
-                missingIds.add(value.getPartId());
-                loading.add(value);
-                return true;
-            }
-            return false;
-        });
-
-        this.persister.persistEpisodes(episodes);
-        if (missingIds.isEmpty()) {
-            return;
-        }
-        List<ClientPart> parents = this.client.getParts(missingIds).body();
-        if (parents == null) {
-            throw new NullPointerException("missing Parts");
-        }
-        this.persistParts(parents);
-        this.persister.persistEpisodes(loading);
-    }
-
-    private void persistReleases(Collection<ClientRelease> releases) throws IOException {
-        Collection<Integer> missingIds = new HashSet<>();
-        Collection<ClientRelease> loading = new HashSet<>();
-
-        releases.removeIf(value -> {
-            if (!this.loadedData.getMedia().contains(value.getEpisodeId())) {
-                missingIds.add(value.getEpisodeId());
-                loading.add(value);
-                return true;
-            }
-            return false;
-        });
-
-        this.persister.persistReleases(releases);
-        if (missingIds.isEmpty()) {
-            return;
-        }
-        List<ClientEpisode> parents = this.client.getEpisodes(missingIds).body();
-        if (parents == null) {
-            throw new NullPointerException("missing Episodes");
-        }
-        this.persistEpisodes(parents);
-        this.persister.persistReleases(loading);
-    }
-
-    private void persistExternalLists(Collection<ClientExternalMediaList> externalMediaLists) throws IOException {
-        Collection<String> missingIds = new HashSet<>();
-        Collection<ClientExternalMediaList> loading = new HashSet<>();
-
-        externalMediaLists.removeIf(value -> {
-            if (!this.loadedData.getExternalUser().contains(value.getUuid())) {
-                missingIds.add(value.getUuid());
-                loading.add(value);
-                return true;
-            }
-            return false;
-        });
-
-        this.persister.persistExternalMediaLists(externalMediaLists);
-        if (missingIds.isEmpty()) {
-            return;
-        }
-        List<ClientExternalUser> parents = this.client.getExternalUser(missingIds).body();
-
-        if (parents == null) {
-            throw new NullPointerException("missing ExternalUser");
-        }
-        this.persister.persistExternalUsers(parents);
-        this.persister.persistExternalMediaLists(loading);
-    }
-
-    private void syncDeleted() throws IOException {
-        Response<ClientStat> statResponse = this.client.getStats();
-        ClientStat statBody = checkAndGetBody(statResponse);
-
-        ClientStat.ParsedStat parsedStat = statBody.parse();
-        this.persister.persist(parsedStat);
-
-        ReloadPart reloadPart = this.storage.checkReload(parsedStat);
-
-        if (!reloadPart.loadPartEpisodes.isEmpty()) {
-            Response<Map<String, List<Integer>>> partEpisodesResponse = this.client.getPartEpisodes(reloadPart.loadPartEpisodes);
-            Map<String, List<Integer>> partStringEpisodes = checkAndGetBody(partEpisodesResponse);
-
-            Map<Integer, List<Integer>> partEpisodes = mapStringToInt(partStringEpisodes);
-
-            Collection<Integer> missingEpisodes = new HashSet<>();
-
-            for (Map.Entry<Integer, List<Integer>> entry : partEpisodes.entrySet()) {
-                for (Integer episodeId : entry.getValue()) {
-                    if (!this.loadedData.getEpisodes().contains(episodeId)) {
-                        missingEpisodes.add(episodeId);
-                    }
-                }
-            }
-            if (!missingEpisodes.isEmpty()) {
-                List<ClientEpisode> episodes = this.client.getEpisodes(missingEpisodes).body();
-
-                if (episodes == null) {
-                    throw new NullPointerException("missing Episodes");
-                }
-                this.persistEpisodes(episodes);
-            }
-
-            this.persister.deleteLeftoverEpisodes(partEpisodes);
-
-            reloadPart = this.storage.checkReload(parsedStat);
-        }
-
-
-        if (!reloadPart.loadPartReleases.isEmpty()) {
-            Response<Map<String, List<ClientSimpleRelease>>> partReleasesResponse = this.client.getPartReleases(reloadPart.loadPartReleases);
-
-            Map<String, List<ClientSimpleRelease>> partStringReleases = checkAndGetBody(partReleasesResponse);
-
-            Map<Integer, List<ClientSimpleRelease>> partReleases = mapStringToInt(partStringReleases);
-
-            Collection<Integer> missingEpisodes = new HashSet<>();
-
-            for (Map.Entry<Integer, List<ClientSimpleRelease>> entry : partReleases.entrySet()) {
-                for (ClientSimpleRelease release : entry.getValue()) {
-                    if (!this.loadedData.getEpisodes().contains(release.id)) {
-                        missingEpisodes.add(release.id);
-                    }
-                }
-            }
-            if (!missingEpisodes.isEmpty()) {
-                List<ClientEpisode> episodes = this.client.getEpisodes(missingEpisodes).body();
-
-                if (episodes == null) {
-                    throw new NullPointerException("missing Episodes");
-                }
-                this.persistEpisodes(episodes);
-            }
-            Collection<Integer> episodesToLoad = this.persister.deleteLeftoverReleases(partReleases);
-
-            if (!episodesToLoad.isEmpty()) {
-                try {
-                    Utils.doPartitioned(episodesToLoad, ids -> {
-                        List<ClientEpisode> episodes = this.client.getEpisodes(ids).body();
-
-                        if (episodes == null) {
-                            throw new NullPointerException("missing Episodes");
-                        }
-                        this.persistEpisodes(episodes);
-                        return false;
-                    });
-                } catch (Exception e) {
-                    if (e instanceof IOException) {
-                        throw new IOException(e);
-                    } else {
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-            reloadPart = this.storage.checkReload(parsedStat);
-        }
-
-        // as even now some errors crop up, just load all this shit and dump it in 100er steps
-        if (!reloadPart.loadPartEpisodes.isEmpty() || !reloadPart.loadPartReleases.isEmpty()) {
-            Collection<Integer> partsToLoad = new HashSet<>();
-            partsToLoad.addAll(reloadPart.loadPartEpisodes);
-            partsToLoad.addAll(reloadPart.loadPartReleases);
-
-            try {
-                Utils.doPartitioned(partsToLoad, ids -> {
-                    List<ClientPart> parts = this.client.getParts(ids).body();
-
-                    if (parts == null) {
-                        throw new NullPointerException("missing Episodes");
-                    }
-                    this.persistParts(parts);
-                    return false;
-                });
-            } catch (Exception e) {
-                if (e instanceof IOException) {
-                    throw new IOException(e);
-                } else {
-                    e.printStackTrace();
-                }
-            }
-            reloadPart = this.storage.checkReload(parsedStat);
-        }
-
-        if (!reloadPart.loadPartEpisodes.isEmpty()) {
-            @SuppressLint("DefaultLocale")
-            String msg = String.format(
-                    "Episodes of %d Parts to load even after running once",
-                    reloadPart.loadPartEpisodes.size()
-            );
-            System.out.println(msg);
-            Log.e("Repository", msg);
-        }
-
-        if (!reloadPart.loadPartReleases.isEmpty()) {
-            @SuppressLint("DefaultLocale")
-            String msg = String.format(
-                    "Releases of %d Parts to load even after running once",
-                    reloadPart.loadPartReleases.size()
-            );
-            System.out.println(msg);
-            Log.e("Repository", msg);
-        }
     }
 
     @Override

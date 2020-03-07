@@ -6,7 +6,9 @@ import android.content.Context;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.paging.PagedList;
+import androidx.work.Worker;
 
+import com.mytlogos.enterprise.background.api.Client;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
@@ -15,6 +17,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.DisplayRelease;
@@ -632,8 +635,38 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void syncWithTime(Context context) {
+    public Client getClient(Worker worker) {
+        return null;
+    }
 
+    @Override
+    public ClientModelPersister getPersister(Worker worker) {
+        return null;
+    }
+
+    @Override
+    public boolean isMediumLoaded(int mediumId) {
+        return false;
+    }
+
+    @Override
+    public boolean isPartLoaded(int partId) {
+        return false;
+    }
+
+    @Override
+    public boolean isEpisodeLoaded(int episodeId) {
+        return false;
+    }
+
+    @Override
+    public boolean isExternalUserLoaded(String uuid) {
+        return false;
+    }
+
+    @Override
+    public ReloadPart checkReload(ClientStat.ParsedStat stat) {
+        return null;
     }
 
     @Override

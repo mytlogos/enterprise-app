@@ -5,7 +5,9 @@ import android.content.Context;
 
 import androidx.lifecycle.LiveData;
 import androidx.paging.PagedList;
+import androidx.work.Worker;
 
+import com.mytlogos.enterprise.background.api.Client;
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
@@ -14,6 +16,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.DisplayRelease;
@@ -215,8 +218,6 @@ public interface Repository {
 
     void syncUser() throws IOException;
 
-    void syncWithTime(Context context) throws IOException;
-
     void clearLocalMediaData(Context context);
 
     LiveData<PagedList<NotificationItem>> getNotifications();
@@ -286,4 +287,18 @@ public interface Repository {
     void downloadAll(int mediumId, Context context);
 
     void updateProgress(int episodeId, float progress);
+
+    Client getClient(Worker worker);
+
+    ClientModelPersister getPersister(Worker worker);
+
+    boolean isMediumLoaded(int mediumId);
+
+    boolean isPartLoaded(int partId);
+
+    boolean isEpisodeLoaded(int episodeId);
+
+    boolean isExternalUserLoaded(String uuid);
+
+    ReloadPart checkReload(ClientStat.ParsedStat stat);
 }
