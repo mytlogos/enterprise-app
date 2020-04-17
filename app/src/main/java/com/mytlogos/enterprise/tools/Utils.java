@@ -16,9 +16,11 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import retrofit2.Response;
 
@@ -140,6 +142,14 @@ public class Utils {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static <T> CompletableFuture<List<T>> finishAll(Collection<CompletableFuture<T>> futuresList) {
+        CompletableFuture<Void> allFuturesResult = CompletableFuture.allOf(futuresList.toArray(new CompletableFuture[0]));
+        return allFuturesResult.thenApply(v -> futuresList.stream().
+                map(CompletableFuture::join).
+                collect(Collectors.toList())
+        );
     }
 
     public static <T> T checkAndGetBody(Response<T> response) throws IOException {

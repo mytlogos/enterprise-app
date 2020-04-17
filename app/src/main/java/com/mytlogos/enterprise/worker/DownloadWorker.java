@@ -35,6 +35,7 @@ import com.mytlogos.enterprise.preferences.UserPreferences;
 import com.mytlogos.enterprise.tools.ContentTool;
 import com.mytlogos.enterprise.tools.FileTools;
 import com.mytlogos.enterprise.tools.NotEnoughSpaceException;
+import com.mytlogos.enterprise.tools.Utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,10 +44,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class DownloadWorker extends Worker {
     private static final String UNIQUE = "DOWNLOAD_WORKER";
@@ -276,45 +281,62 @@ public class DownloadWorker extends Worker {
 
         toDownloadMedia.removeAll(prohibitedMedia);
 
-        Set<MediumDownload> mediumDownloads = new HashSet<>();
-        int downloadCount = 0;
         DownloadPreference downloadPreference = UserPreferences.get(this.getApplicationContext()).getDownloadPreference();
 
+        Executor executor = Executors.newFixedThreadPool(20);
+        List<CompletableFuture<MediumDownload>> futures = new LinkedList<>();
         for (Integer mediumId : toDownloadMedia) {
-            SimpleMedium medium = repository.getSimpleMedium(mediumId);
+            futures.add(CompletableFuture.supplyAsync(() -> {
+                SimpleMedium medium = repository.getSimpleMedium(mediumId);
 
-            int count = downloadPreference.getDownloadLimitCount(medium.getMedium());
-            List<Integer> episodeIds = repository.getDownloadableEpisodes(mediumId, count);
-            Set<Integer> uniqueEpisodes = new LinkedHashSet<>(episodeIds);
+                int count = downloadPreference.getDownloadLimitCount(medium.getMedium());
+                List<Integer> episodeIds = repository.getDownloadableEpisodes(mediumId, count);
+                Set<Integer> uniqueEpisodes = new LinkedHashSet<>(episodeIds);
 
-            if (uniqueEpisodes.isEmpty()) {
-                continue;
-            }
-            List<FailedEpisode> failedEpisodes = repository.getFailedEpisodes(uniqueEpisodes);
-
-            for (FailedEpisode failedEpisode : failedEpisodes) {
-                // if it failed 3 times or more, don't try anymore for now
-                if (failedEpisode.getFailCount() < 3) {
-                    continue;
+                if (uniqueEpisodes.isEmpty()) {
+                    return null;
                 }
-                uniqueEpisodes.remove(failedEpisode.getEpisodeId());
-            }
+                List<FailedEpisode> failedEpisodes = repository.getFailedEpisodes(uniqueEpisodes);
 
-            MediumDownload download = new MediumDownload(
-                    uniqueEpisodes,
-                    mediumId,
-                    medium.getMedium(),
-                    medium.getTitle()
-            );
+                for (FailedEpisode failedEpisode : failedEpisodes) {
+                    // if it failed 3 times or more, don't try anymore for now
+                    if (failedEpisode.getFailCount() < 3) {
+                        continue;
+                    }
+                    uniqueEpisodes.remove(failedEpisode.getEpisodeId());
+                }
 
-            this.filterMediumConstraints(download);
+                MediumDownload download = new MediumDownload(
+                        uniqueEpisodes,
+                        mediumId,
+                        medium.getMedium(),
+                        medium.getTitle()
+                );
+                this.filterMediumConstraints(download);
 
-            if (download.toDownloadEpisodes.isEmpty()) {
+                if (download.toDownloadEpisodes.isEmpty()) {
+                    return null;
+                }
+
+                return download;
+            }, executor));
+        }
+        List<MediumDownload> downloads;
+        try {
+            downloads = Utils.finishAll(futures).get();
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        Set<MediumDownload> mediumDownloads = new HashSet<>();
+        int downloadCount = 0;
+
+        for (MediumDownload download : downloads) {
+            if (download == null) {
                 continue;
             }
-
-            mediumDownloads.add(download);
-            downloadCount += uniqueEpisodes.size();
+            if (mediumDownloads.add(download)) {
+                downloadCount += download.toDownloadEpisodes.size();
+            }
         }
         if (!mediumDownloads.isEmpty()) {
             this.downloadEpisodes(mediumDownloads, repository, downloadCount);
