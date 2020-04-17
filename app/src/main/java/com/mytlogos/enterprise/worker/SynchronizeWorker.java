@@ -476,8 +476,16 @@ public class SynchronizeWorker extends Worker {
                 }
                 this.persistEpisodes(episodes, client, persister, repository);
             }
-
-            persister.deleteLeftoverEpisodes(partEpisodes);
+            Utils.doPartitionedRethrow(partEpisodes.keySet(), ids -> {
+                @SuppressLint("UseSparseArrays")
+                Map<Integer, List<Integer>> currentEpisodes = new HashMap<>();
+                for (Integer id : ids) {
+                    //noinspection ConstantConditions
+                    currentEpisodes.put(id, partEpisodes.get(id));
+                }
+                persister.deleteLeftoverEpisodes(currentEpisodes);
+                return false;
+            });
 
             reloadPart = repository.checkReload(parsedStat);
         }

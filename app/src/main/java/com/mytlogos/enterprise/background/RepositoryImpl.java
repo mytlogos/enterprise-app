@@ -476,7 +476,7 @@ public class RepositoryImpl implements Repository {
     @Override
     public void updateSaved(Collection<Integer> episodeIds, boolean saved) {
         try {
-            Utils.doPartitioned(episodeIds, ids -> {
+            Utils.doPartitionedEx(episodeIds, ids -> {
                 this.storage.updateSaved(ids, saved);
                 return false;
             });
@@ -745,7 +745,7 @@ public class RepositoryImpl implements Repository {
     }
 
     private void reloadEpisodes(Collection<Integer> episodeIds) throws Exception {
-        Utils.doPartitioned(episodeIds, integers -> {
+        Utils.doPartitionedEx(episodeIds, integers -> {
             List<ClientEpisode> episodes = this.client.getEpisodes(integers).body();
 
             if (episodes == null) {

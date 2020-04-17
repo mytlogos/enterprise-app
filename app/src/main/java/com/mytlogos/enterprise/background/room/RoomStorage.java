@@ -782,7 +782,7 @@ public class RoomStorage implements DatabaseStorage {
                         true
                 );
                 try {
-                    Utils.doPartitioned(episodeIds, ids -> {
+                    Utils.doPartitionedEx(episodeIds, ids -> {
                         this.episodeDao.updateProgress(ids, 1, DateTime.now());
                         return false;
                     });
@@ -812,7 +812,7 @@ public class RoomStorage implements DatabaseStorage {
 
             if (!availableEpisodeIds.isEmpty()) {
                 try {
-                    Utils.doPartitioned(availableEpisodeIds, ids -> {
+                    Utils.doPartitionedEx(availableEpisodeIds, ids -> {
                         this.episodeDao.deletePerId(ids);
                         return true;
                     });
@@ -1309,7 +1309,8 @@ public class RoomStorage implements DatabaseStorage {
 
         @Override
         public void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes) {
-            List<RoomPartEpisode> episodes = RoomStorage.this.episodeDao.getEpisodes(partEpisodes.keySet());
+            Set<Integer> partIds = partEpisodes.keySet();
+            List<RoomPartEpisode> episodes = RoomStorage.this.episodeDao.getEpisodes(partIds);
 
             List<Integer> deleteEpisodes = new LinkedList<>();
 
@@ -1320,8 +1321,10 @@ public class RoomStorage implements DatabaseStorage {
                     deleteEpisodes.add(roomPartEpisode.getEpisodeId());
                 }
             });
-
-            RoomStorage.this.episodeDao.deletePerId(deleteEpisodes);
+            Utils.doPartitioned(deleteEpisodes, ids -> {
+                RoomStorage.this.episodeDao.deletePerId(ids);
+                return false;
+            });
         }
 
         @Override

@@ -437,7 +437,7 @@ class EditService {
 
     void updateRead(Collection<Integer> episodeIds, boolean read) throws Exception {
         float progress = read ? 1f : 0f;
-        Utils.doPartitioned(episodeIds, ids -> {
+        Utils.doPartitionedEx(episodeIds, ids -> {
             if (!this.client.isOnline()) {
                 List<Integer> filteredIds = this.storage.getReadEpisodes(episodeIds, !read);
 
