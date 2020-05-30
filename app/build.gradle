@@ -13,8 +13,10 @@ android {
         multiDexEnabled = true
         javaCompileOptions {
             annotationProcessorOptions {
-                arguments = ["room.schemaLocation":
-                                     "$projectDir/schemas".toString()]
+                arguments = [
+                        "room.schemaLocation": "$projectDir/schemas".toString(),
+                        "room.incremental":"true"
+                ]
             }
         }
     }
@@ -41,7 +43,7 @@ dependencies {
     // (Java only)
     implementation fileTree(include: ['*.jar'], dir: 'libs')
 
-    def room_version = '2.2.0-alpha02'
+    def room_version = '2.2.5'
     // 2.1.10-alpha05 and 06 is bugged,
     // cannot run because it throws a 'failed, cannot read kotlin metadata' error
     //noinspection GradleDependency
