@@ -21,9 +21,15 @@ public class UserPreferences {
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
     }
 
-    public static UserPreferences get(Context context) {
+    public static synchronized void init(Context context) {
         if (INSTANCE == null) {
             INSTANCE = new UserPreferences(context);
+        }
+    }
+
+    public static UserPreferences get() {
+        if (INSTANCE == null) {
+            throw new IllegalStateException("UserPreference not yet initialized!");
         }
         return INSTANCE;
     }
@@ -32,43 +38,43 @@ public class UserPreferences {
         return new DownloadPreference(this.sharedPreferences);
     }
 
-    public static String getEpisodesFilter(Context context) {
-        return UserPreferences.get(context).sharedPreferences.getString(EPISODES_FILTER, null);
+    public static String getEpisodesFilter() {
+        return UserPreferences.get().sharedPreferences.getString(EPISODES_FILTER, null);
     }
 
-    public static void setEpisodesFilter(Context context, String filter) {
-        SharedPreferences.Editor editor = UserPreferences.get(context).sharedPreferences.edit();
+    public static void setEpisodesFilter(String filter) {
+        SharedPreferences.Editor editor = UserPreferences.get().sharedPreferences.edit();
         editor.putString(EPISODES_FILTER, filter);
         editor.apply();
     }
 
-    public static DateTime getLastSync(Context context) {
-        String last_sync_string = UserPreferences.get(context).sharedPreferences.getString(LAST_SYNC, null);
+    public static DateTime getLastSync() {
+        String last_sync_string = UserPreferences.get().sharedPreferences.getString(LAST_SYNC, null);
         return last_sync_string == null ? new DateTime(0) : DateTime.parse(last_sync_string);
     }
 
-    public static void setLastSync(Context context, DateTime lastSyncDatetime) {
-        SharedPreferences.Editor editor = UserPreferences.get(context).sharedPreferences.edit();
+    public static void setLastSync(DateTime lastSyncDatetime) {
+        SharedPreferences.Editor editor = UserPreferences.get().sharedPreferences.edit();
         editor.putString(LAST_SYNC, lastSyncDatetime == null ? null : lastSyncDatetime.toString());
         editor.apply();
     }
 
-    public static boolean getLoggedStatus(Context context) {
-        return UserPreferences.get(context).sharedPreferences.getBoolean(LOGGED_STATUS, false);
+    public static boolean getLoggedStatus() {
+        return UserPreferences.get().sharedPreferences.getBoolean(LOGGED_STATUS, false);
     }
 
-    public static String getLoggedUuid(Context context) {
-        return UserPreferences.get(context).sharedPreferences.getString(LOGGED_USER, null);
+    public static String getLoggedUuid() {
+        return UserPreferences.get().sharedPreferences.getString(LOGGED_USER, null);
     }
 
-    public static void putLoggedStatus(Context context, boolean loggedIn) {
-        SharedPreferences.Editor editor = UserPreferences.get(context).sharedPreferences.edit();
+    public static void putLoggedStatus(boolean loggedIn) {
+        SharedPreferences.Editor editor = UserPreferences.get().sharedPreferences.edit();
         editor.putBoolean(LOGGED_STATUS, loggedIn);
         editor.apply();
     }
 
-    public static void putLoggedUuid(Context context, String uuid) {
-        SharedPreferences.Editor editor = UserPreferences.get(context).sharedPreferences.edit();
+    public static void putLoggedUuid(String uuid) {
+        SharedPreferences.Editor editor = UserPreferences.get().sharedPreferences.edit();
         editor.putString(LOGGED_USER, uuid);
         editor.apply();
     }

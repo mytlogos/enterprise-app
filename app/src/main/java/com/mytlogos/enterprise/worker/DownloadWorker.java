@@ -164,6 +164,8 @@ public class DownloadWorker extends Worker {
             return Result.retry();
         }
 
+        UserPreferences.init(application);
+
         try {
             synchronized (UNIQUE) {
                 Repository repository = RepositoryImpl.getInstance(application);
@@ -220,7 +222,7 @@ public class DownloadWorker extends Worker {
     }
 
     private void filterMediumConstraints(MediumDownload mediumDownload) {
-        DownloadPreference downloadPreference = UserPreferences.get(this.getApplicationContext()).getDownloadPreference();
+        DownloadPreference downloadPreference = UserPreferences.get().getDownloadPreference();
         int type = mediumDownload.mediumType;
         int sizeLimitMB = downloadPreference.getDownloadLimitSize(type);
         int id = mediumDownload.id;
@@ -281,7 +283,7 @@ public class DownloadWorker extends Worker {
 
         toDownloadMedia.removeAll(prohibitedMedia);
 
-        DownloadPreference downloadPreference = UserPreferences.get(this.getApplicationContext()).getDownloadPreference();
+        DownloadPreference downloadPreference = UserPreferences.get().getDownloadPreference();
 
         Executor executor = Executors.newFixedThreadPool(20);
         List<CompletableFuture<MediumDownload>> futures = new LinkedList<>();

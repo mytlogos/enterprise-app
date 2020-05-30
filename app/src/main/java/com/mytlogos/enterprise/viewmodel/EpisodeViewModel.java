@@ -26,12 +26,12 @@ public class EpisodeViewModel extends RepoViewModel implements MediumFilterableV
 
     public EpisodeViewModel(@NonNull Application application) {
         super(application);
-        String episodesFilter = UserPreferences.getEpisodesFilter(application);
+        String episodesFilter = UserPreferences.getEpisodesFilter();
         Filter filter = new Gson().fromJson(episodesFilter, Filter.class);
         this.filter.setValue(filter != null ? filter : new Filter());
         this.filter.observeForever(newFilter -> {
             String json = new Gson().toJson(newFilter);
-            UserPreferences.setEpisodesFilter(application, json);
+            UserPreferences.setEpisodesFilter(json);
         });
     }
 

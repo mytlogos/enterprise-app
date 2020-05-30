@@ -118,8 +118,8 @@ public class MainActivity extends AppCompatActivity implements
 
     private void handleUserChanges(User user) {
         this.checkLogin(user);
-        UserPreferences.putLoggedStatus(this, user != null);
-        UserPreferences.putLoggedUuid(this, user == null ? null : user.getUuid());
+        UserPreferences.putLoggedStatus(user != null);
+        UserPreferences.putLoggedUuid(user == null ? null : user.getUuid());
         System.out.println("roomUser changed to: " + user);
         this.showLoading(false);
     }
@@ -133,7 +133,7 @@ public class MainActivity extends AppCompatActivity implements
             if (this.getSupportFragmentManager().getBackStackEntryCount() == 0) {
                 this.switchWindow(new Home(), false);
             }
-        } else if (UserPreferences.getLoggedStatus(this) || this.viewModel.isLoading()) {
+        } else if (UserPreferences.getLoggedStatus() || this.viewModel.isLoading()) {
             this.showLoading(true);
         } else {
             this.showLoading(false);
@@ -180,6 +180,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onResume() {
         super.onResume();
+        UserPreferences.init(this);
         System.out.println("resuming");
 
         checkToolbar();

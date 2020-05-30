@@ -138,6 +138,9 @@ public class SynchronizeWorker extends Worker {
             return Result.failure();
         }
         Application application = (Application) this.getApplicationContext();
+
+        UserPreferences.init(application);
+
         try {
             Repository repository = RepositoryImpl.getInstance(application);
 
@@ -229,9 +232,9 @@ public class SynchronizeWorker extends Worker {
         Client client = repository.getClient(this);
         ClientModelPersister persister = repository.getPersister(this);
 
-        DateTime lastSync = UserPreferences.getLastSync(this.getApplicationContext());
+        DateTime lastSync = UserPreferences.getLastSync();
         syncChanged(lastSync, client, persister, repository);
-        UserPreferences.setLastSync(this.getApplicationContext(), DateTime.now());
+        UserPreferences.setLastSync(DateTime.now());
         syncDeleted(client, persister, repository);
         return false;
     }

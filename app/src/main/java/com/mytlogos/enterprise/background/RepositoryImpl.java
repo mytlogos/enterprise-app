@@ -1067,7 +1067,7 @@ public class RepositoryImpl implements Repository {
 
     @Override
     public void clearLocalMediaData(Context context) {
-        UserPreferences.setLastSync(null, new DateTime(0));
+        UserPreferences.setLastSync(new DateTime(0));
         TaskManager.runTask(() -> {
             this.loadedData.getPart().clear();
             this.loadedData.getEpisodes().clear();
