@@ -181,9 +181,19 @@ public class RoomConverter {
 
     public ClientRoomEpisode convertClient(ClientEpisode episode) {
         return new ClientRoomEpisode(
-                episode.getId(), episode.getProgress(), episode.getPartId(),
-                episode.getTotalIndex(), episode.getPartialIndex(),
-                episode.getCombiIndex(), episode.getReadDate()
+                episode.getId(),
+                episode.getProgress(),
+                episode.getPartId(),
+                episode.getTotalIndex(),
+                episode.getPartialIndex(),
+                episode.getCombiIndex() != 0
+                        ? episode.getCombiIndex()
+                        : Double.parseDouble(String.format(
+                        "%s.%s",
+                        episode.getTotalIndex(),
+                        episode.getPartialIndex()
+                )),
+                episode.getReadDate()
         );
     }
 
