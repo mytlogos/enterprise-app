@@ -42,6 +42,7 @@ import com.mytlogos.enterprise.background.resourceLoader.DependencyTask;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
 import com.mytlogos.enterprise.background.room.model.ClientRoomEpisode;
+import com.mytlogos.enterprise.background.room.model.ListMediaJoin;
 import com.mytlogos.enterprise.background.room.model.RoomEditEvent;
 import com.mytlogos.enterprise.background.room.model.RoomEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomExternListView;
@@ -1407,51 +1408,89 @@ public class RoomStorage implements DatabaseStorage {
              * Remove any ExList which is not a key in stat.exLists
              * Remove any List which is not a key in stat.Lists
              * Remove any ExUser which is not a key in stat.exUser
+             * Add any new ListJoin
+             * Add any new ExListJoin
              */
-            List<RoomMediaList.MediaListMediaJoin> listJoins = RoomStorage.this.mediaListDao.getListItems();
-            List<RoomExternalMediaList.ExternalListMediaJoin> exListJoins = RoomStorage.this.externalMediaListDao.getListItems();
             List<RoomListUser> listUser = RoomStorage.this.externalMediaListDao.getListUser();
 
             Set<Integer> deletedLists = new HashSet<>();
             Set<Integer> deletedExLists = new HashSet<>();
             Set<String> deletedExUser = new HashSet<>();
-
-            listJoins.removeIf(join -> {
-                List<Integer> currentListItems = stat.lists.get(join.listId);
-                if (currentListItems == null) {
-                    deletedLists.add(join.listId);
-                    return true;
-                }
-                return currentListItems.contains(join.mediumId);
-            });
-
-            exListJoins.removeIf(join -> {
-                List<Integer> currentListItems = stat.extLists.get(join.listId);
-                if (currentListItems == null) {
-                    deletedExLists.add(join.listId);
-                    return true;
-                }
-                return currentListItems.contains(join.mediumId);
-            });
+            List<RoomMediaList.MediaListMediaJoin> newInternalJoins = new LinkedList<>();
+            List<RoomMediaList.MediaListMediaJoin> toDeleteInternalJoins = this.filterListMediumJoins(stat, deletedLists, newInternalJoins, false);
+            List<RoomExternalMediaList.ExternalListMediaJoin> newExternalJoins = new LinkedList<>();
+            List<RoomExternalMediaList.ExternalListMediaJoin> toDeleteExternalJoins = this.filterListMediumJoins(stat, deletedExLists, newExternalJoins, true);
 
             listUser.forEach(roomListUser -> {
                 List<Integer> listIds = stat.extUser.get(roomListUser.getUuid());
                 if (listIds == null) {
                     deletedExUser.add(roomListUser.getUuid());
+                    deletedExLists.add(roomListUser.getListId());
                     return;
                 }
                 if (!listIds.contains(roomListUser.getListId())) {
-                    deletedLists.add(roomListUser.getListId());
+                    deletedExLists.add(roomListUser.getListId());
                 }
             });
 
-            RoomStorage.this.externalMediaListDao.removeJoin(exListJoins);
-            RoomStorage.this.mediaListDao.removeJoin(listJoins);
+            RoomStorage.this.externalMediaListDao.removeJoin(toDeleteExternalJoins);
+            RoomStorage.this.mediaListDao.removeJoin(toDeleteInternalJoins);
+
+            RoomStorage.this.externalMediaListDao.addJoin(newExternalJoins);
+            RoomStorage.this.mediaListDao.addJoin(newInternalJoins);
 
             RoomStorage.this.externalMediaListDao.delete(deletedExLists);
             RoomStorage.this.mediaListDao.delete(deletedLists);
             RoomStorage.this.externalUserDao.delete(deletedExUser);
             return this;
+        }
+
+        private <T extends ListMediaJoin> List<T> filterListMediumJoins(final ClientStat.ParsedStat stat, final Set<Integer> deletedLists, final List<T> newJoins, final boolean external) {
+            final List<T> previousListJoins;
+            final Map<Integer, List<Integer>> currentJoins;
+            if (external) {
+                currentJoins = stat.extLists;
+                //noinspection unchecked
+                previousListJoins = (List<T>) RoomStorage.this.externalMediaListDao.getListItems();
+            } else {
+                currentJoins = stat.lists;
+                //noinspection unchecked
+                previousListJoins = (List<T>) RoomStorage.this.mediaListDao.getListItems();
+            }
+            final Map<Integer, Set<Integer>> previousListJoinMap = new HashMap<>();
+
+            previousListJoins.removeIf(join -> {
+                previousListJoinMap.computeIfAbsent(join.getListId(), integer -> new HashSet<>()).add(join.getMediumId());
+                final List<Integer> currentListItems = currentJoins.get(join.getListId());
+                if (currentListItems == null) {
+                    deletedLists.add(join.getListId());
+                    return false;
+                }
+                return currentListItems.contains(join.getMediumId());
+            });
+
+            // every join that is not in previousListJoin is added to newJoins
+            for (Map.Entry<Integer, List<Integer>> entry : currentJoins.entrySet()) {
+                Integer listId = entry.getKey();
+                Set<Integer> previousItems = previousListJoinMap.get(listId);
+
+                if (previousItems == null) {
+                    previousItems = Collections.emptySet();
+                }
+
+                for (Integer mediumId : entry.getValue()) {
+                    if (!previousItems.contains(mediumId)) {
+                        if (external) {
+                            //noinspection unchecked
+                            newJoins.add((T) new RoomExternalMediaList.ExternalListMediaJoin(listId, mediumId));
+                        } else {
+                            //noinspection unchecked
+                            newJoins.add((T) new RoomMediaList.MediaListMediaJoin(listId, mediumId));
+                        }
+                    }
+                }
+            }
+            return previousListJoins;
         }
 
         @Override

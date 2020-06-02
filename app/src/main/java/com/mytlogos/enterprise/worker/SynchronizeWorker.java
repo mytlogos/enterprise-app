@@ -473,10 +473,6 @@ public class SynchronizeWorker extends Worker {
             }
             if (!missingEpisodes.isEmpty()) {
                 List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(missingEpisodes));
-
-                if (episodes == null) {
-                    throw new NullPointerException("missing Episodes");
-                }
                 this.persistEpisodes(episodes, client, persister, repository);
             }
             Utils.doPartitionedRethrow(partEpisodes.keySet(), ids -> {
@@ -523,10 +519,6 @@ public class SynchronizeWorker extends Worker {
             if (!episodesToLoad.isEmpty()) {
                 Utils.doPartitionedRethrow(episodesToLoad, ids -> {
                     List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(ids));
-
-                    if (episodes == null) {
-                        throw new NullPointerException("missing Episodes");
-                    }
                     this.persistEpisodes(episodes, client, persister, repository);
                     return false;
                 });
@@ -543,10 +535,6 @@ public class SynchronizeWorker extends Worker {
 
             Utils.doPartitionedRethrow(partsToLoad, ids -> {
                 List<ClientPart> parts = Utils.checkAndGetBody(client.getParts(ids));
-
-                if (parts == null) {
-                    throw new NullPointerException("missing Episodes");
-                }
                 this.persistParts(parts, client, persister, repository);
                 return false;
             });

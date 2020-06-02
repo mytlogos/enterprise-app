@@ -86,7 +86,7 @@ public class RoomMediaList {
                     @Index(value = "mediumId"),
             }
     )
-    public static class MediaListMediaJoin {
+    public static class MediaListMediaJoin implements ListMediaJoin {
         public final int listId;
         public final int mediumId;
 
@@ -119,6 +119,16 @@ public class RoomMediaList {
             int result = listId;
             result = 31 * result + mediumId;
             return result;
+        }
+
+        @Override
+        public int getListId() {
+            return this.listId;
+        }
+
+        @Override
+        public int getMediumId() {
+            return this.mediumId;
         }
     }
 }
