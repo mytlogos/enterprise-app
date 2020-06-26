@@ -300,5 +300,5 @@ public interface Repository {
 
     boolean isExternalUserLoaded(String uuid);
 
-    ReloadPart checkReload(ClientStat.ParsedStat stat);
+    ReloadStat checkReload(ClientStat.ParsedStat stat);
 }

@@ -27,6 +27,7 @@ import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomPartEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
+import com.mytlogos.enterprise.background.room.model.RoomToc;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
 
 
@@ -38,9 +39,9 @@ import com.mytlogos.enterprise.background.room.model.RoomUser;
                 RoomExternalMediaList.ExternalListMediaJoin.class, RoomToDownload.class,
                 RoomMediumInWait.class, RoomDanglingMedium.class, RoomFailedEpisode.class,
                 RoomNotification.class, RoomMediumProgress.class, RoomMediumPart.class,
-                RoomPartEpisode.class, RoomEditEvent.class
+                RoomPartEpisode.class, RoomEditEvent.class, RoomToc.class
         },
-        version = 13
+        version = 14
 )
 @TypeConverters({Converters.class})
 public abstract class AbstractDatabase extends RoomDatabase {
@@ -97,6 +98,8 @@ public abstract class AbstractDatabase extends RoomDatabase {
     public abstract DataStructureDao dataStructureDao();
 
     public abstract EditDao editDao();
+
+    public abstract TocDao tocDao();
 
     private static Migration[] migrations() {
         return new Migration[]{
@@ -210,6 +213,21 @@ public abstract class AbstractDatabase extends RoomDatabase {
                                 "PRIMARY KEY(`id`, `objectType`, `eventType`, `dateTime`)" +
                                 ") "
                         );
+                    }
+                },
+                new Migration(13, 14) {
+                    @Override
+                    public void migrate(@NonNull SupportSQLiteDatabase database) {
+                        database.execSQL("CREATE TABLE IF NOT EXISTS RoomToc " +
+                                "(" +
+                                "mediumId INTEGER NOT NULL, link TEXT NOT NULL, " +
+                                "PRIMARY KEY(`mediumId`, `link`), " +
+                                "FOREIGN KEY(`mediumId`) REFERENCES `RoomMedium`(`mediumId`) " +
+                                "ON UPDATE NO ACTION ON DELETE CASCADE " +
+                                ") "
+                        );
+                        database.execSQL("CREATE INDEX index_RoomToc_mediumId ON RoomToc (mediumId);");
+                        database.execSQL("CREATE INDEX index_RoomToc_link ON RoomToc (link);");
                     }
                 }
         };

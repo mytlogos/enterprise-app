@@ -1,6 +1,5 @@
 package com.mytlogos.enterprise.background.room;
 
-import android.annotation.SuppressLint;
 import android.app.Application;
 
 import androidx.lifecycle.LiveData;
@@ -16,7 +15,7 @@ import com.mytlogos.enterprise.background.DatabaseStorage;
 import com.mytlogos.enterprise.background.DependantGenerator;
 import com.mytlogos.enterprise.background.EditEvent;
 import com.mytlogos.enterprise.background.LoadData;
-import com.mytlogos.enterprise.background.ReloadPart;
+import com.mytlogos.enterprise.background.ReloadStat;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RoomConverter;
 import com.mytlogos.enterprise.background.TaskManager;
@@ -25,6 +24,7 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
+import com.mytlogos.enterprise.background.api.model.ClientMediaStat;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
@@ -64,7 +64,9 @@ import com.mytlogos.enterprise.background.room.model.RoomProgressComparison;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomSimpleRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
+import com.mytlogos.enterprise.background.room.model.RoomToc;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
+import com.mytlogos.enterprise.background.room.model.RoomTocStat;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
 import com.mytlogos.enterprise.model.DisplayEpisode;
 import com.mytlogos.enterprise.model.DisplayRelease;
@@ -85,6 +87,7 @@ import com.mytlogos.enterprise.model.SimpleEpisode;
 import com.mytlogos.enterprise.model.SimpleMedium;
 import com.mytlogos.enterprise.model.SpaceMedium;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.model.Toc;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.tools.Sortings;
@@ -98,6 +101,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -124,6 +128,7 @@ public class RoomStorage implements DatabaseStorage {
     private final ToDownloadDao toDownloadDao;
     private final EditDao editDao;
     private boolean loading = false;
+    private final TocDao tocDao;
 
     public RoomStorage(Application application) {
         AbstractDatabase database = AbstractDatabase.getInstance(application);
@@ -143,6 +148,7 @@ public class RoomStorage implements DatabaseStorage {
         this.failedEpisodesDao = database.failedEpisodesDao();
         this.dataStructureDao = database.dataStructureDao();
         this.editDao = database.editDao();
+        this.tocDao = database.tocDao();
         this.userLiveData = this.userDao.getUser();
     }
 
@@ -728,10 +734,9 @@ public class RoomStorage implements DatabaseStorage {
     }
 
     @Override
-    public ReloadPart checkReload(ClientStat.ParsedStat parsedStat) {
+    public ReloadStat checkReload(ClientStat.ParsedStat parsedStat) {
         List<RoomPartStat> roomStats = this.episodeDao.getStat();
 
-        @SuppressLint("UseSparseArrays")
         Map<Integer, ClientStat.Partstat> partStats = new HashMap<>();
 
         for (Map<Integer, ClientStat.Partstat> value : parsedStat.media.values()) {
@@ -740,25 +745,92 @@ public class RoomStorage implements DatabaseStorage {
 
         List<Integer> loadEpisode = new LinkedList<>();
         List<Integer> loadRelease = new LinkedList<>();
+        List<Integer> loadMediumTocs = new LinkedList<>();
 
-        for (RoomPartStat roomStat : roomStats) {
-            ClientStat.Partstat partstat = partStats.get(roomStat.partId);
+        Map<Integer, RoomPartStat> localStatMap = new HashMap<>();
+        for (RoomPartStat localStat : roomStats) {
+            localStatMap.put(localStat.partId, localStat);
+            ClientStat.Partstat partstat = partStats.remove(localStat.partId);
 
             if (partstat == null) {
-                throw new IllegalStateException(String.format(
+                System.out.println(String.format(
                         "Local Part %s does not exist on Server, missing local Part Deletion",
-                        roomStat.partId
+                        localStat.partId
                 ));
+                continue;
             }
 
-            if (partstat.episodeCount != roomStat.episodeCount
-                    || partstat.episodeSum != roomStat.episodeSum) {
-                loadEpisode.add(roomStat.partId);
-            } else if (partstat.releaseCount != roomStat.releaseCount) {
-                loadRelease.add(roomStat.partId);
+            if (partstat.episodeCount != localStat.episodeCount
+                    || partstat.episodeSum != localStat.episodeSum) {
+                loadEpisode.add(localStat.partId);
+            } else if (partstat.releaseCount != localStat.releaseCount) {
+                loadRelease.add(localStat.partId);
             }
         }
-        return new ReloadPart(loadEpisode, loadRelease);
+        Set<Integer> loadPart = new HashSet<>();
+        final LoadData loadData = this.getLoadData();
+
+        for (Map.Entry<Integer, ClientStat.Partstat> clientStatEntry : partStats.entrySet()) {
+            final Integer partId = clientStatEntry.getKey();
+            ClientStat.Partstat remotePartStat = clientStatEntry.getValue();
+            final RoomPartStat localPartStat = localStatMap.get(partId);
+
+            if (localPartStat == null) {
+                if (!loadData.getPart().contains(partId)) {
+                    loadPart.add(partId);
+                }
+                continue;
+            }
+
+            if (remotePartStat.episodeCount != localPartStat.episodeCount
+                    || remotePartStat.episodeSum != localPartStat.episodeSum) {
+                loadEpisode.add(localPartStat.partId);
+            } else if (remotePartStat.releaseCount != localPartStat.releaseCount) {
+                loadRelease.add(localPartStat.partId);
+            }
+        }
+        List<RoomTocStat> roomTocStats = this.tocDao.getStat();
+        final Map<Integer, Integer> tocStats = new HashMap<>();
+
+        for (RoomTocStat stat : roomTocStats) {
+            tocStats.put(stat.getMediumId(), stat.getTocCount());
+        }
+
+        for (Map.Entry<Integer, ClientMediaStat> entry : parsedStat.mediaStats.entrySet()) {
+            final Integer mediumId = entry.getKey();
+            final ClientMediaStat stats = entry.getValue();
+            final Integer previousTocCount = tocStats.get(mediumId);
+
+            if (previousTocCount == null || stats.tocs != previousTocCount) {
+                loadMediumTocs.add(mediumId);
+            }
+        }
+        final Set<Integer> loadedMedia = loadData.getMedia();
+        Set<Integer> missingMedia = new HashSet<>(parsedStat.media.keySet());
+        missingMedia.removeAll(loadedMedia);
+        loadMediumTocs.addAll(missingMedia);
+
+        Set<Integer> missingExtLists = new HashSet<>(parsedStat.extLists.keySet());
+        missingExtLists.removeAll(loadData.getExternalMediaList());
+
+        Set<String> loadUser = new HashSet<>(parsedStat.extUser.keySet());
+        loadUser.removeAll(loadData.getExternalUser());
+
+        Set<Integer> missingLists = new HashSet<>(parsedStat.lists.keySet());
+        missingLists.removeAll(loadData.getMediaList());
+
+        for (Map.Entry<String, List<Integer>> entry : parsedStat.extUser.entrySet()) {
+            for (Iterator<Integer> iterator = missingExtLists.iterator(); iterator.hasNext(); ) {
+                Integer listId = iterator.next();
+
+                if (entry.getValue().contains(listId)) {
+                    loadUser.add(entry.getKey());
+                    iterator.remove();
+                }
+            }
+        }
+
+        return new ReloadStat(loadEpisode, loadRelease, loadMediumTocs, missingMedia, loadPart, missingLists, loadUser);
     }
 
     @Override
@@ -1367,6 +1439,29 @@ public class RoomStorage implements DatabaseStorage {
 
             RoomStorage.this.episodeDao.deleteBulkRelease(deleteRelease);
             return episodesToLoad;
+        }
+
+        @Override
+        public void deleteLeftoverTocs(Map<Integer, List<String>> mediaTocs) {
+            List<RoomToc> previousTocs = RoomStorage.this.tocDao.getTocs(mediaTocs.keySet());
+            List<RoomToc> removeTocs = new ArrayList<>();
+
+            for (RoomToc entry : previousTocs) {
+                final List<String> currentTocLinks = mediaTocs.get(entry.getMediumId());
+
+                if (currentTocLinks == null || !currentTocLinks.contains(entry.getLink())) {
+                    removeTocs.add(entry);
+                }
+            }
+            RoomStorage.this.tocDao.deleteBulk(removeTocs);
+        }
+
+        @Override
+        public ClientModelPersister persistTocs(Collection<? extends Toc> tocs) {
+            //noinspection unchecked
+            List<RoomToc> roomTocs = new RoomConverter().convertToc((Collection<Toc>) tocs);
+            RoomStorage.this.tocDao.insertBulk(roomTocs);
+            return this;
         }
 
         @Override
@@ -2092,6 +2187,16 @@ public class RoomStorage implements DatabaseStorage {
         @Override
         public Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
 
+            return null;
+        }
+
+        @Override
+        public void deleteLeftoverTocs(Map<Integer, List<String>> mediaTocs) {
+
+        }
+
+        @Override
+        public ClientModelPersister persistTocs(Collection<? extends Toc> tocs) {
             return null;
         }
 

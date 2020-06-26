@@ -20,9 +20,10 @@ import androidx.work.WorkerParameters;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.mytlogos.enterprise.R;
 import com.mytlogos.enterprise.background.ClientModelPersister;
-import com.mytlogos.enterprise.background.ReloadPart;
+import com.mytlogos.enterprise.background.ReloadStat;
 import com.mytlogos.enterprise.background.Repository;
 import com.mytlogos.enterprise.background.RepositoryImpl;
+import com.mytlogos.enterprise.background.SimpleToc;
 import com.mytlogos.enterprise.background.api.Client;
 import com.mytlogos.enterprise.background.api.NotConnectedException;
 import com.mytlogos.enterprise.background.api.ServerException;
@@ -31,21 +32,27 @@ import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
+import com.mytlogos.enterprise.background.api.model.ClientToc;
+import com.mytlogos.enterprise.model.Toc;
 import com.mytlogos.enterprise.preferences.UserPreferences;
 import com.mytlogos.enterprise.tools.Utils;
 
 import org.joda.time.DateTime;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -455,10 +462,40 @@ public class SynchronizeWorker extends Worker {
         ClientStat.ParsedStat parsedStat = statBody.parse();
         persister.persist(parsedStat);
 
-        ReloadPart reloadPart = repository.checkReload(parsedStat);
+        ReloadStat reloadStat = repository.checkReload(parsedStat);
 
-        if (!reloadPart.loadPartEpisodes.isEmpty()) {
-            Map<String, List<Integer>> partStringEpisodes = Utils.checkAndGetBody(client.getPartEpisodes(reloadPart.loadPartEpisodes));
+        if (!reloadStat.loadMedium.isEmpty()) {
+            final List<ClientMedium> media = Utils.checkAndGetBody(client.getMedia(reloadStat.loadMedium));
+            persister.persistMedia(media);
+
+            reloadStat = repository.checkReload(parsedStat);
+        }
+
+        if (!reloadStat.loadExUser.isEmpty()) {
+            final List<ClientExternalUser> users = Utils.checkAndGetBody(client.getExternalUser(reloadStat.loadExUser));
+            persister.persistExternalUsers(users);
+
+            reloadStat = repository.checkReload(parsedStat);
+        }
+
+        if (!reloadStat.loadLists.isEmpty()) {
+            final ClientMultiListQuery listQuery = Utils.checkAndGetBody(client.getLists(reloadStat.loadLists));
+            persister.persist(listQuery);
+
+            reloadStat = repository.checkReload(parsedStat);
+        }
+
+        if (!reloadStat.loadPart.isEmpty()) {
+            Utils.doPartitionedRethrow(reloadStat.loadPart, partIds -> {
+                final List<ClientPart> parts = Utils.checkAndGetBody(client.getParts(partIds));
+                persister.persistParts(parts);
+                return false;
+            });
+            reloadStat = repository.checkReload(parsedStat);
+        }
+
+        if (!reloadStat.loadPartEpisodes.isEmpty()) {
+            Map<String, List<Integer>> partStringEpisodes = Utils.checkAndGetBody(client.getPartEpisodes(reloadStat.loadPartEpisodes));
 
             Map<Integer, List<Integer>> partEpisodes = mapStringToInt(partStringEpisodes);
 
@@ -473,25 +510,24 @@ public class SynchronizeWorker extends Worker {
             }
             if (!missingEpisodes.isEmpty()) {
                 List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(missingEpisodes));
-                this.persistEpisodes(episodes, client, persister, repository);
+                persistEpisodes(episodes, client, persister, repository);
             }
             Utils.doPartitionedRethrow(partEpisodes.keySet(), ids -> {
-                @SuppressLint("UseSparseArrays")
+
                 Map<Integer, List<Integer>> currentEpisodes = new HashMap<>();
                 for (Integer id : ids) {
-                    //noinspection ConstantConditions
-                    currentEpisodes.put(id, partEpisodes.get(id));
+                    currentEpisodes.put(id, Objects.requireNonNull(partEpisodes.get(id)));
                 }
                 persister.deleteLeftoverEpisodes(currentEpisodes);
                 return false;
             });
 
-            reloadPart = repository.checkReload(parsedStat);
+            reloadStat = repository.checkReload(parsedStat);
         }
 
 
-        if (!reloadPart.loadPartReleases.isEmpty()) {
-            Response<Map<String, List<ClientSimpleRelease>>> partReleasesResponse = client.getPartReleases(reloadPart.loadPartReleases);
+        if (!reloadStat.loadPartReleases.isEmpty()) {
+            Response<Map<String, List<ClientSimpleRelease>>> partReleasesResponse = client.getPartReleases(reloadStat.loadPartReleases);
 
             Map<String, List<ClientSimpleRelease>> partStringReleases = Utils.checkAndGetBody(partReleasesResponse);
 
@@ -507,59 +543,89 @@ public class SynchronizeWorker extends Worker {
                 }
             }
             if (!missingEpisodes.isEmpty()) {
-                List<ClientEpisode> episodes = client.getEpisodes(missingEpisodes).body();
-
-                if (episodes == null) {
-                    throw new NullPointerException("missing Episodes");
-                }
-                this.persistEpisodes(episodes, client, persister, repository);
+                List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(missingEpisodes));
+                persistEpisodes(episodes, client, persister, repository);
             }
             Collection<Integer> episodesToLoad = persister.deleteLeftoverReleases(partReleases);
 
             if (!episodesToLoad.isEmpty()) {
                 Utils.doPartitionedRethrow(episodesToLoad, ids -> {
                     List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(ids));
-                    this.persistEpisodes(episodes, client, persister, repository);
+                    persistEpisodes(episodes, client, persister, repository);
                     return false;
                 });
             }
 
-            reloadPart = repository.checkReload(parsedStat);
+            reloadStat = repository.checkReload(parsedStat);
+        }
+
+        if (!reloadStat.loadMediumTocs.isEmpty()) {
+            final Response<List<ClientToc>> mediumTocsResponse = client.getMediumTocs(reloadStat.loadMediumTocs);
+            final List<ClientToc> mediumTocs = Utils.checkAndGetBody(mediumTocsResponse);
+            Map<Integer, List<String>> mediaTocs = new HashMap<>();
+
+            for (ClientToc mediumToc : mediumTocs) {
+                mediaTocs.computeIfAbsent(mediumToc.getMediumId(), id -> new ArrayList<>()).add(mediumToc.getLink());
+            }
+            Utils.doPartitionedRethrow(mediaTocs.keySet(), mediaIds-> {
+                Map<Integer, List<String>> partitionedMediaTocs = new HashMap<>();
+
+                for (Integer mediaId : mediaIds) {
+                    partitionedMediaTocs.put(mediaId, Objects.requireNonNull(mediaTocs.get(mediaId)));
+                }
+                this.persistTocs(partitionedMediaTocs, persister);
+                persister.deleteLeftoverTocs(partitionedMediaTocs);
+                return false;
+            });
         }
 
         // as even now some errors crop up, just load all this shit and dump it in 100er steps
-        if (!reloadPart.loadPartEpisodes.isEmpty() || !reloadPart.loadPartReleases.isEmpty()) {
+        if (!reloadStat.loadPartEpisodes.isEmpty() || !reloadStat.loadPartReleases.isEmpty()) {
             Collection<Integer> partsToLoad = new HashSet<>();
-            partsToLoad.addAll(reloadPart.loadPartEpisodes);
-            partsToLoad.addAll(reloadPart.loadPartReleases);
+            partsToLoad.addAll(reloadStat.loadPartEpisodes);
+            partsToLoad.addAll(reloadStat.loadPartReleases);
 
             Utils.doPartitionedRethrow(partsToLoad, ids -> {
                 List<ClientPart> parts = Utils.checkAndGetBody(client.getParts(ids));
-                this.persistParts(parts, client, persister, repository);
+
+                persistParts(parts, client, persister, repository);
                 return false;
             });
-            reloadPart = repository.checkReload(parsedStat);
+            reloadStat = repository.checkReload(parsedStat);
         }
 
-        if (!reloadPart.loadPartEpisodes.isEmpty()) {
+        if (!reloadStat.loadPartEpisodes.isEmpty()) {
             @SuppressLint("DefaultLocale")
             String msg = String.format(
                     "Episodes of %d Parts to load even after running once",
-                    reloadPart.loadPartEpisodes.size()
+                    reloadStat.loadPartEpisodes.size()
             );
             System.out.println(msg);
             Log.e("Repository", msg);
         }
 
-        if (!reloadPart.loadPartReleases.isEmpty()) {
+        if (!reloadStat.loadPartReleases.isEmpty()) {
             @SuppressLint("DefaultLocale")
             String msg = String.format(
                     "Releases of %d Parts to load even after running once",
-                    reloadPart.loadPartReleases.size()
+                    reloadStat.loadPartReleases.size()
             );
             System.out.println(msg);
             Log.e("Repository", msg);
         }
+    }
+
+    private void persistTocs(Map<Integer, List<String>> mediaTocs, ClientModelPersister persister) {
+        List<Toc> inserts = new LinkedList<>();
+
+        for (Map.Entry<Integer, List<String>> entry : mediaTocs.entrySet()) {
+            final int mediumId = entry.getKey();
+
+            for (String tocLink : entry.getValue()) {
+                inserts.add(new SimpleToc(mediumId, tocLink));
+            }
+        }
+        persister.persistTocs(inserts);
     }
 
     boolean syncWithInvalidation(Repository repository) throws IOException {

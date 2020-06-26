@@ -29,6 +29,7 @@ import com.mytlogos.enterprise.background.room.model.RoomNews;
 import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.model.Toc;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -556,6 +557,16 @@ public class DummyClientModelPersister implements ClientModelPersister {
     @Override
     public Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
 
+        return null;
+    }
+
+    @Override
+    public void deleteLeftoverTocs(Map<Integer, List<String>> mediaTocs) {
+
+    }
+
+    @Override
+    public ClientModelPersister persistTocs(Collection<? extends Toc> tocs) {
         return null;
     }
 

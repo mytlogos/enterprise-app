@@ -27,6 +27,7 @@ import com.mytlogos.enterprise.background.room.model.RoomPart;
 import com.mytlogos.enterprise.background.room.model.RoomReadEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomRelease;
 import com.mytlogos.enterprise.background.room.model.RoomToDownload;
+import com.mytlogos.enterprise.background.room.model.RoomToc;
 import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
 import com.mytlogos.enterprise.background.room.model.RoomUser;
 import com.mytlogos.enterprise.model.DisplayEpisode;
@@ -35,6 +36,7 @@ import com.mytlogos.enterprise.model.HomeStats;
 import com.mytlogos.enterprise.model.MediumInWait;
 import com.mytlogos.enterprise.model.ReadEpisode;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.model.Toc;
 import com.mytlogos.enterprise.model.TocEpisode;
 import com.mytlogos.enterprise.model.User;
 
@@ -125,6 +127,10 @@ public class RoomConverter {
         return this.convert(events, this::convert);
     }
 
+    public List<RoomToc> convertToc(Collection<Toc> tocs) {
+        return this.convert(tocs, this::convert);
+    }
+
     private <R, T> List<R> convert(Collection<T> values, Function<T, R> converter) {
         List<R> list = new ArrayList<>();
 
@@ -135,6 +141,13 @@ public class RoomConverter {
             list.add(converter.apply(t));
         }
         return list;
+    }
+
+    private RoomToc convert(Toc toc) {
+        return toc == null ? null : toc instanceof RoomToc ? (RoomToc) toc : new RoomToc(
+                toc.getMediumId(),
+                toc.getLink()
+        );
     }
 
     public RoomMediumInWait convert(MediumInWait inWait) {

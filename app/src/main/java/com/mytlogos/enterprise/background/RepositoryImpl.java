@@ -832,7 +832,7 @@ public class RepositoryImpl implements Repository {
     }
 
     @Override
-    public ReloadPart checkReload(ClientStat.ParsedStat stat) {
+    public ReloadStat checkReload(ClientStat.ParsedStat stat) {
         return this.storage.checkReload(stat);
     }
 

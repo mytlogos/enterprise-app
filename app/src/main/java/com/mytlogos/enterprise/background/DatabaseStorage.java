@@ -214,5 +214,5 @@ public interface DatabaseStorage {
 
     void removeEditEvents(Collection<EditEvent> editEvents);
 
-    ReloadPart checkReload(ClientStat.ParsedStat parsedStat);
+    ReloadStat checkReload(ClientStat.ParsedStat parsedStat);
 }

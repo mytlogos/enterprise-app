@@ -18,6 +18,7 @@ import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
+import com.mytlogos.enterprise.background.api.model.ClientToc;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
@@ -147,6 +148,25 @@ public class Client {
         return this.query(UserApi.class, (apiImpl, url) -> apiImpl.getStats(url, body));
     }
 
+    public Response<Boolean> removeToc(int mediumId, String link) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("mediumId", mediumId);
+        body.put("link", link);
+        return this.query(UserApi.class, (apiImpl, url) -> apiImpl.removeToc(url, body));
+    }
+
+    public Response<Boolean> addToc(int mediumId, String link) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("mediumId", mediumId);
+        body.put("toc", link);
+        return this.query(UserApi.class, (apiImpl, url) -> apiImpl.addToc(url, body));
+    }
+
+    public Response<List<ClientToc>> getMediumTocs(Collection<Integer> mediumIds) throws IOException {
+        Map<String, Object> body = this.userAuthenticationMap();
+        body.put("mediumId", mediumIds);
+        return this.query(UserApi.class, (apiImpl, url) -> apiImpl.getToc(url, body));
+    }
 
     public Response<ClientChangedEntities> getNew(DateTime lastSync) throws IOException {
         Map<String, Object> body = this.userAuthenticationMap();

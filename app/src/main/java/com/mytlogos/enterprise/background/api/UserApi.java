@@ -5,6 +5,7 @@ import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
+import com.mytlogos.enterprise.background.api.model.ClientToc;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.api.model.InvalidatedData;
 
@@ -13,6 +14,7 @@ import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
@@ -49,5 +51,12 @@ interface UserApi {
     @GET("{start}/new")
     Call<ClientChangedEntities> getNew(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
 
-    // TODO: 22.07.2019 add toc {uuid, toc: string, mediumId} ?
+    @GET("{start}/toc")
+    Call<List<ClientToc>> getToc(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+
+    @DELETE("{start}/toc")
+    Call<Boolean> removeToc(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+
+    @POST("{start}/toc")
+    Call<Boolean> addToc(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
 }

@@ -19,6 +19,7 @@ import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.model.ToDownload;
+import com.mytlogos.enterprise.model.Toc;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -115,4 +116,8 @@ public interface ClientModelPersister {
     void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes);
 
     Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases);
+
+    void deleteLeftoverTocs(Map<Integer, List<String>> mediaTocs);
+
+    ClientModelPersister persistTocs(Collection<? extends Toc> tocs);
 }

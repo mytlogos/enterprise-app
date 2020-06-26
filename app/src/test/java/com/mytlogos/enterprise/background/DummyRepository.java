@@ -665,7 +665,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public ReloadPart checkReload(ClientStat.ParsedStat stat) {
+    public ReloadStat checkReload(ClientStat.ParsedStat stat) {
         return null;
     }
 
