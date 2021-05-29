@@ -47,7 +47,12 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
      * @return A new instance of fragment TextViewerFragment.
      */
     public static TextViewerFragment newInstance(int startEpisode, String zipFile) {
-        TextViewerFragment fragment = new TextViewerFragment();
+        TextViewerFragment fragment;
+        if (zipFile != null && zipFile.endsWith(".pdf")) {
+            fragment = new PdfViewerFragment();
+        } else {
+            fragment = new TextViewerFragment();
+        }
         Bundle args = new Bundle();
         args.putInt(START_EPISODE, startEpisode);
         args.putString(MEDIUM, zipFile);
