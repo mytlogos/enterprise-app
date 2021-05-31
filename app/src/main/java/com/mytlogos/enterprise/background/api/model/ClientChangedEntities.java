@@ -2,18 +2,22 @@ package com.mytlogos.enterprise.background.api.model;
 
 import java.util.List;
 
+/**
+ * API Model for NewData.
+ * TODO: missing properties: tocs: FullMediumToc[]
+ */
 public class ClientChangedEntities {
-    public final List<ClientMedium> media;
+    public final List<ClientSimpleMedium> media;
     public final List<ClientRelease> releases;
-    public final List<ClientEpisode> episodes;
-    public final List<ClientPart> parts;
-    public final List<ClientMediaList> lists;
-    public final List<ClientExternalMediaList> extLists;
-    public final List<ClientExternalUser> extUser;
+    public final List<ClientEpisodePure> episodes;
+    public final List<ClientPartPure> parts;
+    public final List<ClientUserList> lists;
+    public final List<ClientExternalMediaListPure> extLists;
+    public final List<ClientExternalUserPure> extUser;
     public final List<ClientMediumInWait> mediaInWait;
     public final List<ClientNews> news;
 
-    public ClientChangedEntities(List<ClientMedium> media, List<ClientRelease> releases, List<ClientEpisode> episodes, List<ClientPart> parts, List<ClientMediaList> lists, List<ClientExternalMediaList> extLists, List<ClientExternalUser> extUser, List<ClientMediumInWait> mediaInWait, List<ClientNews> news) {
+    public ClientChangedEntities(List<ClientSimpleMedium> media, List<ClientRelease> releases, List<ClientEpisodePure> episodes, List<ClientPartPure> parts, List<ClientUserList> lists, List<ClientExternalMediaListPure> extLists, List<ClientExternalUserPure> extUser, List<ClientMediumInWait> mediaInWait, List<ClientNews> news) {
         this.media = media;
         this.releases = releases;
         this.episodes = episodes;

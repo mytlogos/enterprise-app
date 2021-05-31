@@ -14,6 +14,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 
 import org.junit.jupiter.api.Assertions;
@@ -220,15 +221,16 @@ class BlockingLoadWorkerTest {
 
     @Test
     void doWorkPersistMedia() {
-        Collection<ClientMedium> media = this
+        Collection<ClientSimpleMedium> media = this
                 .media
                 .stream()
+                .map(ClientSimpleMedium::new)
                 .map(clientMedium -> BlockingLoadWorkerTest.cloneObject(clientMedium, Collections.singletonList("currentRead")))
                 .collect(Collectors.toList());
 
         this.persister.persistMedia(media);
 
-        for (ClientMedium medium : media) {
+        for (ClientSimpleMedium medium : media) {
             if (!this.loadedData.getMedia().contains(medium.getId())) {
                 Assertions.assertTrue(this.loadWorker.isMediumLoading(medium.getId()));
             }
@@ -236,7 +238,7 @@ class BlockingLoadWorkerTest {
 
         this.loadWorker.doWork();
 
-        for (ClientMedium medium : media) {
+        for (ClientSimpleMedium medium : media) {
             this.assertMedium(medium.getId());
         }
     }

@@ -5,17 +5,19 @@ import androidx.annotation.NonNull;
 import org.joda.time.DateTime;
 
 /**
- * API Model for PureDisplayRelease.
+ * API Model for EpisodeRelease.
  */
-public class ClientRelease {
+public class ClientEpisodeRelease {
     private final int episodeId;
+    private final int tocId;
     private final String title;
     private final String url;
     private final boolean locked;
     private final DateTime releaseDate;
 
-    public ClientRelease(int episodeId, String title, String url, boolean locked, DateTime releaseDate) {
+    public ClientEpisodeRelease(int episodeId, int tocId, String title, String url, boolean locked, DateTime releaseDate) {
         this.episodeId = episodeId;
+        this.tocId = tocId;
         this.title = title;
         this.url = url;
         this.locked = locked;
@@ -42,6 +44,10 @@ public class ClientRelease {
         return releaseDate;
     }
 
+    public int getTocId() {
+        return tocId;
+    }
+
     @NonNull
     @Override
     public String toString() {
@@ -51,6 +57,7 @@ public class ClientRelease {
                 ", url='" + url + '\'' +
                 ", locked='" + locked + '\'' +
                 ", releaseDate=" + releaseDate +
+                ", tocId=" + tocId +
                 '}';
     }
 
@@ -59,7 +66,7 @@ public class ClientRelease {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientRelease that = (ClientRelease) o;
+        ClientEpisodeRelease that = (ClientEpisodeRelease) o;
 
         if (getEpisodeId() != that.getEpisodeId()) return false;
         if (isLocked() != that.isLocked()) return false;

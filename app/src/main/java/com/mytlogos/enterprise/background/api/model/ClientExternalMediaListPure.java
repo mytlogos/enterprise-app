@@ -1,23 +1,25 @@
 package com.mytlogos.enterprise.background.api.model;
 
-import java.util.Arrays;
-
 /**
- * API Model for List.
+ * API Model for PureExternalList.
  */
-public class ClientMediaList {
-    private final String userUuid;
+public class ClientExternalMediaListPure {
+    private final String uuid;
     private final int id;
     private final String name;
     private final int medium;
-    private final int[] items;
+    private final String url;
 
-    public ClientMediaList(String userUuid, int id, String name, int medium, int[] items) {
-        this.userUuid = userUuid;
+    public ClientExternalMediaListPure(String uuid, int id, String name, int medium, String url) {
+        this.uuid = uuid;
         this.id = id;
         this.name = name;
         this.medium = medium;
-        this.items = items;
+        this.url = url;
+    }
+
+    public String getUuid() {
+        return uuid;
     }
 
     public int getId() {
@@ -32,22 +34,18 @@ public class ClientMediaList {
         return medium;
     }
 
-    public int[] getItems() {
-        return items;
-    }
-
-    public String getUserUuid() {
-        return userUuid;
+    public String getUrl() {
+        return url;
     }
 
     @Override
     public String toString() {
-        return "ClientMediaList{" +
-                "userUuid='" + userUuid + '\'' +
+        return "ClientExternalMediaList{" +
+                "uuid='" + uuid + '\'' +
                 ", id=" + id +
                 ", name='" + name + '\'' +
                 ", medium=" + medium +
-                ", items=" + Arrays.toString(items) +
+                ", url='" + url + '\'' +
                 '}';
     }
 
@@ -56,7 +54,7 @@ public class ClientMediaList {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientMediaList that = (ClientMediaList) o;
+        ClientExternalMediaListPure that = (ClientExternalMediaListPure) o;
 
         return getId() == that.getId();
     }

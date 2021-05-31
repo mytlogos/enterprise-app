@@ -1,5 +1,8 @@
 package com.mytlogos.enterprise.background.api.model;
 
+/**
+ * API Model for MediumInWait.
+ */
 public class ClientMediumInWait {
     private final String title;
     private final int medium;

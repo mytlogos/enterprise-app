@@ -3,23 +3,21 @@ package com.mytlogos.enterprise.background.api.model;
 import java.util.Arrays;
 
 /**
- * API Model of Part.
+ * API Model for MinPart.
  */
-public class ClientPart {
+public class ClientPartPure {
     private final int mediumId;
     private final int id;
     private final String title;
     private final int totalIndex;
     private final int partialIndex;
-    private final ClientEpisode[] episodes;
 
-    public ClientPart(int mediumId, int id, String title, int totalIndex, int partialIndex, ClientEpisode[] episodes) {
+    public ClientPartPure(int mediumId, int id, String title, int totalIndex, int partialIndex) {
         this.mediumId = mediumId;
         this.id = id;
         this.title = title;
         this.totalIndex = totalIndex;
         this.partialIndex = partialIndex;
-        this.episodes = episodes;
     }
 
     @Override
@@ -27,7 +25,7 @@ public class ClientPart {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientPart that = (ClientPart) o;
+        ClientPartPure that = (ClientPartPure) o;
 
         return getId() == that.getId();
     }
@@ -45,7 +43,6 @@ public class ClientPart {
                 ", title='" + title + '\'' +
                 ", totalIndex=" + totalIndex +
                 ", partialIndex=" + partialIndex +
-                ", episodes=" + Arrays.toString(episodes) +
                 '}';
     }
 
@@ -63,10 +60,6 @@ public class ClientPart {
 
     public int getPartialIndex() {
         return partialIndex;
-    }
-
-    public ClientEpisode[] getEpisodes() {
-        return episodes;
     }
 
     public int getMediumId() {

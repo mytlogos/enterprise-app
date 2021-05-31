@@ -32,11 +32,13 @@ import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
+import com.mytlogos.enterprise.background.api.model.ClientUserList;
 import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
 import com.mytlogos.enterprise.background.resourceLoader.DependencyTask;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
@@ -97,6 +99,7 @@ import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -107,6 +110,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RoomStorage implements DatabaseStorage {
 
@@ -1139,15 +1143,33 @@ public class RoomStorage implements DatabaseStorage {
             for (RoomEpisode episode : list) {
                 this.loadedData.getEpisodes().add(episode.getEpisodeId());
             }
-            this.persistReleases(filteredEpisodes.releases);
+            this.persistReleases(filteredEpisodes.releases.stream().map(value -> new ClientRelease(
+                    value.getEpisodeId(),
+                    value.getTitle(),
+                    value.getUrl(),
+                    value.isLocked(),
+                    value.getReleaseDate()
+            )).collect(Collectors.toList()));
             return this;
         }
 
         @Override
-        public ClientModelPersister persistMediaLists(Collection<ClientMediaList> mediaLists) {
+        public ClientModelPersister persistMediaLists(List<ClientMediaList> mediaLists) {
             LoadWorkGenerator.FilteredMediaList filteredMediaList = this.generator.filterMediaLists(mediaLists);
             RoomConverter converter = new RoomConverter(this.loadedData);
             return this.persist(filteredMediaList, converter);
+        }
+
+        @Override
+        public ClientModelPersister persistUserLists(List<ClientUserList> mediaLists) {
+            String uuid = getUserNow().getUuid();
+            return this.persistMediaLists(mediaLists.stream().map(value -> new ClientMediaList(
+                    uuid,
+                    value.getId(),
+                    value.getName(),
+                    value.getMedium(),
+                    null
+            )).collect(Collectors.toList()));
         }
 
         @Override
@@ -1194,7 +1216,7 @@ public class RoomStorage implements DatabaseStorage {
         }
 
         @Override
-        public ClientModelPersister persistExternalUsers(Collection<ClientExternalUser> externalUsers) {
+        public ClientModelPersister persistExternalUsers(List<ClientExternalUser> externalUsers) {
             LoadWorkGenerator.FilteredExternalUser filteredExternalUser = this.generator.filterExternalUsers(externalUsers);
             return this.persist(filteredExternalUser);
         }
@@ -1221,8 +1243,8 @@ public class RoomStorage implements DatabaseStorage {
         }
 
         @Override
-        public ClientModelPersister persistMedia(Collection<ClientMedium> media) {
-            LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterMedia(media);
+        public ClientModelPersister persistMedia(Collection<ClientSimpleMedium> media) {
+            LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterSimpleMedia(media);
             return persist(filteredMedia);
         }
 
@@ -1230,8 +1252,8 @@ public class RoomStorage implements DatabaseStorage {
         public ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia) {
             RoomConverter converter = new RoomConverter(this.loadedData);
 
-            List<RoomMedium> newMedia = converter.convertMedia(filteredMedia.newMedia);
-            List<RoomMedium> updatedMedia = converter.convertMedia(filteredMedia.updateMedia);
+            List<RoomMedium> newMedia = converter.convertSimpleMedia(filteredMedia.newMedia);
+            List<RoomMedium> updatedMedia = converter.convertSimpleMedia(filteredMedia.updateMedia);
 
             RoomStorage.this.mediumDao.insertBulk(newMedia);
             RoomStorage.this.mediumDao.updateBulk(updatedMedia);
@@ -1309,14 +1331,14 @@ public class RoomStorage implements DatabaseStorage {
 
         @Override
         public ClientModelPersister persist(ClientListQuery query) {
-            this.persist(query.getMedia());
+            this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
             this.persist(query.getList());
             return this;
         }
 
         @Override
         public ClientModelPersister persist(ClientMultiListQuery query) {
-            this.persist(query.getMedia());
+            this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
             this.persist(query.getList());
             return this;
         }
@@ -1650,7 +1672,7 @@ public class RoomStorage implements DatabaseStorage {
 
                 @Override
                 public void consume(Collection<ClientMedium> media) {
-                    RoomModelPersister.this.persistMedia(media);
+                    RoomModelPersister.this.persistMedia(media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList()));
                 }
             });
             consumer.add(new ClientConsumer<RoomMediaList.MediaListMediaJoin>() {
@@ -1694,7 +1716,7 @@ public class RoomStorage implements DatabaseStorage {
 
                 @Override
                 public void consume(Collection<ClientMediaList> lists) {
-                    RoomModelPersister.this.persistMediaLists(lists);
+                    RoomModelPersister.this.persistMediaLists(new ArrayList<>(lists));
                 }
             });
             consumer.add(new ClientConsumer<ClientExternalUser>() {
@@ -1705,7 +1727,7 @@ public class RoomStorage implements DatabaseStorage {
 
                 @Override
                 public void consume(Collection<ClientExternalUser> extUsers) {
-                    RoomModelPersister.this.persistExternalUsers(extUsers);
+                    RoomModelPersister.this.persistExternalUsers(new ArrayList<>(extUsers));
                 }
             });
         }
@@ -1750,7 +1772,7 @@ public class RoomStorage implements DatabaseStorage {
             List<RoomEpisode> list = converter.convertEpisodes(filteredEpisodes.newEpisodes);
             List<RoomEpisode> update = converter.convertEpisodes(filteredEpisodes.updateEpisodes);
 
-            List<RoomRelease> roomReleases = converter.convertReleases(filteredEpisodes.releases);
+            List<RoomRelease> roomReleases = converter.convertEpisodeReleases(filteredEpisodes.releases);
 
             RoomStorage.this.episodeDao.insertBulk(list);
             RoomStorage.this.episodeDao.updateBulk(update);
@@ -1763,7 +1785,7 @@ public class RoomStorage implements DatabaseStorage {
         }
 
         @Override
-        public ClientModelPersister persistMediaLists(Collection<ClientMediaList> mediaLists) {
+        public ClientModelPersister persistMediaLists(List<ClientMediaList> mediaLists) {
             LoadWorkGenerator.FilteredMediaList filteredMediaList = this.generator.filterMediaLists(mediaLists);
             RoomConverter converter = new RoomConverter(this.loadedData);
 
@@ -1786,6 +1808,18 @@ public class RoomStorage implements DatabaseStorage {
             }
 
             return this.persist(filteredMediaList, converter);
+        }
+
+        @Override
+        public ClientModelPersister persistUserLists(List<ClientUserList> mediaLists) {
+            String uuid = getUserNow().getUuid();
+            return this.persistMediaLists(mediaLists.stream().map(value -> new ClientMediaList(
+                    uuid,
+                    value.getId(),
+                    value.getName(),
+                    value.getMedium(),
+                    null
+            )).collect(Collectors.toList()));
         }
 
         @Override
@@ -1876,7 +1910,7 @@ public class RoomStorage implements DatabaseStorage {
         }
 
         @Override
-        public ClientModelPersister persistExternalUsers(Collection<ClientExternalUser> externalUsers) {
+        public ClientModelPersister persistExternalUsers(List<ClientExternalUser> externalUsers) {
             LoadWorkGenerator.FilteredExternalUser filteredExternalUser = this.generator.filterExternalUsers(externalUsers);
 
             LoadWorker worker = this.repository.getLoadWorker();
@@ -1937,8 +1971,8 @@ public class RoomStorage implements DatabaseStorage {
         }
 
         @Override
-        public ClientModelPersister persistMedia(Collection<ClientMedium> media) {
-            LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterMedia(media);
+        public ClientModelPersister persistMedia(Collection<ClientSimpleMedium> media) {
+            LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterSimpleMedia(media);
             LoadWorker worker = this.repository.getLoadWorker();
 
             for (LoadWorkGenerator.IntDependency<ClientMedium> dependency : filteredMedia.episodeDependencies) {
@@ -1962,8 +1996,8 @@ public class RoomStorage implements DatabaseStorage {
         public ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia) {
             RoomConverter converter = new RoomConverter(this.loadedData);
 
-            List<RoomMedium> list = converter.convertMedia(filteredMedia.newMedia);
-            List<RoomMedium> update = converter.convertMedia(filteredMedia.updateMedia);
+            List<RoomMedium> list = converter.convertSimpleMedia(filteredMedia.newMedia);
+            List<RoomMedium> update = converter.convertSimpleMedia(filteredMedia.updateMedia);
 
             RoomStorage.this.mediumDao.insertBulk(list);
             RoomStorage.this.mediumDao.updateBulk(update);
@@ -1973,17 +2007,9 @@ public class RoomStorage implements DatabaseStorage {
             }
             LoadWorker worker = this.repository.getLoadWorker();
 
-            for (ClientMedium medium : filteredMedia.updateMedia) {
+            for (ClientSimpleMedium medium : filteredMedia.updateMedia) {
                 RoomStorage.this.dataStructureDao.clearPartJoin(medium.getId());
-                List<RoomMediumPart> mediumParts = new ArrayList<>(medium.getParts().length);
                 worker.enforceMediumStructure(medium.getId());
-
-                for (int part : medium.getParts()) {
-                    if (this.loadedData.getPart().contains(part)) {
-                        mediumParts.add(new RoomMediumPart(medium.getId(), part));
-                    }
-                }
-                RoomStorage.this.dataStructureDao.addPartJoin(mediumParts);
             }
             return this;
         }
@@ -2108,14 +2134,14 @@ public class RoomStorage implements DatabaseStorage {
 
         @Override
         public ClientModelPersister persist(ClientListQuery query) {
-            this.persist(query.getMedia());
+            this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
             this.persist(query.getList());
             return this;
         }
 
         @Override
         public ClientModelPersister persist(ClientMultiListQuery query) {
-            this.persist(query.getMedia());
+            this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
             this.persist(query.getList());
             return this;
         }

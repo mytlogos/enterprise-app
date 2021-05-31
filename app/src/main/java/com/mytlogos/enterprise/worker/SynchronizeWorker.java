@@ -29,12 +29,17 @@ import com.mytlogos.enterprise.background.api.NotConnectedException;
 import com.mytlogos.enterprise.background.api.ServerException;
 import com.mytlogos.enterprise.background.api.model.ClientChangedEntities;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientEpisodePure;
+import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
+import com.mytlogos.enterprise.background.api.model.ClientExternalMediaListPure;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientPartPure;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientToc;
@@ -56,6 +61,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import retrofit2.Response;
 
@@ -295,12 +301,12 @@ public class SynchronizeWorker extends Worker {
         changedEntities.media.clear();
 
         this.notify("Persisting Parts", null, false, current, total);
-        this.persistParts(changedEntities.parts, client, persister, repository);
+        this.persistPartsPure(changedEntities.parts, client, persister, repository);
         current += partsSize;
         changedEntities.parts.clear();
 
         this.notify("Persisting Episodes", null, false, current, total);
-        this.persistEpisodes(changedEntities.episodes, client, persister, repository);
+        this.persistEpisodesPure(changedEntities.episodes, client, persister, repository);
         current += episodesSize;
         changedEntities.episodes.clear();
 
@@ -310,17 +316,17 @@ public class SynchronizeWorker extends Worker {
         changedEntities.releases.clear();
 
         this.notify("Persisting Lists", null, false, current, total);
-        persister.persistMediaLists(changedEntities.lists);
+        persister.persistUserLists(changedEntities.lists);
         current += listsSize;
         changedEntities.lists.clear();
 
         this.notify("Persisting ExternalUser", null, false, current, total);
-        persister.persistExternalUsers(changedEntities.extUser);
+        persister.persistExternalUsersPure(changedEntities.extUser);
         current += extUserSize;
         changedEntities.extUser.clear();
 
         this.notify("Persisting External Lists", null, false, current, total);
-        this.persistExternalLists(changedEntities.extLists, client, persister, repository);
+        this.persistExternalListsPure(changedEntities.extLists, client, persister, repository);
         current += extListSize;
         changedEntities.extLists.clear();
 
@@ -342,7 +348,7 @@ public class SynchronizeWorker extends Worker {
         }
     }
 
-    private void persistParts(Collection<ClientPart> parts, Client client, ClientModelPersister persister, Repository repository) throws IOException {
+    private void persistParts(List<ClientPart> parts, Client client, ClientModelPersister persister, Repository repository) throws IOException {
         Collection<Integer> missingIds = new HashSet<>();
         Collection<ClientPart> loadingParts = new HashSet<>();
 
@@ -364,13 +370,29 @@ public class SynchronizeWorker extends Worker {
             if (parents == null) {
                 throw new NullPointerException("missing Media");
             }
-            persister.persistMedia(parents);
+            List<ClientSimpleMedium> simpleMedia = parents.stream().map(ClientSimpleMedium::new).collect(Collectors.toList());
+            persister.persistMedia(simpleMedia);
             return false;
         });
         persister.persistParts(loadingParts);
     }
 
-    private void persistEpisodes(Collection<ClientEpisode> episodes, Client client, ClientModelPersister persister, Repository repository) throws IOException {
+    private void persistPartsPure(List<ClientPartPure> parts, Client client, ClientModelPersister persister, Repository repository) throws IOException {
+        List<ClientPart> unPureParts = parts
+                .stream()
+                .map(part -> new ClientPart(
+                        part.getMediumId(),
+                        part.getId(),
+                        part.getTitle(),
+                        part.getTotalIndex(),
+                        part.getPartialIndex(),
+                        null
+                ))
+                .collect(Collectors.toList());
+        this.persistParts(unPureParts, client, persister, repository);
+    }
+
+    private void persistEpisodes(List<ClientEpisode> episodes, Client client, ClientModelPersister persister, Repository repository) throws IOException {
         Collection<Integer> missingIds = new HashSet<>();
         Collection<ClientEpisode> loading = new HashSet<>();
 
@@ -396,6 +418,23 @@ public class SynchronizeWorker extends Worker {
             return false;
         });
         persister.persistEpisodes(loading);
+    }
+
+    private void persistEpisodesPure(List<ClientEpisodePure> episodes, Client client, ClientModelPersister persister, Repository repository) throws IOException {
+        List<ClientEpisode> unPure = episodes
+                .stream()
+                .map(part -> new ClientEpisode(
+                        part.getId(),
+                        part.getProgress(),
+                        part.getPartId(),
+                        part.getTotalIndex(),
+                        part.getPartialIndex(),
+                        part.getCombiIndex(),
+                        part.getReadDate(),
+                        new ClientEpisodeRelease[0]
+                ))
+                .collect(Collectors.toList());
+        this.persistEpisodes(unPure, client, persister, repository);
     }
 
     private void persistReleases(Collection<ClientRelease> releases, Client client, ClientModelPersister persister, Repository repository) throws IOException {
@@ -425,8 +464,7 @@ public class SynchronizeWorker extends Worker {
         });
         persister.persistReleases(loading);
     }
-
-    private void persistExternalLists(Collection<ClientExternalMediaList> externalMediaLists, Client client, ClientModelPersister persister, Repository repository) throws IOException {
+    private void persistExternalLists(List<ClientExternalMediaList> externalMediaLists, Client client, ClientModelPersister persister, Repository repository) throws IOException {
         Collection<String> missingIds = new HashSet<>();
         Collection<ClientExternalMediaList> loading = new HashSet<>();
 
@@ -455,6 +493,21 @@ public class SynchronizeWorker extends Worker {
         persister.persistExternalMediaLists(loading);
     }
 
+    private void persistExternalListsPure(List<ClientExternalMediaListPure> externalMediaLists, Client client, ClientModelPersister persister, Repository repository) throws IOException {
+        List<ClientExternalMediaList> unPure = externalMediaLists
+                .stream()
+                .map(part -> new ClientExternalMediaList(
+                        part.getUuid(),
+                        part.getId(),
+                        part.getName(),
+                        part.getMedium(),
+                        part.getUrl(),
+                        new int[0]
+                ))
+                .collect(Collectors.toList());
+        this.persistExternalLists(unPure, client, persister, repository);
+    }
+
     private void syncDeleted(Client client, ClientModelPersister persister, Repository repository) throws IOException {
         notify("Synchronize Deleted Items", null, true, false);
         ClientStat statBody = Utils.checkAndGetBody(client.getStats());
@@ -466,7 +519,8 @@ public class SynchronizeWorker extends Worker {
 
         if (!reloadStat.loadMedium.isEmpty()) {
             final List<ClientMedium> media = Utils.checkAndGetBody(client.getMedia(reloadStat.loadMedium));
-            persister.persistMedia(media);
+            List<ClientSimpleMedium> simpleMedia = media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList());
+            persister.persistMedia(simpleMedia);
 
             reloadStat = repository.checkReload(parsedStat);
         }
@@ -510,7 +564,7 @@ public class SynchronizeWorker extends Worker {
             }
             if (!missingEpisodes.isEmpty()) {
                 List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(missingEpisodes));
-                persistEpisodes(episodes, client, persister, repository);
+                this.persistEpisodes(episodes, client, persister, repository);
             }
             Utils.doPartitionedRethrow(partEpisodes.keySet(), ids -> {
 
@@ -551,7 +605,7 @@ public class SynchronizeWorker extends Worker {
             if (!episodesToLoad.isEmpty()) {
                 Utils.doPartitionedRethrow(episodesToLoad, ids -> {
                     List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(ids));
-                    persistEpisodes(episodes, client, persister, repository);
+                    this.persistEpisodes(episodes, client, persister, repository);
                     return false;
                 });
             }
@@ -588,7 +642,7 @@ public class SynchronizeWorker extends Worker {
             Utils.doPartitionedRethrow(partsToLoad, ids -> {
                 List<ClientPart> parts = Utils.checkAndGetBody(client.getParts(ids));
 
-                persistParts(parts, client, persister, repository);
+                this.persistParts(parts, client, persister, repository);
                 return false;
             });
             reloadStat = repository.checkReload(parsedStat);

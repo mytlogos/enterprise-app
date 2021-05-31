@@ -2,6 +2,9 @@ package com.mytlogos.enterprise.background.api.model;
 
 import java.util.Arrays;
 
+/**
+ * API Model for DownloadContent.
+ */
 public class ClientDownloadedEpisode {
     private final String[] content;
     private final String title;

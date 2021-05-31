@@ -10,6 +10,8 @@ import com.mytlogos.enterprise.background.api.NotConnectedException;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMinList;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.model.ExternalMediaListSetting;
 import com.mytlogos.enterprise.model.MediaListSetting;
@@ -373,7 +375,7 @@ class EditService {
                 this.persister.persist(mediaList).finish();
                 return "";
             }
-            this.client.updateList(mediaList);
+            this.client.updateList(new ClientMinList(mediaList.getName(), mediaList.getMedium()));
             ClientListQuery query = this.client.getList(listId).body();
             this.persister.persist(query).finish();
         } catch (IOException e) {
@@ -420,12 +422,12 @@ class EditService {
                     editEvents.add(new EditEventImpl(mediumId, MEDIUM, CHANGE_TYPE, setting.getMedium(), mediumSettings.getMedium()));
                 }
                 this.storage.insertEditEvent(editEvents);
-                this.persister.persist(clientMedium).finish();
+                this.persister.persist(new ClientSimpleMedium(clientMedium)).finish();
             }
             try {
                 this.client.updateMedia(clientMedium);
                 ClientMedium medium = this.client.getMedium(mediumId).body();
-                this.persister.persist(medium).finish();
+                this.persister.persist(new ClientSimpleMedium(medium)).finish();
             } catch (IOException e) {
                 e.printStackTrace();
                 return "Could not update Medium";

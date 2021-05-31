@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.api;
 
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ interface MediumApi {
     Call<ClientMedium> createFromMediumInWait(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
 
     @POST
-    Call<ClientMedium> addMedia(@Url String url, @Body Map<String, Object> body);
+    Call<ClientSimpleMedium> addMedia(@Url String url, @Body Map<String, Object> body);
 
     @PUT
     Call<Boolean> updateMedia(@Url String url, @Body Map<String, Object> body);

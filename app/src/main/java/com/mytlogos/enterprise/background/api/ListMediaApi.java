@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.background.api;
 
+import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
 
 import java.util.List;
@@ -17,7 +18,7 @@ import retrofit2.http.Url;
 interface ListMediaApi {
 
     @GET
-    Call<List<ClientMedium>> getListMedia(@Url String url, @QueryMap Map<String, Object> body);
+    Call<ClientListQuery> getListMedia(@Url String url, @QueryMap Map<String, Object> body);
 
     @POST
     Call<Boolean> addListMedia(@Url String url, @Body Map<String, Object> body);

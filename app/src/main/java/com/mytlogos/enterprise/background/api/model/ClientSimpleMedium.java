@@ -5,16 +5,12 @@ import androidx.annotation.NonNull;
 import java.util.Arrays;
 
 /**
- * API Model for Medium.
+ * API Model for SimpleMedium.
  */
-public class ClientMedium {
-    private int[] parts;
-    private int[] latestReleased;
-    private int currentRead;
-    private int[] unreadEpisodes;
+public class ClientSimpleMedium {
     private int id;
-    private String countryOfOrigin;
     private String languageOfOrigin;
+    private String countryOfOrigin;
     private String author;
     private String title;
     private int medium;
@@ -25,18 +21,28 @@ public class ClientMedium {
     private String series;
     private String universe;
 
-    public ClientMedium() {
+    public ClientSimpleMedium() {
 
     }
 
-    public ClientMedium(int[] parts, int[] latestReleased, int currentRead, int[] unreadEpisodes, int id,
-                        String countryOfOrigin, String languageOfOrigin, String author,
-                        String title, int medium, String artist, String lang, int stateOrigin,
-                        int stateTL, String series, String universe) {
-        this.parts = parts;
-        this.latestReleased = latestReleased;
-        this.currentRead = currentRead;
-        this.unreadEpisodes = unreadEpisodes;
+    public ClientSimpleMedium(ClientMedium medium) {
+        this.id = medium.getId();
+        this.countryOfOrigin = medium.getCountryOfOrigin();
+        this.languageOfOrigin = medium.getLanguageOfOrigin();
+        this.author = medium.getAuthor();
+        this.title = medium.getTitle();
+        this.medium = medium.getMedium();
+        this.artist = medium.getArtist();
+        this.lang = medium.getLang();
+        this.stateOrigin = medium.getStateOrigin();
+        this.stateTL = medium.getStateTL();
+        this.series = medium.getSeries();
+        this.universe = medium.getUniverse();
+    }
+
+    public ClientSimpleMedium(int id, String countryOfOrigin, String languageOfOrigin, String author,
+                              String title, int medium, String artist, String lang, int stateOrigin,
+                              int stateTL, String series, String universe) {
         this.id = id;
         this.countryOfOrigin = countryOfOrigin;
         this.languageOfOrigin = languageOfOrigin;
@@ -51,7 +57,7 @@ public class ClientMedium {
         this.universe = universe;
     }
 
-    public ClientMedium(int id, String title, int medium) {
+    public ClientSimpleMedium(int id, String title, int medium) {
         this.id = id;
         this.title = title;
         this.medium = medium;
@@ -60,12 +66,8 @@ public class ClientMedium {
     @NonNull
     @Override
     public String toString() {
-        return "ClientMedium{" +
-                "parts=" + Arrays.toString(parts) +
-                ", latestReleased=" + Arrays.toString(latestReleased) +
-                ", currentRead=" + currentRead +
-                ", unreadEpisodes=" + Arrays.toString(unreadEpisodes) +
-                ", id=" + id +
+        return "ClientSimpleMedium{" +
+                "id=" + id +
                 ", countryOfOrigin='" + countryOfOrigin + '\'' +
                 ", languageOfOrigin='" + languageOfOrigin + '\'' +
                 ", author='" + author + '\'' +
@@ -85,7 +87,7 @@ public class ClientMedium {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientMedium that = (ClientMedium) o;
+        ClientSimpleMedium that = (ClientSimpleMedium) o;
 
         return getId() == that.getId();
     }
@@ -141,21 +143,5 @@ public class ClientMedium {
 
     public String getUniverse() {
         return universe;
-    }
-
-    public int[] getParts() {
-        return parts;
-    }
-
-    public int[] getLatestReleased() {
-        return latestReleased;
-    }
-
-    public int getCurrentRead() {
-        return currentRead;
-    }
-
-    public int[] getUnreadEpisodes() {
-        return unreadEpisodes;
     }
 }

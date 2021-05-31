@@ -2,12 +2,15 @@ package com.mytlogos.enterprise.background.api.model;
 
 import org.joda.time.DateTime;
 
+/**
+ * API Model for PureNews.
+ */
 public class ClientNews {
-    private String title;
-    private String link;
-    private DateTime date;
-    private int id;
-    private boolean read;
+    private final String title;
+    private final String link;
+    private final DateTime date;
+    private final int id;
+    private final boolean read;
 
     public ClientNews(String title, String link, DateTime date, int id, boolean read) {
         this.title = title;

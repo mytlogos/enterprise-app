@@ -7,9 +7,9 @@ import org.joda.time.DateTime;
 import java.util.Arrays;
 
 /**
- * API Model for Episode.
+ * API Model for PureEpisode.
  */
-public class ClientEpisode {
+public class ClientEpisodePure {
     private final int id;
     private final float progress;
     private final int partId;
@@ -17,9 +17,8 @@ public class ClientEpisode {
     private final int partialIndex;
     private final double combiIndex;
     private final DateTime readDate;
-    private final ClientEpisodeRelease[] releases;
 
-    public ClientEpisode(int id, float progress, int partId, int totalIndex, int partialIndex, double combiIndex, DateTime readDate, ClientEpisodeRelease[] releases) {
+    public ClientEpisodePure(int id, float progress, int partId, int totalIndex, int partialIndex, double combiIndex, DateTime readDate, ClientRelease[] releases) {
         this.id = id;
         this.progress = progress;
         this.partId = partId;
@@ -27,11 +26,6 @@ public class ClientEpisode {
         this.partialIndex = partialIndex;
         this.combiIndex = combiIndex;
         this.readDate = readDate;
-        this.releases = releases;
-    }
-
-    public ClientEpisodeRelease[] getReleases() {
-        return releases;
     }
 
     public DateTime getReadDate() {
@@ -65,7 +59,7 @@ public class ClientEpisode {
     @NonNull
     @Override
     public String toString() {
-        return "ClientEpisode{" +
+        return "ClientEpisodePure{" +
                 "id=" + id +
                 ", progress=" + progress +
                 ", partId=" + partId +
@@ -73,7 +67,6 @@ public class ClientEpisode {
                 ", partialIndex=" + partialIndex +
                 ", combiIndex" + combiIndex +
                 ", readDate=" + readDate +
-                ", releases=" + Arrays.toString(releases) +
                 '}';
     }
 
@@ -82,7 +75,7 @@ public class ClientEpisode {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientEpisode that = (ClientEpisode) o;
+        ClientEpisodePure that = (ClientEpisodePure) o;
         return id == that.id;
     }
 

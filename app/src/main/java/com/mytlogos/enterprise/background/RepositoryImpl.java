@@ -19,9 +19,11 @@ import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
+import com.mytlogos.enterprise.background.api.model.ClientMinList;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
@@ -607,12 +609,9 @@ public class RepositoryImpl implements Repository {
         if (value == null || value.getUuid().isEmpty()) {
             throw new IllegalStateException("user is not authenticated");
         }
-        ClientMediaList mediaList = new ClientMediaList(
-                value.getUuid(),
-                0,
+        ClientMinList mediaList = new ClientMinList(
                 list.getName(),
-                list.getMedium(),
-                new int[0]
+                list.getMedium()
         );
         ClientMediaList clientMediaList = this.client.addList(mediaList).body();
 
@@ -976,7 +975,7 @@ public class RepositoryImpl implements Repository {
                 if (clientMedium == null) {
                     return false;
                 }
-                this.persister.persist(clientMedium);
+                this.persister.persist(new ClientSimpleMedium(clientMedium));
 
                 Collection<MediumInWait> toDelete = new HashSet<>();
                 toDelete.add(mediumInWait);

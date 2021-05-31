@@ -5,19 +5,17 @@ import java.util.Arrays;
 /**
  * API Model for DisplayExternalUser.
  */
-public class ClientExternalUser {
+public class ClientExternalUserPure {
     private final String localUuid;
     private final String uuid;
     private final String identifier;
     private final int type;
-    private final ClientExternalMediaList[] lists;
 
-    public ClientExternalUser(String localUuid, String uuid, String identifier, int type, ClientExternalMediaList[] lists) {
+    public ClientExternalUserPure(String localUuid, String uuid, String identifier, int type) {
         this.localUuid = localUuid;
         this.uuid = uuid;
         this.identifier = identifier;
         this.type = type;
-        this.lists = lists;
     }
 
     public String getUuid() {
@@ -32,10 +30,6 @@ public class ClientExternalUser {
         return type;
     }
 
-    public ClientExternalMediaList[] getLists() {
-        return lists;
-    }
-
     public String getLocalUuid() {
         return localUuid;
     }
@@ -47,7 +41,6 @@ public class ClientExternalUser {
                 ", uuid='" + uuid + '\'' +
                 ", identifier='" + identifier + '\'' +
                 ", type=" + type +
-                ", lists=" + Arrays.toString(lists) +
                 '}';
     }
 
@@ -56,7 +49,7 @@ public class ClientExternalUser {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientExternalUser that = (ClientExternalUser) o;
+        ClientExternalUserPure that = (ClientExternalUserPure) o;
 
         return getUuid() != null ? getUuid().equals(that.getUuid()) : that.getUuid() == null;
     }

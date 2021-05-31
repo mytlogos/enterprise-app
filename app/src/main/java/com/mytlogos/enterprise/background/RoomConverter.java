@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background;
 
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
@@ -9,6 +10,7 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
@@ -85,6 +87,10 @@ public class RoomConverter {
         return this.convert(episodes, this::convertClient);
     }
 
+    public List<RoomRelease> convertEpisodeReleases(Collection<ClientEpisodeRelease> releases) {
+        return this.convert(releases, this::convert);
+    }
+
     public List<RoomRelease> convertReleases(Collection<ClientRelease> releases) {
         return this.convert(releases, this::convert);
     }
@@ -95,6 +101,15 @@ public class RoomConverter {
             int currentRead = medium.getCurrentRead();
             Integer curredRead = this.loadedData.getEpisodes().contains(currentRead) ? currentRead : null;
             mediumList.add(this.convert(medium, curredRead));
+        }
+        return mediumList;
+    }
+
+    public List<RoomMedium> convertSimpleMedia(Collection<ClientSimpleMedium> media) {
+        List<RoomMedium> mediumList = new ArrayList<>(media.size());
+
+        for (ClientSimpleMedium medium : media) {
+            mediumList.add(this.convert(medium));
         }
         return mediumList;
     }
@@ -220,6 +235,16 @@ public class RoomConverter {
         );
     }
 
+    public RoomRelease convert(ClientEpisodeRelease release) {
+        return new RoomRelease(
+                release.getEpisodeId(),
+                release.getTitle(),
+                release.getUrl(),
+                release.getReleaseDate(),
+                release.isLocked()
+        );
+    }
+
     public RoomExternalUser convert(ClientExternalUser user) {
         return new RoomExternalUser(
                 user.getUuid(), user.getLocalUuid(), user.getIdentifier(),
@@ -244,6 +269,16 @@ public class RoomConverter {
     public RoomMedium convert(ClientMedium medium, Integer curredRead) {
         return new RoomMedium(
                 curredRead, medium.getId(), medium.getCountryOfOrigin(),
+                medium.getLanguageOfOrigin(), medium.getAuthor(), medium.getTitle(),
+                medium.getMedium(), medium.getArtist(), medium.getLang(),
+                medium.getStateOrigin(), medium.getStateTL(), medium.getSeries(),
+                medium.getUniverse()
+        );
+    }
+
+    public RoomMedium convert(ClientSimpleMedium medium) {
+        return new RoomMedium(
+                null, medium.getId(), medium.getCountryOfOrigin(),
                 medium.getLanguageOfOrigin(), medium.getAuthor(), medium.getTitle(),
                 medium.getMedium(), medium.getArtist(), medium.getLang(),
                 medium.getStateOrigin(), medium.getStateTL(), medium.getSeries(),

@@ -1,14 +1,17 @@
 package com.mytlogos.enterprise.background.api.model;
 
+/**
+ * API Model for User.
+ */
 public class ClientUser {
-    private String uuid;
-    private String session;
-    private String name;
-    private ClientExternalUser[] externalUser;
-    private ClientMediaList[] lists;
-    private ClientNews[] unreadNews;
-    private int[] unreadChapter;
-    private ClientReadEpisode[] readToday;
+    private final String uuid;
+    private final String session;
+    private final String name;
+    private final ClientExternalUser[] externalUser;
+    private final ClientMediaList[] lists;
+    private final ClientNews[] unreadNews;
+    private final int[] unreadChapter;
+    private final ClientReadEpisode[] readToday;
 
     public ClientUser(String uuid, String session, String name, ClientExternalUser[] externalUser, ClientMediaList[] lists, ClientNews[] unreadNews, int[] unreadChapter, ClientReadEpisode[] readToday) {
         this.uuid = uuid;

@@ -1,12 +1,14 @@
 package com.mytlogos.enterprise.background.resourceLoader;
 
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 class MediumLoader implements NetworkLoader<Integer> {
     private LoadWorker loadWorker;
@@ -36,7 +38,7 @@ class MediumLoader implements NetworkLoader<Integer> {
 
     private void process(List<ClientMedium> media) {
         if (media != null) {
-            loadWorker.persister.persistMedia(media);
+            loadWorker.persister.persistMedia(media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList()));
         }
     }
 

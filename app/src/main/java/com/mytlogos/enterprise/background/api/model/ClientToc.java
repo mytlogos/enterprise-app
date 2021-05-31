@@ -7,7 +7,10 @@ import com.mytlogos.enterprise.model.Toc;
 import java.util.Objects;
 
 /**
- *
+ * API Model for FullMediumToc.
+ * TODO: Missing properties:
+ *  id, countryOfOrigin, languageOfOrigin, author, title, medium,
+ *  artist, lang, stateOrigin, stateTL, series, universe
  */
 public class ClientToc implements Toc {
     private final int mediumId;

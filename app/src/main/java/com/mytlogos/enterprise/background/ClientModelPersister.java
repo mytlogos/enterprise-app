@@ -3,6 +3,7 @@ package com.mytlogos.enterprise.background;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
+import com.mytlogos.enterprise.background.api.model.ClientExternalUserPure;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
@@ -10,13 +11,16 @@ import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
+import com.mytlogos.enterprise.background.api.model.ClientPartPure;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
+import com.mytlogos.enterprise.background.api.model.ClientUserList;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.Toc;
@@ -25,6 +29,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public interface ClientModelPersister {
     Collection<ClientConsumer<?>> getConsumer();
@@ -43,7 +49,9 @@ public interface ClientModelPersister {
 
     ClientModelPersister persist(LoadWorkGenerator.FilteredEpisodes filteredEpisodes);
 
-    ClientModelPersister persistMediaLists(Collection<ClientMediaList> mediaLists);
+    ClientModelPersister persistMediaLists(List<ClientMediaList> mediaLists);
+
+    ClientModelPersister persistUserLists(List<ClientUserList> mediaLists);
 
     default ClientModelPersister persist(ClientExternalMediaList... externalMediaLists) {
         return this.persistExternalMediaLists(Arrays.asList(externalMediaLists));
@@ -59,15 +67,26 @@ public interface ClientModelPersister {
 
     ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList);
 
-    ClientModelPersister persistExternalUsers(Collection<ClientExternalUser> externalUsers);
+    ClientModelPersister persistExternalUsers(List<ClientExternalUser> externalUsers);
 
-    default ClientModelPersister persist(ClientMedium... media) {
+    default ClientModelPersister persistExternalUsersPure(List<ClientExternalUserPure> externalUsers) {
+        List<ClientExternalUser> unpure = externalUsers.stream().map(value -> new ClientExternalUser(
+                value.getLocalUuid(),
+                value.getUuid(),
+                value.getIdentifier(),
+                value.getType(),
+                new ClientExternalMediaList[0]
+        )).collect(Collectors.toList());
+        return this.persistExternalUsers(unpure);
+    }
+
+    default ClientModelPersister persist(ClientSimpleMedium... media) {
         return this.persistMedia(Arrays.asList(media));
     }
 
     ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser);
 
-    ClientModelPersister persistMedia(Collection<ClientMedium> media);
+    ClientModelPersister persistMedia(Collection<ClientSimpleMedium> media);
 
     default ClientModelPersister persist(ClientNews... news) {
         return this.persistNews(Arrays.asList(news));
@@ -82,6 +101,22 @@ public interface ClientModelPersister {
     }
 
     ClientModelPersister persistParts(Collection<ClientPart> parts);
+
+    default ClientModelPersister persistPartsPure(Collection<ClientPartPure> parts) {
+        List<ClientPart> unPureParts = parts
+                .stream()
+                .map(part -> new ClientPart(
+                        part.getMediumId(),
+                        part.getId(),
+                        part.getTitle(),
+                        part.getTotalIndex(),
+                        part.getPartialIndex(),
+                        null
+                ))
+                .collect(Collectors.toList());
+        this.persistParts(unPureParts);
+        return this;
+    }
 
     ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes);
 

@@ -1,5 +1,8 @@
 package com.mytlogos.enterprise.background.api.model;
 
+/**
+ * TODO: check Parameter for POST externalUser.
+ */
 public class AddClientExternalUser extends ClientExternalUser {
     private String pwd;
 

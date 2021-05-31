@@ -2,9 +2,12 @@ package com.mytlogos.enterprise.background.api.model;
 
 import java.util.Arrays;
 
+/**
+ * API Model for ListMedia.
+ */
 public class ClientMultiListQuery {
-    private ClientMediaList[] list;
-    private ClientMedium[] media;
+    private final ClientMediaList[] list;
+    private final ClientMedium[] media;
 
     public ClientMultiListQuery(ClientMediaList[] list, ClientMedium[] media) {
         this.list = list;

@@ -2,10 +2,13 @@ package com.mytlogos.enterprise.background.api.model;
 
 import org.joda.time.DateTime;
 
+/**
+ * API Model for ReadEpisode in {@link ClientUser}.
+ */
 public class ClientReadEpisode {
-    private int episodeId;
-    private DateTime readDate;
-    private float progress;
+    private final int episodeId;
+    private final DateTime readDate;
+    private final float progress;
 
     public ClientReadEpisode(int episodeId, DateTime readDate, float progress) {
         this.episodeId = episodeId;

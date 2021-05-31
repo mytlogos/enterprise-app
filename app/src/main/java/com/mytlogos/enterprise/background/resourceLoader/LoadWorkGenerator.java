@@ -2,13 +2,15 @@ package com.mytlogos.enterprise.background.resourceLoader;
 
 import com.mytlogos.enterprise.background.LoadData;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
+import com.mytlogos.enterprise.model.SimpleMedium;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -97,9 +99,9 @@ public class LoadWorkGenerator {
                 filteredMedia.episodeDependencies.add(new IntDependency<>(currentRead, medium));
             }
             if (this.isMediumLoaded(medium.getId())) {
-                filteredMedia.updateMedia.add(medium);
+                filteredMedia.updateMedia.add(new ClientSimpleMedium(medium));
             } else {
-                filteredMedia.newMedia.add(medium);
+                filteredMedia.newMedia.add(new ClientSimpleMedium(medium));
             }
             if (medium.getParts() != null) {
                 for (int part : medium.getParts()) {
@@ -108,6 +110,19 @@ public class LoadWorkGenerator {
                         filteredMedia.unloadedParts.add(part);
                     }
                 }
+            }
+        }
+        return filteredMedia;
+    }
+
+    public FilteredMedia filterSimpleMedia(Collection<ClientSimpleMedium> media) {
+        FilteredMedia filteredMedia = new FilteredMedia();
+
+        for (ClientSimpleMedium medium : media) {
+            if (this.isMediumLoaded(medium.getId())) {
+                filteredMedia.updateMedia.add(medium);
+            } else {
+                filteredMedia.newMedia.add(medium);
             }
         }
         return filteredMedia;
@@ -311,8 +326,8 @@ public class LoadWorkGenerator {
     }
 
     public static class FilteredMedia {
-        public final List<ClientMedium> newMedia = new ArrayList<>();
-        public final List<ClientMedium> updateMedia = new ArrayList<>();
+        public final List<ClientSimpleMedium> newMedia = new ArrayList<>();
+        public final List<ClientSimpleMedium> updateMedia = new ArrayList<>();
         public final List<Integer> unloadedParts = new ArrayList<>();
         public final List<IntDependency<ClientMedium>> episodeDependencies = new ArrayList<>();
     }
@@ -328,7 +343,7 @@ public class LoadWorkGenerator {
         public final List<ClientEpisode> newEpisodes = new ArrayList<>();
         public final List<ClientEpisode> updateEpisodes = new ArrayList<>();
         public final List<IntDependency<ClientEpisode>> partDependencies = new ArrayList<>();
-        public final List<ClientRelease> releases = new ArrayList<>();
+        public final List<ClientEpisodeRelease> releases = new ArrayList<>();
     }
 
     public static class FilteredReadEpisodes {

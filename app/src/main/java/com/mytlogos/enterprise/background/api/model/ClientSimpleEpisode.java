@@ -7,35 +7,27 @@ import org.joda.time.DateTime;
 import java.util.Arrays;
 
 /**
- * API Model for Episode.
+ * API Model for SimpleEpisode.
  */
-public class ClientEpisode {
+public class ClientSimpleEpisode {
     private final int id;
-    private final float progress;
     private final int partId;
     private final int totalIndex;
     private final int partialIndex;
     private final double combiIndex;
-    private final DateTime readDate;
     private final ClientEpisodeRelease[] releases;
 
-    public ClientEpisode(int id, float progress, int partId, int totalIndex, int partialIndex, double combiIndex, DateTime readDate, ClientEpisodeRelease[] releases) {
+    public ClientSimpleEpisode(int id, int partId, int totalIndex, int partialIndex, double combiIndex, ClientEpisodeRelease[] releases) {
         this.id = id;
-        this.progress = progress;
         this.partId = partId;
         this.totalIndex = totalIndex;
         this.partialIndex = partialIndex;
         this.combiIndex = combiIndex;
-        this.readDate = readDate;
         this.releases = releases;
     }
 
     public ClientEpisodeRelease[] getReleases() {
         return releases;
-    }
-
-    public DateTime getReadDate() {
-        return readDate;
     }
 
     public int getId() {
@@ -54,10 +46,6 @@ public class ClientEpisode {
         return partialIndex;
     }
 
-    public float getProgress() {
-        return progress;
-    }
-
     public double getCombiIndex() {
         return combiIndex;
     }
@@ -67,12 +55,10 @@ public class ClientEpisode {
     public String toString() {
         return "ClientEpisode{" +
                 "id=" + id +
-                ", progress=" + progress +
                 ", partId=" + partId +
                 ", totalIndex=" + totalIndex +
                 ", partialIndex=" + partialIndex +
                 ", combiIndex" + combiIndex +
-                ", readDate=" + readDate +
                 ", releases=" + Arrays.toString(releases) +
                 '}';
     }
@@ -82,7 +68,7 @@ public class ClientEpisode {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientEpisode that = (ClientEpisode) o;
+        ClientSimpleEpisode that = (ClientSimpleEpisode) o;
         return id == that.id;
     }
 

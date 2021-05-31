@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * API Model for DataStats.
+ */
 public class ClientStat {
     private final Map<String, Map<String, Partstat>> media;
     private final Map<String, ClientMediaStat> mediaStats;

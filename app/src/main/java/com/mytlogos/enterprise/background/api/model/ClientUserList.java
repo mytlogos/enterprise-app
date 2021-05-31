@@ -1,23 +1,17 @@
 package com.mytlogos.enterprise.background.api.model;
 
-import java.util.Arrays;
-
 /**
- * API Model for List.
+ * API Model for UserList.
  */
-public class ClientMediaList {
-    private final String userUuid;
+public class ClientUserList {
     private final int id;
     private final String name;
     private final int medium;
-    private final int[] items;
 
-    public ClientMediaList(String userUuid, int id, String name, int medium, int[] items) {
-        this.userUuid = userUuid;
+    public ClientUserList(int id, String name, int medium) {
         this.id = id;
         this.name = name;
         this.medium = medium;
-        this.items = items;
     }
 
     public int getId() {
@@ -32,22 +26,12 @@ public class ClientMediaList {
         return medium;
     }
 
-    public int[] getItems() {
-        return items;
-    }
-
-    public String getUserUuid() {
-        return userUuid;
-    }
-
     @Override
     public String toString() {
         return "ClientMediaList{" +
-                "userUuid='" + userUuid + '\'' +
-                ", id=" + id +
+                "id=" + id +
                 ", name='" + name + '\'' +
                 ", medium=" + medium +
-                ", items=" + Arrays.toString(items) +
                 '}';
     }
 
@@ -56,7 +40,7 @@ public class ClientMediaList {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ClientMediaList that = (ClientMediaList) o;
+        ClientUserList that = (ClientUserList) o;
 
         return getId() == that.getId();
     }

@@ -1,8 +1,10 @@
 package com.mytlogos.enterprise.background;
 
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
+import com.mytlogos.enterprise.background.api.model.ClientExternalUserPure;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;
@@ -12,11 +14,13 @@ import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientRelease;
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
 import com.mytlogos.enterprise.background.api.model.ClientStat;
 import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
+import com.mytlogos.enterprise.background.api.model.ClientUserList;
 import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
@@ -32,9 +36,11 @@ import com.mytlogos.enterprise.model.ToDownload;
 import com.mytlogos.enterprise.model.Toc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class DummyClientModelPersister implements ClientModelPersister {
     private final Collection<ClientConsumer<?>> consumer = new ArrayList<>();
@@ -52,7 +58,7 @@ public class DummyClientModelPersister implements ClientModelPersister {
     private List<RoomMediaList.MediaListMediaJoin> listMediaJoins = new ArrayList<>();
     private List<RoomMediaList.MediaListMediaJoin> clearedListMediaJoins = new ArrayList<>();
     private List<Integer> clearedListMedia = new ArrayList<>();
-    private List<ClientRelease> savedReleases = new ArrayList<>();
+    private List<ClientEpisodeRelease> savedReleases = new ArrayList<ClientEpisodeRelease>();
     private List<RoomToDownload> savedToDownloads = new ArrayList<>();
 
     public DummyClientModelPersister(LoadData loadedData, Repository repository) {
@@ -106,7 +112,7 @@ public class DummyClientModelPersister implements ClientModelPersister {
 
             @Override
             public void consume(Collection<ClientMedium> media) {
-                DummyClientModelPersister.this.persistMedia(media);
+                DummyClientModelPersister.this.persistMedia(media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList()));
             }
         });
         consumer.add(new ClientConsumer<RoomMediaList.MediaListMediaJoin>() {
@@ -150,7 +156,7 @@ public class DummyClientModelPersister implements ClientModelPersister {
 
             @Override
             public void consume(Collection<ClientMediaList> lists) {
-                DummyClientModelPersister.this.persistMediaLists(lists);
+                DummyClientModelPersister.this.persistMediaLists(new ArrayList<>(lists));
             }
         });
         consumer.add(new ClientConsumer<ClientExternalUser>() {
@@ -161,7 +167,7 @@ public class DummyClientModelPersister implements ClientModelPersister {
 
             @Override
             public void consume(Collection<ClientExternalUser> extUsers) {
-                DummyClientModelPersister.this.persistExternalUsers(extUsers);
+                DummyClientModelPersister.this.persistExternalUsers(new ArrayList<>(extUsers));
             }
         });
     }
@@ -213,7 +219,7 @@ public class DummyClientModelPersister implements ClientModelPersister {
     }
 
     @Override
-    public ClientModelPersister persistMediaLists(Collection<ClientMediaList> mediaLists) {
+    public ClientModelPersister persistMediaLists(List<ClientMediaList> mediaLists) {
         RoomConverter converter = new RoomConverter(this.loadedData);
         LoadWorkGenerator.FilteredMediaList filteredMediaList = this.generator.filterMediaLists(mediaLists);
 
@@ -236,6 +242,18 @@ public class DummyClientModelPersister implements ClientModelPersister {
         }
 
         return this.persist(filteredMediaList);
+    }
+
+    @Override
+    public ClientModelPersister persistUserLists(List<ClientUserList> mediaLists) {
+        String uuid = repository.getUser().getValue().getUuid();
+        return this.persistMediaLists(mediaLists.stream().map(value -> new ClientMediaList(
+                uuid,
+                value.getId(),
+                value.getName(),
+                value.getMedium(),
+                null
+        )).collect(Collectors.toList()));
     }
 
     @Override
@@ -320,7 +338,7 @@ public class DummyClientModelPersister implements ClientModelPersister {
     }
 
     @Override
-    public ClientModelPersister persistExternalUsers(Collection<ClientExternalUser> externalUsers) {
+    public ClientModelPersister persistExternalUsers(List<ClientExternalUser> externalUsers) {
         LoadWorkGenerator.FilteredExternalUser filteredExternalUser = this.generator.filterExternalUsers(externalUsers);
 
         RoomConverter converter = new RoomConverter(this.loadedData);
@@ -377,8 +395,8 @@ public class DummyClientModelPersister implements ClientModelPersister {
     }
 
     @Override
-    public ClientModelPersister persistMedia(Collection<ClientMedium> media) {
-        LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterMedia(media);
+    public ClientModelPersister persistMedia(Collection<ClientSimpleMedium> media) {
+        LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterSimpleMedia(media);
 
         LoadWorker worker = this.repository.getLoadWorker();
 
@@ -403,8 +421,8 @@ public class DummyClientModelPersister implements ClientModelPersister {
     public ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia) {
         RoomConverter converter = new RoomConverter(this.loadedData);
 
-        List<RoomMedium> list = converter.convertMedia(filteredMedia.newMedia);
-        List<RoomMedium> update = converter.convertMedia(filteredMedia.updateMedia);
+        List<RoomMedium> list = converter.convertSimpleMedia(filteredMedia.newMedia);
+        List<RoomMedium> update = converter.convertSimpleMedia(filteredMedia.updateMedia);
 
         for (RoomMedium medium : list) {
             this.loadedData.getMedia().add(medium.getMediumId());
@@ -508,14 +526,14 @@ public class DummyClientModelPersister implements ClientModelPersister {
 
     @Override
     public ClientModelPersister persist(ClientListQuery query) {
-        this.persist(query.getMedia());
+        this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
         this.persist(query.getList());
         return this;
     }
 
     @Override
     public ClientModelPersister persist(ClientMultiListQuery query) {
-        this.persist(query.getMedia());
+        this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
         this.persist(query.getList());
         return this;
     }
@@ -660,7 +678,7 @@ public class DummyClientModelPersister implements ClientModelPersister {
         return clearedListMedia;
     }
 
-    public List<ClientRelease> getSavedReleases() {
+    public List<ClientEpisodeRelease> getSavedReleases() {
         return savedReleases;
     }
 
