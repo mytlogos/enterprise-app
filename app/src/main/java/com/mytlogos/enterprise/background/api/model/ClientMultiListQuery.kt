@@ -1,52 +1,31 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-import java.util.Arrays;
+import java.util.*
 
 /**
  * API Model for ListMedia.
  */
-public class ClientMultiListQuery {
-    private final ClientMediaList[] list;
-    private final ClientMedium[] media;
-
-    public ClientMultiListQuery(ClientMediaList[] list, ClientMedium[] media) {
-        this.list = list;
-        this.media = media;
-    }
-
-    public ClientMedium[] getMedia() {
-        return media;
-    }
-
-    public ClientMediaList[] getList() {
-        return list;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientMultiListQuery that = (ClientMultiListQuery) o;
+class ClientMultiListQuery(val list: Array<ClientMediaList>, val media: Array<ClientMedium>) {
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientMultiListQuery
 
         // Probably incorrect - comparing Object[] arrays with Arrays.equals
-        if (!Arrays.equals(getList(), that.getList())) return false;
+        return if (!Arrays.equals(list, that.list)) false else Arrays.equals(media, that.media)
         // Probably incorrect - comparing Object[] arrays with Arrays.equals
-        return Arrays.equals(getMedia(), that.getMedia());
     }
 
-    @Override
-    public int hashCode() {
-        int result = Arrays.hashCode(getList());
-        result = 31 * result + Arrays.hashCode(getMedia());
-        return result;
+    override fun hashCode(): Int {
+        var result = Arrays.hashCode(list)
+        result = 31 * result + Arrays.hashCode(media)
+        return result
     }
 
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientMultiListQuery{" +
                 "list=" + Arrays.toString(list) +
                 ", media=" + Arrays.toString(media) +
-                '}';
+                '}'
     }
 }

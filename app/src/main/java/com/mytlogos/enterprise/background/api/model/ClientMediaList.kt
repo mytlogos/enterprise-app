@@ -1,68 +1,29 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-import java.util.Arrays;
+import java.util.*
 
 /**
  * API Model for List.
  */
-public class ClientMediaList {
-    private final String userUuid;
-    private final int id;
-    private final String name;
-    private final int medium;
-    private final int[] items;
-
-    public ClientMediaList(String userUuid, int id, String name, int medium, int[] items) {
-        this.userUuid = userUuid;
-        this.id = id;
-        this.name = name;
-        this.medium = medium;
-        this.items = items;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public int getMedium() {
-        return medium;
-    }
-
-    public int[] getItems() {
-        return items;
-    }
-
-    public String getUserUuid() {
-        return userUuid;
-    }
-
-    @Override
-    public String toString() {
+class ClientMediaList(val userUuid: String, val id: Int, val name: String, val medium: Int, val items: IntArray?) {
+    override fun toString(): String {
         return "ClientMediaList{" +
                 "userUuid='" + userUuid + '\'' +
                 ", id=" + id +
                 ", name='" + name + '\'' +
                 ", medium=" + medium +
                 ", items=" + Arrays.toString(items) +
-                '}';
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientMediaList that = (ClientMediaList) o;
-
-        return getId() == that.getId();
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as ClientMediaList
+        return id == that.id
     }
 
-    @Override
-    public int hashCode() {
-        return getId();
+    override fun hashCode(): Int {
+        return id
     }
 }

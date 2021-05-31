@@ -1,58 +1,12 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-import androidx.annotation.NonNull;
-
-import org.joda.time.DateTime;
-
-import java.util.Arrays;
+import java.util.*
 
 /**
  * API Model for SimpleEpisode.
  */
-public class ClientSimpleEpisode {
-    private final int id;
-    private final int partId;
-    private final int totalIndex;
-    private final int partialIndex;
-    private final double combiIndex;
-    private final ClientEpisodeRelease[] releases;
-
-    public ClientSimpleEpisode(int id, int partId, int totalIndex, int partialIndex, double combiIndex, ClientEpisodeRelease[] releases) {
-        this.id = id;
-        this.partId = partId;
-        this.totalIndex = totalIndex;
-        this.partialIndex = partialIndex;
-        this.combiIndex = combiIndex;
-        this.releases = releases;
-    }
-
-    public ClientEpisodeRelease[] getReleases() {
-        return releases;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public int getPartId() {
-        return partId;
-    }
-
-    public int getTotalIndex() {
-        return totalIndex;
-    }
-
-    public int getPartialIndex() {
-        return partialIndex;
-    }
-
-    public double getCombiIndex() {
-        return combiIndex;
-    }
-
-    @NonNull
-    @Override
-    public String toString() {
+class ClientSimpleEpisode(val id: Int, val partId: Int, val totalIndex: Int, val partialIndex: Int, val combiIndex: Double, val releases: Array<ClientEpisodeRelease>) {
+    override fun toString(): String {
         return "ClientEpisode{" +
                 "id=" + id +
                 ", partId=" + partId +
@@ -60,21 +14,17 @@ public class ClientSimpleEpisode {
                 ", partialIndex=" + partialIndex +
                 ", combiIndex" + combiIndex +
                 ", releases=" + Arrays.toString(releases) +
-                '}';
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientSimpleEpisode that = (ClientSimpleEpisode) o;
-        return id == that.id;
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientSimpleEpisode
+        return id == that.id
     }
 
-
-    @Override
-    public int hashCode() {
-        return id;
+    override fun hashCode(): Int {
+        return id
     }
 }

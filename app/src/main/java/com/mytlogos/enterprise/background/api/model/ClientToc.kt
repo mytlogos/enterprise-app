@@ -1,60 +1,39 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-import androidx.annotation.NonNull;
-
-import com.mytlogos.enterprise.model.Toc;
-
-import java.util.Objects;
+import com.mytlogos.enterprise.model.Toc
 
 /**
  * API Model for FullMediumToc.
  * TODO: Missing properties:
- *  id, countryOfOrigin, languageOfOrigin, author, title, medium,
- *  artist, lang, stateOrigin, stateTL, series, universe
+ * id, countryOfOrigin, languageOfOrigin, author, title, medium,
+ * artist, lang, stateOrigin, stateTL, series, universe
  */
-public class ClientToc implements Toc {
-    private final int mediumId;
-    private final String link;
-
-    public ClientToc(int mediumId, String link) {
-        this.mediumId = mediumId;
-        this.link = link;
+class ClientToc(private val mediumId: Int, private val link: String) : Toc {
+    override fun getMediumId(): Int {
+        return mediumId
     }
 
-    @Override
-    public int getMediumId() {
-        return mediumId;
+    override fun getLink(): String {
+        return link
     }
 
-    @Override
-    public String getLink() {
-        return link;
+    override fun hashCode(): Int {
+        var result = mediumId
+        result = 31 * result + (link?.hashCode() ?: 0)
+        return result
     }
 
-    @Override
-    public int hashCode() {
-        int result = mediumId;
-        result = 31 * result + (link != null ? link.hashCode() : 0);
-        return result;
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o !is ClientToc) return false
+        val clientToc = o
+        return if (mediumId != clientToc.mediumId) false else link == clientToc.link
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ClientToc)) return false;
-
-        ClientToc clientToc = (ClientToc) o;
-
-        if (mediumId != clientToc.mediumId) return false;
-        return Objects.equals(link, clientToc.link);
-    }
-
-    @NonNull
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientToc{" +
                 "mediumId=" + mediumId +
                 ", link='" + link + '\'' +
-                '}';
+                '}'
     }
 }

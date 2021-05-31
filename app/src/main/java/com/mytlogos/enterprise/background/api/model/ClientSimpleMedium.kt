@@ -1,71 +1,74 @@
-package com.mytlogos.enterprise.background.api.model;
-
-import androidx.annotation.NonNull;
-
-import java.util.Arrays;
+package com.mytlogos.enterprise.background.api.model
 
 /**
  * API Model for SimpleMedium.
  */
-public class ClientSimpleMedium {
-    private int id;
-    private String languageOfOrigin;
-    private String countryOfOrigin;
-    private String author;
-    private String title;
-    private int medium;
-    private String artist;
-    private String lang;
-    private int stateOrigin;
-    private int stateTL;
-    private String series;
-    private String universe;
+class ClientSimpleMedium {
+    var id = 0
+        private set
+    var languageOfOrigin: String? = null
+        private set
+    var countryOfOrigin: String? = null
+        private set
+    var author: String? = null
+        private set
+    var title: String? = null
+        private set
+    var medium = 0
+        private set
+    var artist: String? = null
+        private set
+    var lang: String? = null
+        private set
+    var stateOrigin = 0
+        private set
+    var stateTL = 0
+        private set
+    var series: String? = null
+        private set
+    var universe: String? = null
+        private set
 
-    public ClientSimpleMedium() {
-
+    constructor() {}
+    constructor(medium: ClientMedium) {
+        id = medium.id
+        countryOfOrigin = medium.countryOfOrigin
+        languageOfOrigin = medium.languageOfOrigin
+        author = medium.author
+        title = medium.title
+        this.medium = medium.medium
+        artist = medium.artist
+        lang = medium.lang
+        stateOrigin = medium.stateOrigin
+        stateTL = medium.stateTL
+        series = medium.series
+        universe = medium.universe
     }
 
-    public ClientSimpleMedium(ClientMedium medium) {
-        this.id = medium.getId();
-        this.countryOfOrigin = medium.getCountryOfOrigin();
-        this.languageOfOrigin = medium.getLanguageOfOrigin();
-        this.author = medium.getAuthor();
-        this.title = medium.getTitle();
-        this.medium = medium.getMedium();
-        this.artist = medium.getArtist();
-        this.lang = medium.getLang();
-        this.stateOrigin = medium.getStateOrigin();
-        this.stateTL = medium.getStateTL();
-        this.series = medium.getSeries();
-        this.universe = medium.getUniverse();
+    constructor(id: Int, countryOfOrigin: String?, languageOfOrigin: String?, author: String?,
+                title: String?, medium: Int, artist: String?, lang: String?, stateOrigin: Int,
+                stateTL: Int, series: String?, universe: String?) {
+        this.id = id
+        this.countryOfOrigin = countryOfOrigin
+        this.languageOfOrigin = languageOfOrigin
+        this.author = author
+        this.title = title
+        this.medium = medium
+        this.artist = artist
+        this.lang = lang
+        this.stateOrigin = stateOrigin
+        this.stateTL = stateTL
+        this.series = series
+        this.universe = universe
     }
 
-    public ClientSimpleMedium(int id, String countryOfOrigin, String languageOfOrigin, String author,
-                              String title, int medium, String artist, String lang, int stateOrigin,
-                              int stateTL, String series, String universe) {
-        this.id = id;
-        this.countryOfOrigin = countryOfOrigin;
-        this.languageOfOrigin = languageOfOrigin;
-        this.author = author;
-        this.title = title;
-        this.medium = medium;
-        this.artist = artist;
-        this.lang = lang;
-        this.stateOrigin = stateOrigin;
-        this.stateTL = stateTL;
-        this.series = series;
-        this.universe = universe;
+    constructor(id: Int, title: String?, medium: Int) {
+        this.id = id
+        this.title = title
+        this.medium = medium
     }
 
-    public ClientSimpleMedium(int id, String title, int medium) {
-        this.id = id;
-        this.title = title;
-        this.medium = medium;
-    }
-
-    @NonNull
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientSimpleMedium{" +
                 "id=" + id +
                 ", countryOfOrigin='" + countryOfOrigin + '\'' +
@@ -79,69 +82,17 @@ public class ClientSimpleMedium {
                 ", stateTL=" + stateTL +
                 ", series='" + series + '\'' +
                 ", universe='" + universe + '\'' +
-                '}';
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientSimpleMedium that = (ClientSimpleMedium) o;
-
-        return getId() == that.getId();
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientSimpleMedium
+        return id == that.id
     }
 
-    @Override
-    public int hashCode() {
-        return getId();
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public String getCountryOfOrigin() {
-        return countryOfOrigin;
-    }
-
-    public String getLanguageOfOrigin() {
-        return languageOfOrigin;
-    }
-
-    public String getAuthor() {
-        return author;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public int getMedium() {
-        return medium;
-    }
-
-    public String getArtist() {
-        return artist;
-    }
-
-    public String getLang() {
-        return lang;
-    }
-
-    public int getStateOrigin() {
-        return stateOrigin;
-    }
-
-    public int getStateTL() {
-        return stateTL;
-    }
-
-    public String getSeries() {
-        return series;
-    }
-
-    public String getUniverse() {
-        return universe;
+    override fun hashCode(): Int {
+        return id
     }
 }

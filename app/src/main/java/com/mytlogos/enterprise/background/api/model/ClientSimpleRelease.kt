@@ -1,37 +1,24 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-public class ClientSimpleRelease {
-    public final String url;
-    public final int id;
+class ClientSimpleRelease (val url: String, val id: Int) {
 
-    public ClientSimpleRelease(String url, int id) {
-        this.url = url;
-        this.id = id;
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientSimpleRelease{" +
                 "url='" + url + '\'' +
                 ", id=" + id +
-                '}';
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientSimpleRelease that = (ClientSimpleRelease) o;
-
-        if (id != that.id) return false;
-        return url.equals(that.url);
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as ClientSimpleRelease
+        return if (id != that.id) false else url == that.url
     }
 
-    @Override
-    public int hashCode() {
-        int result = url.hashCode();
-        result = 31 * result + id;
-        return result;
+    override fun hashCode(): Int {
+        var result = url.hashCode()
+        result = 31 * result + id
+        return result
     }
 }

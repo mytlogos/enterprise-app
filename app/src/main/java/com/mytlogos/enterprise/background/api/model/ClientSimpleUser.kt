@@ -1,56 +1,39 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-public class ClientSimpleUser {
-    private final String uuid;
-    private final String session;
-    private final String name;
-
-    public ClientSimpleUser(String uuid, String session, String name) {
-        this.uuid = uuid;
-        this.session = session;
-        this.name = name;
+class ClientSimpleUser(private val uuid: String, private val session: String, private val name: String) {
+    fun getUuid(): String? {
+        return uuid
     }
 
-    public String getUuid() {
-        return uuid;
+    fun getSession(): String? {
+        return session
     }
 
-    public String getSession() {
-        return session;
+    fun getName(): String? {
+        return name
     }
 
-    public String getName() {
-        return name;
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientSimpleUser
+        if (if (getUuid() != null) getUuid() != that.getUuid() else that.getUuid() != null) return false
+        if (if (getSession() != null) getSession() != that.getSession() else that.getSession() != null) return false
+        return if (getName() != null) getName() == that.getName() else that.getName() == null
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientSimpleUser that = (ClientSimpleUser) o;
-
-        if (getUuid() != null ? !getUuid().equals(that.getUuid()) : that.getUuid() != null)
-            return false;
-        if (getSession() != null ? !getSession().equals(that.getSession()) : that.getSession() != null)
-            return false;
-        return getName() != null ? getName().equals(that.getName()) : that.getName() == null;
+    override fun hashCode(): Int {
+        var result = if (getUuid() != null) getUuid().hashCode() else 0
+        result = 31 * result + if (getSession() != null) getSession().hashCode() else 0
+        result = 31 * result + if (getName() != null) getName().hashCode() else 0
+        return result
     }
 
-    @Override
-    public int hashCode() {
-        int result = getUuid() != null ? getUuid().hashCode() : 0;
-        result = 31 * result + (getSession() != null ? getSession().hashCode() : 0);
-        result = 31 * result + (getName() != null ? getName().hashCode() : 0);
-        return result;
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientSimpleUser{" +
                 "uuid='" + uuid + '\'' +
                 ", session='" + session + '\'' +
                 ", name='" + name + '\'' +
-                '}';
+                '}'
     }
 }

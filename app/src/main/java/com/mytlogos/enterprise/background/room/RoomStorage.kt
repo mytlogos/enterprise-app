@@ -1015,13 +1015,13 @@ class RoomStorage(application: Application?) : DatabaseStorage {
         }
 
         override fun persist(query: ClientListQuery): ClientModelPersister {
-            this.persistMedia(query.media.asList().mapNotNull { medium: ClientMedium? -> ClientSimpleMedium(medium) })
+            this.persistMedia(query.media.asList().map { medium: ClientMedium -> ClientSimpleMedium(medium) })
             this.persist(query.list)
             return this
         }
 
         override fun persist(query: ClientMultiListQuery): ClientModelPersister {
-            this.persistMedia(query.media.asList().mapNotNull { medium: ClientMedium? -> ClientSimpleMedium(medium) })
+            this.persistMedia(query.media.asList().map { medium: ClientMedium -> ClientSimpleMedium(medium) })
             this.persist(*query.list)
             return this
         }
@@ -1053,7 +1053,7 @@ class RoomStorage(application: Application?) : DatabaseStorage {
             mediumInWaitDao.insertBulk(RoomConverter().convertClientMediaInWait(medium))
         }
 
-        override fun persist(user: ClientSimpleUser): ClientModelPersister {
+        override fun persist(user: ClientSimpleUser?): ClientModelPersister {
             // short cut version
             if (user == null) {
                 deleteAllUser()

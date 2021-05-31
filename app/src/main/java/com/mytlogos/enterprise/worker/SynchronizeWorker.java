@@ -591,8 +591,8 @@ public class SynchronizeWorker extends Worker {
 
             for (Map.Entry<Integer, List<ClientSimpleRelease>> entry : partReleases.entrySet()) {
                 for (ClientSimpleRelease release : entry.getValue()) {
-                    if (!repository.isEpisodeLoaded(release.id)) {
-                        missingEpisodes.add(release.id);
+                    if (!repository.isEpisodeLoaded(release.getId())) {
+                        missingEpisodes.add(release.getId());
                     }
                 }
             }

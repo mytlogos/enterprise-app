@@ -1,52 +1,29 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-import java.util.Arrays;
+import java.util.*
 
 /**
  * API Model for ListMedia.
  */
-public class ClientListQuery {
-    private final ClientMediaList list;
-    private final ClientMedium[] media;
+class ClientListQuery(val list: ClientMediaList, val media: Array<ClientMedium>) {
 
-    public ClientListQuery(ClientMediaList list, ClientMedium[] media) {
-        this.list = list;
-        this.media = media;
-    }
-
-    public ClientMedium[] getMedia() {
-        return media;
-    }
-
-    public ClientMediaList getList() {
-        return list;
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientListQuery{" +
                 "list=" + list +
-                ", media=" + Arrays.toString(media) +
-                '}';
+                ", media=" + media.contentToString() +
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientListQuery that = (ClientListQuery) o;
-
-        if (getList() != null ? !getList().equals(that.getList()) : that.getList() != null)
-            return false;
-        // Probably incorrect - comparing Object[] arrays with Arrays.equals
-        return Arrays.equals(getMedia(), that.getMedia());
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientListQuery
+        return if (list != that.list) false else media.contentEquals(that.media)
     }
 
-    @Override
-    public int hashCode() {
-        int result = getList() != null ? getList().hashCode() : 0;
-        result = 31 * result + Arrays.hashCode(getMedia());
-        return result;
+    override fun hashCode(): Int {
+        var result = list.hashCode()
+        result = 31 * result + media.contentHashCode()
+        return result
     }
 }

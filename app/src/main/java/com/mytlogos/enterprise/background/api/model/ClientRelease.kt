@@ -1,82 +1,50 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-import androidx.annotation.NonNull;
-
-import org.joda.time.DateTime;
+import org.joda.time.DateTime
 
 /**
  * API Model for PureDisplayRelease.
  */
-public class ClientRelease {
-    private final int episodeId;
-    private final String title;
-    private final String url;
-    private final boolean locked;
-    private final DateTime releaseDate;
-
-    public ClientRelease(int episodeId, String title, String url, boolean locked, DateTime releaseDate) {
-        this.episodeId = episodeId;
-        this.title = title;
-        this.url = url;
-        this.locked = locked;
-        this.releaseDate = releaseDate;
+class ClientRelease(val episodeId: Int, private val title: String, private val url: String, val isLocked: Boolean, private val releaseDate: DateTime) {
+    fun getTitle(): String? {
+        return title
     }
 
-    public boolean isLocked() {
-        return locked;
+    fun getUrl(): String? {
+        return url
     }
 
-    public int getEpisodeId() {
-        return episodeId;
+    fun getReleaseDate(): DateTime? {
+        return releaseDate
     }
 
-    public String getTitle() {
-        return title;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public DateTime getReleaseDate() {
-        return releaseDate;
-    }
-
-    @NonNull
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientRelease{" +
                 "id=" + episodeId +
                 ", title='" + title + '\'' +
                 ", url='" + url + '\'' +
-                ", locked='" + locked + '\'' +
+                ", locked='" + isLocked + '\'' +
                 ", releaseDate=" + releaseDate +
-                '}';
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientRelease that = (ClientRelease) o;
-
-        if (getEpisodeId() != that.getEpisodeId()) return false;
-        if (isLocked() != that.isLocked()) return false;
-        if (getTitle() != null ? !getTitle().equals(that.getTitle()) : that.getTitle() != null)
-            return false;
-        if (getUrl() != null ? !getUrl().equals(that.getUrl()) : that.getUrl() != null)
-            return false;
-        return getReleaseDate() != null ? getReleaseDate().equals(that.getReleaseDate()) : that.getReleaseDate() == null;
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientRelease
+        if (episodeId != that.episodeId) return false
+        if (isLocked != that.isLocked) return false
+        if (if (getTitle() != null) getTitle() != that.getTitle() else that.getTitle() != null) return false
+        if (if (getUrl() != null) getUrl() != that.getUrl() else that.getUrl() != null) return false
+        return if (getReleaseDate() != null) getReleaseDate() == that.getReleaseDate() else that.getReleaseDate() == null
     }
 
-    @Override
-    public int hashCode() {
-        int result = getEpisodeId();
-        result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
-        result = 31 * result + (getUrl() != null ? getUrl().hashCode() : 0);
-        result = 31 * result + (isLocked() ? 1 : 0);
-        result = 31 * result + (getReleaseDate() != null ? getReleaseDate().hashCode() : 0);
-        return result;
+    override fun hashCode(): Int {
+        var result = episodeId
+        result = 31 * result + if (getTitle() != null) getTitle().hashCode() else 0
+        result = 31 * result + if (getUrl() != null) getUrl().hashCode() else 0
+        result = 31 * result + if (isLocked) 1 else 0
+        result = 31 * result + if (getReleaseDate() != null) getReleaseDate().hashCode() else 0
+        return result
     }
 }

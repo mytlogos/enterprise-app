@@ -1,52 +1,25 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
 /**
  * API Model for UserList.
  */
-public class ClientUserList {
-    private final int id;
-    private final String name;
-    private final int medium;
-
-    public ClientUserList(int id, String name, int medium) {
-        this.id = id;
-        this.name = name;
-        this.medium = medium;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public int getMedium() {
-        return medium;
-    }
-
-    @Override
-    public String toString() {
+class ClientUserList(val id: Int, val name: String, val medium: Int) {
+    override fun toString(): String {
         return "ClientMediaList{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
                 ", medium=" + medium +
-                '}';
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientUserList that = (ClientUserList) o;
-
-        return getId() == that.getId();
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientUserList
+        return id == that.id
     }
 
-    @Override
-    public int hashCode() {
-        return getId();
+    override fun hashCode(): Int {
+        return id
     }
 }

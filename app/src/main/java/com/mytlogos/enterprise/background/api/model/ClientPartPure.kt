@@ -1,68 +1,27 @@
-package com.mytlogos.enterprise.background.api.model;
-
-import java.util.Arrays;
+package com.mytlogos.enterprise.background.api.model
 
 /**
  * API Model for MinPart.
  */
-public class ClientPartPure {
-    private final int mediumId;
-    private final int id;
-    private final String title;
-    private final int totalIndex;
-    private final int partialIndex;
-
-    public ClientPartPure(int mediumId, int id, String title, int totalIndex, int partialIndex) {
-        this.mediumId = mediumId;
-        this.id = id;
-        this.title = title;
-        this.totalIndex = totalIndex;
-        this.partialIndex = partialIndex;
+class ClientPartPure(val mediumId: Int, val id: Int, val title: String, val totalIndex: Int, val partialIndex: Int) {
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientPartPure
+        return id == that.id
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientPartPure that = (ClientPartPure) o;
-
-        return getId() == that.getId();
+    override fun hashCode(): Int {
+        return id
     }
 
-    @Override
-    public int hashCode() {
-        return getId();
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientPart{" +
                 "mediumId=" + mediumId +
                 ", id=" + id +
                 ", title='" + title + '\'' +
                 ", totalIndex=" + totalIndex +
                 ", partialIndex=" + partialIndex +
-                '}';
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public int getTotalIndex() {
-        return totalIndex;
-    }
-
-    public int getPartialIndex() {
-        return partialIndex;
-    }
-
-    public int getMediumId() {
-        return mediumId;
+                '}'
     }
 }

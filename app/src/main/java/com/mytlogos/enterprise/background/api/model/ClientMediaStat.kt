@@ -1,5 +1,5 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-public class ClientMediaStat {
-    public int tocs;
+class ClientMediaStat {
+    var tocs = 0
 }

@@ -1,54 +1,27 @@
-package com.mytlogos.enterprise.background.api.model;
+package com.mytlogos.enterprise.background.api.model
 
-import org.joda.time.DateTime;
+import org.joda.time.DateTime
 
 /**
- * API Model for ReadEpisode in {@link ClientUser}.
+ * API Model for ReadEpisode in [ClientUser].
  */
-public class ClientReadEpisode {
-    private final int episodeId;
-    private final DateTime readDate;
-    private final float progress;
-
-    public ClientReadEpisode(int episodeId, DateTime readDate, float progress) {
-        this.episodeId = episodeId;
-        this.readDate = readDate;
-        this.progress = progress;
+class ClientReadEpisode(val episodeId: Int, val readDate: DateTime, val progress: Float) {
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as ClientReadEpisode
+        return episodeId == that.episodeId
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ClientReadEpisode that = (ClientReadEpisode) o;
-
-        return getEpisodeId() == that.getEpisodeId();
+    override fun hashCode(): Int {
+        return episodeId
     }
 
-    @Override
-    public int hashCode() {
-        return getEpisodeId();
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ClientReadEpisode{" +
                 "id=" + episodeId +
                 ", readDate=" + readDate +
                 ", progress=" + progress +
-                '}';
-    }
-
-    public int getEpisodeId() {
-        return episodeId;
-    }
-
-    public DateTime getReadDate() {
-        return readDate;
-    }
-
-    public float getProgress() {
-        return progress;
+                '}'
     }
 }
