@@ -1,1523 +1,1170 @@
-package com.mytlogos.enterprise.background.room;
+package com.mytlogos.enterprise.background.room
 
-import android.app.Application;
+import android.app.Application
+import androidx.arch.core.util.Function
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.paging.DataSource
+import androidx.paging.LivePagedListBuilder
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.background.*
+import com.mytlogos.enterprise.background.api.model.*
+import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
+import com.mytlogos.enterprise.background.api.model.ClientStat.Partstat
+import com.mytlogos.enterprise.background.resourceLoader.DependantValue
+import com.mytlogos.enterprise.background.resourceLoader.DependencyTask
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator.*
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorker
+import com.mytlogos.enterprise.background.room.model.*
+import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.ExternalListMediaJoin
+import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
+import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.tools.Sortings
+import com.mytlogos.enterprise.tools.Utils
+import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
+import org.joda.time.DateTime
+import java.util.*
+import java.util.function.Consumer
+import java.util.stream.Collectors
 
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.paging.DataSource;
-import androidx.paging.LivePagedListBuilder;
-import androidx.paging.PagedList;
-
-import com.mytlogos.enterprise.background.ClientConsumer;
-import com.mytlogos.enterprise.background.ClientModelPersister;
-import com.mytlogos.enterprise.background.DatabaseStorage;
-import com.mytlogos.enterprise.background.DependantGenerator;
-import com.mytlogos.enterprise.background.EditEvent;
-import com.mytlogos.enterprise.background.LoadData;
-import com.mytlogos.enterprise.background.ReloadStat;
-import com.mytlogos.enterprise.background.Repository;
-import com.mytlogos.enterprise.background.RoomConverter;
-import com.mytlogos.enterprise.background.TaskManager;
-import com.mytlogos.enterprise.background.api.model.ClientEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientListQuery;
-import com.mytlogos.enterprise.background.api.model.ClientMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientMediaStat;
-import com.mytlogos.enterprise.background.api.model.ClientMedium;
-import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
-import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
-import com.mytlogos.enterprise.background.api.model.ClientNews;
-import com.mytlogos.enterprise.background.api.model.ClientPart;
-import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
-import com.mytlogos.enterprise.background.api.model.ClientStat;
-import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
-import com.mytlogos.enterprise.background.api.model.ClientUser;
-import com.mytlogos.enterprise.background.api.model.ClientUserList;
-import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
-import com.mytlogos.enterprise.background.resourceLoader.DependencyTask;
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
-import com.mytlogos.enterprise.background.room.model.ClientRoomEpisode;
-import com.mytlogos.enterprise.background.room.model.ListMediaJoin;
-import com.mytlogos.enterprise.background.room.model.RoomEditEvent;
-import com.mytlogos.enterprise.background.room.model.RoomEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomExternListView;
-import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
-import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
-import com.mytlogos.enterprise.background.room.model.RoomFailedEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomListUser;
-import com.mytlogos.enterprise.background.room.model.RoomMediaList;
-import com.mytlogos.enterprise.background.room.model.RoomMedium;
-import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
-import com.mytlogos.enterprise.background.room.model.RoomMediumPart;
-import com.mytlogos.enterprise.background.room.model.RoomMediumProgress;
-import com.mytlogos.enterprise.background.room.model.RoomNews;
-import com.mytlogos.enterprise.background.room.model.RoomNotification;
-import com.mytlogos.enterprise.background.room.model.RoomPart;
-import com.mytlogos.enterprise.background.room.model.RoomPartEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomPartStat;
-import com.mytlogos.enterprise.background.room.model.RoomProgressComparison;
-import com.mytlogos.enterprise.background.room.model.RoomRelease;
-import com.mytlogos.enterprise.background.room.model.RoomSimpleRelease;
-import com.mytlogos.enterprise.background.room.model.RoomToDownload;
-import com.mytlogos.enterprise.background.room.model.RoomToc;
-import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomTocStat;
-import com.mytlogos.enterprise.background.room.model.RoomUser;
-import com.mytlogos.enterprise.model.DisplayEpisode;
-import com.mytlogos.enterprise.model.DisplayRelease;
-import com.mytlogos.enterprise.model.Episode;
-import com.mytlogos.enterprise.model.ExternalMediaList;
-import com.mytlogos.enterprise.model.ExternalUser;
-import com.mytlogos.enterprise.model.FailedEpisode;
-import com.mytlogos.enterprise.model.HomeStats;
-import com.mytlogos.enterprise.model.MediaList;
-import com.mytlogos.enterprise.model.MediaListSetting;
-import com.mytlogos.enterprise.model.MediumInWait;
-import com.mytlogos.enterprise.model.MediumItem;
-import com.mytlogos.enterprise.model.MediumSetting;
-import com.mytlogos.enterprise.model.News;
-import com.mytlogos.enterprise.model.NotificationItem;
-import com.mytlogos.enterprise.model.ReadEpisode;
-import com.mytlogos.enterprise.model.SimpleEpisode;
-import com.mytlogos.enterprise.model.SimpleMedium;
-import com.mytlogos.enterprise.model.SpaceMedium;
-import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.Toc;
-import com.mytlogos.enterprise.model.TocEpisode;
-import com.mytlogos.enterprise.model.User;
-import com.mytlogos.enterprise.tools.Sortings;
-import com.mytlogos.enterprise.tools.Utils;
-import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
-
-import org.joda.time.DateTime;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-public class RoomStorage implements DatabaseStorage {
-
-    private final UserDao userDao;
-    private final NewsDao newsDao;
-    private final EpisodeDao episodeDao;
-    private final PartDao partDao;
-    private final MediumDao mediumDao;
-    private final MediaListDao mediaListDao;
-    private final ExternalMediaListDao externalMediaListDao;
-    private final ExternalUserDao externalUserDao;
-    private final NotificationDao notificationDao;
-    private final FailedEpisodesDao failedEpisodesDao;
-    private final LiveData<User> userLiveData;
-    private final RoomMediumInWaitDao mediumInWaitDao;
-    private final RoomDanglingDao roomDanglingDao;
-    private final MediumProgressDao mediumProgressDao;
-    private final DataStructureDao dataStructureDao;
-    private final ToDownloadDao toDownloadDao;
-    private final EditDao editDao;
-    private boolean loading = false;
-    private final TocDao tocDao;
-
-    public RoomStorage(Application application) {
-        AbstractDatabase database = AbstractDatabase.getInstance(application);
-        this.userDao = database.userDao();
-        this.newsDao = database.newsDao();
-        this.externalUserDao = database.externalUserDao();
-        this.externalMediaListDao = database.externalMediaListDao();
-        this.mediaListDao = database.mediaListDao();
-        this.mediumDao = database.mediumDao();
-        this.partDao = database.partDao();
-        this.episodeDao = database.episodeDao();
-        this.toDownloadDao = database.toDownloadDao();
-        this.mediumInWaitDao = database.roomMediumInWaitDao();
-        this.roomDanglingDao = database.roomDanglingDao();
-        this.notificationDao = database.notificationDao();
-        this.mediumProgressDao = database.mediumProgressDao();
-        this.failedEpisodesDao = database.failedEpisodesDao();
-        this.dataStructureDao = database.dataStructureDao();
-        this.editDao = database.editDao();
-        this.tocDao = database.tocDao();
-        this.userLiveData = this.userDao.getUser();
+class RoomStorage(application: Application?) : DatabaseStorage {
+    private val userDao: UserDao
+    private val newsDao: NewsDao
+    private val episodeDao: EpisodeDao
+    private val partDao: PartDao
+    private val mediumDao: MediumDao
+    private val mediaListDao: MediaListDao
+    private val externalMediaListDao: ExternalMediaListDao
+    private val externalUserDao: ExternalUserDao
+    private val notificationDao: NotificationDao
+    private val failedEpisodesDao: FailedEpisodesDao
+    private val userLiveData: LiveData<User>
+    private val mediumInWaitDao: RoomMediumInWaitDao
+    private val roomDanglingDao: RoomDanglingDao
+    private val mediumProgressDao: MediumProgressDao
+    private val dataStructureDao: DataStructureDao
+    private val toDownloadDao: ToDownloadDao
+    private val editDao: EditDao
+    private var loading = false
+    private val tocDao: TocDao
+    override fun getUser(): LiveData<User> {
+        return userLiveData
     }
 
-    @Override
-    public LiveData<User> getUser() {
-        return this.userLiveData;
+    override fun getUserNow(): User {
+        val converter = RoomConverter()
+        return converter.convert(userDao.userNow)
     }
 
-    @Override
-    public User getUserNow() {
-        RoomConverter converter = new RoomConverter();
-        return converter.convert(this.userDao.getUserNow());
+    override fun getHomeStats(): LiveData<HomeStats> {
+        return userDao.homeStats
     }
 
-    @Override
-    public LiveData<HomeStats> getHomeStats() {
-        return this.userDao.getHomeStats();
+    override fun deleteAllUser() {
+        TaskManager.runTask { userDao.deleteAllUser() }
     }
 
-    @Override
-    public void deleteAllUser() {
-        TaskManager.runTask(userDao::deleteAllUser);
+    override fun getPersister(repository: Repository, loadedData: LoadData): ClientModelPersister {
+        return RoomPersister(loadedData)
     }
 
-    @Override
-    public ClientModelPersister getPersister(Repository repository, LoadData loadedData) {
-        return new RoomPersister(loadedData);
+    override fun getDependantGenerator(loadedData: LoadData): DependantGenerator {
+        return RoomDependantGenerator(loadedData)
     }
 
-    @Override
-    public DependantGenerator getDependantGenerator(LoadData loadedData) {
-        return new RoomDependantGenerator(loadedData);
+    override fun deleteOldNews() {
+        TaskManager.runTask { newsDao.deleteOldNews() }
     }
 
-    @Override
-    public void deleteOldNews() {
-        TaskManager.runTask(newsDao::deleteOldNews);
+    override fun isLoading(): Boolean {
+        return !loading
     }
 
-    @Override
-    public boolean isLoading() {
-        return !this.loading;
+    override fun setLoading(loading: Boolean) {
+        this.loading = loading
     }
 
-    @Override
-    public void setLoading(boolean loading) {
-        this.loading = loading;
-    }
-
-    @Override
-    public LoadData getLoadData() {
+    override fun getLoadData(): LoadData {
         // todo maybe load this asynchronous?
-        LoadData data = new LoadData();
-        data.getEpisodes().addAll(this.episodeDao.loaded());
-        data.getPart().addAll(this.partDao.loaded());
-        data.getNews().addAll(this.newsDao.loaded());
-        data.getMedia().addAll(this.mediumDao.loaded());
-        data.getExternalMediaList().addAll(this.externalMediaListDao.loaded());
-        data.getExternalUser().addAll(this.externalUserDao.loaded());
-        data.getMediaList().addAll(this.mediaListDao.loaded());
-        return data;
+        val data = LoadData()
+        data.episodes.addAll(episodeDao.loaded())
+        data.part.addAll(partDao.loaded())
+        data.news.addAll(newsDao.loaded())
+        data.media.addAll(mediumDao.loaded())
+        data.externalMediaList.addAll(externalMediaListDao.loaded())
+        data.externalUser.addAll(externalUserDao.loaded())
+        data.mediaList.addAll(mediaListDao.loaded())
+        return data
     }
 
-    @Override
-    public LiveData<PagedList<News>> getNews() {
-        return new LivePagedListBuilder<>(this.newsDao.getNews(), 50).build();
+    override fun getNews(): LiveData<PagedList<News>> {
+        return LivePagedListBuilder(newsDao.news, 50).build()
     }
 
-    @Override
-    public List<Integer> getSavedEpisodes() {
-        return this.episodeDao.getAllSavedEpisodes();
+    override fun getSavedEpisodes(): List<Int> {
+        return episodeDao.allSavedEpisodes
     }
 
-    @Override
-    public List<Integer> getToDeleteEpisodes() {
-        return this.episodeDao.getAllToDeleteLocalEpisodes();
+    override fun getToDeleteEpisodes(): List<Int> {
+        return episodeDao.allToDeleteLocalEpisodes
     }
 
-    @Override
-    public void updateSaved(int episodeId, boolean saved) {
-        this.episodeDao.updateSaved(episodeId, saved);
+    override fun updateSaved(episodeId: Int, saved: Boolean) {
+        episodeDao.updateSaved(episodeId, saved)
     }
 
-    @Override
-    public void updateSaved(Collection<Integer> episodeIds, boolean saved) {
-        this.episodeDao.updateSaved(episodeIds, saved);
-
+    override fun updateSaved(episodeIds: Collection<Int>, saved: Boolean) {
+        episodeDao.updateSaved(episodeIds, saved)
         if (saved) {
-            this.failedEpisodesDao.deleteBulkPerId(episodeIds);
+            failedEpisodesDao.deleteBulkPerId(episodeIds)
         }
     }
 
-    @Override
-    public List<ToDownload> getAllToDownloads() {
-        return new RoomConverter().convertRoomToDownload(this.toDownloadDao.getAll());
+    override fun getAllToDownloads(): List<ToDownload> {
+        return RoomConverter().convertRoomToDownload(toDownloadDao.all)
     }
 
-    @Override
-    public void removeToDownloads(Collection<ToDownload> toDownloads) {
-        for (RoomToDownload toDownload : new RoomConverter().convertToDownload(toDownloads)) {
-            this.toDownloadDao.deleteToDownload(toDownload.getMediumId(), toDownload.getListId(), toDownload.getExternalListId());
+    override fun removeToDownloads(toDownloads: Collection<ToDownload>) {
+        for (toDownload in RoomConverter().convertToDownload(toDownloads)) {
+            toDownloadDao.deleteToDownload(toDownload.mediumId, toDownload.listId, toDownload.externalListId)
         }
     }
 
-    @Override
-    public Collection<Integer> getListItems(Integer listId) {
-        return this.mediaListDao.getListItems(listId);
+    override fun getListItems(listId: Int): Collection<Int> {
+        return mediaListDao.getListItems(listId)
     }
 
-
-    @Override
-    public LiveData<List<Integer>> getLiveListItems(Integer listId) {
-        return this.mediaListDao.getLiveListItems(listId);
+    override fun getLiveListItems(listId: Int): LiveData<List<Int>> {
+        return mediaListDao.getLiveListItems(listId)
     }
 
-    @Override
-    public Collection<Integer> getExternalListItems(Integer externalListId) {
-        return this.externalMediaListDao.getExternalListItems(externalListId);
+    override fun getExternalListItems(externalListId: Int): Collection<Int> {
+        return externalMediaListDao.getExternalListItems(externalListId)
     }
 
-    @Override
-    public LiveData<List<Integer>> getLiveExternalListItems(Integer externalListId) {
-        return this.externalMediaListDao.getLiveExternalListItems(externalListId);
+    override fun getLiveExternalListItems(externalListId: Int): LiveData<List<Int>> {
+        return externalMediaListDao.getLiveExternalListItems(externalListId)
     }
 
-    @Override
-    public List<Integer> getDownloadableEpisodes(Integer mediumId, int limit) {
-        return this.episodeDao.getDownloadableEpisodes(mediumId, limit);
+    override fun getDownloadableEpisodes(mediumId: Int, limit: Int): List<Int> {
+        return episodeDao.getDownloadableEpisodes(mediumId, limit)
     }
 
-    @Override
-    public List<Integer> getDownloadableEpisodes(Collection<Integer> mediaIds) {
-        return this.episodeDao.getDownloadableEpisodes(mediaIds);
+    override fun getDownloadableEpisodes(mediaIds: Collection<Int>): List<Int> {
+        return episodeDao.getDownloadableEpisodes(mediaIds)
     }
 
-    @Override
-    public LiveData<PagedList<DisplayRelease>> getDisplayEpisodes(EpisodeViewModel.Filter filter) {
-        DataSource.Factory<Integer, DisplayRelease> factory = filter.latestOnly
-                ? this.episodeDao.getDisplayEpisodesLatestOnly(filter.saved, filter.read, filter.medium, filter.minIndex, filter.maxIndex, filter.filterListIds, filter.filterListIds.isEmpty())
-                : this.episodeDao.getDisplayEpisodes(filter.saved, filter.read, filter.medium, filter.minIndex, filter.maxIndex, filter.filterListIds, filter.filterListIds.isEmpty());
-        return new LivePagedListBuilder<>(factory, 50).build();
+    override fun getDisplayEpisodes(filter: EpisodeViewModel.Filter): LiveData<PagedList<DisplayRelease>> {
+        val factory: DataSource.Factory<Int, DisplayRelease> = if (filter.latestOnly) episodeDao.getDisplayEpisodesLatestOnly(filter.saved, filter.read, filter.medium, filter.minIndex, filter.maxIndex, filter.filterListIds, filter.filterListIds.isEmpty()) else episodeDao.getDisplayEpisodes(filter.saved, filter.read, filter.medium, filter.minIndex, filter.maxIndex, filter.filterListIds, filter.filterListIds.isEmpty())
+        return LivePagedListBuilder(factory, 50).build()
     }
 
-    @Override
-    public LiveData<PagedList<DisplayEpisode>> getDisplayEpisodesGrouped(int saved, int medium) {
-        RoomConverter converter = new RoomConverter();
-        return new LivePagedListBuilder<>(
-                this.episodeDao.getDisplayEpisodesGrouped(saved, medium).map(converter::convertRoomEpisode),
+    override fun getDisplayEpisodesGrouped(saved: Int, medium: Int): LiveData<PagedList<DisplayEpisode>> {
+        val converter = RoomConverter()
+        return LivePagedListBuilder(
+                episodeDao.getDisplayEpisodesGrouped(saved, medium).map(Function { episode: RoomDisplayEpisode? -> converter.convertRoomEpisode(episode) }),
                 50
-        ).build();
+        ).build()
     }
 
-    @Override
-    public LiveData<List<MediaList>> getLists() {
-        MediatorLiveData<List<MediaList>> liveData = new MediatorLiveData<>();
-
-        liveData.addSource(this.mediaListDao.getListViews(), mediaLists -> {
-            HashSet<MediaList> set = new HashSet<>();
-
-            if (liveData.getValue() != null) {
-                set.addAll(liveData.getValue());
+    override fun getLists(): LiveData<List<MediaList>> {
+        val liveData = MediatorLiveData<List<MediaList>>()
+        liveData.addSource(mediaListDao.listViews) { mediaLists: List<MediaList>? ->
+            val set = HashSet<MediaList>()
+            if (liveData.value != null) {
+                set.addAll(liveData.value!!)
             }
-
-            set.addAll(mediaLists);
-            liveData.setValue(new ArrayList<>(set));
-        });
-
-        liveData.addSource(this.externalMediaListDao.getExternalListViews(), roomMediaLists -> {
-            List<MediaList> mediaLists = new ArrayList<>();
-
-            for (RoomExternListView list : roomMediaLists) {
-                RoomExternalMediaList mediaList = list.getMediaList();
-                mediaLists.add(new ExternalMediaList(
+            set.addAll(mediaLists!!)
+            liveData.setValue(ArrayList(set))
+        }
+        liveData.addSource(externalMediaListDao.externalListViews) { roomMediaLists: List<RoomExternListView> ->
+            val mediaLists: MutableList<MediaList> = ArrayList()
+            for (list in roomMediaLists) {
+                val mediaList = list.mediaList
+                mediaLists.add(ExternalMediaList(
                         mediaList.uuid,
                         mediaList.externalListId,
                         mediaList.name,
                         mediaList.medium,
                         mediaList.url,
-                        list.getSize()
-                ));
+                        list.size
+                ))
             }
-
-            HashSet<MediaList> set = new HashSet<>();
-
-            if (liveData.getValue() != null) {
-                set.addAll(liveData.getValue());
+            val set = HashSet<MediaList>()
+            if (liveData.value != null) {
+                set.addAll(liveData.value!!)
             }
-
-            set.addAll(mediaLists);
-            liveData.setValue(new ArrayList<>(set));
-        });
-        return liveData;
+            set.addAll(mediaLists)
+            liveData.setValue(ArrayList(set))
+        }
+        return liveData
     }
 
-    @Override
-    public void insertDanglingMedia(Collection<Integer> mediaIds) {
-        List<Integer> listMedia = this.mediaListDao.getAllLinkedMedia();
-        List<Integer> externalListMedia = this.externalMediaListDao.getAllLinkedMedia();
-        mediaIds.removeAll(listMedia);
-        mediaIds.removeAll(externalListMedia);
-
+    override fun insertDanglingMedia(mediaIds: MutableCollection<Int>) {
+        val listMedia = mediaListDao.allLinkedMedia
+        val externalListMedia = externalMediaListDao.allLinkedMedia
+        mediaIds.removeAll(listMedia)
+        mediaIds.removeAll(externalListMedia)
         if (mediaIds.isEmpty()) {
-            return;
+            return
         }
-        RoomConverter converter = new RoomConverter();
-        this.roomDanglingDao.insertBulk(converter.convertToDangling(mediaIds));
+        val converter = RoomConverter()
+        roomDanglingDao.insertBulk(converter.convertToDangling(mediaIds))
     }
 
-    @Override
-    public void removeDanglingMedia(Collection<Integer> mediaIds) {
+    override fun removeDanglingMedia(mediaIds: Collection<Int>) {
         if (mediaIds.isEmpty()) {
-            return;
+            return
         }
-        RoomConverter converter = new RoomConverter();
-        this.roomDanglingDao.deleteBulk(converter.convertToDangling(mediaIds));
+        val converter = RoomConverter()
+        roomDanglingDao.deleteBulk(converter.convertToDangling(mediaIds))
     }
 
-    @Override
-    public LiveData<? extends MediaListSetting> getListSetting(int id, boolean isExternal) {
-        if (isExternal) {
-            return this.externalMediaListDao.getExternalListSetting(id);
-        }
-        return this.mediaListDao.getListSettings(id);
+    override fun getListSetting(id: Int, isExternal: Boolean): LiveData<out MediaListSetting> {
+        return if (isExternal) {
+            externalMediaListDao.getExternalListSetting(id)
+        } else mediaListDao.getListSettings(id)
     }
 
-    @Override
-    public MediaListSetting getListSettingNow(int id, boolean isExternal) {
-        if (isExternal) {
-            return this.externalMediaListDao.getExternalListSettingNow(id);
-        }
-        return this.mediaListDao.getListSettingsNow(id);
+    override fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting {
+        return if (isExternal) {
+            externalMediaListDao.getExternalListSettingNow(id)
+        } else mediaListDao.getListSettingsNow(id)
     }
 
-    @Override
-    public void updateToDownload(boolean add, ToDownload toDownload) {
+    override fun updateToDownload(add: Boolean, toDownload: ToDownload) {
         if (add) {
-            this.toDownloadDao.insert(new RoomConverter().convert(toDownload));
+            toDownloadDao.insert(RoomConverter().convert(toDownload))
         } else {
-            this.toDownloadDao.deleteToDownload(
-                    toDownload.getMediumId(),
-                    toDownload.getListId(),
-                    toDownload.getExternalListId()
-            );
+            toDownloadDao.deleteToDownload(
+                    toDownload.mediumId,
+                    toDownload.listId,
+                    toDownload.externalListId
+            )
         }
     }
 
-    @Override
-    public LiveData<PagedList<MediumItem>> getAllMedia(Sortings sortings, String title, int medium, String author, DateTime lastUpdate, int minCountEpisodes, int minCountReadEpisodes) {
-        int sortValue = sortings.getSortValue();
-        if (sortValue > 0) {
-            return new LivePagedListBuilder<>(this.mediumDao.getAllAsc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build();
+    override fun getAllMedia(sortings: Sortings, title: String, medium: Int, author: String, lastUpdate: DateTime, minCountEpisodes: Int, minCountReadEpisodes: Int): LiveData<PagedList<MediumItem>> {
+        var sortValue = sortings.sortValue
+        return if (sortValue > 0) {
+            LivePagedListBuilder(mediumDao.getAllAsc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build()
         } else {
-            sortValue = -sortValue;
-            return new LivePagedListBuilder<>(this.mediumDao.getAllDesc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build();
+            sortValue = -sortValue
+            LivePagedListBuilder(mediumDao.getAllDesc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build()
         }
     }
 
-    @Override
-    public LiveData<MediumSetting> getMediumSettings(int mediumId) {
-        return this.mediumDao.getMediumSettings(mediumId);
+    override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
+        return mediumDao.getMediumSettings(mediumId)
     }
 
-    @Override
-    public MediumSetting getMediumSettingsNow(int mediumId) {
-        return this.mediumDao.getMediumSettingsNow(mediumId);
+    override fun getMediumSettingsNow(mediumId: Int): MediumSetting {
+        return mediumDao.getMediumSettingsNow(mediumId)
     }
 
-    @Override
-    public LiveData<PagedList<TocEpisode>> getToc(int mediumId, Sortings sortings, byte read, byte saved) {
-        DataSource.Factory<Integer, RoomTocEpisode> episodes;
-
-        if (sortings.getSortValue() > 0) {
-            episodes = this.episodeDao.getTocEpisodesAsc(mediumId, read, saved);
+    override fun getToc(mediumId: Int, sortings: Sortings, read: Byte, saved: Byte): LiveData<PagedList<TocEpisode>> {
+        val episodes: DataSource.Factory<Int, RoomTocEpisode>
+        episodes = if (sortings.sortValue > 0) {
+            episodeDao.getTocEpisodesAsc(mediumId, read, saved)
         } else {
-            episodes = this.episodeDao.getTocEpisodesDesc(mediumId, read, saved);
+            episodeDao.getTocEpisodesDesc(mediumId, read, saved)
         }
-        RoomConverter converter = new RoomConverter();
-
-        return new LivePagedListBuilder<>(episodes.map(converter::convertTocEpisode), 50).build();
+        val converter = RoomConverter()
+        return LivePagedListBuilder(episodes.map<TocEpisode>(Function { roomTocEpisode: RoomTocEpisode? -> converter.convertTocEpisode(roomTocEpisode) }), 50).build()
     }
 
-    @Override
-    public LiveData<List<MediumItem>> getMediumItems(int listId, boolean isExternal) {
-        if (isExternal) {
-            return this.mediumDao.getExternalListMedia(listId);
+    override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<List<MediumItem>> {
+        return if (isExternal) {
+            mediumDao.getExternalListMedia(listId)
         } else {
-            return this.mediumDao.getListMedia(listId);
+            mediumDao.getListMedia(listId)
         }
     }
 
-    @Override
-    public boolean listExists(String listName) {
-        return this.mediaListDao.listExists(listName);
+    override fun listExists(listName: String): Boolean {
+        return mediaListDao.listExists(listName)
     }
 
-    @Override
-    public int countSavedEpisodes(Integer mediumId) {
-        return this.episodeDao.countSavedEpisodes(mediumId);
+    override fun countSavedEpisodes(mediumId: Int): Int {
+        return episodeDao.countSavedEpisodes(mediumId)
     }
 
-    @Override
-    public List<Integer> getSavedEpisodes(int mediumId) {
-        return this.episodeDao.getSavedEpisodes(mediumId);
+    override fun getSavedEpisodes(mediumId: Int): List<Int> {
+        return episodeDao.getSavedEpisodes(mediumId)
     }
 
-    @Override
-    public Episode getEpisode(int episodeId) {
-        RoomConverter converter = new RoomConverter();
-        RoomEpisode roomEpisode = this.episodeDao.getEpisode(episodeId);
-        return converter.convert(roomEpisode);
+    override fun getEpisode(episodeId: Int): Episode {
+        val converter = RoomConverter()
+        val roomEpisode = episodeDao.getEpisode(episodeId)
+        return converter.convert(roomEpisode)
     }
 
-    @Override
-    public List<SimpleEpisode> getSimpleEpisodes(Collection<Integer> ids) {
-        return this.episodeDao.getSimpleEpisodes(ids);
+    override fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
+        return episodeDao.getSimpleEpisodes(ids)
     }
 
-    @Override
-    public void updateProgress(Collection<Integer> episodeIds, float progress) {
-        this.episodeDao.updateProgress(episodeIds, progress, DateTime.now());
+    override fun updateProgress(episodeIds: Collection<Int>, progress: Float) {
+        episodeDao.updateProgress(episodeIds, progress, DateTime.now())
     }
 
-    @Override
-    public LiveData<PagedList<MediumInWait>> getMediaInWaitBy(String filter, int mediumFilter, String hostFilter, Sortings sortings) {
-        DataSource.Factory<Integer, RoomMediumInWait> factory;
-        int sortValue = sortings.getSortValue();
-
+    override fun getMediaInWaitBy(filter: String, mediumFilter: Int, hostFilter: String, sortings: Sortings): LiveData<PagedList<MediumInWait>> {
+        val factory: DataSource.Factory<Int, RoomMediumInWait>
+        var sortValue = sortings.sortValue
         if (sortValue < 0) {
-            sortValue = -sortValue;
-            factory = this.mediumInWaitDao.getByDesc(sortValue, filter, mediumFilter, hostFilter);
+            sortValue = -sortValue
+            factory = mediumInWaitDao.getByDesc(sortValue, filter, mediumFilter, hostFilter)
         } else {
-            factory = this.mediumInWaitDao.getByAsc(sortValue, filter, mediumFilter, hostFilter);
+            factory = mediumInWaitDao.getByAsc(sortValue, filter, mediumFilter, hostFilter)
         }
-        RoomConverter converter = new RoomConverter();
-        return new LivePagedListBuilder<>(
-                factory.map(converter::convert),
+        val converter = RoomConverter()
+        return LivePagedListBuilder<Int, MediumInWait>(
+                factory.map<MediumInWait>(Function { input: RoomMediumInWait? -> converter.convert(input) }),
                 50
-        ).build();
+        ).build()
     }
 
-    @Override
-    public LiveData<PagedList<ReadEpisode>> getReadTodayEpisodes() {
-        RoomConverter converter = new RoomConverter();
-        return new LivePagedListBuilder<>(
-                this.episodeDao.getReadTodayEpisodes().map(converter::convert),
+    override fun getReadTodayEpisodes(): LiveData<PagedList<ReadEpisode>> {
+        val converter = RoomConverter()
+        return LivePagedListBuilder(
+                episodeDao.readTodayEpisodes.map(Function { input: RoomReadEpisode? -> converter.convert(input) }),
                 50
-        ).build();
+        ).build()
     }
 
-    @Override
-    public LiveData<List<MediaList>> getInternLists() {
-        return this.mediaListDao.getListViews();
+    override fun getInternLists(): LiveData<List<MediaList>> {
+        return mediaListDao.listViews
     }
 
-    @Override
-    public void addItemsToList(int listId, Collection<Integer> ids) {
-        List<RoomMediaList.MediaListMediaJoin> joins = new ArrayList<>();
-        for (Integer id : ids) {
-            joins.add(new RoomMediaList.MediaListMediaJoin(listId, id));
+    override fun addItemsToList(listId: Int, ids: Collection<Int>) {
+        val joins: MutableList<MediaListMediaJoin> = ArrayList()
+        for (id in ids) {
+            joins.add(MediaListMediaJoin(listId, id))
         }
-        this.mediaListDao.addJoin(joins);
+        mediaListDao.addJoin(joins)
     }
 
-    @Override
-    public LiveData<List<MediumInWait>> getSimilarMediaInWait(MediumInWait mediumInWait) {
-        return this.mediumInWaitDao.getSimilar(mediumInWait.getTitle(), mediumInWait.getMedium());
+    override fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<List<MediumInWait>> {
+        return mediumInWaitDao.getSimilar(mediumInWait.title, mediumInWait.medium)
     }
 
-    @Override
-    public LiveData<List<SimpleMedium>> getMediaSuggestions(String title, int medium) {
-        return this.mediumDao.getSuggestions(title, medium);
+    override fun getMediaSuggestions(title: String, medium: Int): LiveData<List<SimpleMedium>> {
+        return mediumDao.getSuggestions(title, medium)
     }
 
-    @Override
-    public LiveData<List<MediumInWait>> getMediaInWaitSuggestions(String title, int medium) {
-        return this.mediumInWaitDao.getSuggestions(title, medium);
+    override fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<List<MediumInWait>> {
+        return mediumInWaitDao.getSuggestions(title, medium)
     }
 
-    @Override
-    public LiveData<List<MediaList>> getListSuggestion(String name) {
-        return this.mediaListDao.getSuggestion(name);
+    override fun getListSuggestion(name: String): LiveData<List<MediaList>> {
+        return mediaListDao.getSuggestion(name)
     }
 
-    @Override
-    public LiveData<Boolean> onDownloadAble() {
-        MutableLiveData<Integer> previousDownloadCount = new MutableLiveData<>();
-        MutableLiveData<Integer> previousEpisodeCount = new MutableLiveData<>();
-
-        LiveData<Integer> toDownloadCount = this.toDownloadDao.countMediaRows();
-        LiveData<Integer> downloadableEpisodeCount = this.episodeDao.countDownloadableRows();
-
-        MediatorLiveData<Boolean> downloadAbles = new MediatorLiveData<>();
-        downloadAbles.addSource(toDownloadCount, input -> {
-            int previous = this.getOr(previousDownloadCount.getValue(), 0);
-            int current = this.getOr(input, 0);
-
-            previousDownloadCount.setValue(current);
-            downloadAbles.postValue(current > previous);
-        });
-        downloadAbles.addSource(downloadableEpisodeCount, input -> {
-            int previous = this.getOr(previousEpisodeCount.getValue(), 0);
-            int current = this.getOr(input, 0);
-
-            previousEpisodeCount.setValue(current);
-            downloadAbles.postValue(current > previous);
-        });
-        return downloadAbles;
-    }
-
-    @Override
-    public void clearMediaInWait() {
-        this.mediumInWaitDao.clear();
-    }
-
-    @Override
-    public void deleteMediaInWait(Collection<MediumInWait> toDelete) {
-        RoomConverter converter = new RoomConverter();
-        this.mediumInWaitDao.deleteBulk(converter.convertMediaInWait(toDelete));
-    }
-
-    @Override
-    public LiveData<List<MediumItem>> getAllDanglingMedia() {
-        return this.roomDanglingDao.getAll();
-    }
-
-    @Override
-    public void removeItemFromList(int listId, int mediumId) {
-        this.mediaListDao.removeJoin(new RoomMediaList.MediaListMediaJoin(listId, mediumId));
-    }
-
-    @Override
-    public void removeItemFromList(int listId, Collection<Integer> mediumId) {
-        this.mediaListDao.removeJoin(listId, mediumId);
-    }
-
-    @Override
-    public void moveItemsToList(int oldListId, int newListId, Collection<Integer> ids) {
-        Collection<RoomMediaList.MediaListMediaJoin> oldJoins = new ArrayList<>();
-        Collection<RoomMediaList.MediaListMediaJoin> newJoins = new ArrayList<>();
-
-        for (Integer id : ids) {
-            oldJoins.add(new RoomMediaList.MediaListMediaJoin(oldListId, id));
-            newJoins.add(new RoomMediaList.MediaListMediaJoin(newListId, id));
+    override fun onDownloadAble(): LiveData<Boolean> {
+        val previousDownloadCount = MutableLiveData<Int>()
+        val previousEpisodeCount = MutableLiveData<Int>()
+        val toDownloadCount = toDownloadDao.countMediaRows()
+        val downloadableEpisodeCount = episodeDao.countDownloadableRows()
+        val downloadAbles = MediatorLiveData<Boolean>()
+        downloadAbles.addSource(toDownloadCount) { input: Int ->
+            val previous = getOr(previousDownloadCount.value, 0)
+            val current = getOr(input, 0)
+            previousDownloadCount.value = current
+            downloadAbles.postValue(current > previous)
         }
-
-        this.mediaListDao.moveJoins(oldJoins, newJoins);
+        downloadAbles.addSource(downloadableEpisodeCount) { input: Int ->
+            val previous = getOr(previousEpisodeCount.value, 0)
+            val current = getOr(input, 0)
+            previousEpisodeCount.value = current
+            downloadAbles.postValue(current > previous)
+        }
+        return downloadAbles
     }
 
-    @Override
-    public LiveData<PagedList<ExternalUser>> getExternalUser() {
-        return new LivePagedListBuilder<>(this.externalUserDao.getAll(), 50).build();
+    override fun clearMediaInWait() {
+        mediumInWaitDao.clear()
     }
 
-    @Override
-    public SpaceMedium getSpaceMedium(int mediumId) {
-        return this.mediumDao.getSpaceMedium(mediumId);
+    override fun deleteMediaInWait(toDelete: Collection<MediumInWait>) {
+        val converter = RoomConverter()
+        mediumInWaitDao.deleteBulk(converter.convertMediaInWait(toDelete))
     }
 
-    @Override
-    public int getMediumType(Integer mediumId) {
-        return this.mediumDao.getMediumType(mediumId);
+    override fun getAllDanglingMedia(): LiveData<List<MediumItem>> {
+        return roomDanglingDao.all
     }
 
-    @Override
-    public List<String> getReleaseLinks(int episodeId) {
-        return this.episodeDao.getReleaseLinks(episodeId);
+    override fun removeItemFromList(listId: Int, mediumId: Int) {
+        mediaListDao.removeJoin(MediaListMediaJoin(listId, mediumId))
     }
 
-    @Override
-    public void clearLocalMediaData() {
-        this.failedEpisodesDao.clearAll();
-        this.episodeDao.clearAllReleases();
-        this.episodeDao.clearAll();
-        this.partDao.clearAll();
-        this.externalMediaListDao.clearJoins();
-        this.mediaListDao.clearJoins();
-        this.clearMediaInWait();
+    override fun removeItemFromList(listId: Int, mediumId: Collection<Int>) {
+        mediaListDao.removeJoin(listId, mediumId)
     }
 
-    @Override
-    public LiveData<PagedList<NotificationItem>> getNotifications() {
-        return new LivePagedListBuilder<>(this.notificationDao.getNotifications(), 50).build();
+    override fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>) {
+        val oldJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
+        val newJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
+        for (id in ids) {
+            oldJoins.add(MediaListMediaJoin(oldListId, id))
+            newJoins.add(MediaListMediaJoin(newListId, id))
+        }
+        mediaListDao.moveJoins(oldJoins, newJoins)
     }
 
-    @Override
-    public void updateFailedDownload(int episodeId) {
-        RoomFailedEpisode failedEpisode = this.failedEpisodesDao.getFailedEpisode(episodeId);
-        int failedCount = 0;
+    override fun getExternalUser(): LiveData<PagedList<ExternalUser>> {
+        return LivePagedListBuilder(externalUserDao.all, 50).build()
+    }
 
+    override fun getSpaceMedium(mediumId: Int): SpaceMedium {
+        return mediumDao.getSpaceMedium(mediumId)
+    }
+
+    override fun getMediumType(mediumId: Int): Int {
+        return mediumDao.getMediumType(mediumId)
+    }
+
+    override fun getReleaseLinks(episodeId: Int): List<String> {
+        return episodeDao.getReleaseLinks(episodeId)
+    }
+
+    override fun clearLocalMediaData() {
+        failedEpisodesDao.clearAll()
+        episodeDao.clearAllReleases()
+        episodeDao.clearAll()
+        partDao.clearAll()
+        externalMediaListDao.clearJoins()
+        mediaListDao.clearJoins()
+        clearMediaInWait()
+    }
+
+    override fun getNotifications(): LiveData<PagedList<NotificationItem>> {
+        return LivePagedListBuilder(notificationDao.notifications, 50).build()
+    }
+
+    override fun updateFailedDownload(episodeId: Int) {
+        val failedEpisode = failedEpisodesDao.getFailedEpisode(episodeId)
+        var failedCount = 0
         if (failedEpisode != null) {
-            failedCount = failedEpisode.getFailCount();
+            failedCount = failedEpisode.failCount
         }
-        failedCount++;
-        this.failedEpisodesDao.insert(new RoomFailedEpisode(episodeId, failedCount));
+        failedCount++
+        failedEpisodesDao.insert(RoomFailedEpisode(episodeId, failedCount))
     }
 
-    @Override
-    public List<FailedEpisode> getFailedEpisodes(Collection<Integer> episodeIds) {
-        return this.failedEpisodesDao.getFailedEpisodes(episodeIds);
+    override fun getFailedEpisodes(episodeIds: Collection<Int>): List<FailedEpisode> {
+        return failedEpisodesDao.getFailedEpisodes(episodeIds)
     }
 
-
-    @Override
-    public void addNotification(NotificationItem notification) {
+    override fun addNotification(notification: NotificationItem) {
         if (notification == null) {
-            return;
+            return
         }
-        this.notificationDao.insert(new RoomNotification(
-                notification.getTitle(),
-                notification.getDescription(),
-                notification.getDateTime()
-        ));
+        notificationDao.insert(RoomNotification(
+                notification.title,
+                notification.description,
+                notification.dateTime
+        ))
     }
 
-    @Override
-    public SimpleEpisode getSimpleEpisode(int episodeId) {
-        return this.episodeDao.getSimpleEpisode(episodeId);
+    override fun getSimpleEpisode(episodeId: Int): SimpleEpisode {
+        return episodeDao.getSimpleEpisode(episodeId)
     }
 
-    @Override
-    public SimpleMedium getSimpleMedium(int mediumId) {
-        return this.mediumDao.getSimpleMedium(mediumId);
+    override fun getSimpleMedium(mediumId: Int): SimpleMedium {
+        return mediumDao.getSimpleMedium(mediumId)
     }
 
-    @Override
-    public void clearNotifications() {
-        this.notificationDao.deleteAll();
+    override fun clearNotifications() {
+        notificationDao.deleteAll()
     }
 
-    @Override
-    public void clearFailEpisodes() {
-        this.failedEpisodesDao.clearAll();
+    override fun clearFailEpisodes() {
+        failedEpisodesDao.clearAll()
     }
 
-    @Override
-    public Collection<Integer> getAllEpisodes(int mediumId) {
-        return this.episodeDao.getAllEpisodes(mediumId);
+    override fun getAllEpisodes(mediumId: Int): Collection<Int> {
+        return episodeDao.getAllEpisodes(mediumId)
     }
 
-    @Override
-    public Collection<Integer> getSavedEpisodeIdsWithLowerIndex(double combiIndex, int mediumId) {
-        return this.episodeDao.getSavedEpisodeIdsWithLowerIndex(mediumId, combiIndex);
+    override fun getSavedEpisodeIdsWithLowerIndex(combiIndex: Double, mediumId: Int): Collection<Int> {
+        return episodeDao.getSavedEpisodeIdsWithLowerIndex(mediumId, combiIndex)
     }
 
-    @Override
-    public void removeEpisodes(List<Integer> episodeIds) {
-        this.episodeDao.deletePerId(episodeIds);
+    override fun removeEpisodes(episodeIds: List<Int>) {
+        episodeDao.deletePerId(episodeIds)
     }
 
-    @Override
-    public void removeParts(Collection<Integer> partIds) {
-        this.partDao.deletePerId(partIds);
+    override fun removeParts(partIds: Collection<Int>) {
+        partDao.deletePerId(partIds)
     }
 
-    @Override
-    public void insertEditEvent(EditEvent event) {
-        RoomConverter converter = new RoomConverter();
-        RoomEditEvent roomEditEvent = converter.convert(event);
-        this.editDao.insert(roomEditEvent);
+    override fun insertEditEvent(event: EditEvent) {
+        val converter = RoomConverter()
+        val roomEditEvent = converter.convert(event)
+        editDao.insert(roomEditEvent)
     }
 
-    @Override
-    public void insertEditEvent(Collection<EditEvent> events) {
-        RoomConverter converter = new RoomConverter();
-        Collection<RoomEditEvent> roomEditEvent = converter.convertEditEvents(events);
-        this.editDao.insertBulk(roomEditEvent);
+    override fun insertEditEvent(events: Collection<EditEvent>) {
+        val converter = RoomConverter()
+        val roomEditEvent = converter.convertEditEvents(events)
+        editDao.insertBulk(roomEditEvent)
     }
 
-    @Override
-    public List<Integer> getReadEpisodes(Collection<Integer> episodeIds, boolean read) {
-        return this.episodeDao.getReadEpisodes(episodeIds, read);
+    override fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int> {
+        return episodeDao.getReadEpisodes(episodeIds, read)
     }
 
-    @Override
-    public List<? extends EditEvent> getEditEvents() {
-        return this.editDao.getAll();
+    override fun getEditEvents(): List<EditEvent> {
+        return editDao.all
     }
 
-    @Override
-    public void removeEditEvents(Collection<EditEvent> editEvents) {
-        RoomConverter converter = new RoomConverter();
-        this.editDao.deleteBulk(converter.convertEditEvents(editEvents));
+    override fun removeEditEvents(editEvents: Collection<EditEvent>) {
+        val converter = RoomConverter()
+        editDao.deleteBulk(converter.convertEditEvents(editEvents))
     }
 
-    @Override
-    public ReloadStat checkReload(ClientStat.ParsedStat parsedStat) {
-        List<RoomPartStat> roomStats = this.episodeDao.getStat();
-
-        Map<Integer, ClientStat.Partstat> partStats = new HashMap<>();
-
-        for (Map<Integer, ClientStat.Partstat> value : parsedStat.media.values()) {
-            partStats.putAll(value);
+    override fun checkReload(parsedStat: ParsedStat): ReloadStat {
+        val roomStats = episodeDao.stat
+        val partStats: MutableMap<Int, Partstat> = HashMap()
+        for (value in parsedStat.media.values) {
+            partStats.putAll(value!!)
         }
-
-        List<Integer> loadEpisode = new LinkedList<>();
-        List<Integer> loadRelease = new LinkedList<>();
-        List<Integer> loadMediumTocs = new LinkedList<>();
-
-        Map<Integer, RoomPartStat> localStatMap = new HashMap<>();
-        for (RoomPartStat localStat : roomStats) {
-            localStatMap.put(localStat.partId, localStat);
-            ClientStat.Partstat partstat = partStats.remove(localStat.partId);
-
+        val loadEpisode: MutableList<Int> = LinkedList()
+        val loadRelease: MutableList<Int> = LinkedList()
+        val loadMediumTocs: MutableList<Int> = LinkedList()
+        val localStatMap: MutableMap<Int, RoomPartStat> = HashMap()
+        for (localStat in roomStats) {
+            localStatMap[localStat.partId] = localStat
+            val partstat = partStats.remove(localStat.partId)
             if (partstat == null) {
-                System.out.println(String.format(
+                println(String.format(
                         "Local Part %s does not exist on Server, missing local Part Deletion",
                         localStat.partId
-                ));
-                continue;
+                ))
+                continue
             }
-
             if (partstat.episodeCount != localStat.episodeCount
                     || partstat.episodeSum != localStat.episodeSum) {
-                loadEpisode.add(localStat.partId);
+                loadEpisode.add(localStat.partId)
             } else if (partstat.releaseCount != localStat.releaseCount) {
-                loadRelease.add(localStat.partId);
+                loadRelease.add(localStat.partId)
             }
         }
-        Set<Integer> loadPart = new HashSet<>();
-        final LoadData loadData = this.getLoadData();
-
-        for (Map.Entry<Integer, ClientStat.Partstat> clientStatEntry : partStats.entrySet()) {
-            final Integer partId = clientStatEntry.getKey();
-            ClientStat.Partstat remotePartStat = clientStatEntry.getValue();
-            final RoomPartStat localPartStat = localStatMap.get(partId);
-
+        val loadPart: MutableSet<Int> = HashSet()
+        val loadData = this.loadData
+        for ((partId, remotePartStat) in partStats) {
+            val localPartStat = localStatMap[partId]
             if (localPartStat == null) {
-                if (!loadData.getPart().contains(partId)) {
-                    loadPart.add(partId);
+                if (!loadData.part.contains(partId)) {
+                    loadPart.add(partId)
                 }
-                continue;
+                continue
             }
-
             if (remotePartStat.episodeCount != localPartStat.episodeCount
                     || remotePartStat.episodeSum != localPartStat.episodeSum) {
-                loadEpisode.add(localPartStat.partId);
+                loadEpisode.add(localPartStat.partId)
             } else if (remotePartStat.releaseCount != localPartStat.releaseCount) {
-                loadRelease.add(localPartStat.partId);
+                loadRelease.add(localPartStat.partId)
             }
         }
-        List<RoomTocStat> roomTocStats = this.tocDao.getStat();
-        final Map<Integer, Integer> tocStats = new HashMap<>();
-
-        for (RoomTocStat stat : roomTocStats) {
-            tocStats.put(stat.getMediumId(), stat.getTocCount());
+        val roomTocStats = tocDao.stat
+        val tocStats: MutableMap<Int, Int> = HashMap()
+        for (stat in roomTocStats) {
+            tocStats[stat.mediumId] = stat.tocCount
         }
-
-        for (Map.Entry<Integer, ClientMediaStat> entry : parsedStat.mediaStats.entrySet()) {
-            final Integer mediumId = entry.getKey();
-            final ClientMediaStat stats = entry.getValue();
-            final Integer previousTocCount = tocStats.get(mediumId);
-
+        for ((mediumId, stats) in parsedStat.mediaStats) {
+            val previousTocCount = tocStats[mediumId]
             if (previousTocCount == null || stats.tocs != previousTocCount) {
-                loadMediumTocs.add(mediumId);
+                loadMediumTocs.add(mediumId)
             }
         }
-        final Set<Integer> loadedMedia = loadData.getMedia();
-        Set<Integer> missingMedia = new HashSet<>(parsedStat.media.keySet());
-        missingMedia.removeAll(loadedMedia);
-        loadMediumTocs.addAll(missingMedia);
-
-        Set<Integer> missingExtLists = new HashSet<>(parsedStat.extLists.keySet());
-        missingExtLists.removeAll(loadData.getExternalMediaList());
-
-        Set<String> loadUser = new HashSet<>(parsedStat.extUser.keySet());
-        loadUser.removeAll(loadData.getExternalUser());
-
-        Set<Integer> missingLists = new HashSet<>(parsedStat.lists.keySet());
-        missingLists.removeAll(loadData.getMediaList());
-
-        for (Map.Entry<String, List<Integer>> entry : parsedStat.extUser.entrySet()) {
-            for (Iterator<Integer> iterator = missingExtLists.iterator(); iterator.hasNext(); ) {
-                Integer listId = iterator.next();
-
-                if (entry.getValue().contains(listId)) {
-                    loadUser.add(entry.getKey());
-                    iterator.remove();
+        val loadedMedia = loadData.media
+        val missingMedia: MutableSet<Int> = HashSet(parsedStat.media.keys)
+        missingMedia.removeAll(loadedMedia)
+        loadMediumTocs.addAll(missingMedia)
+        val missingExtLists: MutableSet<Int> = HashSet(parsedStat.extLists.keys)
+        missingExtLists.removeAll(loadData.externalMediaList)
+        val loadUser: MutableSet<String> = HashSet(parsedStat.extUser.keys)
+        loadUser.removeAll(loadData.externalUser)
+        val missingLists: MutableSet<Int> = HashSet(parsedStat.lists.keys)
+        missingLists.removeAll(loadData.mediaList)
+        for ((key, value) in parsedStat.extUser) {
+            val iterator = missingExtLists.iterator()
+            while (iterator.hasNext()) {
+                val listId = iterator.next()
+                if (value.contains(listId)) {
+                    loadUser.add(key)
+                    iterator.remove()
                 }
             }
         }
-
-        return new ReloadStat(loadEpisode, loadRelease, loadMediumTocs, missingMedia, loadPart, missingLists, loadUser);
+        return ReloadStat(loadEpisode, loadRelease, loadMediumTocs, missingMedia, loadPart, missingLists, loadUser)
     }
 
-    @Override
-    public void syncProgress() {
-        List<RoomProgressComparison> all = this.mediumProgressDao.getComparison();
-
-        for (RoomProgressComparison comparison : all) {
-            if (comparison.getCurrentMaxReadIndex() != 0) {
-                this.mediumProgressDao.update(new RoomMediumProgress(
-                        comparison.getMediumId(),
-                        comparison.getCurrentMaxReadIndex())
-                );
-                continue;
+    override fun syncProgress() {
+        val all = mediumProgressDao.comparison
+        for (comparison in all) {
+            if (comparison.currentMaxReadIndex != 0.0) {
+                mediumProgressDao.update(RoomMediumProgress(
+                        comparison.mediumId,
+                        comparison.currentMaxReadIndex)
+                )
+                continue
             }
-            List<RoomPart> parts = this.partDao.getPartsNow(comparison.getMediumId());
+            val parts = partDao.getPartsNow(comparison.mediumId)
 
             // TODO: 09.09.2019 check this unused variable
-            for (RoomPart part : parts) {
-                List<Integer> episodeIds = this.episodeDao.getEpisodeIdsWithLowerIndex(
-                        comparison.getMediumId(),
-                        comparison.getCurrentReadIndex(),
+            for (part in parts) {
+                val episodeIds = episodeDao.getEpisodeIdsWithLowerIndex(
+                        comparison.mediumId,
+                        comparison.currentReadIndex,
                         true
-                );
+                )
                 try {
-                    Utils.doPartitionedEx(episodeIds, ids -> {
-                        this.episodeDao.updateProgress(ids, 1, DateTime.now());
-                        return false;
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    Utils.doPartitionedEx(episodeIds) { ids: List<Int?>? ->
+                        episodeDao.updateProgress(ids, 1f, DateTime.now())
+                        false
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
         }
     }
 
-    @Override
-    public void updateDataStructure(List<Integer> mediaIds, List<Integer> partIds) {
-        for (Integer mediumId : mediaIds) {
-            List<Integer> mediumPartIds = this.dataStructureDao.getPartJoin(mediumId);
-            List<Integer> availablePartIds = this.partDao.getPartsIds(mediumId);
-            availablePartIds.removeAll(mediumPartIds);
-
+    override fun updateDataStructure(mediaIds: List<Int>, partIds: List<Int>) {
+        for (mediumId in mediaIds) {
+            val mediumPartIds = dataStructureDao.getPartJoin(mediumId)
+            val availablePartIds = partDao.getPartsIds(mediumId)
+            availablePartIds.removeAll(mediumPartIds)
             if (!availablePartIds.isEmpty()) {
-                this.partDao.deletePerId(availablePartIds);
+                partDao.deletePerId(availablePartIds)
             }
         }
-
-        for (Integer partId : partIds) {
-            List<Integer> episodePartIds = this.dataStructureDao.getEpisodeJoin(partId);
-            List<Integer> availableEpisodeIds = this.episodeDao.getEpisodeIds(partId);
-            availableEpisodeIds.removeAll(episodePartIds);
-
+        for (partId in partIds) {
+            val episodePartIds = dataStructureDao.getEpisodeJoin(partId)
+            val availableEpisodeIds = episodeDao.getEpisodeIds(partId)
+            availableEpisodeIds.removeAll(episodePartIds)
             if (!availableEpisodeIds.isEmpty()) {
                 try {
-                    Utils.doPartitionedEx(availableEpisodeIds, ids -> {
-                        this.episodeDao.deletePerId(ids);
-                        return true;
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    Utils.doPartitionedEx(availableEpisodeIds) { ids: List<Int>? ->
+                        episodeDao.deletePerId(ids)
+                        true
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
         }
     }
 
-    @Override
-    public List<Integer> getEpisodeIdsWithHigherIndex(double combiIndex, int mediumId, boolean read) {
-        return this.episodeDao.getEpisodeIdsWithHigherIndex(mediumId, combiIndex, read);
+    override fun getEpisodeIdsWithHigherIndex(combiIndex: Double, mediumId: Int, read: Boolean): List<Int> {
+        return episodeDao.getEpisodeIdsWithHigherIndex(mediumId, combiIndex, read)
     }
 
-    @Override
-    public List<Integer> getEpisodeIdsWithHigherIndex(double combiIndex, int mediumId) {
-        return this.episodeDao.getEpisodeIdsWithHigherIndex(mediumId, combiIndex);
+    override fun getEpisodeIdsWithHigherIndex(combiIndex: Double, mediumId: Int): List<Int> {
+        return episodeDao.getEpisodeIdsWithHigherIndex(mediumId, combiIndex)
     }
 
-    @Override
-    public List<Integer> getEpisodeIdsWithLowerIndex(double combiIndex, int mediumId, boolean read) {
-        return this.episodeDao.getEpisodeIdsWithLowerIndex(mediumId, combiIndex, read);
+    override fun getEpisodeIdsWithLowerIndex(combiIndex: Double, mediumId: Int, read: Boolean): List<Int> {
+        return episodeDao.getEpisodeIdsWithLowerIndex(mediumId, combiIndex, read)
     }
 
-    @Override
-    public List<Integer> getEpisodeIdsWithLowerIndex(double combiIndex, int mediumId) {
-        return this.episodeDao.getEpisodeIdsWithLowerIndex(mediumId, combiIndex);
+    override fun getEpisodeIdsWithLowerIndex(combiIndex: Double, mediumId: Int): List<Int> {
+        return episodeDao.getEpisodeIdsWithLowerIndex(mediumId, combiIndex)
     }
 
-    @Override
-    public Collection<Integer> getSavedEpisodeIdsWithHigherIndex(double combiIndex, int mediumId) {
-        return this.episodeDao.getSavedEpisodeIdsWithHigherIndex(mediumId, combiIndex);
+    override fun getSavedEpisodeIdsWithHigherIndex(combiIndex: Double, mediumId: Int): Collection<Int> {
+        return episodeDao.getSavedEpisodeIdsWithHigherIndex(mediumId, combiIndex)
     }
 
-    private <E> E getOr(E value, @SuppressWarnings("SameParameterValue") E defaultValue) {
-        return value == null ? defaultValue : value;
+    private fun <E> getOr(value: E?, defaultValue: E): E {
+        return value ?: defaultValue
     }
 
-    private class RoomDependantGenerator implements DependantGenerator {
-
-        private final LoadData loadedData;
-
-        private RoomDependantGenerator(LoadData loadedData) {
-            this.loadedData = loadedData;
-        }
-
-        @Override
-        public Collection<DependencyTask<?>> generateReadEpisodesDependant(LoadWorkGenerator.FilteredReadEpisodes readEpisodes) {
-            Set<DependencyTask<?>> tasks = new HashSet<>();
-            LoadWorker worker = LoadWorker.getWorker();
-
-            for (LoadWorkGenerator.IntDependency<ClientReadEpisode> dependency : readEpisodes.dependencies) {
-                tasks.add(new DependencyTask<>(
+    private inner class RoomDependantGenerator(private val loadedData: LoadData) : DependantGenerator {
+        override fun generateReadEpisodesDependant(readEpisodes: FilteredReadEpisodes): Collection<DependencyTask<*>> {
+            val tasks: MutableSet<DependencyTask<*>> = HashSet()
+            val worker = LoadWorker.getWorker()
+            for (dependency in readEpisodes.dependencies) {
+                tasks.add(DependencyTask(
                         dependency.id,
-                        new DependantValue(dependency.dependency),
+                        DependantValue(dependency.dependency),
                         worker.EPISODE_LOADER
-                ));
+                ))
             }
-
-            return tasks;
+            return tasks
         }
 
-        @Override
-        public Collection<DependencyTask<?>> generatePartsDependant(LoadWorkGenerator.FilteredParts parts) {
-            Set<DependencyTask<?>> tasks = new HashSet<>();
-
-            LoadWorker worker = LoadWorker.getWorker();
-            for (LoadWorkGenerator.IntDependency<ClientPart> dependency : parts.mediumDependencies) {
-                tasks.add(new DependencyTask<>(
+        override fun generatePartsDependant(parts: FilteredParts): Collection<DependencyTask<*>> {
+            val tasks: MutableSet<DependencyTask<*>> = HashSet()
+            val worker = LoadWorker.getWorker()
+            for (dependency in parts.mediumDependencies) {
+                tasks.add(DependencyTask(
                         dependency.id,
-                        new DependantValue(
+                        DependantValue(
                                 dependency.dependency,
-                                dependency.dependency.getId(),
+                                dependency.dependency.id,
                                 worker.PART_LOADER
                         ),
                         worker.MEDIUM_LOADER
-                ));
+                ))
             }
-            return tasks;
+            return tasks
         }
 
-        @Override
-        public Collection<DependencyTask<?>> generateEpisodesDependant(LoadWorkGenerator.FilteredEpisodes episodes) {
-            Set<DependencyTask<?>> tasks = new HashSet<>();
-            LoadWorker worker = LoadWorker.getWorker();
-
-            for (LoadWorkGenerator.IntDependency<ClientEpisode> dependency : episodes.partDependencies) {
-                tasks.add(new DependencyTask<>(
+        override fun generateEpisodesDependant(episodes: FilteredEpisodes): Collection<DependencyTask<*>> {
+            val tasks: MutableSet<DependencyTask<*>> = HashSet()
+            val worker = LoadWorker.getWorker()
+            for (dependency in episodes.partDependencies) {
+                tasks.add(DependencyTask(
                         dependency.id,
-                        new DependantValue(
+                        DependantValue(
                                 dependency.dependency,
-                                dependency.dependency.getId(),
+                                dependency.dependency.id,
                                 worker.EPISODE_LOADER
                         ),
                         worker.PART_LOADER
-                ));
+                ))
             }
-            return tasks;
+            return tasks
         }
 
-        @Override
-        public Collection<DependencyTask<?>> generateMediaDependant(LoadWorkGenerator.FilteredMedia media) {
-            Set<DependencyTask<?>> tasks = new HashSet<>();
-
-            LoadWorker worker = LoadWorker.getWorker();
-            for (LoadWorkGenerator.IntDependency<ClientMedium> dependency : media.episodeDependencies) {
-                tasks.add(new DependencyTask<>(
+        override fun generateMediaDependant(media: FilteredMedia): Collection<DependencyTask<*>> {
+            val tasks: MutableSet<DependencyTask<*>> = HashSet()
+            val worker = LoadWorker.getWorker()
+            for (dependency in media.episodeDependencies) {
+                tasks.add(DependencyTask(
                         dependency.id,
-                        new DependantValue(
+                        DependantValue(
                                 dependency.dependency,
-                                dependency.dependency.getId(),
+                                dependency.dependency.id,
                                 worker.MEDIUM_LOADER
                         ),
                         worker.EPISODE_LOADER
-                ));
+                ))
             }
-            for (Integer unloadedPart : media.unloadedParts) {
-                tasks.add(new DependencyTask<>(unloadedPart, null, worker.PART_LOADER));
+            for (unloadedPart in media.unloadedParts) {
+                tasks.add(DependencyTask(unloadedPart, null, worker.PART_LOADER))
             }
-            return tasks;
+            return tasks
         }
 
-        @Override
-        public Collection<DependencyTask<?>> generateMediaListsDependant(LoadWorkGenerator.FilteredMediaList mediaLists) {
-            Set<DependencyTask<?>> tasks = new HashSet<>();
-
-            LoadWorker worker = LoadWorker.getWorker();
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : mediaLists.mediumDependencies) {
-                int tmpListId = 0;
+        override fun generateMediaListsDependant(mediaLists: FilteredMediaList): Collection<DependencyTask<*>> {
+            val tasks: MutableSet<DependencyTask<*>> = HashSet()
+            val worker = LoadWorker.getWorker()
+            val converter = RoomConverter(loadedData)
+            for (dependency in mediaLists.mediumDependencies) {
+                var tmpListId = 0
                 if (!dependency.dependency.isEmpty()) {
-                    tmpListId = dependency.dependency.get(0).listId;
+                    tmpListId = dependency.dependency[0].listId
                 }
-                int listId = tmpListId;
-
-                tasks.add(new DependencyTask<>(
+                val listId = tmpListId
+                tasks.add(DependencyTask(
                         dependency.id,
-                        new DependantValue(
-                                converter.convertListJoin(dependency.dependency),
-                                () -> RoomStorage.this.mediaListDao.clearJoin(listId)
-                        ),
+                        DependantValue(
+                                converter.convertListJoin(dependency.dependency)
+                        ) { mediaListDao.clearJoin(listId) },
                         worker.MEDIUM_LOADER
-                ));
+                ))
             }
-            return tasks;
+            return tasks
         }
 
-        @Override
-        public Collection<DependencyTask<?>> generateExternalMediaListsDependant(LoadWorkGenerator.FilteredExtMediaList externalMediaLists) {
-            Set<DependencyTask<?>> tasks = new HashSet<>();
-
-            LoadWorker worker = LoadWorker.getWorker();
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : externalMediaLists.mediumDependencies) {
-                int tmpListId = 0;
+        override fun generateExternalMediaListsDependant(externalMediaLists: FilteredExtMediaList): Collection<DependencyTask<*>> {
+            val tasks: MutableSet<DependencyTask<*>> = HashSet()
+            val worker = LoadWorker.getWorker()
+            val converter = RoomConverter(loadedData)
+            for (dependency in externalMediaLists.mediumDependencies) {
+                var tmpListId = 0
                 if (!dependency.dependency.isEmpty()) {
-                    tmpListId = dependency.dependency.get(0).listId;
+                    tmpListId = dependency.dependency[0].listId
                 }
-                int listId = tmpListId;
-
-                tasks.add(new DependencyTask<>(
+                val listId = tmpListId
+                tasks.add(DependencyTask(
                         dependency.id,
-                        new DependantValue(
-                                converter.convertExListJoin(dependency.dependency),
-                                () -> RoomStorage.this.externalMediaListDao.clearJoin(listId)
-                        ),
+                        DependantValue(
+                                converter.convertExListJoin(dependency.dependency)
+                        ) { externalMediaListDao.clearJoin(listId) },
                         worker.MEDIUM_LOADER
-                ));
+                ))
             }
-            for (LoadWorkGenerator.Dependency<String, ClientExternalMediaList> dependency : externalMediaLists.userDependencies) {
-                tasks.add(new DependencyTask<>(
+            for (dependency in externalMediaLists.userDependencies) {
+                tasks.add(DependencyTask(
                         dependency.id,
-                        new DependantValue(
+                        DependantValue(
                                 converter.convert(dependency.dependency),
-                                dependency.dependency.getId(),
+                                dependency.dependency.id,
                                 worker.EXTERNAL_MEDIALIST_LOADER
                         ),
                         worker.EXTERNAL_USER_LOADER
-                ));
+                ))
             }
-            return tasks;
+            return tasks
         }
 
-        @Override
-        public Collection<DependencyTask<?>> generateExternalUsersDependant(LoadWorkGenerator.FilteredExternalUser externalUsers) {
-            Set<DependencyTask<?>> tasks = new HashSet<>();
-
-            LoadWorker worker = LoadWorker.getWorker();
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : externalUsers.mediumDependencies) {
-                int tmpListId = 0;
+        override fun generateExternalUsersDependant(externalUsers: FilteredExternalUser): Collection<DependencyTask<*>> {
+            val tasks: MutableSet<DependencyTask<*>> = HashSet()
+            val worker = LoadWorker.getWorker()
+            val converter = RoomConverter(loadedData)
+            for (dependency in externalUsers.mediumDependencies) {
+                var tmpListId = 0
                 if (!dependency.dependency.isEmpty()) {
-                    tmpListId = dependency.dependency.get(0).listId;
+                    tmpListId = dependency.dependency[0].listId
                 }
-                int listId = tmpListId;
-
-                tasks.add(new DependencyTask<>(
+                val listId = tmpListId
+                tasks.add(DependencyTask(
                         dependency.id,
-                        new DependantValue(
-                                converter.convertExListJoin(dependency.dependency),
-                                () -> RoomStorage.this.externalMediaListDao.clearJoin(listId)
-                        ),
+                        DependantValue(
+                                converter.convertExListJoin(dependency.dependency)
+                        ) { externalMediaListDao.clearJoin(listId) },
                         worker.MEDIUM_LOADER
-                ));
+                ))
             }
-            return tasks;
+            return tasks
         }
     }
 
-    private class RoomPersister implements ClientModelPersister {
-        private final LoadData loadedData;
-        private final LoadWorkGenerator generator;
-
-        RoomPersister(LoadData loadedData) {
-            this.loadedData = loadedData;
-            this.generator = new LoadWorkGenerator(loadedData);
+    private inner class RoomPersister internal constructor(private val loadedData: LoadData) : ClientModelPersister {
+        private val generator: LoadWorkGenerator
+        override fun getConsumer(): Collection<ClientConsumer<*>> {
+            return emptyList()
         }
 
-        @Override
-        public Collection<com.mytlogos.enterprise.background.ClientConsumer<?>> getConsumer() {
-            return Collections.emptyList();
+        override fun persistEpisodes(episodes: Collection<ClientEpisode>): ClientModelPersister {
+            val filteredEpisodes = generator.filterEpisodes(episodes)
+            return this.persist(filteredEpisodes)
         }
 
-        @Override
-        public ClientModelPersister persistEpisodes(Collection<ClientEpisode> episodes) {
-            LoadWorkGenerator.FilteredEpisodes filteredEpisodes = this.generator.filterEpisodes(episodes);
-            return this.persist(filteredEpisodes);
+        override fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister {
+            val converter = RoomConverter(loadedData)
+            episodeDao.insertBulkRelease(converter.convertReleases(releases))
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistReleases(Collection<ClientRelease> releases) {
-            RoomConverter converter = new RoomConverter(this.loadedData);
-            RoomStorage.this.episodeDao.insertBulkRelease(converter.convertReleases(releases));
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredEpisodes filteredEpisodes) {
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            List<RoomEpisode> list = converter.convertEpisodes(filteredEpisodes.newEpisodes);
-            List<ClientRoomEpisode> update = converter.convertEpisodesClient(filteredEpisodes.updateEpisodes);
-
-            RoomStorage.this.episodeDao.insertBulk(list);
-            RoomStorage.this.episodeDao.updateBulkClient(update);
-
-            for (RoomEpisode episode : list) {
-                this.loadedData.getEpisodes().add(episode.getEpisodeId());
+        override fun persist(filteredEpisodes: FilteredEpisodes): ClientModelPersister {
+            val converter = RoomConverter(loadedData)
+            val list = converter.convertEpisodes(filteredEpisodes.newEpisodes)
+            val update = converter.convertEpisodesClient(filteredEpisodes.updateEpisodes)
+            episodeDao.insertBulk(list)
+            episodeDao.updateBulkClient(update)
+            for (episode in list) {
+                loadedData.episodes.add(episode.episodeId)
             }
-            this.persistReleases(filteredEpisodes.releases.stream().map(value -> new ClientRelease(
-                    value.getEpisodeId(),
-                    value.getTitle(),
-                    value.getUrl(),
-                    value.isLocked(),
-                    value.getReleaseDate()
-            )).collect(Collectors.toList()));
-            return this;
+            persistReleases(filteredEpisodes.releases.stream().map { value: ClientEpisodeRelease ->
+                ClientRelease(
+                        value.episodeId,
+                        value.title,
+                        value.url,
+                        value.isLocked,
+                        value.releaseDate
+                )
+            }.collect(Collectors.toList()))
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistMediaLists(List<ClientMediaList> mediaLists) {
-            LoadWorkGenerator.FilteredMediaList filteredMediaList = this.generator.filterMediaLists(mediaLists);
-            RoomConverter converter = new RoomConverter(this.loadedData);
-            return this.persist(filteredMediaList, converter);
+        override fun persistMediaLists(mediaLists: List<ClientMediaList>): ClientModelPersister {
+            val filteredMediaList = generator.filterMediaLists(mediaLists)
+            val converter = RoomConverter(loadedData)
+            return this.persist(filteredMediaList, converter)
         }
 
-        @Override
-        public ClientModelPersister persistUserLists(List<ClientUserList> mediaLists) {
-            String uuid = getUserNow().getUuid();
-            return this.persistMediaLists(mediaLists.stream().map(value -> new ClientMediaList(
-                    uuid,
-                    value.getId(),
-                    value.getName(),
-                    value.getMedium(),
-                    null
-            )).collect(Collectors.toList()));
+        override fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister {
+            val uuid = userNow.uuid
+            return persistMediaLists(mediaLists.stream().map { value: ClientUserList ->
+                ClientMediaList(
+                        uuid,
+                        value.id,
+                        value.name,
+                        value.medium,
+                        null
+                )
+            }.collect(Collectors.toList()))
         }
 
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList) {
-            return this.persist(filteredMediaList, new RoomConverter(this.loadedData));
+        override fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister {
+            return this.persist(filteredMediaList, RoomConverter(loadedData))
         }
 
-
-        private ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList, RoomConverter converter) {
-            List<RoomMediaList> list = converter.convertMediaList(filteredMediaList.newList);
-            List<RoomMediaList> update = converter.convertMediaList(filteredMediaList.updateList);
-
-            RoomStorage.this.mediaListDao.insertBulk(list);
-            RoomStorage.this.mediaListDao.updateBulk(update);
-            for (RoomMediaList mediaList : list) {
-                this.loadedData.getMediaList().add(mediaList.listId);
+        private fun persist(filteredMediaList: FilteredMediaList, converter: RoomConverter): ClientModelPersister {
+            val list = converter.convertMediaList(filteredMediaList.newList)
+            val update = converter.convertMediaList(filteredMediaList.updateList)
+            mediaListDao.insertBulk(list)
+            mediaListDao.updateBulk(update)
+            for (mediaList in list) {
+                loadedData.mediaList.add(mediaList.listId)
             }
-            return this;
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistExternalMediaLists(Collection<ClientExternalMediaList> externalMediaLists) {
-            LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList = this.generator.filterExternalMediaLists(externalMediaLists);
-            RoomConverter converter = new RoomConverter(this.loadedData);
-            return this.persist(filteredExtMediaList, converter);
+        override fun persistExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList>): ClientModelPersister {
+            val filteredExtMediaList = generator.filterExternalMediaLists(externalMediaLists)
+            val converter = RoomConverter(loadedData)
+            return this.persist(filteredExtMediaList, converter)
         }
 
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList) {
-            return this.persist(filteredExtMediaList, new RoomConverter(this.loadedData));
+        override fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister {
+            return this.persist(filteredExtMediaList, RoomConverter(loadedData))
         }
 
-        private ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList, RoomConverter converter) {
-            List<RoomExternalMediaList> list = converter.convertExternalMediaList(filteredExtMediaList.newList);
-            List<RoomExternalMediaList> update = converter.convertExternalMediaList(filteredExtMediaList.updateList);
-
-            RoomStorage.this.externalMediaListDao.insertBulk(list);
-            RoomStorage.this.externalMediaListDao.updateBulk(update);
-
-            for (RoomExternalMediaList mediaList : list) {
-                this.loadedData.getExternalMediaList().add(mediaList.externalListId);
+        private fun persist(filteredExtMediaList: FilteredExtMediaList, converter: RoomConverter): ClientModelPersister {
+            val list = converter.convertExternalMediaList(filteredExtMediaList.newList)
+            val update = converter.convertExternalMediaList(filteredExtMediaList.updateList)
+            externalMediaListDao.insertBulk(list)
+            externalMediaListDao.updateBulk(update)
+            for (mediaList in list) {
+                loadedData.externalMediaList.add(mediaList.externalListId)
             }
-            return this;
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistExternalUsers(List<ClientExternalUser> externalUsers) {
-            LoadWorkGenerator.FilteredExternalUser filteredExternalUser = this.generator.filterExternalUsers(externalUsers);
-            return this.persist(filteredExternalUser);
+        override fun persistExternalUsers(externalUsers: List<ClientExternalUser>): ClientModelPersister {
+            val filteredExternalUser = generator.filterExternalUsers(externalUsers)
+            return this.persist(filteredExternalUser)
         }
 
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser) {
-            RoomConverter converter = new RoomConverter(this.loadedData);
-            return this.persist(filteredExternalUser, converter);
+        override fun persist(filteredExternalUser: FilteredExternalUser): ClientModelPersister {
+            val converter = RoomConverter(loadedData)
+            return this.persist(filteredExternalUser, converter)
         }
 
-        private ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser, RoomConverter converter) {
-            List<RoomExternalUser> newUser = converter.convertExternalUser(filteredExternalUser.newUser);
-            List<RoomExternalUser> updatedUser = converter.convertExternalUser(filteredExternalUser.updateUser);
-
-            RoomStorage.this.externalUserDao.insertBulk(newUser);
-            RoomStorage.this.externalUserDao.updateBulk(updatedUser);
-
-            for (RoomExternalUser user : newUser) {
-                this.loadedData.getExternalUser().add(user.uuid);
+        private fun persist(filteredExternalUser: FilteredExternalUser, converter: RoomConverter): ClientModelPersister {
+            val newUser = converter.convertExternalUser(filteredExternalUser.newUser)
+            val updatedUser = converter.convertExternalUser(filteredExternalUser.updateUser)
+            externalUserDao.insertBulk(newUser)
+            externalUserDao.updateBulk(updatedUser)
+            for (user in newUser) {
+                loadedData.externalUser.add(user.uuid)
             }
-            this.persistExternalMediaLists(filteredExternalUser.newList);
-            this.persistExternalMediaLists(filteredExternalUser.updateList);
-            return this;
+            persistExternalMediaLists(filteredExternalUser.newList)
+            persistExternalMediaLists(filteredExternalUser.updateList)
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistMedia(Collection<ClientSimpleMedium> media) {
-            LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterSimpleMedia(media);
-            return persist(filteredMedia);
+        override fun persistMedia(media: Collection<ClientSimpleMedium>): ClientModelPersister {
+            val filteredMedia = generator.filterSimpleMedia(media)
+            return persist(filteredMedia)
         }
 
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia) {
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            List<RoomMedium> newMedia = converter.convertSimpleMedia(filteredMedia.newMedia);
-            List<RoomMedium> updatedMedia = converter.convertSimpleMedia(filteredMedia.updateMedia);
-
-            RoomStorage.this.mediumDao.insertBulk(newMedia);
-            RoomStorage.this.mediumDao.updateBulk(updatedMedia);
-
-            for (RoomMedium medium : newMedia) {
-                this.loadedData.getMedia().add(medium.getMediumId());
+        override fun persist(filteredMedia: FilteredMedia): ClientModelPersister {
+            val converter = RoomConverter(loadedData)
+            val newMedia = converter.convertSimpleMedia(filteredMedia.newMedia)
+            val updatedMedia = converter.convertSimpleMedia(filteredMedia.updateMedia)
+            mediumDao.insertBulk(newMedia)
+            mediumDao.updateBulk(updatedMedia)
+            for (medium in newMedia) {
+                loadedData.media.add(medium.mediumId)
             }
-
-            return this;
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistNews(Collection<ClientNews> news) {
-            List<RoomNews> newNews = new ArrayList<>();
-            List<RoomNews> updatedNews = new ArrayList<>();
-            RoomConverter converter = new RoomConverter();
-
-            for (ClientNews clientNews : news) {
-                RoomNews roomNews = converter.convert(clientNews);
-                if (this.loadedData.getNews().contains(clientNews.getId())) {
-                    updatedNews.add(roomNews);
+        override fun persistNews(news: Collection<ClientNews>): ClientModelPersister {
+            val newNews: MutableList<RoomNews> = ArrayList()
+            val updatedNews: MutableList<RoomNews> = ArrayList()
+            val converter = RoomConverter()
+            for (clientNews in news) {
+                val roomNews = converter.convert(clientNews)
+                if (loadedData.news.contains(clientNews.id)) {
+                    updatedNews.add(roomNews)
                 } else {
-                    newNews.add(roomNews);
+                    newNews.add(roomNews)
                 }
             }
-            RoomStorage.this.newsDao.insertNews(newNews);
-            RoomStorage.this.newsDao.updateNews(updatedNews);
-
-            for (RoomNews roomNews : newNews) {
-                this.loadedData.getNews().add(roomNews.getNewsId());
+            newsDao.insertNews(newNews)
+            newsDao.updateNews(updatedNews)
+            for (roomNews in newNews) {
+                loadedData.news.add(roomNews.newsId)
             }
-            return this;
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistParts(Collection<ClientPart> parts) {
-            LoadWorkGenerator.FilteredParts filteredParts = this.generator.filterParts(parts);
-            return persist(filteredParts);
+        override fun persistParts(parts: Collection<ClientPart>): ClientModelPersister {
+            val filteredParts = generator.filterParts(parts)
+            return persist(filteredParts)
         }
 
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredParts filteredParts) {
-            RoomConverter converter = new RoomConverter();
-
-            List<RoomPart> newParts = converter.convertParts(filteredParts.newParts);
-            List<RoomPart> updatedParts = converter.convertParts(filteredParts.updateParts);
-
-            RoomStorage.this.partDao.insertBulk(newParts);
-            RoomStorage.this.partDao.updateBulk(updatedParts);
-
-            for (RoomPart part : newParts) {
-                this.loadedData.getPart().add(part.getPartId());
+        override fun persist(filteredParts: FilteredParts): ClientModelPersister {
+            val converter = RoomConverter()
+            val newParts = converter.convertParts(filteredParts.newParts)
+            val updatedParts = converter.convertParts(filteredParts.updateParts)
+            partDao.insertBulk(newParts)
+            partDao.updateBulk(updatedParts)
+            for (part in newParts) {
+                loadedData.part.add(part.partId)
             }
-            this.persistEpisodes(filteredParts.episodes);
-            return this;
+            persistEpisodes(filteredParts.episodes)
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistReadEpisodes(Collection<ClientReadEpisode> readEpisodes) {
-            LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes = this.generator.filterReadEpisodes(readEpisodes);
-            return this.persist(filteredReadEpisodes);
+        override fun persistReadEpisodes(readEpisodes: Collection<ClientReadEpisode>): ClientModelPersister {
+            val filteredReadEpisodes = generator.filterReadEpisodes(readEpisodes)
+            return this.persist(filteredReadEpisodes)
         }
 
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes) {
-            for (ClientReadEpisode readEpisode : filteredReadEpisodes.episodeList) {
-                RoomStorage.this.episodeDao.updateProgress(
-                        readEpisode.getEpisodeId(),
-                        readEpisode.getProgress(),
-                        readEpisode.getReadDate()
-                );
+        override fun persist(filteredReadEpisodes: FilteredReadEpisodes): ClientModelPersister {
+            for (readEpisode in filteredReadEpisodes.episodeList) {
+                episodeDao.updateProgress(
+                        readEpisode.episodeId,
+                        readEpisode.progress,
+                        readEpisode.readDate
+                )
             }
-            return this;
+            return this
         }
 
-        @Override
-        public ClientModelPersister persist(ClientListQuery query) {
-            this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
-            this.persist(query.getList());
-            return this;
+        override fun persist(query: ClientListQuery): ClientModelPersister {
+            this.persistMedia(query.media.asList().mapNotNull { medium: ClientMedium? -> ClientSimpleMedium(medium) })
+            this.persist(query.list)
+            return this
         }
 
-        @Override
-        public ClientModelPersister persist(ClientMultiListQuery query) {
-            this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
-            this.persist(query.getList());
-            return this;
+        override fun persist(query: ClientMultiListQuery): ClientModelPersister {
+            this.persistMedia(query.media.asList().mapNotNull { medium: ClientMedium? -> ClientSimpleMedium(medium) })
+            this.persist(*query.list)
+            return this
         }
 
-        @Override
-        public ClientModelPersister persistToDownloads(Collection<ToDownload> toDownloads) {
-            List<RoomToDownload> roomToDownloads = new RoomConverter().convertToDownload(toDownloads);
-            RoomStorage.this.toDownloadDao.insertBulk(roomToDownloads);
-            return this;
+        override fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister {
+            val roomToDownloads = RoomConverter().convertToDownload(toDownloads)
+            toDownloadDao.insertBulk(roomToDownloads)
+            return this
         }
 
-        @Override
-        public ClientModelPersister persist(ClientUpdateUser user) {
-            User value = RoomStorage.this.userLiveData.getValue();
-            if (value == null) {
-                throw new IllegalArgumentException("cannot update user if none is stored in the database");
-            }
-            if (!user.getUuid().equals(value.getUuid())) {
-                throw new IllegalArgumentException("cannot update user which do not share the same uuid");
-            }
+        override fun persist(user: ClientUpdateUser): ClientModelPersister {
+            val value = userLiveData.value
+                    ?: throw IllegalArgumentException("cannot update user if none is stored in the database")
+            require(user.uuid == value.uuid) { "cannot update user which do not share the same uuid" }
             // at the moment the only thing that can change for the user on client side is the name
-            if (user.getName().equals(value.getName())) {
-                return this;
+            if (user.name == value.name) {
+                return this
             }
-            RoomStorage.this.userDao.update(new RoomUser(user.getName(), value.getUuid(), value.getSession()));
-            return this;
+            userDao.update(RoomUser(user.name, value.uuid, value.session))
+            return this
         }
 
-        @Override
-        public ClientModelPersister persist(ToDownload toDownload) {
-            RoomStorage.this.toDownloadDao.insert(new RoomConverter().convert(toDownload));
-            return this;
+        override fun persist(toDownload: ToDownload): ClientModelPersister {
+            toDownloadDao.insert(RoomConverter().convert(toDownload))
+            return this
         }
 
-        @Override
-        public void persistMediaInWait(List<ClientMediumInWait> medium) {
-            RoomStorage.this.mediumInWaitDao.insertBulk(new RoomConverter().convertClientMediaInWait(medium));
+        override fun persistMediaInWait(medium: List<ClientMediumInWait>) {
+            mediumInWaitDao.insertBulk(RoomConverter().convertClientMediaInWait(medium))
         }
 
-        @Override
-        public ClientModelPersister persist(ClientSimpleUser user) {
+        override fun persist(user: ClientSimpleUser): ClientModelPersister {
             // short cut version
             if (user == null) {
-                RoomStorage.this.deleteAllUser();
-                return this;
+                deleteAllUser()
+                return this
             }
-            RoomConverter converter = new RoomConverter();
-            RoomUser newRoomUser = converter.convert(user);
-
-            RoomUser currentUser = RoomStorage.this.userDao.getUserNow();
-
-            if (currentUser != null && newRoomUser.getUuid().equals(currentUser.getUuid())) {
+            val converter = RoomConverter()
+            val newRoomUser = converter.convert(user)
+            val currentUser = userDao.userNow
+            if (currentUser != null && newRoomUser.uuid == currentUser.uuid) {
                 // update user, so previous one wont be deleted
-                RoomStorage.this.userDao.update(newRoomUser);
+                userDao.update(newRoomUser)
             } else {
-                RoomStorage.this.userDao.deleteAllUser();
+                userDao.deleteAllUser()
                 // persist user
-                RoomStorage.this.userDao.insert(newRoomUser);
+                userDao.insert(newRoomUser)
             }
-
-            return this;
+            return this
         }
 
-        @Override
-        public void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes) {
-            Set<Integer> partIds = partEpisodes.keySet();
-            List<RoomPartEpisode> episodes = RoomStorage.this.episodeDao.getEpisodes(partIds);
-
-            List<Integer> deleteEpisodes = new LinkedList<>();
-
-            episodes.forEach(roomPartEpisode -> {
-                List<Integer> episodeIds = partEpisodes.get(roomPartEpisode.getPartId());
-
-                if (episodeIds == null || !episodeIds.contains(roomPartEpisode.getEpisodeId())) {
-                    deleteEpisodes.add(roomPartEpisode.getEpisodeId());
+        override fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>) {
+            val partIds = partEpisodes.keys
+            val episodes = episodeDao.getEpisodes(partIds)
+            val deleteEpisodes: MutableList<Int> = LinkedList()
+            episodes.forEach(Consumer { roomPartEpisode: RoomPartEpisode ->
+                val episodeIds = partEpisodes[roomPartEpisode.partId]
+                if (episodeIds == null || !episodeIds.contains(roomPartEpisode.episodeId)) {
+                    deleteEpisodes.add(roomPartEpisode.episodeId)
                 }
-            });
-            Utils.doPartitioned(deleteEpisodes, ids -> {
-                RoomStorage.this.episodeDao.deletePerId(ids);
-                return false;
-            });
+            })
+            Utils.doPartitioned(deleteEpisodes) { ids: List<Int>? ->
+                episodeDao.deletePerId(ids)
+                false
+            }
         }
 
-        @Override
-        public Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
-            List<RoomSimpleRelease> roomReleases = RoomStorage.this.episodeDao.getReleases(partReleases.keySet());
-
-            List<RoomRelease> deleteRelease = new LinkedList<>();
-            DateTime now = DateTime.now();
-            Collection<ClientSimpleRelease> unmatchedReleases = new HashSet<>();
-
-            for (List<ClientSimpleRelease> list : partReleases.values()) {
-                unmatchedReleases.addAll(list);
+        override fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int> {
+            val roomReleases = episodeDao.getReleases(partReleases.keys)
+            val deleteRelease: MutableList<RoomRelease> = LinkedList()
+            val now = DateTime.now()
+            val unmatchedReleases: MutableCollection<ClientSimpleRelease> = HashSet()
+            for (list in partReleases.values) {
+                unmatchedReleases.addAll(list)
             }
-
-            roomReleases.forEach(release -> {
-                List<ClientSimpleRelease> releases = partReleases.get(release.partId);
-
-                boolean found = false;
-
+            roomReleases.forEach(Consumer { release: RoomSimpleRelease ->
+                val releases = partReleases[release.partId]
+                var found = false
                 if (releases != null) {
-                    for (ClientSimpleRelease simpleRelease : releases) {
-                        if (simpleRelease.id == release.episodeId && Objects.equals(simpleRelease.url, release.url)) {
-                            found = true;
-                            unmatchedReleases.remove(simpleRelease);
-                            break;
+                    for (simpleRelease in releases) {
+                        if (simpleRelease.id == release.episodeId && simpleRelease.url == release.url) {
+                            found = true
+                            unmatchedReleases.remove(simpleRelease)
+                            break
                         }
                     }
                 }
-
                 if (!found) {
-                    deleteRelease.add(new RoomRelease(release.episodeId, "", release.url, now, false));
+                    deleteRelease.add(RoomRelease(release.episodeId, "", release.url, now, false))
                 }
-            });
-            Collection<Integer> episodesToLoad = new HashSet<>();
-
-            for (ClientSimpleRelease release : unmatchedReleases) {
-                episodesToLoad.add(release.id);
+            })
+            val episodesToLoad: MutableCollection<Int> = HashSet()
+            for (release in unmatchedReleases) {
+                episodesToLoad.add(release.id)
             }
-
-            RoomStorage.this.episodeDao.deleteBulkRelease(deleteRelease);
-            return episodesToLoad;
+            episodeDao.deleteBulkRelease(deleteRelease)
+            return episodesToLoad
         }
 
-        @Override
-        public void deleteLeftoverTocs(Map<Integer, List<String>> mediaTocs) {
-            List<RoomToc> previousTocs = RoomStorage.this.tocDao.getTocs(mediaTocs.keySet());
-            List<RoomToc> removeTocs = new ArrayList<>();
-
-            for (RoomToc entry : previousTocs) {
-                final List<String> currentTocLinks = mediaTocs.get(entry.getMediumId());
-
-                if (currentTocLinks == null || !currentTocLinks.contains(entry.getLink())) {
-                    removeTocs.add(entry);
+        override fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>) {
+            val previousTocs = tocDao.getTocs(mediaTocs.keys)
+            val removeTocs: MutableList<RoomToc> = ArrayList()
+            for (entry in previousTocs) {
+                val currentTocLinks = mediaTocs[entry.mediumId]
+                if (currentTocLinks == null || !currentTocLinks.contains(entry.link)) {
+                    removeTocs.add(entry)
                 }
             }
-            RoomStorage.this.tocDao.deleteBulk(removeTocs);
+            tocDao.deleteBulk(removeTocs)
         }
 
-        @Override
-        public ClientModelPersister persistTocs(Collection<? extends Toc> tocs) {
-            //noinspection unchecked
-            List<RoomToc> roomTocs = new RoomConverter().convertToc((Collection<Toc>) tocs);
-            RoomStorage.this.tocDao.insertBulk(roomTocs);
-            return this;
+        override fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
+            val roomTocs = RoomConverter().convertToc(tocs)
+            tocDao.insertBulk(roomTocs)
+            return this
         }
 
-        @Override
-        public ClientModelPersister persist(ClientUser clientUser) {
+        override fun persist(clientUser: ClientUser): ClientModelPersister {
             // short cut version
             if (clientUser == null) {
-                RoomStorage.this.deleteAllUser();
-                return this;
+                deleteAllUser()
+                return this
             }
-
-            RoomConverter converter = new RoomConverter();
-            RoomUser newRoomUser = converter.convert(clientUser);
-
-            RoomUser currentUser = RoomStorage.this.userDao.getUserNow();
-
-            if (currentUser != null && newRoomUser.getUuid().equals(currentUser.getUuid())) {
+            val converter = RoomConverter()
+            val newRoomUser = converter.convert(clientUser)
+            val currentUser = userDao.userNow
+            if (currentUser != null && newRoomUser.uuid == currentUser.uuid) {
                 // update user, so previous one wont be deleted
-                RoomStorage.this.userDao.update(newRoomUser);
+                userDao.update(newRoomUser)
             } else {
-                RoomStorage.this.userDao.deleteAllUser();
+                userDao.deleteAllUser()
                 // persist user
-                RoomStorage.this.userDao.insert(newRoomUser);
+                userDao.insert(newRoomUser)
             }
 
             // persist lists
-            this.persist(clientUser.getLists());
+            this.persist(*clientUser.lists)
             // persist externalUser
-            this.persist(clientUser.getExternalUser());
-
-            return this;
+            this.persist(*clientUser.externalUser)
+            return this
         }
 
-        @Override
-        public ClientModelPersister persist(ClientStat.ParsedStat stat) {
+        override fun persist(stat: ParsedStat): ClientModelPersister {
             /*
              * Remove any Join not defined in stat.lists
              * Remove any Join not defined in stat.exLists
@@ -1528,765 +1175,102 @@ public class RoomStorage implements DatabaseStorage {
              * Add any new ListJoin
              * Add any new ExListJoin
              */
-            List<RoomListUser> listUser = RoomStorage.this.externalMediaListDao.getListUser();
+            val listUser = externalMediaListDao.listUser
+            val deletedLists: MutableSet<Int> = HashSet()
+            val deletedExLists: MutableSet<Int> = HashSet()
+            val deletedExUser: MutableSet<String> = HashSet()
+            val newInternalJoins: MutableList<MediaListMediaJoin> = LinkedList()
+            val toDeleteInternalJoins = filterListMediumJoins(stat, deletedLists, newInternalJoins, false)
+            val newExternalJoins: MutableList<ExternalListMediaJoin> = LinkedList()
+            val toDeleteExternalJoins = filterListMediumJoins(stat, deletedExLists, newExternalJoins, true)
 
-            Set<Integer> deletedLists = new HashSet<>();
-            Set<Integer> deletedExLists = new HashSet<>();
-            Set<String> deletedExUser = new HashSet<>();
-            List<RoomMediaList.MediaListMediaJoin> newInternalJoins = new LinkedList<>();
-            List<RoomMediaList.MediaListMediaJoin> toDeleteInternalJoins = this.filterListMediumJoins(stat, deletedLists, newInternalJoins, false);
-            List<RoomExternalMediaList.ExternalListMediaJoin> newExternalJoins = new LinkedList<>();
-            List<RoomExternalMediaList.ExternalListMediaJoin> toDeleteExternalJoins = this.filterListMediumJoins(stat, deletedExLists, newExternalJoins, true);
-
-            listUser.forEach(roomListUser -> {
-                List<Integer> listIds = stat.extUser.get(roomListUser.getUuid());
+            for (roomListUser in listUser) {
+                val listIds = stat.extUser[roomListUser.uuid]
                 if (listIds == null) {
-                    deletedExUser.add(roomListUser.getUuid());
-                    deletedExLists.add(roomListUser.getListId());
-                    return;
+                    deletedExUser.add(roomListUser.uuid)
+                    deletedExLists.add(roomListUser.listId)
+                    break
                 }
-                if (!listIds.contains(roomListUser.getListId())) {
-                    deletedExLists.add(roomListUser.getListId());
+                if (!listIds.contains(roomListUser.listId)) {
+                    deletedExLists.add(roomListUser.listId)
                 }
-            });
-
-            RoomStorage.this.externalMediaListDao.removeJoin(toDeleteExternalJoins);
-            RoomStorage.this.mediaListDao.removeJoin(toDeleteInternalJoins);
-
-            RoomStorage.this.externalMediaListDao.addJoin(newExternalJoins);
-            RoomStorage.this.mediaListDao.addJoin(newInternalJoins);
-
-            RoomStorage.this.externalMediaListDao.delete(deletedExLists);
-            RoomStorage.this.mediaListDao.delete(deletedLists);
-            RoomStorage.this.externalUserDao.delete(deletedExUser);
-            return this;
+            }
+            externalMediaListDao.removeJoin(toDeleteExternalJoins)
+            mediaListDao.removeJoin(toDeleteInternalJoins)
+            externalMediaListDao.addJoin(newExternalJoins)
+            mediaListDao.addJoin(newInternalJoins)
+            externalMediaListDao.delete(deletedExLists)
+            mediaListDao.delete(deletedLists)
+            externalUserDao.delete(deletedExUser)
+            return this
         }
 
-        private <T extends ListMediaJoin> List<T> filterListMediumJoins(final ClientStat.ParsedStat stat, final Set<Integer> deletedLists, final List<T> newJoins, final boolean external) {
-            final List<T> previousListJoins;
-            final Map<Integer, List<Integer>> currentJoins;
+        private fun <T : ListMediaJoin?> filterListMediumJoins(stat: ParsedStat, deletedLists: MutableSet<Int>, newJoins: MutableList<T>, external: Boolean): List<T> {
+            val previousListJoins: MutableList<T>
+            val currentJoins: Map<Int, List<Int>>
             if (external) {
-                currentJoins = stat.extLists;
-                //noinspection unchecked
-                previousListJoins = (List<T>) RoomStorage.this.externalMediaListDao.getListItems();
+                currentJoins = stat.extLists
+                previousListJoins = externalMediaListDao.listItems as MutableList<T>
             } else {
-                currentJoins = stat.lists;
-                //noinspection unchecked
-                previousListJoins = (List<T>) RoomStorage.this.mediaListDao.getListItems();
+                currentJoins = stat.lists
+                previousListJoins = mediaListDao.listItems as MutableList<T>
             }
-            final Map<Integer, Set<Integer>> previousListJoinMap = new HashMap<>();
-
-            previousListJoins.removeIf(join -> {
-                previousListJoinMap.computeIfAbsent(join.getListId(), integer -> new HashSet<>()).add(join.getMediumId());
-                final List<Integer> currentListItems = currentJoins.get(join.getListId());
+            val previousListJoinMap: MutableMap<Int, MutableSet<Int>> = HashMap()
+            previousListJoins.removeIf { join: T ->
+                previousListJoinMap.computeIfAbsent(join!!.listId) { integer: Int? -> HashSet() }.add(join.mediumId)
+                val currentListItems = currentJoins[join.listId]
                 if (currentListItems == null) {
-                    deletedLists.add(join.getListId());
-                    return false;
+                    deletedLists.add(join.listId)
+                    return@removeIf false
                 }
-                return currentListItems.contains(join.getMediumId());
-            });
+                currentListItems.contains(join.mediumId)
+            }
 
             // every join that is not in previousListJoin is added to newJoins
-            for (Map.Entry<Integer, List<Integer>> entry : currentJoins.entrySet()) {
-                Integer listId = entry.getKey();
-                Set<Integer> previousItems = previousListJoinMap.get(listId);
-
+            for ((listId, value) in currentJoins) {
+                var previousItems: Set<Int>? = previousListJoinMap[listId]
                 if (previousItems == null) {
-                    previousItems = Collections.emptySet();
+                    previousItems = emptySet()
                 }
-
-                for (Integer mediumId : entry.getValue()) {
+                for (mediumId in value) {
                     if (!previousItems.contains(mediumId)) {
                         if (external) {
-                            //noinspection unchecked
-                            newJoins.add((T) new RoomExternalMediaList.ExternalListMediaJoin(listId, mediumId));
+                            newJoins.add(ExternalListMediaJoin(listId, mediumId) as T)
                         } else {
-                            //noinspection unchecked
-                            newJoins.add((T) new RoomMediaList.MediaListMediaJoin(listId, mediumId));
+                            newJoins.add(MediaListMediaJoin(listId, mediumId) as T)
                         }
                     }
                 }
             }
-            return previousListJoins;
+            return previousListJoins
         }
 
-        @Override
-        public void finish() {
+        override fun finish() {}
 
+        init {
+            generator = LoadWorkGenerator(loadedData)
         }
     }
 
-    private class RoomModelPersister implements ClientModelPersister {
-        private final Collection<ClientConsumer<?>> consumer = new ArrayList<>();
-        private final LoadData loadedData;
-        private final Repository repository;
-        private final LoadWorkGenerator generator;
-
-
-        RoomModelPersister(LoadData loadedData, Repository repository) {
-            this.loadedData = loadedData;
-            this.repository = repository;
-            this.generator = new LoadWorkGenerator(loadedData);
-            this.initConsumer();
-        }
-
-        private void initConsumer() {
-            consumer.add(new ClientConsumer<ClientReadEpisode>() {
-                @Override
-                public Class<ClientReadEpisode> getType() {
-                    return ClientReadEpisode.class;
-                }
-
-                @Override
-                public void consume(Collection<ClientReadEpisode> clientEpisodes) {
-                    RoomModelPersister.this.persistReadEpisodes(clientEpisodes);
-                }
-            });
-            consumer.add(new ClientConsumer<ClientEpisode>() {
-                @Override
-                public Class<ClientEpisode> getType() {
-                    return ClientEpisode.class;
-                }
-
-                @Override
-                public void consume(Collection<ClientEpisode> clientEpisodes) {
-                    RoomModelPersister.this.persistEpisodes(clientEpisodes);
-                }
-            });
-            consumer.add(new ClientConsumer<ClientPart>() {
-                @Override
-                public Class<ClientPart> getType() {
-                    return ClientPart.class;
-                }
-
-                @Override
-                public void consume(Collection<ClientPart> parts) {
-                    RoomModelPersister.this.persistParts(parts);
-                }
-            });
-            consumer.add(new ClientConsumer<ClientMedium>() {
-                @Override
-                public Class<ClientMedium> getType() {
-                    return ClientMedium.class;
-                }
-
-                @Override
-                public void consume(Collection<ClientMedium> media) {
-                    RoomModelPersister.this.persistMedia(media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList()));
-                }
-            });
-            consumer.add(new ClientConsumer<RoomMediaList.MediaListMediaJoin>() {
-                @Override
-                public Class<RoomMediaList.MediaListMediaJoin> getType() {
-                    return RoomMediaList.MediaListMediaJoin.class;
-                }
-
-                @Override
-                public void consume(Collection<RoomMediaList.MediaListMediaJoin> joins) {
-                    RoomStorage.this.mediaListDao.addJoin(joins);
-                }
-            });
-            consumer.add(new ClientConsumer<RoomExternalMediaList.ExternalListMediaJoin>() {
-                @Override
-                public Class<RoomExternalMediaList.ExternalListMediaJoin> getType() {
-                    return RoomExternalMediaList.ExternalListMediaJoin.class;
-                }
-
-                @Override
-                public void consume(Collection<RoomExternalMediaList.ExternalListMediaJoin> joins) {
-                    RoomStorage.this.externalMediaListDao.addJoin(joins);
-                }
-            });
-            consumer.add(new ClientConsumer<ClientExternalMediaList>() {
-                @Override
-                public Class<ClientExternalMediaList> getType() {
-                    return ClientExternalMediaList.class;
-                }
-
-                @Override
-                public void consume(Collection<ClientExternalMediaList> extLists) {
-                    RoomModelPersister.this.persistExternalMediaLists(extLists);
-                }
-            });
-            consumer.add(new ClientConsumer<ClientMediaList>() {
-                @Override
-                public Class<ClientMediaList> getType() {
-                    return ClientMediaList.class;
-                }
-
-                @Override
-                public void consume(Collection<ClientMediaList> lists) {
-                    RoomModelPersister.this.persistMediaLists(new ArrayList<>(lists));
-                }
-            });
-            consumer.add(new ClientConsumer<ClientExternalUser>() {
-                @Override
-                public Class<ClientExternalUser> getType() {
-                    return ClientExternalUser.class;
-                }
-
-                @Override
-                public void consume(Collection<ClientExternalUser> extUsers) {
-                    RoomModelPersister.this.persistExternalUsers(new ArrayList<>(extUsers));
-                }
-            });
-        }
-
-        @Override
-        public Collection<com.mytlogos.enterprise.background.ClientConsumer<?>> getConsumer() {
-            return consumer;
-        }
-
-        @Override
-        public ClientModelPersister persistEpisodes(Collection<ClientEpisode> episodes) {
-            LoadWorkGenerator.FilteredEpisodes filteredEpisodes = this.generator.filterEpisodes(episodes);
-
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            for (LoadWorkGenerator.IntDependency<ClientEpisode> dependency : filteredEpisodes.partDependencies) {
-                worker.addIntegerIdTask(
-                        dependency.id,
-                        new DependantValue(
-                                dependency.dependency,
-                                dependency.dependency.getId(),
-                                worker.EPISODE_LOADER
-                        ),
-                        worker.PART_LOADER
-                );
-            }
-
-            return persist(filteredEpisodes);
-        }
-
-        @Override
-        public ClientModelPersister persistReleases(Collection<ClientRelease> releases) {
-            RoomConverter converter = new RoomConverter(this.loadedData);
-            RoomStorage.this.episodeDao.insertBulkRelease(converter.convertReleases(releases));
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredEpisodes filteredEpisodes) {
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            List<RoomEpisode> list = converter.convertEpisodes(filteredEpisodes.newEpisodes);
-            List<RoomEpisode> update = converter.convertEpisodes(filteredEpisodes.updateEpisodes);
-
-            List<RoomRelease> roomReleases = converter.convertEpisodeReleases(filteredEpisodes.releases);
-
-            RoomStorage.this.episodeDao.insertBulk(list);
-            RoomStorage.this.episodeDao.updateBulk(update);
-            RoomStorage.this.episodeDao.insertBulkRelease(roomReleases);
-
-            for (RoomEpisode episode : list) {
-                this.loadedData.getEpisodes().add(episode.getEpisodeId());
-            }
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persistMediaLists(List<ClientMediaList> mediaLists) {
-            LoadWorkGenerator.FilteredMediaList filteredMediaList = this.generator.filterMediaLists(mediaLists);
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : filteredMediaList.mediumDependencies) {
-                int tmpListId = 0;
-                if (!dependency.dependency.isEmpty()) {
-                    tmpListId = dependency.dependency.get(0).listId;
-                }
-                int listId = tmpListId;
-                worker.addIntegerIdTask(
-                        dependency.id,
-                        new DependantValue(
-                                converter.convertListJoin(dependency.dependency),
-                                () -> RoomStorage.this.mediaListDao.clearJoin(listId)
-                        ),
-                        worker.MEDIUM_LOADER
-                );
-            }
-
-            return this.persist(filteredMediaList, converter);
-        }
-
-        @Override
-        public ClientModelPersister persistUserLists(List<ClientUserList> mediaLists) {
-            String uuid = getUserNow().getUuid();
-            return this.persistMediaLists(mediaLists.stream().map(value -> new ClientMediaList(
-                    uuid,
-                    value.getId(),
-                    value.getName(),
-                    value.getMedium(),
-                    null
-            )).collect(Collectors.toList()));
-        }
-
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList) {
-            return this.persist(filteredMediaList, new RoomConverter(this.loadedData));
-        }
-
-
-        private ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList, RoomConverter converter) {
-            List<RoomMediaList> list = converter.convertMediaList(filteredMediaList.newList);
-            List<RoomMediaList> update = converter.convertMediaList(filteredMediaList.updateList);
-            List<RoomMediaList.MediaListMediaJoin> joins = converter.convertListJoin(filteredMediaList.joins);
-            List<Integer> clearListJoin = filteredMediaList.clearJoins;
-
-            RoomStorage.this.mediaListDao.insertBulk(list);
-            RoomStorage.this.mediaListDao.updateBulk(update);
-            // first clear all possible out-of-date joins
-            RoomStorage.this.mediaListDao.clearJoins(clearListJoin);
-            // then add all up-to-date joins
-            RoomStorage.this.mediaListDao.addJoin(joins);
-
-            for (RoomMediaList mediaList : list) {
-                this.loadedData.getMediaList().add(mediaList.listId);
-            }
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persistExternalMediaLists(Collection<ClientExternalMediaList> externalMediaLists) {
-            LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList = this.generator.filterExternalMediaLists(externalMediaLists);
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            for (LoadWorkGenerator.Dependency<String, ClientExternalMediaList> dependency : filteredExtMediaList.userDependencies) {
-                worker.addStringIdTask(
-                        dependency.id,
-                        new DependantValue(
-                                converter.convert(dependency.dependency),
-                                dependency.dependency.getId(),
-                                worker.EXTERNAL_MEDIALIST_LOADER
-                        ),
-                        worker.EXTERNAL_USER_LOADER
-                );
-            }
-            for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : filteredExtMediaList.mediumDependencies) {
-                int tmpListId = 0;
-                if (!dependency.dependency.isEmpty()) {
-                    tmpListId = dependency.dependency.get(0).listId;
-                }
-                int listId = tmpListId;
-                worker.addIntegerIdTask(
-                        dependency.id,
-                        new DependantValue(
-                                converter.convertExListJoin(dependency.dependency),
-                                () -> RoomStorage.this.externalMediaListDao.clearJoin(listId)
-                        ),
-                        worker.MEDIUM_LOADER
-                );
-            }
-
-            return this.persist(filteredExtMediaList, converter);
-        }
-
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList) {
-            return this.persist(filteredExtMediaList, new RoomConverter(this.loadedData));
-        }
-
-        private ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList, RoomConverter converter) {
-            List<RoomExternalMediaList> list = converter.convertExternalMediaList(filteredExtMediaList.newList);
-            List<RoomExternalMediaList> update = converter.convertExternalMediaList(filteredExtMediaList.updateList);
-
-            List<RoomExternalMediaList.ExternalListMediaJoin> joins = converter.convertExListJoin(filteredExtMediaList.joins);
-            List<Integer> clearListJoin = filteredExtMediaList.clearJoins;
-
-            RoomStorage.this.externalMediaListDao.insertBulk(list);
-            RoomStorage.this.externalMediaListDao.updateBulk(update);
-            // first clear all possible out-of-date joins
-            RoomStorage.this.externalMediaListDao.clearJoins(clearListJoin);
-            // then add all up-to-date joins
-            RoomStorage.this.externalMediaListDao.addJoin(joins);
-
-            for (RoomExternalMediaList mediaList : list) {
-                this.loadedData.getExternalMediaList().add(mediaList.externalListId);
-            }
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persistExternalUsers(List<ClientExternalUser> externalUsers) {
-            LoadWorkGenerator.FilteredExternalUser filteredExternalUser = this.generator.filterExternalUsers(externalUsers);
-
-            LoadWorker worker = this.repository.getLoadWorker();
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : filteredExternalUser.mediumDependencies) {
-                int tmpListId = 0;
-                if (!dependency.dependency.isEmpty()) {
-                    tmpListId = dependency.dependency.get(0).listId;
-                }
-                int listId = tmpListId;
-                worker.addIntegerIdTask(
-                        dependency.id,
-                        new DependantValue(
-                                converter.convertExListJoin(dependency.dependency),
-                                () -> RoomStorage.this.externalMediaListDao.clearJoin(listId)
-                        ),
-                        worker.MEDIUM_LOADER
-                );
-            }
-
-            return this.persist(filteredExternalUser);
-        }
-
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser) {
-            RoomConverter converter = new RoomConverter(this.loadedData);
-            return this.persist(filteredExternalUser, converter);
-        }
-
-        private ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser, RoomConverter converter) {
-            List<RoomExternalUser> list = converter.convertExternalUser(filteredExternalUser.newUser);
-            List<RoomExternalUser> update = converter.convertExternalUser(filteredExternalUser.updateUser);
-
-            List<RoomExternalMediaList> externalMediaLists = converter.convertExternalMediaList(filteredExternalUser.newList);
-            List<RoomExternalMediaList> updateExternalMediaLists = converter.convertExternalMediaList(filteredExternalUser.updateList);
-
-            List<RoomExternalMediaList.ExternalListMediaJoin> extListMediaJoin = converter.convertExListJoin(filteredExternalUser.joins);
-            List<Integer> clearListJoin = filteredExternalUser.clearJoins;
-
-            RoomStorage.this.externalUserDao.insertBulk(list);
-            RoomStorage.this.externalUserDao.updateBulk(update);
-            RoomStorage.this.externalMediaListDao.insertBulk(externalMediaLists);
-            RoomStorage.this.externalMediaListDao.updateBulk(updateExternalMediaLists);
-            // first clear all possible out-of-date joins
-            RoomStorage.this.externalMediaListDao.clearJoins(clearListJoin);
-            // then add all up-to-date joins
-            RoomStorage.this.externalMediaListDao.addJoin(extListMediaJoin);
-
-            for (RoomExternalUser user : list) {
-                this.loadedData.getExternalUser().add(user.uuid);
-            }
-
-            for (RoomExternalMediaList mediaList : externalMediaLists) {
-                this.loadedData.getExternalMediaList().add(mediaList.externalListId);
-            }
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persistMedia(Collection<ClientSimpleMedium> media) {
-            LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterSimpleMedia(media);
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            for (LoadWorkGenerator.IntDependency<ClientMedium> dependency : filteredMedia.episodeDependencies) {
-                worker.addIntegerIdTask(
-                        dependency.id,
-                        new DependantValue(
-                                dependency.dependency,
-                                dependency.dependency.getId(),
-                                worker.MEDIUM_LOADER
-                        ),
-                        worker.EPISODE_LOADER
-                );
-            }
-            for (Integer part : filteredMedia.unloadedParts) {
-                worker.addIntegerIdTask(part, null, worker.PART_LOADER);
-            }
-            return persist(filteredMedia);
-        }
-
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia) {
-            RoomConverter converter = new RoomConverter(this.loadedData);
-
-            List<RoomMedium> list = converter.convertSimpleMedia(filteredMedia.newMedia);
-            List<RoomMedium> update = converter.convertSimpleMedia(filteredMedia.updateMedia);
-
-            RoomStorage.this.mediumDao.insertBulk(list);
-            RoomStorage.this.mediumDao.updateBulk(update);
-
-            for (RoomMedium medium : list) {
-                this.loadedData.getMedia().add(medium.getMediumId());
-            }
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            for (ClientSimpleMedium medium : filteredMedia.updateMedia) {
-                RoomStorage.this.dataStructureDao.clearPartJoin(medium.getId());
-                worker.enforceMediumStructure(medium.getId());
-            }
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persistNews(Collection<ClientNews> news) {
-            List<RoomNews> list = new ArrayList<>();
-            List<RoomNews> update = new ArrayList<>();
-            RoomConverter converter = new RoomConverter();
-
-            for (ClientNews clientNews : news) {
-                RoomNews roomNews = converter.convert(clientNews);
-                if (this.generator.isNewsLoaded(clientNews.getId())) {
-                    update.add(roomNews);
-                } else {
-                    list.add(roomNews);
-                }
-            }
-            RoomStorage.this.newsDao.insertNews(list);
-            RoomStorage.this.newsDao.updateNews(update);
-
-            for (RoomNews roomNews : list) {
-                this.loadedData.getNews().add(roomNews.getNewsId());
-            }
-            System.out.println("from " + news.size() + " persisted: " + list);
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persistParts(Collection<ClientPart> parts) {
-            LoadWorkGenerator.FilteredParts filteredParts = this.generator.filterParts(parts);
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            for (LoadWorkGenerator.IntDependency<ClientPart> dependency : filteredParts.mediumDependencies) {
-                worker.addIntegerIdTask(
-                        dependency.id,
-                        new DependantValue(
-                                dependency.dependency,
-                                dependency.dependency.getId(),
-                                worker.PART_LOADER
-                        ),
-                        worker.MEDIUM_LOADER
-                );
-            }
-            return persist(filteredParts);
-        }
-
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredParts filteredParts) {
-            List<ClientEpisode> episodes = filteredParts.episodes;
-            RoomConverter converter = new RoomConverter();
-
-            List<RoomPart> list = converter.convertParts(filteredParts.newParts);
-            List<RoomPart> update = converter.convertParts(filteredParts.updateParts);
-
-            RoomStorage.this.partDao.insertBulk(list);
-            RoomStorage.this.partDao.updateBulk(update);
-
-            for (RoomPart part : list) {
-                this.loadedData.getPart().add(part.getPartId());
-            }
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            this.persistEpisodes(episodes);
-
-            Collection<RoomMediumPart> mediumParts = new HashSet<>();
-
-            for (ClientPart part : filteredParts.updateParts) {
-                RoomStorage.this.dataStructureDao.clearEpisodeJoin(part.getId());
-                List<RoomPartEpisode> partEpisodes = new ArrayList<>(part.getEpisodes().length);
-                worker.enforcePartStructure(part.getId());
-
-                for (ClientEpisode episode : part.getEpisodes()) {
-                    partEpisodes.add(new RoomPartEpisode(part.getId(), episode.getId()));
-                }
-                RoomStorage.this.dataStructureDao.addEpisodeJoin(partEpisodes);
-
-                if (this.loadedData.getMedia().contains(part.getMediumId())) {
-                    mediumParts.add(new RoomMediumPart(part.getMediumId(), part.getId()));
-                }
-            }
-            for (ClientPart part : filteredParts.newParts) {
-                if (this.loadedData.getMedia().contains(part.getMediumId())) {
-                    mediumParts.add(new RoomMediumPart(part.getMediumId(), part.getId()));
-                }
-            }
-            RoomStorage.this.dataStructureDao.addPartJoin(mediumParts);
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persistReadEpisodes(Collection<ClientReadEpisode> readEpisodes) {
-            LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes = this.generator.filterReadEpisodes(readEpisodes);
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            for (LoadWorkGenerator.IntDependency dependency : filteredReadEpisodes.dependencies) {
-                worker.addIntegerIdTask(
-                        dependency.id,
-                        new DependantValue(dependency.dependency),
-                        worker.EPISODE_LOADER
-                );
-            }
-            return this.persist(filteredReadEpisodes);
-        }
-
-        @Override
-        public ClientModelPersister persist(ClientStat.ParsedStat stat) {
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes) {
-            for (ClientReadEpisode readEpisode : filteredReadEpisodes.episodeList) {
-                RoomStorage.this.episodeDao.updateProgress(
-                        readEpisode.getEpisodeId(),
-                        readEpisode.getProgress(),
-                        readEpisode.getReadDate()
-                );
-            }
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persist(ClientListQuery query) {
-            this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
-            this.persist(query.getList());
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persist(ClientMultiListQuery query) {
-            this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
-            this.persist(query.getList());
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persistToDownloads(Collection<ToDownload> toDownloads) {
-            List<RoomToDownload> roomToDownloads = new RoomConverter().convertToDownload(toDownloads);
-            RoomStorage.this.toDownloadDao.insertBulk(roomToDownloads);
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persist(ClientUpdateUser user) {
-            User value = RoomStorage.this.userLiveData.getValue();
-            if (value == null) {
-                throw new IllegalArgumentException("cannot update user if none is stored in the database");
-            }
-            if (!user.getUuid().equals(value.getUuid())) {
-                throw new IllegalArgumentException("cannot update user which do not share the same uuid");
-            }
-            // at the moment the only thing that can change for the user on client side is the name
-            if (user.getName().equals(value.getName())) {
-                return this;
-            }
-            RoomStorage.this.userDao.update(new RoomUser(user.getName(), value.getUuid(), value.getSession()));
-            return this;
-        }
-
-        @Override
-        public ClientModelPersister persist(ToDownload toDownload) {
-            RoomStorage.this.toDownloadDao.insert(new RoomConverter().convert(toDownload));
-            return this;
-        }
-
-        @Override
-        public void persistMediaInWait(List<ClientMediumInWait> medium) {
-            RoomStorage.this.mediumInWaitDao.insertBulk(new RoomConverter().convertClientMediaInWait(medium));
-        }
-
-        @Override
-        public ClientModelPersister persist(ClientSimpleUser user) {
-            // short cut version
-            if (user == null) {
-                RoomStorage.this.deleteAllUser();
-                return this;
-            }
-            RoomConverter converter = new RoomConverter();
-            RoomUser newRoomUser = converter.convert(user);
-
-            RoomUser currentUser = RoomStorage.this.userDao.getUserNow();
-
-            if (currentUser != null && newRoomUser.getUuid().equals(currentUser.getUuid())) {
-                // update user, so previous one wont be deleted
-                RoomStorage.this.userDao.update(newRoomUser);
-            } else {
-                RoomStorage.this.userDao.deleteAllUser();
-                // persist user
-                RoomStorage.this.userDao.insert(newRoomUser);
-            }
-
-            return this;
-        }
-
-        @Override
-        public void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes) {
-
-        }
-
-        @Override
-        public Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
-
-            return null;
-        }
-
-        @Override
-        public void deleteLeftoverTocs(Map<Integer, List<String>> mediaTocs) {
-
-        }
-
-        @Override
-        public ClientModelPersister persistTocs(Collection<? extends Toc> tocs) {
-            return null;
-        }
-
-        @Override
-        public ClientModelPersister persist(ClientUser clientUser) {
-            // short cut version
-            if (clientUser == null) {
-                RoomStorage.this.deleteAllUser();
-                return this;
-            }
-
-            RoomConverter converter = new RoomConverter();
-            RoomUser newRoomUser = converter.convert(clientUser);
-
-            RoomUser currentUser = RoomStorage.this.userDao.getUserNow();
-
-            if (currentUser != null && newRoomUser.getUuid().equals(currentUser.getUuid())) {
-                // update user, so previous one wont be deleted
-                RoomStorage.this.userDao.update(newRoomUser);
-            } else {
-                RoomStorage.this.userDao.deleteAllUser();
-                // persist user
-                RoomStorage.this.userDao.insert(newRoomUser);
-            }
-
-            LoadWorker worker = this.repository.getLoadWorker();
-
-            for (int clientReadChapter : clientUser.getUnreadChapter()) {
-                if (!this.generator.isEpisodeLoaded(clientReadChapter)) {
-                    worker.addIntegerIdTask(clientReadChapter, null, worker.EPISODE_LOADER);
-                }
-            }
-
-            for (ClientNews clientNews : clientUser.getUnreadNews()) {
-                int id = clientNews.getId();
-
-                if (!this.generator.isNewsLoaded(id)) {
-                    worker.addIntegerIdTask(id, null, worker.NEWS_LOADER);
-                }
-            }
-
-            for (ClientReadEpisode clientReadEpisode : clientUser.getReadToday()) {
-                int episodeId = clientReadEpisode.getEpisodeId();
-
-                if (!this.generator.isEpisodeLoaded(episodeId)) {
-                    worker.addIntegerIdTask(episodeId, null, worker.EPISODE_LOADER);
-                }
-            }
-
-            // persist lists
-            this.persist(clientUser.getLists());
-            // persist externalUser
-            this.persist(clientUser.getExternalUser());
-            // persist loaded unread News
-            this.persist(clientUser.getUnreadNews());
-            // persist/update media with data
-            this.persist(clientUser.getReadToday());
-
-            return this;
-        }
-
-        @Override
-        public void finish() {
-            this.repository.getLoadWorker().work();
-        }
+    init {
+        val database = AbstractDatabase.getInstance(application)
+        userDao = database.userDao()
+        newsDao = database.newsDao()
+        externalUserDao = database.externalUserDao()
+        externalMediaListDao = database.externalMediaListDao()
+        mediaListDao = database.mediaListDao()
+        mediumDao = database.mediumDao()
+        partDao = database.partDao()
+        episodeDao = database.episodeDao()
+        toDownloadDao = database.toDownloadDao()
+        mediumInWaitDao = database.roomMediumInWaitDao()
+        roomDanglingDao = database.roomDanglingDao()
+        notificationDao = database.notificationDao()
+        mediumProgressDao = database.mediumProgressDao()
+        failedEpisodesDao = database.failedEpisodesDao()
+        dataStructureDao = database.dataStructureDao()
+        editDao = database.editDao()
+        tocDao = database.tocDao()
+        userLiveData = userDao.user
     }
 }

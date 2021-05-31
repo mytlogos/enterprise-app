@@ -1,4 +1,7 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
 
 android {
     compileSdkVersion 28
@@ -100,6 +103,12 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.4.0-beta01'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0-beta01'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.1'
+
+    // kotlin dependencies
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.3'
+    implementation 'androidx.core:core-ktx:1.5.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
 //    debugImplementation "io.objectbox:objectbox-android-objectbrowser:$objectboxVersion"
 //    releaseImplementation "io.objectbox:objectbox-android:$objectboxVersion"
 }
