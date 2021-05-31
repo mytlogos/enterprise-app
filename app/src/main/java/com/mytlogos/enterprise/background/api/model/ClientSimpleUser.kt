@@ -1,15 +1,15 @@
 package com.mytlogos.enterprise.background.api.model
 
 class ClientSimpleUser(private val uuid: String, private val session: String, private val name: String) {
-    fun getUuid(): String? {
+    fun getUuid(): String {
         return uuid
     }
 
-    fun getSession(): String? {
+    fun getSession(): String {
         return session
     }
 
-    fun getName(): String? {
+    fun getName(): String {
         return name
     }
 
@@ -17,15 +17,15 @@ class ClientSimpleUser(private val uuid: String, private val session: String, pr
         if (this === o) return true
         if (o == null || javaClass != o.javaClass) return false
         val that = o as ClientSimpleUser
-        if (if (getUuid() != null) getUuid() != that.getUuid() else that.getUuid() != null) return false
-        if (if (getSession() != null) getSession() != that.getSession() else that.getSession() != null) return false
-        return if (getName() != null) getName() == that.getName() else that.getName() == null
+        if (getUuid() != that.getUuid()) return false
+        if (getSession() != that.getSession()) return false
+        return getName() == that.getName()
     }
 
     override fun hashCode(): Int {
-        var result = if (getUuid() != null) getUuid().hashCode() else 0
-        result = 31 * result + if (getSession() != null) getSession().hashCode() else 0
-        result = 31 * result + if (getName() != null) getName().hashCode() else 0
+        var result = getUuid().hashCode()
+        result = 31 * result + getSession().hashCode()
+        result = 31 * result + getName().hashCode()
         return result
     }
 

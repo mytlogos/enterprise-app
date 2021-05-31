@@ -6,7 +6,7 @@ import java.util.*
  * API Model for DisplayExternalUser.
  */
 open class ClientExternalUser(val localUuid: String, private val uuid: String, val identifier: String, val type: Int, val lists: Array<ClientExternalMediaList>) {
-    fun getUuid(): String? {
+    fun getUuid(): String {
         return uuid
     }
 
@@ -16,7 +16,7 @@ open class ClientExternalUser(val localUuid: String, private val uuid: String, v
                 ", uuid='" + uuid + '\'' +
                 ", identifier='" + identifier + '\'' +
                 ", type=" + type +
-                ", lists=" + Arrays.toString(lists) +
+                ", lists=" + lists.contentToString() +
                 '}'
     }
 
@@ -24,10 +24,10 @@ open class ClientExternalUser(val localUuid: String, private val uuid: String, v
         if (this === o) return true
         if (o == null || javaClass != o.javaClass) return false
         val that = o as ClientExternalUser
-        return if (getUuid() != null) getUuid() == that.getUuid() else that.getUuid() == null
+        return getUuid() == that.getUuid()
     }
 
     override fun hashCode(): Int {
-        return if (getUuid() != null) getUuid().hashCode() else 0
+        return getUuid().hashCode()
     }
 }

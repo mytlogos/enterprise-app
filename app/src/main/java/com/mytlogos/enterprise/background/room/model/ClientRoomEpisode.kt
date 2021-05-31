@@ -1,41 +1,36 @@
-package com.mytlogos.enterprise.background.api.model
+package com.mytlogos.enterprise.background.room.model
 
 import org.joda.time.DateTime
 
-/**
- * API Model for Episode.
- */
-class ClientEpisode(
-    val id: Int,
+class ClientRoomEpisode(
+    val episodeId: Int,
     val progress: Float,
     val partId: Int,
     val totalIndex: Int,
     val partialIndex: Int,
     val combiIndex: Double,
-    val readDate: DateTime?,
-    val releases: Array<ClientEpisodeRelease>
+    val readDate: DateTime?
 ) {
     override fun toString(): String {
-        return "ClientEpisode{" +
-                "id=" + id +
+        return "ClientRoomEpisode{" +
+                "episodeId=" + episodeId +
                 ", progress=" + progress +
                 ", partId=" + partId +
                 ", totalIndex=" + totalIndex +
                 ", partialIndex=" + partialIndex +
-                ", combiIndex" + combiIndex +
+                ", combiIndex=" + combiIndex +
                 ", readDate=" + readDate +
-                ", releases=" + releases.contentToString() +
                 '}'
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false
-        val that = other as ClientEpisode
-        return id == that.id
+        val that = other as ClientRoomEpisode
+        return episodeId == that.episodeId
     }
 
     override fun hashCode(): Int {
-        return id
+        return episodeId
     }
 }

@@ -5,11 +5,18 @@ import java.util.*
 /**
  * API Model of Part.
  */
-class ClientPart(val mediumId: Int, val id: Int, val title: String, val totalIndex: Int, val partialIndex: Int, val episodes: Array<ClientEpisode>) {
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val that = o as ClientPart
+class ClientPart(
+    val mediumId: Int,
+    val id: Int,
+    val title: String,
+    val totalIndex: Int,
+    val partialIndex: Int,
+    val episodes: Array<ClientEpisode>?
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as ClientPart
         return id == that.id
     }
 

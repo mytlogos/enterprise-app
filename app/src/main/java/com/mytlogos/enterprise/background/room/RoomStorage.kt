@@ -29,7 +29,7 @@ import java.util.*
 import java.util.function.Consumer
 import java.util.stream.Collectors
 
-class RoomStorage(application: Application?) : DatabaseStorage {
+class RoomStorage(application: Application) : DatabaseStorage {
     private val userDao: UserDao
     private val newsDao: NewsDao
     private val episodeDao: EpisodeDao
@@ -49,6 +49,7 @@ class RoomStorage(application: Application?) : DatabaseStorage {
     private val editDao: EditDao
     private var loading = false
     private val tocDao: TocDao
+
     override fun getUser(): LiveData<User> {
         return userLiveData
     }
@@ -128,7 +129,7 @@ class RoomStorage(application: Application?) : DatabaseStorage {
 
     override fun removeToDownloads(toDownloads: Collection<ToDownload>) {
         for (toDownload in RoomConverter().convertToDownload(toDownloads)) {
-            toDownloadDao.deleteToDownload(toDownload.mediumId, toDownload.listId, toDownload.externalListId)
+            toDownloadDao.deleteToDownload(toDownload.mediumId ?: 0, toDownload.listId?: 0, toDownload.externalListId?: 0)
         }
     }
 
@@ -458,9 +459,6 @@ class RoomStorage(application: Application?) : DatabaseStorage {
     }
 
     override fun addNotification(notification: NotificationItem) {
-        if (notification == null) {
-            return
-        }
         notificationDao.insert(RoomNotification(
                 notification.title,
                 notification.description,
@@ -623,7 +621,7 @@ class RoomStorage(application: Application?) : DatabaseStorage {
                         true
                 )
                 try {
-                    Utils.doPartitionedEx(episodeIds) { ids: List<Int?>? ->
+                    Utils.doPartitionedEx(episodeIds) { ids: List<Int> ->
                         episodeDao.updateProgress(ids, 1f, DateTime.now())
                         false
                     }
@@ -639,7 +637,7 @@ class RoomStorage(application: Application?) : DatabaseStorage {
             val mediumPartIds = dataStructureDao.getPartJoin(mediumId)
             val availablePartIds = partDao.getPartsIds(mediumId)
             availablePartIds.removeAll(mediumPartIds)
-            if (!availablePartIds.isEmpty()) {
+            if (availablePartIds.isNotEmpty()) {
                 partDao.deletePerId(availablePartIds)
             }
         }
@@ -647,9 +645,9 @@ class RoomStorage(application: Application?) : DatabaseStorage {
             val episodePartIds = dataStructureDao.getEpisodeJoin(partId)
             val availableEpisodeIds = episodeDao.getEpisodeIds(partId)
             availableEpisodeIds.removeAll(episodePartIds)
-            if (!availableEpisodeIds.isEmpty()) {
+            if (availableEpisodeIds.isNotEmpty()) {
                 try {
-                    Utils.doPartitionedEx(availableEpisodeIds) { ids: List<Int>? ->
+                    Utils.doPartitionedEx(availableEpisodeIds) { ids: List<Int> ->
                         episodeDao.deletePerId(ids)
                         true
                     }
@@ -1083,7 +1081,7 @@ class RoomStorage(application: Application?) : DatabaseStorage {
                     deleteEpisodes.add(roomPartEpisode.episodeId)
                 }
             })
-            Utils.doPartitioned(deleteEpisodes) { ids: List<Int>? ->
+            Utils.doPartitioned(deleteEpisodes) { ids: List<Int> ->
                 episodeDao.deletePerId(ids)
                 false
             }
@@ -1139,7 +1137,7 @@ class RoomStorage(application: Application?) : DatabaseStorage {
             return this
         }
 
-        override fun persist(clientUser: ClientUser): ClientModelPersister {
+        override fun persist(clientUser: ClientUser?): ClientModelPersister {
             // short cut version
             if (clientUser == null) {
                 deleteAllUser()

@@ -12,7 +12,7 @@ class ClientSimpleMedium {
         private set
     var author: String? = null
         private set
-    var title: String? = null
+    lateinit var title: String
         private set
     var medium = 0
         private set
@@ -29,7 +29,7 @@ class ClientSimpleMedium {
     var universe: String? = null
         private set
 
-    constructor() {}
+    constructor()
     constructor(medium: ClientMedium) {
         id = medium.id
         countryOfOrigin = medium.countryOfOrigin
@@ -46,7 +46,7 @@ class ClientSimpleMedium {
     }
 
     constructor(id: Int, countryOfOrigin: String?, languageOfOrigin: String?, author: String?,
-                title: String?, medium: Int, artist: String?, lang: String?, stateOrigin: Int,
+                title: String, medium: Int, artist: String?, lang: String?, stateOrigin: Int,
                 stateTL: Int, series: String?, universe: String?) {
         this.id = id
         this.countryOfOrigin = countryOfOrigin
@@ -62,7 +62,7 @@ class ClientSimpleMedium {
         this.universe = universe
     }
 
-    constructor(id: Int, title: String?, medium: Int) {
+    constructor(id: Int, title: String, medium: Int) {
         this.id = id
         this.title = title
         this.medium = medium

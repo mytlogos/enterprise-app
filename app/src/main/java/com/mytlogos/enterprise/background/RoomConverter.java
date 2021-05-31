@@ -180,8 +180,8 @@ public class RoomConverter {
                 episode.getMediumTitle(),
                 episode.getTotalIndex(),
                 episode.getPartialIndex(),
-                episode.isSaved(),
-                episode.isRead(),
+                episode.getSaved(),
+                episode.getRead(),
                 new ArrayList<>(episode.getReleases())
         );
     }
@@ -316,7 +316,7 @@ public class RoomConverter {
 
     public ToDownload convert(RoomToDownload roomToDownload) {
         return new ToDownload(
-                roomToDownload.isProhibited(),
+                roomToDownload.getProhibited(),
                 roomToDownload.getMediumId(),
                 roomToDownload.getListId(),
                 roomToDownload.getExternalListId()
@@ -347,7 +347,7 @@ public class RoomConverter {
                 roomEpisode.getPartialIndex(),
                 roomEpisode.getTotalIndex(),
                 roomEpisode.getReadDate(),
-                roomEpisode.isSaved()
+                roomEpisode.getSaved()
         );
     }
 
@@ -371,7 +371,7 @@ public class RoomConverter {
                 roomTocEpisode.getPartialIndex(),
                 roomTocEpisode.getTotalIndex(),
                 roomTocEpisode.getReadDate(),
-                roomTocEpisode.isSaved(),
+                roomTocEpisode.getSaved(),
                 new ArrayList<>(roomTocEpisode.getReleases())
         );
     }

@@ -5,16 +5,22 @@ import org.joda.time.DateTime
 /**
  * API Model for PureDisplayRelease.
  */
-class ClientRelease(val episodeId: Int, private val title: String, private val url: String, val isLocked: Boolean, private val releaseDate: DateTime) {
-    fun getTitle(): String? {
+class ClientRelease(
+    val episodeId: Int,
+    private val title: String,
+    private val url: String,
+    val isLocked: Boolean,
+    private val releaseDate: DateTime
+) {
+    fun getTitle(): String {
         return title
     }
 
-    fun getUrl(): String? {
+    fun getUrl(): String {
         return url
     }
 
-    fun getReleaseDate(): DateTime? {
+    fun getReleaseDate(): DateTime {
         return releaseDate
     }
 
@@ -34,17 +40,17 @@ class ClientRelease(val episodeId: Int, private val title: String, private val u
         val that = o as ClientRelease
         if (episodeId != that.episodeId) return false
         if (isLocked != that.isLocked) return false
-        if (if (getTitle() != null) getTitle() != that.getTitle() else that.getTitle() != null) return false
-        if (if (getUrl() != null) getUrl() != that.getUrl() else that.getUrl() != null) return false
-        return if (getReleaseDate() != null) getReleaseDate() == that.getReleaseDate() else that.getReleaseDate() == null
+        if (getTitle() != that.getTitle()) return false
+        if (getUrl() != that.getUrl()) return false
+        return getReleaseDate() == that.getReleaseDate()
     }
 
     override fun hashCode(): Int {
         var result = episodeId
-        result = 31 * result + if (getTitle() != null) getTitle().hashCode() else 0
-        result = 31 * result + if (getUrl() != null) getUrl().hashCode() else 0
+        result = 31 * result + getTitle().hashCode()
+        result = 31 * result + getUrl().hashCode()
         result = 31 * result + if (isLocked) 1 else 0
-        result = 31 * result + if (getReleaseDate() != null) getReleaseDate().hashCode() else 0
+        result = 31 * result + getReleaseDate().hashCode()
         return result
     }
 }
