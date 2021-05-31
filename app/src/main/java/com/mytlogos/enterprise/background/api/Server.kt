@@ -1,80 +1,49 @@
-package com.mytlogos.enterprise.background.api;
+package com.mytlogos.enterprise.background.api
 
-import android.annotation.SuppressLint;
+import android.annotation.SuppressLint
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Socket
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
+internal class Server(val ipv4: String, val port: Int, val isLocal: Boolean, val isDevServer: Boolean) {
 
-class Server {
-    private final String ipv4;
-    private final int port;
-    private final boolean isLocal;
-    private final boolean isDevServer;
-
-    Server(String ipv4, int port, boolean isLocal, boolean isDevServer) {
-        this.ipv4 = ipv4;
-        this.port = port;
-        this.isLocal = isLocal;
-        this.isDevServer = isDevServer;
-    }
-
-    public boolean isLocal() {
-        return isLocal;
-    }
-
-    public boolean isDevServer() {
-        return isDevServer;
-    }
-
-    String getIpv4() {
-        return ipv4;
-    }
-
-    @SuppressLint("DefaultLocale")
-    String getAddress() {
-        //allow unsafe connections for now in local networks
-        String format = "http" + (this.isLocal ? "" : "s") + "://%s:%d/";
-        return String.format(format, this.getIpv4(), this.getPort());
-    }
-
-    int getPort() {
-        return port;
-    }
-
-    boolean isReachable() {
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(getIpv4(), getPort()), 2000);
-            return true;
-        } catch (IOException e) {
-            return false;
+    //allow unsafe connections for now in local networks
+    @get:SuppressLint("DefaultLocale")
+    val address: String
+        get() {
+            //allow unsafe connections for now in local networks
+            val format = "http" + (if (isLocal) "" else "s") + "://%s:%d/"
+            return String.format(format, ipv4, port)
         }
-    }
+    val isReachable: Boolean
+        get() {
+            try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(ipv4, port), 2000)
+                    return true
+                }
+            } catch (e: IOException) {
+                return false
+            }
+        }
 
-    @SuppressWarnings("NullableProblems")
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "Server{" +
                 "ipv4='" + ipv4 + '\'' +
                 ", port=" + port +
-                '}';
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        Server server = (Server) o;
-
-        if (getPort() != server.getPort()) return false;
-        return getIpv4().equals(server.getIpv4());
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val server = o as Server
+        return if (port != server.port) false else ipv4 == server.ipv4
     }
 
-    @Override
-    public int hashCode() {
-        int result = getIpv4().hashCode();
-        result = 31 * result + getPort();
-        return result;
+    override fun hashCode(): Int {
+        var result = ipv4.hashCode()
+        result = 31 * result + port
+        return result
     }
 }

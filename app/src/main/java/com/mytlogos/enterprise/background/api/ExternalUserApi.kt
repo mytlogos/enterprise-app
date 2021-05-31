@@ -1,33 +1,22 @@
-package com.mytlogos.enterprise.background.api;
+package com.mytlogos.enterprise.background.api
 
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
+import com.mytlogos.enterprise.background.api.model.ClientExternalUser
+import retrofit2.Call
+import retrofit2.http.*
 
-import java.util.List;
-import java.util.Map;
-
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.DELETE;
-import retrofit2.http.GET;
-import retrofit2.http.POST;
-import retrofit2.http.Path;
-import retrofit2.http.QueryMap;
-import retrofit2.http.Url;
-
-interface ExternalUserApi {
-
+internal interface ExternalUserApi {
     @GET("{start}/refresh")
-    Call<ClientExternalUser> refreshExternalUser(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun refreshExternalUser(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientExternalUser>
 
     @GET
-    Call<ClientExternalUser> getExternalUser(@Url String url, @QueryMap Map<String, Object> body);
+    fun getExternalUser(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientExternalUser>
 
     @GET
-    Call<List<ClientExternalUser>> getExternalUsers(@Url String url, @QueryMap Map<String, Object> body);
+    fun getExternalUsers(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientExternalUser>>
 
     @POST
-    Call<ClientExternalUser> addExternalUser(@Url String url, @Body Map<String, Object> body);
+    fun addExternalUser(@Url url: String, @Body body: MutableMap<String, Any?>): Call<ClientExternalUser>
 
     @DELETE
-    Call<Boolean> deleteExternalUser(@Url String url, @Body Map<String, Object> body);
+    fun deleteExternalUser(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 }

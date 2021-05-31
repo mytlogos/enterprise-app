@@ -1,74 +1,54 @@
-package com.mytlogos.enterprise.background.api;
+package com.mytlogos.enterprise.background.api
 
-import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.DhcpInfo;
-import android.net.NetworkInfo;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.wifi.WifiManager
+import java.net.InetAddress
+import java.net.UnknownHostException
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
-
-public class AndroidNetworkIdentificator implements NetworkIdentificator {
-    private final Context context;
-
-    public AndroidNetworkIdentificator(Context context) {
-        this.context = context;
-    }
-
-    @Override
-    public String getSSID() {
-        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = cm.getActiveNetworkInfo();
-
-        if (networkInfo == null || !networkInfo.isConnected()) {
-            return "";
-        }
-
-        final WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-        final WifiInfo connectionInfo = wifiManager.getConnectionInfo();
-
-        if (connectionInfo == null || connectionInfo.getSSID().trim().isEmpty()) {
-            return "";
-        }
-        String ssid = connectionInfo.getSSID();
-
-        if ("<unknown ssid>".equals(ssid)) {
-            return "";
-        }
-        return ssid;
-    }
+class AndroidNetworkIdentificator(private val context: Context) : NetworkIdentificator {
+    override val sSID: String
+        get() {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val networkInfo = cm.activeNetworkInfo
+            if (networkInfo == null || !networkInfo.isConnected) {
+                return ""
+            }
+            val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val connectionInfo = wifiManager.connectionInfo
+            if (connectionInfo == null || connectionInfo.ssid.trim { it <= ' ' }.isEmpty()) {
+                return ""
+            }
+            val ssid = connectionInfo.ssid
+            return if ("<unknown ssid>" == ssid) {
+                ""
+            } else ssid
+        }// handle null somehow
 
     /**
      * Courtesy to
-     * <a href="https://stackoverflow.com/a/25520279">
-     * Send Broadcast UDP but not receive it on other android devices
-     * </a>
+     * [
+ * Send Broadcast UDP but not receive it on other android devices
+](https://stackoverflow.com/a/25520279) *
      *
      * @return BroadcastAddress
      */
-    @Override
-    public InetAddress getBroadcastAddress() {
-        WifiManager wifi = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
-        DhcpInfo dhcp = wifi.getDhcpInfo();
-        // handle null somehow
-
-        if (dhcp == null) {
-            return null;
+    override val broadcastAddress: InetAddress?
+        get() {
+            val wifi = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val dhcp = wifi.dhcpInfo ?: return null
+            // handle null somehow
+            val broadcast = dhcp.ipAddress and dhcp.netmask or dhcp.netmask.inv()
+            val quads = ByteArray(4)
+            quads[0] = (broadcast and 0xFF).toByte()
+            quads[1] = (broadcast shr 8 and 0xFF).toByte()
+            quads[2] = (broadcast shr 2 * 8 and 0xFF).toByte()
+            quads[3] = (broadcast shr 3 * 8 and 0xFF).toByte()
+            return try {
+                InetAddress.getByAddress(quads)
+            } catch (e: UnknownHostException) {
+                e.printStackTrace()
+                null
+            }
         }
-        int broadcast = (dhcp.ipAddress & dhcp.netmask) | ~dhcp.netmask;
-        byte[] quads = new byte[4];
-        quads[0] = (byte) (broadcast & 0xFF);
-        quads[1] = (byte) ((broadcast >> 8) & 0xFF);
-        quads[2] = (byte) ((broadcast >> 2 * 8) & 0xFF);
-        quads[3] = (byte) ((broadcast >> 3 * 8) & 0xFF);
-        try {
-            return InetAddress.getByAddress(quads);
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 }

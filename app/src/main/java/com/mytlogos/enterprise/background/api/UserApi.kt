@@ -1,62 +1,43 @@
-package com.mytlogos.enterprise.background.api;
+package com.mytlogos.enterprise.background.api
 
-import com.mytlogos.enterprise.background.api.model.ClientChangedEntities;
-import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientNews;
-import com.mytlogos.enterprise.background.api.model.ClientStat;
-import com.mytlogos.enterprise.background.api.model.ClientToc;
-import com.mytlogos.enterprise.background.api.model.ClientUser;
-import com.mytlogos.enterprise.background.api.model.InvalidatedData;
+import com.mytlogos.enterprise.background.api.model.*
+import retrofit2.Call
+import retrofit2.http.*
 
-import java.util.List;
-import java.util.Map;
-
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.DELETE;
-import retrofit2.http.GET;
-import retrofit2.http.POST;
-import retrofit2.http.PUT;
-import retrofit2.http.Path;
-import retrofit2.http.QueryMap;
-import retrofit2.http.Url;
-
-interface UserApi {
-
+internal interface UserApi {
     @POST("{start}/logout")
-    Call<Boolean> logout(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
+    fun logout(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 
     @PUT
-    Call<Boolean> updateUser(@Url String url, @Body Map<String, Object> body);
+    fun updateUser(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 
     @GET
-    Call<ClientUser> getUser(@Url String url, @QueryMap Map<String, Object> body);
+    fun getUser(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientUser>
 
     @GET("{start}/news")
-    Call<List<ClientNews>> getNews(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun getNews(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientNews>>
 
     @GET("{start}/lists")
-    Call<List<ClientMediaList>> getLists(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun getLists(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientMediaList>>
 
     @GET("{start}/invalidated")
-    Call<List<InvalidatedData>> getInvalidated(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun getInvalidated(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<InvalidatedData>>
 
     @GET("{start}/download")
-    Call<List<ClientDownloadedEpisode>> downloadEpisodes(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun downloadEpisodes(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientDownloadedEpisode>>
 
     @GET("{start}/stats")
-    Call<ClientStat> getStats(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun getStats(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientStat>
 
     @GET("{start}/new")
-    Call<ClientChangedEntities> getNew(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun getNew(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientChangedEntities>
 
     @GET("{start}/toc")
-    Call<List<ClientToc>> getToc(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun getToc(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientToc>>
 
     @DELETE("{start}/toc")
-    Call<Boolean> removeToc(@Path(value = "start", encoded = true) String url, @QueryMap Map<String, Object> body);
+    fun removeToc(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<Boolean>
 
     @POST("{start}/toc")
-    Call<Boolean> addToc(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
+    fun addToc(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 }

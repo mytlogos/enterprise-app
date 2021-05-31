@@ -1,217 +1,183 @@
-package com.mytlogos.enterprise.background.api;
+package com.mytlogos.enterprise.background.api
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.GsonBuilder
+import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
+import okhttp3.OkHttpClient
+import org.joda.time.DateTime
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+import java.net.NetworkInterface
+import java.util.*
+import java.util.concurrent.*
 
-import org.joda.time.DateTime;
-
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import okhttp3.OkHttpClient;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-
-class ServerDiscovery {
-
-    private final int maxAddress = 50;
-    private final ExecutorService executor = Executors.newFixedThreadPool(maxAddress);
-    private static final boolean isDev = true;
-
-
-    Server discover(InetAddress broadcastAddress) {
-        Set<Server> discoveredServer = Collections.synchronizedSet(new HashSet<>());
-
-        List<CompletableFuture<Server>> futures = new ArrayList<>();
-        for (int i = 1; i < maxAddress; i++) {
-            int local = i;
+internal class ServerDiscovery {
+    private val maxAddress = 50
+    private val executor = Executors.newFixedThreadPool(maxAddress)
+    fun discover(broadcastAddress: InetAddress?): Server? {
+        val discoveredServer = Collections.synchronizedSet(HashSet<Server>())
+        val futures: MutableList<CompletableFuture<Server?>> = ArrayList()
+        for (i in 1 until maxAddress) {
             // this is for emulator sessions,
             // as localhost udp server cannot seem to receive upd packets send from emulator
-            futures.add(CompletableFuture.supplyAsync(() -> this.discoverLocalNetworkServerPerTcp(local), executor));
+            futures.add(CompletableFuture.supplyAsync({ discoverLocalNetworkServerPerTcp(i) }, executor))
         }
-        Server server = null;
+        var server: Server? = null
         try {
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> this.discoverLocalNetworkServerPerUdp(broadcastAddress, discoveredServer));
+            val future = CompletableFuture.runAsync { discoverLocalNetworkServerPerUdp(broadcastAddress, discoveredServer) }
             try {
-                future.get(5, TimeUnit.SECONDS);
-            } catch (TimeoutException ignored) {
+                future[5, TimeUnit.SECONDS]
+            } catch (ignored: TimeoutException) {
             }
-
-            for (CompletableFuture<Server> serverFuture : futures) {
+            for (serverFuture in futures) {
                 try {
-                    Server now = serverFuture.getNow(null);
+                    val now = serverFuture.getNow(null)
                     if (now != null) {
-                        discoveredServer.add(now);
-                    } else if (!serverFuture.isDone()) {
-                        serverFuture.cancel(true);
+                        discoveredServer.add(now)
+                    } else if (!serverFuture.isDone) {
+                        serverFuture.cancel(true)
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
-
-            for (Server discovered : discoveredServer) {
-                if (discovered.isLocal() && discovered.isDevServer() == isDev) {
-                    server = discovered;
-                    break;
+            for (discovered in discoveredServer) {
+                if (discovered.isLocal && discovered.isDevServer == isDev) {
+                    server = discovered
+                    break
                 }
             }
             if (server == null && !isDev) {
-                server = this.executor.submit(this::discoverInternetServerPerUdp).get(2, TimeUnit.SECONDS);
+                server = executor.submit(Callable { discoverInternetServerPerUdp() })[2, TimeUnit.SECONDS]
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        this.executor.shutdownNow();
-        return server;
+        executor.shutdownNow()
+        return server
     }
 
-    private Server discoverLocalNetworkServerPerTcp(int local) {
-        String ipv4 = "192.168.1." + local;
-        Server server = new Server(ipv4, 3000, true, true);
-
-        if (!server.isReachable()) {
-            return null;
+    private fun discoverLocalNetworkServerPerTcp(local: Int): Server? {
+        val ipv4 = "192.168.1.$local"
+        val server = Server(ipv4, 3000, true, true)
+        if (!server.isReachable) {
+            return null
         }
         try {
-            Gson gson = new GsonBuilder()
-                    .registerTypeHierarchyAdapter(DateTime.class, new GsonAdapter.DateTimeAdapter())
-                    .create();
-            OkHttpClient client = new OkHttpClient
-                    .Builder()
+            val gson = GsonBuilder()
+                    .registerTypeHierarchyAdapter(DateTime::class.java, DateTimeAdapter())
+                    .create()
+            val client = OkHttpClient.Builder()
                     .readTimeout(20, TimeUnit.SECONDS)
-                    .build();
-
-            Retrofit retrofit = new Retrofit.Builder()
-                    .baseUrl(server.getAddress())
+                    .build()
+            val retrofit = Retrofit.Builder()
+                    .baseUrl(server.address)
                     .client(client)
                     .addConverterFactory(GsonConverterFactory.create(gson))
-                    .build();
-
-            BasicApi apiImpl = retrofit.create(BasicApi.class);
-            Response<Boolean> devResponse = apiImpl.checkDev("api").execute();
-
-            boolean isDev = devResponse.body() != null && devResponse.body();
-            return new Server(ipv4, 3000, true, isDev);
-        } catch (IOException ignored) {
+                    .build()
+            val apiImpl = retrofit.create(BasicApi::class.java)
+            val devResponse = apiImpl.checkDev("api").execute()
+            val isDev = devResponse.body() != null && devResponse.body()!!
+            return Server(ipv4, 3000, true, isDev)
+        } catch (ignored: IOException) {
         }
-        return null;
+        return null
     }
 
-    private Server discoverInternetServerPerUdp() {
+    private fun discoverInternetServerPerUdp(): Server? {
         // TODO: 27.07.2019 check if internet server is reachable
-        return null;
+        return null
     }
 
     /**
      * Modified Version from
-     * <a href="https://michieldemey.be/blog/network-discovery-using-udp-broadcast/">
-     * Network discovery using UDP Broadcast (Java)
-     * </a>
+     * [
+ * Network discovery using UDP Broadcast (Java)
+](https://michieldemey.be/blog/network-discovery-using-udp-broadcast/) *
      */
-    private void discoverLocalNetworkServerPerUdp(InetAddress broadcastAddress, Set<Server> discoveredServer) {
+    private fun discoverLocalNetworkServerPerUdp(broadcastAddress: InetAddress?, discoveredServer: MutableSet<Server>) {
         // Find the server using UDP broadcast
         //Open a random port to send the package
-        try (DatagramSocket c = new DatagramSocket()) {
-            c.setBroadcast(true);
-
-            byte[] sendData = "DISCOVER_SERVER_REQUEST_ENTERPRISE".getBytes();
-
-            int udpServerPort = 3001;
-            //Try the some 'normal' ip addresses first
-            try {
-                this.sendUDPPacket(c, sendData, udpServerPort, InetAddress.getLocalHost());
-                this.sendUDPPacket(c, sendData, udpServerPort, InetAddress.getByName("255.255.255.255"));
-                this.sendUDPPacket(c, sendData, udpServerPort, InetAddress.getByName("192.168.255.255"));
-
-                for (int i = 1; i < 50; i++) {
-                    this.sendUDPPacket(c, sendData, udpServerPort, InetAddress.getByName("192.168.1." + i));
-                }
-
-                if (broadcastAddress != null) {
-                    this.sendUDPPacket(c, sendData, udpServerPort, broadcastAddress);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            // Broadcast the message over all the network interfaces
-            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
-
-            for (NetworkInterface networkInterface : interfaces) {
-                if (!networkInterface.isUp()) {
-                    continue; // Don't want to broadcast to the loopback interface
-                }
-
-                for (InterfaceAddress interfaceAddress : networkInterface.getInterfaceAddresses()) {
-                    InetAddress broadcast = interfaceAddress.getBroadcast();
-                    if (broadcast == null) {
-                        continue;
+        try {
+            DatagramSocket().use { c ->
+                c.broadcast = true
+                val sendData = "DISCOVER_SERVER_REQUEST_ENTERPRISE".toByteArray()
+                val udpServerPort = 3001
+                //Try the some 'normal' ip addresses first
+                try {
+                    sendUDPPacket(c, sendData, udpServerPort, InetAddress.getLocalHost())
+                    sendUDPPacket(c, sendData, udpServerPort, InetAddress.getByName("255.255.255.255"))
+                    sendUDPPacket(c, sendData, udpServerPort, InetAddress.getByName("192.168.255.255"))
+                    for (i in 1..49) {
+                        sendUDPPacket(c, sendData, udpServerPort, InetAddress.getByName("192.168.1.$i"))
                     }
+                    if (broadcastAddress != null) {
+                        sendUDPPacket(c, sendData, udpServerPort, broadcastAddress)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
 
-                    // Send the broadcast package!
-                    try {
-                        sendUDPPacket(c, sendData, udpServerPort, broadcast);
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                // Broadcast the message over all the network interfaces
+                val interfaces: List<NetworkInterface> = Collections.list(NetworkInterface.getNetworkInterfaces())
+                for (networkInterface in interfaces) {
+                    if (!networkInterface.isUp) {
+                        continue  // Don't want to broadcast to the loopback interface
+                    }
+                    for (interfaceAddress in networkInterface.interfaceAddresses) {
+                        val broadcast = interfaceAddress.broadcast ?: continue
+
+                        // Send the broadcast package!
+                        try {
+                            sendUDPPacket(c, sendData, udpServerPort, broadcast)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                 }
 
-            }
+                //Wait for a response
+                val recvBuf = ByteArray(15000)
+                while (true) {
+                    val receivePacket = DatagramPacket(recvBuf, recvBuf.size)
+                    c.receive(receivePacket)
 
-            //Wait for a response
-            byte[] recvBuf = new byte[15000];
+                    //Check if the message is correct
+                    val message = String(receivePacket.data).trim { it <= ' ' }
 
-            //noinspection InfiniteLoopStatement
-            while (true) {
-                DatagramPacket receivePacket = new DatagramPacket(recvBuf, recvBuf.length);
-                c.receive(receivePacket);
-
-                //Check if the message is correct
-                String message = new String(receivePacket.getData()).trim();
-
-                // the weird thing is if the message is over 34 bytes long
-                // e.g. 'DISCOVER_SERVER_RESPONSE_ENTERPRISE' the last character will be cut off
-                // either the node server does not send correctly
-                // or java client does not receive correctly
-                if ("ENTERPRISE_DEV".equals(message)) {
-                    Server server = new Server(receivePacket.getAddress().getHostAddress(), 3000, true, true);
-                    discoveredServer.add(server);
-                } else if ("ENTERPRISE_PROD".equals(message)) {
-                    Server server = new Server(receivePacket.getAddress().getHostAddress(), 3000, true, false);
-                    discoveredServer.add(server);
+                    // the weird thing is if the message is over 34 bytes long
+                    // e.g. 'DISCOVER_SERVER_RESPONSE_ENTERPRISE' the last character will be cut off
+                    // either the node server does not send correctly
+                    // or java client does not receive correctly
+                    if ("ENTERPRISE_DEV" == message) {
+                        val server = Server(receivePacket.address.hostAddress, 3000, true, true)
+                        discoveredServer.add(server)
+                    } else if ("ENTERPRISE_PROD" == message) {
+                        val server = Server(receivePacket.address.hostAddress, 3000, true, false)
+                        discoveredServer.add(server)
+                    }
                 }
             }
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        } catch (ex: IOException) {
+            ex.printStackTrace()
         }
     }
 
-    private void sendUDPPacket(DatagramSocket c, byte[] data, int port, InetAddress address) throws IOException {
+    @Throws(IOException::class)
+    private fun sendUDPPacket(c: DatagramSocket, data: ByteArray, port: Int, address: InetAddress) {
 //        System.out.println("Sending Msg to " + address.getHostAddress() + ":" + port);
-        c.send(new DatagramPacket(data, data.length, address, port));
-        c.send(new DatagramPacket(data, data.length, address, port));
+        c.send(DatagramPacket(data, data.size, address, port))
+        c.send(DatagramPacket(data, data.size, address, port))
     }
 
-    boolean isReachable(Server server) {
-        if (server == null) {
-            return false;
-        }
-        return server.isReachable();
+    fun isReachable(server: Server?): Boolean {
+        return server?.isReachable ?: false
+    }
+
+    companion object {
+        private const val isDev = true
     }
 }

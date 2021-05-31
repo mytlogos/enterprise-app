@@ -1,27 +1,18 @@
-package com.mytlogos.enterprise.background.api;
+package com.mytlogos.enterprise.background.api
 
-import java.util.Map;
+import retrofit2.Call
+import retrofit2.http.*
 
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.DELETE;
-import retrofit2.http.GET;
-import retrofit2.http.POST;
-import retrofit2.http.PUT;
-import retrofit2.http.QueryMap;
-import retrofit2.http.Url;
-
-interface ProgressApi {
-
+internal interface ProgressApi {
     @GET
-    Call<Float> getProgress(@Url String url, @QueryMap Map<String, Object> body);
+    fun getProgress(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<Float>
 
     @POST
-    Call<Boolean> addProgress(@Url String url, @Body Map<String, Object> body);
+    fun addProgress(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 
     @DELETE
-    Call<Boolean> deleteProgress(@Url String url, @Body Map<String, Object> body);
+    fun deleteProgress(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 
     @PUT
-    Call<Boolean> updateProgress(@Url String url, @Body Map<String, Object> body);
+    fun updateProgress(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 }

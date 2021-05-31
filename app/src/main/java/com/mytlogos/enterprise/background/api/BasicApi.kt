@@ -1,32 +1,22 @@
-package com.mytlogos.enterprise.background.api;
+package com.mytlogos.enterprise.background.api
 
+import com.mytlogos.enterprise.background.api.model.ClientSimpleUser
+import com.mytlogos.enterprise.background.api.model.ClientUser
+import retrofit2.Call
+import retrofit2.http.*
 
-import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
-import com.mytlogos.enterprise.background.api.model.ClientUser;
-
-import java.util.Map;
-
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.POST;
-import retrofit2.http.Path;
-import retrofit2.http.Url;
-
-interface BasicApi {
-
+internal interface BasicApi {
     @GET
-    Call<ClientSimpleUser> checkLogin(@Url String url);
+    fun checkLogin(@Url url: String): Call<ClientSimpleUser>
 
     @GET("{start}/dev")
-    Call<Boolean> checkDev(@Path(value = "start", encoded = true) String url);
+    fun checkDev(@Path(value = "start", encoded = true) url: String): Call<Boolean>
 
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/login")
-    Call<ClientUser> login(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
+    fun login(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<ClientUser>
 
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/register")
-    Call<ClientUser> register(@Path(value = "start", encoded = true) String url, @Body Map<String, Object> body);
+    fun register(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<ClientUser>
 }
-

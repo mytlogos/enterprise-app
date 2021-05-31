@@ -1,20 +1,10 @@
-package com.mytlogos.enterprise.background.api;
+package com.mytlogos.enterprise.background.api
 
-import java.io.IOException;
+import java.io.IOException
 
-public class NotConnectedException extends IOException {
-    public NotConnectedException() {
-    }
-
-    public NotConnectedException(String message) {
-        super(message);
-    }
-
-    public NotConnectedException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public NotConnectedException(Throwable cause) {
-        super(cause);
-    }
+class NotConnectedException : IOException {
+    constructor() {}
+    constructor(message: String?) : super(message) {}
+    constructor(message: String?, cause: Throwable?) : super(message, cause) {}
+    constructor(cause: Throwable?) : super(cause) {}
 }
