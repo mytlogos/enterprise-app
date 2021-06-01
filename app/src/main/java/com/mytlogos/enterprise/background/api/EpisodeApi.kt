@@ -9,7 +9,7 @@ internal interface EpisodeApi {
     fun getEpisode(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientEpisode>
 
     @GET
-    fun getEpisodes(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientEpisode>>
+    fun getEpisodes(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<MutableList<ClientEpisode>>
 
     @POST
     fun addEpisode(@Url url: String, @Body body: MutableMap<String, Any?>): Call<ClientEpisode>

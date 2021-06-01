@@ -1,206 +1,187 @@
-package com.mytlogos.enterprise.worker;
+package com.mytlogos.enterprise.worker
 
-import android.annotation.SuppressLint;
-import android.app.Application;
-import android.content.Context;
+import android.annotation.SuppressLint
+import android.app.Application
+import android.content.Context
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.work.*
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.background.*
+import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
+import com.mytlogos.enterprise.tools.ContentTool
+import com.mytlogos.enterprise.tools.FileTools
+import java.util.*
 
-import androidx.annotation.NonNull;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.work.Constraints;
-import androidx.work.NetworkType;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkManager;
-import androidx.work.Worker;
-import androidx.work.WorkerParameters;
+class CheckSavedWorker(
+    context: Context,
+    workerParams: WorkerParameters
+): Worker(context, workerParams) {
 
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.background.Repository;
-import com.mytlogos.enterprise.background.RepositoryImpl;
-import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.tools.ContentTool;
-import com.mytlogos.enterprise.tools.FileTools;
+    private var notificationManager: NotificationManagerCompat? = null
+    private var builder: NotificationCompat.Builder? = null
+    private val checkLocalNotificationId = 0x300
+    private var correctedSaveState = 0
+    private var clearedLooseEpisodes = 0
+    private var checkedCount = 0
+    private var mediaToCheck = 0
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-public class CheckSavedWorker extends Worker {
-    static final String CHECK_SAVED_WORKER = "CHECK_SAVED_WORKER";
-    // TODO: 08.08.2019 use this for sdk >= 28
-    static final String CHANNEL_ID = "CHECK_SAVED_WORKER";
-    private NotificationManagerCompat notificationManager;
-    private NotificationCompat.Builder builder;
-    private final int checkLocalNotificationId = 0x300;
-    private int correctedSaveState = 0;
-    private int clearedLooseEpisodes = 0;
-    private int checkedCount;
-    private int mediaToCheck;
-
-    public CheckSavedWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
-        super(context, workerParams);
-    }
-
-    public static void checkLocal(Context context) {
-        Constraints constraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.UNMETERED)
-                .build();
-
-        WorkManager.getInstance(context)
-                .beginWith(CheckSavedWorker.getWorkRequest())
-                .then(new OneTimeWorkRequest.Builder(DownloadWorker.class)
-                        .setConstraints(constraints).build())
-                .enqueue();
-    }
-
-    static OneTimeWorkRequest getWorkRequest() {
-        return new OneTimeWorkRequest.Builder(CheckSavedWorker.class).build();
-    }
-
-    @NonNull
-    @Override
     @SuppressLint("UseSparseArrays")
-    public Result doWork() {
-        Application application = (Application) this.getApplicationContext();
-
-        if (SynchronizeWorker.isRunning(application) || DownloadWorker.isRunning(application)) {
-            return Result.retry();
+    override fun doWork(): Result {
+        val application = this.applicationContext as Application
+        if (SynchronizeWorker.isRunning(application) || DownloadWorker.isRunning(
+                application
+            )
+        ) {
+            return Result.retry()
         }
-
-        notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
-        builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);
-        builder
-                .setContentTitle("Checking Local Content Integrity")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-
-        notificationManager.notify(checkLocalNotificationId, builder.build());
-
-        Set<ContentTool> tools = FileTools.getSupportedContentTools(application);
-        Repository repository = RepositoryImpl.Companion.getInstance(application);
-
-        Map<Integer, Set<Integer>> mediumSavedEpisodes = new HashMap<>();
-
-        for (ContentTool tool : tools) {
-            this.putItemContainer(tool, mediumSavedEpisodes, true, repository);
-            this.putItemContainer(tool, mediumSavedEpisodes, false, repository);
+        notificationManager = NotificationManagerCompat.from(this.applicationContext)
+        builder = NotificationCompat.Builder(this.applicationContext, CHANNEL_ID)
+        builder!!
+            .setContentTitle("Checking Local Content Integrity")
+            .setSmallIcon(R.mipmap.ic_launcher).priority = NotificationCompat.PRIORITY_DEFAULT
+        notificationManager!!.notify(checkLocalNotificationId, builder!!.build())
+        val tools = FileTools.getSupportedContentTools(application)
+        val repository = getInstance(application)
+        val mediumSavedEpisodes: MutableMap<Int, MutableSet<Int>> = HashMap()
+        for (tool in tools) {
+            putItemContainer(tool, mediumSavedEpisodes, true, repository)
+            putItemContainer(tool, mediumSavedEpisodes, false, repository)
         }
-
-        Map<Integer, Map<Integer, Set<Integer>>> typeMediumSavedEpisodes = new HashMap<>();
-
-        for (Map.Entry<Integer, Set<Integer>> entry : mediumSavedEpisodes.entrySet()) {
-            int mediumType = repository.getMediumType(entry.getKey());
+        val typeMediumSavedEpisodes: MutableMap<Int, MutableMap<Int, MutableSet<Int>>> = HashMap()
+        for ((key, value) in mediumSavedEpisodes) {
+            val mediumType = repository.getMediumType(key)
             typeMediumSavedEpisodes
-                    .computeIfAbsent(mediumType, integer -> new HashMap<>())
-                    .put(entry.getKey(), entry.getValue());
+                .computeIfAbsent(mediumType) { HashMap() }[key] = value
         }
-        this.mediaToCheck = 0;
-
-        for (Map<Integer, Set<Integer>> map : typeMediumSavedEpisodes.values()) {
-            this.mediaToCheck += map.size();
+        mediaToCheck = 0
+        for (map in typeMediumSavedEpisodes.values) {
+            mediaToCheck += map.size
         }
-
-        this.checkedCount = 0;
-        this.updateNotificationContentText();
-
-        for (Map.Entry<Integer, Map<Integer, Set<Integer>>> entry : typeMediumSavedEpisodes.entrySet()) {
-            Integer mediumType = entry.getKey();
-            ContentTool tool = FileTools.getContentTool(mediumType, application);
-            checkLocalContentFiles(tool, repository, entry.getValue());
-            notificationManager.notify(checkLocalNotificationId, builder.build());
+        checkedCount = 0
+        updateNotificationContentText()
+        for ((mediumType, value) in typeMediumSavedEpisodes) {
+            val tool = FileTools.getContentTool(mediumType, application)
+            checkLocalContentFiles(tool, repository, value)
+            notificationManager!!.notify(checkLocalNotificationId, builder!!.build())
         }
-
         try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.sleep(10000)
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
         }
-        notificationManager.cancel(checkLocalNotificationId);
-        return Result.success();
+        notificationManager!!.cancel(checkLocalNotificationId)
+        return Result.success()
     }
 
-    private void checkLocalContentFiles(ContentTool tool, Repository repository, Map<Integer, Set<Integer>> mediumSavedEpisodes) {
-        for (Map.Entry<Integer, Set<Integer>> entry : mediumSavedEpisodes.entrySet()) {
-            List<Integer> savedEpisodes = repository.getSavedEpisodes(entry.getKey());
+    private fun checkLocalContentFiles(
+        tool: ContentTool,
+        repository: Repository,
+        mediumSavedEpisodes: Map<Int, MutableSet<Int>>
+    ) {
+        for ((key, looseIds) in mediumSavedEpisodes) {
+            val savedEpisodes = repository.getSavedEpisodes(key)
+            val unSavedIds: MutableSet<Int> = HashSet(savedEpisodes)
+            unSavedIds.removeAll(looseIds)
+            looseIds.removeAll(savedEpisodes)
 
-            Set<Integer> unSavedIds = new HashSet<>(savedEpisodes);
-            unSavedIds.removeAll(entry.getValue());
-
-            Set<Integer> looseIds = entry.getValue();
-            looseIds.removeAll(savedEpisodes);
-
-            if (!unSavedIds.isEmpty()) {
-                repository.updateSaved(unSavedIds, false);
-                this.correctedSaveState += unSavedIds.size();
+            if (unSavedIds.isNotEmpty()) {
+                repository.updateSaved(unSavedIds, false)
+                correctedSaveState += unSavedIds.size
             }
 
-            if (!looseIds.isEmpty()) {
+            if (looseIds.isNotEmpty()) {
                 try {
-                    tool.removeMediaEpisodes(entry.getKey(), looseIds);
-                    this.clearedLooseEpisodes += looseIds.size();
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    tool.removeMediaEpisodes(key, looseIds)
+                    clearedLooseEpisodes += looseIds.size
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
-            this.checkedCount++;
-            updateNotificationContentText();
+            checkedCount++
+            updateNotificationContentText()
         }
     }
 
-    private void updateNotificationContentText() {
-        builder.setContentTitle(String.format(
+    private fun updateNotificationContentText() {
+        builder!!.setContentTitle(
+            String.format(
                 "Checking Local Content Integrity [%s/%s]",
-                this.checkedCount,
-                this.mediaToCheck
-        ));
-        this.builder.setStyle(new NotificationCompat.InboxStyle()
-                .addLine(String.format("Corrected Save State: %s", this.correctedSaveState))
-                .addLine(String.format("Cleared Loose Episodes: %s", this.clearedLooseEpisodes))
-        );
-        this.notificationManager.notify(this.checkLocalNotificationId, this.builder.build());
+                checkedCount,
+                mediaToCheck
+            )
+        )
+        builder!!.setStyle(
+            NotificationCompat.InboxStyle()
+                .addLine(String.format("Corrected Save State: %s", correctedSaveState))
+                .addLine(String.format("Cleared Loose Episodes: %s", clearedLooseEpisodes))
+        )
+        notificationManager!!.notify(checkLocalNotificationId, builder!!.build())
     }
 
-    private void putItemContainer(ContentTool bookTool, Map<Integer, Set<Integer>> mediumSavedEpisodes, boolean externalSpace, Repository repository) {
-        for (Map.Entry<Integer, File> entry : bookTool.getItemContainers(externalSpace).entrySet()) {
-            Map<Integer, String> episodePaths = bookTool.getEpisodePaths(entry.getValue().getAbsolutePath());
-            Set<Integer> episodeIds = new HashSet<>(episodePaths.keySet());
-
-            mediumSavedEpisodes.merge(entry.getKey(), episodeIds, (integers, integers2) -> {
-                integers.addAll(integers2);
-                return integers;
-            });
+    private fun putItemContainer(
+        bookTool: ContentTool,
+        mediumSavedEpisodes: MutableMap<Int, MutableSet<Int>>,
+        externalSpace: Boolean,
+        repository: Repository
+    ) {
+        for ((key, value) in bookTool.getItemContainers(externalSpace)) {
+            val episodePaths = bookTool.getEpisodePaths(value.absolutePath)
+            val episodeIds: MutableSet<Int> = HashSet(episodePaths.keys)
+            mediumSavedEpisodes.merge(
+                key,
+                episodeIds
+            ) { integers: MutableSet<Int>, integers2: Set<Int>? ->
+                integers.addAll(
+                    integers2!!
+                )
+                integers
+            }
         }
-        List<ToDownload> toDownloadList = repository.getToDownload();
-
-        List<Integer> prohibitedMedia = new ArrayList<>();
-        Set<Integer> toDownloadMedia = new HashSet<>();
-
-        for (ToDownload toDownload : toDownloadList) {
-            if (toDownload.getMediumId() != null) {
-                if (toDownload.isProhibited()) {
-                    prohibitedMedia.add(toDownload.getMediumId());
+        val toDownloadList = repository.toDownload
+        val prohibitedMedia: MutableList<Int> = ArrayList()
+        val toDownloadMedia: MutableSet<Int> = HashSet()
+        for (toDownload in toDownloadList) {
+            if (toDownload.mediumId != null) {
+                if (toDownload.isProhibited) {
+                    prohibitedMedia.add(toDownload.mediumId)
                 } else {
-                    toDownloadMedia.add(toDownload.getMediumId());
+                    toDownloadMedia.add(toDownload.mediumId)
                 }
             }
-
-            if (toDownload.getExternalListId() != null) {
-                toDownloadMedia.addAll(repository.getExternalListItems(toDownload.getExternalListId()));
+            if (toDownload.externalListId != null) {
+                toDownloadMedia.addAll(repository.getExternalListItems(toDownload.externalListId))
             }
-
-            if (toDownload.getListId() != null) {
-                toDownloadMedia.addAll(repository.getListItems(toDownload.getListId()));
+            if (toDownload.listId != null) {
+                toDownloadMedia.addAll(repository.getListItems(toDownload.listId))
             }
         }
-
-        toDownloadMedia.removeAll(prohibitedMedia);
-
-        for (Integer mediumId : toDownloadMedia) {
-            mediumSavedEpisodes.putIfAbsent(mediumId, new HashSet<>());
+        toDownloadMedia.removeAll(prohibitedMedia)
+        for (mediumId in toDownloadMedia) {
+            mediumSavedEpisodes.putIfAbsent(mediumId, HashSet())
         }
+    }
+
+    companion object {
+        const val CHECK_SAVED_WORKER = "CHECK_SAVED_WORKER"
+
+        // TODO: 08.08.2019 use this for sdk >= 28
+        const val CHANNEL_ID = "CHECK_SAVED_WORKER"
+        @JvmStatic
+        fun checkLocal(context: Context?) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.UNMETERED)
+                .build()
+            WorkManager.getInstance(context!!)
+                .beginWith(workRequest)
+                .then(
+                    OneTimeWorkRequest.Builder(DownloadWorker::class.java)
+                        .setConstraints(constraints).build()
+                )
+                .enqueue()
+        }
+
+        val workRequest: OneTimeWorkRequest
+            get() = OneTimeWorkRequest.Builder(CheckSavedWorker::class.java).build()
     }
 }

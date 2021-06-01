@@ -7,7 +7,7 @@ import retrofit2.http.*
 
 internal interface PartApi {
     @GET
-    fun getPart(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientPart>>
+    fun getPart(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<MutableList<ClientPart>>
 
     @GET("{start}/items")
     fun getPartItems(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<Map<String, List<Int>>>

@@ -1,21 +1,19 @@
-package com.mytlogos.enterprise.worker;
+package com.mytlogos.enterprise.worker
 
-import android.app.Application;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
+import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
 
-import com.mytlogos.enterprise.background.RepositoryImpl;
-
-public class DateChangeReceiver extends BroadcastReceiver {
-    @Override
-    public void onReceive(Context context, Intent intent) {
-        if (Intent.ACTION_DATE_CHANGED.equals(intent.getAction())) {
-            if (!(context instanceof Application)) {
-                System.out.println("Context not instance of Application");
-                return;
+class DateChangeReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (Intent.ACTION_DATE_CHANGED == intent.action) {
+            if (context !is Application) {
+                println("Context not instance of Application")
+                return
             }
-            RepositoryImpl.Companion.getInstance((Application) context).removeOldNews();
+            getInstance(context).removeOldNews()
         }
     }
 }

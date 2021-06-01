@@ -610,7 +610,7 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: GET /api/user/medium/part
      */
     @Throws(IOException::class)
-    fun getParts(mediumId: Int): Response<List<ClientPart>> {
+    fun getParts(mediumId: Int): Response<MutableList<ClientPart>> {
         val body = userAuthenticationMap()
         body["mediumId"] = mediumId
         return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPart(url, body) }
@@ -621,7 +621,7 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: GET /api/user/medium/part
      */
     @Throws(IOException::class)
-    fun getParts(partIds: Collection<Int?>?): Response<List<ClientPart>> {
+    fun getParts(partIds: Collection<Int>): Response<MutableList<ClientPart>> {
         val body = userAuthenticationMap()
         body["partId"] = partIds
         return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPart(url, body) }
@@ -700,7 +700,7 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: GET /api/user/medium/part/episode
      */
     @Throws(IOException::class)
-    fun getEpisodes(episodeIds: Collection<Int?>?): Response<List<ClientEpisode>> {
+    fun getEpisodes(episodeIds: Collection<Int>): Response<MutableList<ClientEpisode>> {
         val body = userAuthenticationMap()
         body["episodeId"] = episodeIds
         return query(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.getEpisodes(url, body) }

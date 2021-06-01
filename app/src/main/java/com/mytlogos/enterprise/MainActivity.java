@@ -240,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements
                 selected = true;
                 break;
             case R.id.download_now:
-                DownloadWorker.enqueueDownloadTask(this.getApplication());
+                DownloadWorker.Companion.enqueueDownloadTask(this.getApplication());
                 selected = true;
                 break;
             case R.id.stop_download_now:

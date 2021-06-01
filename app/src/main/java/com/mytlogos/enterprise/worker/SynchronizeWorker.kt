@@ -1,734 +1,725 @@
-package com.mytlogos.enterprise.worker;
+package com.mytlogos.enterprise.worker
 
-import android.annotation.SuppressLint;
-import android.app.Application;
-import android.content.Context;
-import android.util.Log;
+import android.annotation.SuppressLint
+import android.app.Application
+import android.content.Context
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.work.*
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.background.*
+import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
+import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
+import com.mytlogos.enterprise.background.api.Client
+import com.mytlogos.enterprise.background.api.NotConnectedException
+import com.mytlogos.enterprise.background.api.ServerException
+import com.mytlogos.enterprise.background.api.model.*
+import com.mytlogos.enterprise.model.Toc
+import com.mytlogos.enterprise.preferences.UserPreferences
+import com.mytlogos.enterprise.tools.*
+import org.joda.time.DateTime
+import java.io.IOException
+import java.util.*
+import java.util.concurrent.ExecutionException
+import java.util.function.Consumer
+import java.util.stream.Collectors
 
-import androidx.annotation.NonNull;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.work.Constraints;
-import androidx.work.ExistingWorkPolicy;
-import androidx.work.NetworkType;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkInfo;
-import androidx.work.WorkManager;
-import androidx.work.Worker;
-import androidx.work.WorkerParameters;
-
-import com.google.common.util.concurrent.ListenableFuture;
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.background.ClientModelPersister;
-import com.mytlogos.enterprise.background.ReloadStat;
-import com.mytlogos.enterprise.background.Repository;
-import com.mytlogos.enterprise.background.RepositoryImpl;
-import com.mytlogos.enterprise.background.SimpleToc;
-import com.mytlogos.enterprise.background.api.Client;
-import com.mytlogos.enterprise.background.api.NotConnectedException;
-import com.mytlogos.enterprise.background.api.ServerException;
-import com.mytlogos.enterprise.background.api.model.ClientChangedEntities;
-import com.mytlogos.enterprise.background.api.model.ClientEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientEpisodePure;
-import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
-import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientExternalMediaListPure;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientMedium;
-import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
-import com.mytlogos.enterprise.background.api.model.ClientPart;
-import com.mytlogos.enterprise.background.api.model.ClientPartPure;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
-import com.mytlogos.enterprise.background.api.model.ClientStat;
-import com.mytlogos.enterprise.background.api.model.ClientToc;
-import com.mytlogos.enterprise.model.Toc;
-import com.mytlogos.enterprise.preferences.UserPreferences;
-import com.mytlogos.enterprise.tools.Utils;
-
-import org.joda.time.DateTime;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
-import retrofit2.Response;
-
-public class SynchronizeWorker extends Worker {
-    static final String SYNCHRONIZE_WORKER = "SYNCHRONIZE_WORKER";
-    // TODO: 08.08.2019 use this for sdk >= 28
-    private static final String CHANNEL_ID = "SYNC_CHANNEL";
-    private NotificationManagerCompat notificationManager;
-    private NotificationCompat.Builder builder;
-    private final int syncNotificationId = 0x200;
-    private final Consumer<Integer> progressListener = progress -> {
-        if (this.builder == null || this.notificationManager == null) {
-            return;
+class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
+    Worker(context, workerParams) {
+    private var notificationManager: NotificationManagerCompat? = null
+    private var builder: NotificationCompat.Builder? = null
+    private val syncNotificationId = 0x200
+    private val progressListener = Consumer { progress: Int ->
+        if (builder == null || notificationManager == null) {
+            return@Consumer
         }
-        int totalWork = RepositoryImpl.getInstance().getLoadWorkerTotalWork();
-        builder.setProgress(totalWork, progress, totalWork < 0);
-
-        notificationManager.notify(syncNotificationId, builder.build());
-    };
-    private final Consumer<Integer> totalWorkListener = totalWork -> {
-        if (this.builder == null || this.notificationManager == null) {
-            return;
-        }
-
-        int progress = RepositoryImpl.getInstance().getLoadWorkerProgress();
-        builder.setProgress(totalWork, progress, totalWork < 0);
-
-        notificationManager.notify(syncNotificationId, builder.build());
-    };
-    private static volatile UUID uuid;
-    private int mediaAddedOrUpdated = 0;
-    private int partAddedOrUpdated = 0;
-    private int episodesAddedOrUpdated = 0;
-    private int releasesAddedOrUpdated = 0;
-    private int listsAddedOrUpdated = 0;
-    private int externalUserAddedOrUpdated = 0;
-    private int externalListAddedOrUpdated = 0;
-    private int newsAddedOrUpdated = 0;
-    private int mediaInWaitAddedOrUpdated = 0;
-    private int totalAddedOrUpdated = 0;
-
-    public SynchronizeWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
-        super(context, workerParams);
-        uuid = this.getId();
+        val totalWork = instance.loadWorkerTotalWork
+        builder!!.setProgress(totalWork, progress, totalWork < 0)
+        notificationManager!!.notify(syncNotificationId, builder!!.build())
     }
-
-    public static void enqueueOneTime(Context context) {
-        Constraints constraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.UNMETERED)
-                .build();
-
-        OneTimeWorkRequest workRequest = new OneTimeWorkRequest
-                .Builder(SynchronizeWorker.class)
-                .setConstraints(constraints)
-                .build();
-
-        WorkManager.getInstance(context)
-                .beginUniqueWork(SYNCHRONIZE_WORKER, ExistingWorkPolicy.REPLACE, workRequest)
-                .enqueue();
-    }
-
-    public static void stopWorker(Application application) {
-        if (uuid == null) {
-            return;
+    private val totalWorkListener = Consumer { totalWork: Int ->
+        if (builder == null || notificationManager == null) {
+            return@Consumer
         }
-        WorkManager.getInstance(application).cancelWorkById(uuid);
+        val progress = instance.loadWorkerProgress
+        builder!!.setProgress(totalWork, progress, totalWork < 0)
+        notificationManager!!.notify(syncNotificationId, builder!!.build())
     }
+    private var mediaAddedOrUpdated = 0
+    private var partAddedOrUpdated = 0
+    private var episodesAddedOrUpdated = 0
+    private var releasesAddedOrUpdated = 0
+    private var listsAddedOrUpdated = 0
+    private var externalUserAddedOrUpdated = 0
+    private var externalListAddedOrUpdated = 0
+    private var newsAddedOrUpdated = 0
+    private var mediaInWaitAddedOrUpdated = 0
+    private var totalAddedOrUpdated = 0
 
-    public static boolean isRunning(Application application) {
-        if (uuid == null) {
-            return false;
+    override fun doWork(): Result {
+        if (this.applicationContext !is Application) {
+            println("Context not instance of Application")
+            return Result.failure()
         }
-        ListenableFuture<WorkInfo> infoFuture = WorkManager.getInstance(application).getWorkInfoById(uuid);
+        val application = this.applicationContext as Application
+        UserPreferences.init(application)
         try {
-            return infoFuture.get().getState() == WorkInfo.State.RUNNING;
-        } catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    @NonNull
-    @Override
-    public Result doWork() {
-        if (!(this.getApplicationContext() instanceof Application)) {
-            System.out.println("Context not instance of Application");
-            return Result.failure();
-        }
-        Application application = (Application) this.getApplicationContext();
-
-        UserPreferences.init(application);
-
-        try {
-            Repository repository = RepositoryImpl.Companion.getInstance(application);
-
-            if (!repository.isClientAuthenticated()) {
-                cleanUp();
-                return Result.retry();
+            val repository = getInstance(application)
+            if (!repository.isClientAuthenticated) {
+                cleanUp()
+                return Result.retry()
             }
-            this.notificationManager = NotificationManagerCompat.from(this.getApplicationContext());
-            this.builder = new NotificationCompat.Builder(this.getApplicationContext(), CHANNEL_ID);
-            this.builder
-                    .setContentTitle("Start Synchronizing")
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-
-            this.notificationManager.notify(this.syncNotificationId, this.builder.build());
-//            if (syncWithInvalidation(repository)) return this.stopSynchronize();
-            syncWithTime(repository);
-
-            StringBuilder builder = new StringBuilder("Added or Updated:\n");
-            append(builder, "Media: ", this.mediaAddedOrUpdated);
-            append(builder, "Parts: ", this.partAddedOrUpdated);
-            append(builder, "Episodes: ", this.episodesAddedOrUpdated);
-            append(builder, "Releases: ", this.releasesAddedOrUpdated);
-            append(builder, "MediaLists: ", this.listsAddedOrUpdated);
-            append(builder, "ExternalUser: ", this.externalUserAddedOrUpdated);
-            append(builder, "ExternalLists: ", this.externalListAddedOrUpdated);
-            append(builder, "News: ", this.newsAddedOrUpdated);
-            append(builder, "MediaInWait: ", this.mediaInWaitAddedOrUpdated);
-            notify("Synchronization complete", builder.toString(), this.totalAddedOrUpdated, true);
-        } catch (Exception e) {
-            String contentText;
-            if (e instanceof IOException) {
-                if (e instanceof NotConnectedException) {
-                    contentText = "Not connected with Server";
-                } else if (e instanceof ServerException) {
-                    contentText = "Response with Error Message";
-                } else {
-                    contentText = "Error between App and Server";
+            notificationManager = NotificationManagerCompat.from(this.applicationContext)
+            builder = NotificationCompat.Builder(this.applicationContext, CHANNEL_ID)
+            builder!!
+                .setContentTitle("Start Synchronizing")
+                .setSmallIcon(R.mipmap.ic_launcher).priority = NotificationCompat.PRIORITY_DEFAULT
+            notificationManager!!.notify(syncNotificationId, builder!!.build())
+            //            if (syncWithInvalidation(repository)) return this.stopSynchronize();
+            syncWithTime(repository)
+            val builder = StringBuilder("Added or Updated:\n")
+            append(builder, "Media: ", mediaAddedOrUpdated)
+            append(builder, "Parts: ", partAddedOrUpdated)
+            append(builder, "Episodes: ", episodesAddedOrUpdated)
+            append(builder, "Releases: ", releasesAddedOrUpdated)
+            append(builder, "MediaLists: ", listsAddedOrUpdated)
+            append(builder, "ExternalUser: ", externalUserAddedOrUpdated)
+            append(builder, "ExternalLists: ", externalListAddedOrUpdated)
+            append(builder, "News: ", newsAddedOrUpdated)
+            append(builder, "MediaInWait: ", mediaInWaitAddedOrUpdated)
+            notify("Synchronization complete", builder.toString(), totalAddedOrUpdated, true)
+        } catch (e: Exception) {
+            val contentText: String = when (e) {
+                is IOException -> {
+                    when (e) {
+                        is NotConnectedException -> {
+                            "Not connected with Server"
+                        }
+                        is ServerException -> {
+                            "Response with Error Message"
+                        }
+                        else -> {
+                            "Error between App and Server"
+                        }
+                    }
                 }
-            } else {
-                contentText = "Local Error";
+                else -> {
+                    "Local Error"
+                }
             }
-            e.printStackTrace();
-
-            StringBuilder builder = new StringBuilder("Added or Updated:\n");
-            append(builder, "Media: ", this.mediaAddedOrUpdated);
-            append(builder, "Parts: ", this.partAddedOrUpdated);
-            append(builder, "Episodes: ", this.episodesAddedOrUpdated);
-            append(builder, "Releases: ", this.releasesAddedOrUpdated);
-            append(builder, "MediaLists: ", this.listsAddedOrUpdated);
-            append(builder, "ExternalUser: ", this.externalUserAddedOrUpdated);
-            append(builder, "ExternalLists: ", this.externalListAddedOrUpdated);
-            append(builder, "News: ", this.newsAddedOrUpdated);
-            append(builder, "MediaInWait: ", this.mediaInWaitAddedOrUpdated);
-            notify(contentText, builder.toString(), 0, true);
-            cleanUp();
-            return Result.failure();
+            e.printStackTrace()
+            val builder = StringBuilder("Added or Updated:\n")
+            append(builder, "Media: ", mediaAddedOrUpdated)
+            append(builder, "Parts: ", partAddedOrUpdated)
+            append(builder, "Episodes: ", episodesAddedOrUpdated)
+            append(builder, "Releases: ", releasesAddedOrUpdated)
+            append(builder, "MediaLists: ", listsAddedOrUpdated)
+            append(builder, "ExternalUser: ", externalUserAddedOrUpdated)
+            append(builder, "ExternalLists: ", externalListAddedOrUpdated)
+            append(builder, "News: ", newsAddedOrUpdated)
+            append(builder, "MediaInWait: ", mediaInWaitAddedOrUpdated)
+            notify(contentText, builder.toString(), 0, true)
+            cleanUp()
+            return Result.failure()
         }
-        cleanUp();
-        return Result.success();
+        cleanUp()
+        return Result.success()
     }
 
-    private void notify(String title, String contentText, int finished, boolean changeContent) {
-        this.notify(title, contentText, changeContent, finished, finished);
+    private fun notify(title: String, contentText: String, finished: Int, changeContent: Boolean) {
+        this.notify(title, contentText, changeContent, finished, finished)
     }
 
-    private void notify(String title, String contentText, boolean changeContent, int current, int total) {
-        this.builder
-                .setContentTitle(title)
-                .setProgress(total, current, false);
+    private fun notify(
+        title: String,
+        contentText: String?,
+        changeContent: Boolean,
+        current: Int,
+        total: Int
+    ) {
+        builder!!
+            .setContentTitle(title)
+            .setProgress(total, current, false)
         if (changeContent) {
-            this.builder.setContentText(contentText);
+            builder!!.setContentText(contentText)
         }
-        this.notificationManager.notify(this.syncNotificationId, this.builder.build());
+        notificationManager!!.notify(syncNotificationId, builder!!.build())
     }
 
-    private void notify(String title, String contentText, boolean indeterminate, boolean changeContent) {
-        this.builder
-                .setContentTitle(title)
-                .setProgress(0, 0, indeterminate);
-
+    private fun notify(
+        title: String,
+        contentText: String?,
+        indeterminate: Boolean,
+        changeContent: Boolean
+    ) {
+        builder!!
+            .setContentTitle(title)
+            .setProgress(0, 0, indeterminate)
         if (changeContent) {
-            this.builder.setContentText(contentText);
+            builder!!.setContentText(contentText)
         }
-        this.notificationManager.notify(this.syncNotificationId, this.builder.build());
+        notificationManager!!.notify(syncNotificationId, builder!!.build())
     }
 
-    private boolean syncWithTime(Repository repository) throws IOException {
-        Client client = repository.getClient(this);
-        ClientModelPersister persister = repository.getPersister(this);
-
-        DateTime lastSync = UserPreferences.getLastSync();
-        syncChanged(lastSync, client, persister, repository);
-        UserPreferences.setLastSync(DateTime.now());
-        syncDeleted(client, persister, repository);
-        return false;
+    @Throws(IOException::class)
+    private fun syncWithTime(repository: Repository): Boolean {
+        val client = repository.getClient(this)
+        val persister = repository.getPersister(this)
+        val lastSync = UserPreferences.getLastSync()
+        syncChanged(lastSync, client, persister, repository)
+        UserPreferences.setLastSync(DateTime.now())
+        syncDeleted(client, persister, repository)
+        return false
     }
 
-    private <T> Map<Integer, T> mapStringToInt(Map<String, T> map) {
-        @SuppressLint("UseSparseArrays")
-        Map<Integer, T> result = new HashMap<>();
-
-        for (Map.Entry<String, T> entry : map.entrySet()) {
-            result.put(Integer.parseInt(entry.getKey()), entry.getValue());
+    private fun <T> mapStringToInt(map: Map<String, T>): MutableMap<Int, T> {
+        @SuppressLint("UseSparseArrays") val result: MutableMap<Int, T> = HashMap()
+        for ((key, value) in map) {
+            result[key.toInt()] = value
         }
-        return result;
+        return result
     }
 
-
-    private void syncChanged(DateTime lastSync, Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        this.notify("Requesting New Data", null, true, true);
-        Response<ClientChangedEntities> changedEntitiesResponse = client.getNew(lastSync);
-        ClientChangedEntities changedEntities = Utils.checkAndGetBody(changedEntitiesResponse);
-
-        int mediaSize = this.mediaAddedOrUpdated = changedEntities.media.size();
-        int partsSize = this.partAddedOrUpdated = changedEntities.parts.size();
-        int episodesSize = this.episodesAddedOrUpdated = changedEntities.episodes.size();
-        int releasesSize = this.releasesAddedOrUpdated = changedEntities.releases.size();
-        int listsSize = this.listsAddedOrUpdated = changedEntities.lists.size();
-        int extListSize = this.externalListAddedOrUpdated = changedEntities.extLists.size();
-        int extUserSize = this.externalUserAddedOrUpdated = changedEntities.extUser.size();
-        int newsSize = this.newsAddedOrUpdated = changedEntities.news.size();
-        int mediaInWaitSize = this.mediaInWaitAddedOrUpdated = changedEntities.mediaInWait.size();
-
-        int total = this.totalAddedOrUpdated = mediaSize + partsSize + episodesSize + releasesSize + listsSize
-                + extListSize + extUserSize + newsSize + mediaInWaitSize;
-
-        StringBuilder builder = new StringBuilder();
-        append(builder, "Media: ", mediaSize);
-        append(builder, "Parts: ", partsSize);
-        append(builder, "Episodes: ", episodesSize);
-        append(builder, "Releases: ", releasesSize);
-        append(builder, "MediaLists: ", listsSize);
-        append(builder, "ExternalUser: ", extUserSize);
-        append(builder, "ExternalLists: ", extListSize);
-        append(builder, "News: ", newsSize);
-        append(builder, "MediaInWait: ", mediaInWaitSize);
-        int current = 0;
-        this.notify("Received New Data", builder.toString(), true, current, total);
-
-        this.notify("Persisting Media", null, false, current, total);
+    @Throws(IOException::class)
+    private fun syncChanged(
+        lastSync: DateTime,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        this.notify("Requesting New Data", null, indeterminate = true, changeContent = true)
+        val changedEntitiesResponse = client.getNew(lastSync)
+        val changedEntities = Utils.checkAndGetBody(changedEntitiesResponse)
+        mediaAddedOrUpdated = changedEntities.media.size
+        val mediaSize = mediaAddedOrUpdated
+        partAddedOrUpdated = changedEntities.parts.size
+        val partsSize = partAddedOrUpdated
+        episodesAddedOrUpdated = changedEntities.episodes.size
+        val episodesSize = episodesAddedOrUpdated
+        releasesAddedOrUpdated = changedEntities.releases.size
+        val releasesSize = releasesAddedOrUpdated
+        listsAddedOrUpdated = changedEntities.lists.size
+        val listsSize = listsAddedOrUpdated
+        externalListAddedOrUpdated = changedEntities.extLists.size
+        val extListSize = externalListAddedOrUpdated
+        externalUserAddedOrUpdated = changedEntities.extUser.size
+        val extUserSize = externalUserAddedOrUpdated
+        newsAddedOrUpdated = changedEntities.news.size
+        val newsSize = newsAddedOrUpdated
+        mediaInWaitAddedOrUpdated = changedEntities.mediaInWait.size
+        val mediaInWaitSize = mediaInWaitAddedOrUpdated
+        totalAddedOrUpdated = (mediaSize + partsSize + episodesSize + releasesSize + listsSize
+                + extListSize + extUserSize + newsSize + mediaInWaitSize)
+        val total = totalAddedOrUpdated
+        val builder = StringBuilder()
+        append(builder, "Media: ", mediaSize)
+        append(builder, "Parts: ", partsSize)
+        append(builder, "Episodes: ", episodesSize)
+        append(builder, "Releases: ", releasesSize)
+        append(builder, "MediaLists: ", listsSize)
+        append(builder, "ExternalUser: ", extUserSize)
+        append(builder, "ExternalLists: ", extListSize)
+        append(builder, "News: ", newsSize)
+        append(builder, "MediaInWait: ", mediaInWaitSize)
+        var current = 0
+        this.notify("Received New Data", builder.toString(), true, current, total)
+        this.notify("Persisting Media", null, false, current, total)
         // persist all new or updated entities, media to releases needs to be in this order
-        persister.persistMedia(changedEntities.media);
-        current += mediaSize;
-        changedEntities.media.clear();
-
-        this.notify("Persisting Parts", null, false, current, total);
-        this.persistPartsPure(changedEntities.parts, client, persister, repository);
-        current += partsSize;
-        changedEntities.parts.clear();
-
-        this.notify("Persisting Episodes", null, false, current, total);
-        this.persistEpisodesPure(changedEntities.episodes, client, persister, repository);
-        current += episodesSize;
-        changedEntities.episodes.clear();
-
-        this.notify("Persisting Releases", null, false, current, total);
-        this.persistReleases(changedEntities.releases, client, persister, repository);
-        current += releasesSize;
-        changedEntities.releases.clear();
-
-        this.notify("Persisting Lists", null, false, current, total);
-        persister.persistUserLists(changedEntities.lists);
-        current += listsSize;
-        changedEntities.lists.clear();
-
-        this.notify("Persisting ExternalUser", null, false, current, total);
-        persister.persistExternalUsersPure(changedEntities.extUser);
-        current += extUserSize;
-        changedEntities.extUser.clear();
-
-        this.notify("Persisting External Lists", null, false, current, total);
-        this.persistExternalListsPure(changedEntities.extLists, client, persister, repository);
-        current += extListSize;
-        changedEntities.extLists.clear();
-
-        this.notify("Persisting unused Media", null, false, current, total);
-        persister.persistMediaInWait(changedEntities.mediaInWait);
-        current += mediaInWaitSize;
-        changedEntities.media.clear();
-
-        this.notify("Persisting News", null, false, current, total);
-        persister.persistNews(changedEntities.news);
-        current += newsSize;
-        changedEntities.news.clear();
-        this.notify("Saved all Changes", null, false, current, total);
+        persister.persistMedia(changedEntities.media)
+        current += mediaSize
+        changedEntities.media.clear()
+        this.notify("Persisting Parts", null, false, current, total)
+        persistPartsPure(changedEntities.parts, client, persister, repository)
+        current += partsSize
+        changedEntities.parts.clear()
+        this.notify("Persisting Episodes", null, false, current, total)
+        persistEpisodesPure(changedEntities.episodes, client, persister, repository)
+        current += episodesSize
+        changedEntities.episodes.clear()
+        this.notify("Persisting Releases", null, false, current, total)
+        persistReleases(changedEntities.releases, client, persister, repository)
+        current += releasesSize
+        changedEntities.releases.clear()
+        this.notify("Persisting Lists", null, false, current, total)
+        persister.persistUserLists(changedEntities.lists)
+        current += listsSize
+        changedEntities.lists.clear()
+        this.notify("Persisting ExternalUser", null, false, current, total)
+        persister.persistExternalUsersPure(changedEntities.extUser)
+        current += extUserSize
+        changedEntities.extUser.clear()
+        this.notify("Persisting External Lists", null, false, current, total)
+        persistExternalListsPure(changedEntities.extLists, client, persister, repository)
+        current += extListSize
+        changedEntities.extLists.clear()
+        this.notify("Persisting unused Media", null, false, current, total)
+        persister.persistMediaInWait(changedEntities.mediaInWait)
+        current += mediaInWaitSize
+        changedEntities.media.clear()
+        this.notify("Persisting News", null, false, current, total)
+        persister.persistNews(changedEntities.news)
+        current += newsSize
+        changedEntities.news.clear()
+        this.notify("Saved all Changes", null, false, current, total)
     }
 
-    private void append(StringBuilder builder, String prefix, int i) {
+    private fun append(builder: StringBuilder, prefix: String, i: Int) {
         if (i > 0) {
-            builder.append(prefix).append(i).append("\n");
+            builder.append(prefix).append(i).append("\n")
         }
     }
 
-    private void persistParts(List<ClientPart> parts, Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        Collection<Integer> missingIds = new HashSet<>();
-        Collection<ClientPart> loadingParts = new HashSet<>();
-
-        parts.removeIf(part -> {
-            if (!repository.isMediumLoaded(part.getMediumId())) {
-                missingIds.add(part.getMediumId());
-                loadingParts.add(part);
-                return true;
+    @Throws(IOException::class)
+    private fun persistParts(
+        parts: MutableList<ClientPart>,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        val missingIds: MutableCollection<Int?> = HashSet()
+        val loadingParts: MutableCollection<ClientPart> = HashSet()
+        parts.removeIf { part: ClientPart ->
+            if (!repository.isMediumLoaded(part.mediumId)) {
+                missingIds.add(part.mediumId)
+                loadingParts.add(part)
+                return@removeIf true
             }
-            return false;
-        });
-
-        persister.persistParts(parts);
+            false
+        }
+        persister.persistParts(parts)
         if (missingIds.isEmpty()) {
-            return;
+            return
         }
-        Utils.doPartitionedRethrow(missingIds, ids -> {
-            List<ClientMedium> parents = Utils.checkAndGetBody(client.getMedia(ids));
-            if (parents == null) {
-                throw new NullPointerException("missing Media");
-            }
-            List<ClientSimpleMedium> simpleMedia = parents.stream().map(ClientSimpleMedium::new).collect(Collectors.toList());
-            persister.persistMedia(simpleMedia);
-            return false;
-        });
-        persister.persistParts(loadingParts);
+        Utils.doPartitionedRethrow(missingIds) { ids: List<Int?>? ->
+            val parents = Utils.checkAndGetBody(client.getMedia(ids))
+                ?: throw NullPointerException("missing Media")
+            val simpleMedia = parents.stream().map { medium: ClientMedium? ->
+                ClientSimpleMedium(
+                    medium!!
+                )
+            }.collect(Collectors.toList())
+            persister.persistMedia(simpleMedia)
+            false
+        }
+        persister.persistParts(loadingParts)
     }
 
-    private void persistPartsPure(List<ClientPartPure> parts, Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        List<ClientPart> unPureParts = parts
-                .stream()
-                .map(part -> new ClientPart(
-                        part.getMediumId(),
-                        part.getId(),
-                        part.getTitle(),
-                        part.getTotalIndex(),
-                        part.getPartialIndex(),
-                        null
-                ))
-                .collect(Collectors.toList());
-        this.persistParts(unPureParts, client, persister, repository);
+    @Throws(IOException::class)
+    private fun persistPartsPure(
+        parts: List<ClientPartPure>,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        val unPureParts = parts
+            .stream()
+            .map { part: ClientPartPure ->
+                ClientPart(
+                    part.mediumId,
+                    part.id,
+                    part.title,
+                    part.totalIndex,
+                    part.partialIndex,
+                    null
+                )
+            }
+            .collect(Collectors.toList())
+        persistParts(unPureParts, client, persister, repository)
     }
 
-    private void persistEpisodes(List<ClientEpisode> episodes, Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        Collection<Integer> missingIds = new HashSet<>();
-        Collection<ClientEpisode> loading = new HashSet<>();
-
-        episodes.removeIf(value -> {
-            if (!repository.isPartLoaded(value.getPartId())) {
-                missingIds.add(value.getPartId());
-                loading.add(value);
-                return true;
+    @Throws(IOException::class)
+    private fun persistEpisodes(
+        episodes: MutableList<ClientEpisode>,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        val missingIds: MutableCollection<Int> = HashSet()
+        val loading: MutableCollection<ClientEpisode> = HashSet()
+        episodes.removeIf { value: ClientEpisode ->
+            if (!repository.isPartLoaded(value.partId)) {
+                missingIds.add(value.partId)
+                loading.add(value)
+                return@removeIf true
             }
-            return false;
-        });
-
-        persister.persistEpisodes(episodes);
+            false
+        }
+        persister.persistEpisodes(episodes)
         if (missingIds.isEmpty()) {
-            return;
+            return
         }
-        Utils.doPartitionedRethrow(missingIds, ids -> {
-            List<ClientPart> parents = Utils.checkAndGetBody(client.getParts(ids));
-            if (parents == null) {
-                throw new NullPointerException("missing Parts");
-            }
-            this.persistParts(parents, client, persister, repository);
-            return false;
-        });
-        persister.persistEpisodes(loading);
+        Utils.doPartitionedRethrow(missingIds) { ids: MutableList<Int> ->
+            val parents = Utils.checkAndGetBody(client.getParts(ids))
+                ?: throw NullPointerException("missing Parts")
+            persistParts(parents, client, persister, repository)
+            false
+        }
+        persister.persistEpisodes(loading)
     }
 
-    private void persistEpisodesPure(List<ClientEpisodePure> episodes, Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        List<ClientEpisode> unPure = episodes
-                .stream()
-                .map(part -> new ClientEpisode(
-                        part.getId(),
-                        part.getProgress(),
-                        part.getPartId(),
-                        part.getTotalIndex(),
-                        part.getPartialIndex(),
-                        part.getCombiIndex(),
-                        part.getReadDate(),
-                        new ClientEpisodeRelease[0]
-                ))
-                .collect(Collectors.toList());
-        this.persistEpisodes(unPure, client, persister, repository);
+    @Throws(IOException::class)
+    private fun persistEpisodesPure(
+        episodes: List<ClientEpisodePure>,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        val unPure = episodes
+            .stream()
+            .map { part: ClientEpisodePure ->
+                ClientEpisode(
+                    part.id,
+                    part.progress,
+                    part.partId,
+                    part.totalIndex,
+                    part.partialIndex,
+                    part.combiIndex,
+                    part.readDate,
+                    arrayOf()
+                )
+            }
+            .collect(Collectors.toList())
+        persistEpisodes(unPure, client, persister, repository)
     }
 
-    private void persistReleases(Collection<ClientRelease> releases, Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        Collection<Integer> missingIds = new HashSet<>();
-        Collection<ClientRelease> loading = new HashSet<>();
-
-        releases.removeIf(value -> {
-            if (!repository.isEpisodeLoaded(value.getEpisodeId())) {
-                missingIds.add(value.getEpisodeId());
-                loading.add(value);
-                return true;
+    @Throws(IOException::class)
+    private fun persistReleases(
+        releases: MutableCollection<ClientRelease>,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        val missingIds: MutableCollection<Int> = HashSet()
+        val loading: MutableCollection<ClientRelease> = HashSet()
+        releases.removeIf { value: ClientRelease ->
+            if (!repository.isEpisodeLoaded(value.episodeId)) {
+                missingIds.add(value.episodeId)
+                loading.add(value)
+                return@removeIf true
             }
-            return false;
-        });
-
-        persister.persistReleases(releases);
+            false
+        }
+        persister.persistReleases(releases)
         if (missingIds.isEmpty()) {
-            return;
+            return
         }
-        Utils.doPartitionedRethrow(missingIds, ids -> {
-            List<ClientEpisode> parents = Utils.checkAndGetBody(client.getEpisodes(ids));
-            if (parents == null) {
-                throw new NullPointerException("missing Episodes");
-            }
-            this.persistEpisodes(parents, client, persister, repository);
-            return false;
-        });
-        persister.persistReleases(loading);
+        Utils.doPartitionedRethrow(missingIds) { ids: List<Int> ->
+            val parents = Utils.checkAndGetBody(client.getEpisodes(ids))
+                ?: throw NullPointerException("missing Episodes")
+            persistEpisodes(parents, client, persister, repository)
+            false
+        }
+        persister.persistReleases(loading)
     }
-    private void persistExternalLists(List<ClientExternalMediaList> externalMediaLists, Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        Collection<String> missingIds = new HashSet<>();
-        Collection<ClientExternalMediaList> loading = new HashSet<>();
 
-        externalMediaLists.removeIf(value -> {
-            if (!repository.isExternalUserLoaded(value.getUuid())) {
-                missingIds.add(value.getUuid());
-                loading.add(value);
-                return true;
+    @Throws(IOException::class)
+    private fun persistExternalLists(
+        externalMediaLists: MutableList<ClientExternalMediaList>,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        val missingIds: MutableCollection<String?> = HashSet()
+        val loading: MutableCollection<ClientExternalMediaList> = HashSet()
+        externalMediaLists.removeIf { value: ClientExternalMediaList ->
+            if (!repository.isExternalUserLoaded(value.uuid)) {
+                missingIds.add(value.uuid)
+                loading.add(value)
+                return@removeIf true
             }
-            return false;
-        });
-
-        persister.persistExternalMediaLists(externalMediaLists);
+            false
+        }
+        persister.persistExternalMediaLists(externalMediaLists)
         if (missingIds.isEmpty()) {
-            return;
+            return
         }
-        Utils.doPartitionedRethrow(missingIds, ids -> {
-            List<ClientExternalUser> parents = Utils.checkAndGetBody(client.getExternalUser(ids));
+        Utils.doPartitionedRethrow(missingIds) { ids: List<String?>? ->
+            val parents = Utils.checkAndGetBody(client.getExternalUser(ids))
+                ?: throw NullPointerException("missing ExternalUser")
+            persister.persistExternalUsers(parents)
+            false
+        }
+        persister.persistExternalMediaLists(loading)
+    }
 
-            if (parents == null) {
-                throw new NullPointerException("missing ExternalUser");
+    @Throws(IOException::class)
+    private fun persistExternalListsPure(
+        externalMediaLists: List<ClientExternalMediaListPure>,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        val unPure = externalMediaLists
+            .stream()
+            .map { part: ClientExternalMediaListPure ->
+                ClientExternalMediaList(
+                    part.uuid,
+                    part.id,
+                    part.name,
+                    part.medium,
+                    part.url, IntArray(0)
+                )
             }
-            persister.persistExternalUsers(parents);
-            return false;
-        });
-        persister.persistExternalMediaLists(loading);
+            .collect(Collectors.toList())
+        persistExternalLists(unPure, client, persister, repository)
     }
 
-    private void persistExternalListsPure(List<ClientExternalMediaListPure> externalMediaLists, Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        List<ClientExternalMediaList> unPure = externalMediaLists
-                .stream()
-                .map(part -> new ClientExternalMediaList(
-                        part.getUuid(),
-                        part.getId(),
-                        part.getName(),
-                        part.getMedium(),
-                        part.getUrl(),
-                        new int[0]
-                ))
-                .collect(Collectors.toList());
-        this.persistExternalLists(unPure, client, persister, repository);
-    }
-
-    private void syncDeleted(Client client, ClientModelPersister persister, Repository repository) throws IOException {
-        notify("Synchronize Deleted Items", null, true, false);
-        ClientStat statBody = Utils.checkAndGetBody(client.getStats());
-
-        ClientStat.ParsedStat parsedStat = statBody.parse();
-        persister.persist(parsedStat);
-
-        ReloadStat reloadStat = repository.checkReload(parsedStat);
-
-        if (!reloadStat.getLoadMedium().isEmpty()) {
-            final List<ClientMedium> media = Utils.checkAndGetBody(client.getMedia(reloadStat.getLoadMedium()));
-            List<ClientSimpleMedium> simpleMedia = media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList());
-            persister.persistMedia(simpleMedia);
-
-            reloadStat = repository.checkReload(parsedStat);
+    @Throws(IOException::class)
+    private fun syncDeleted(
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository
+    ) {
+        notify("Synchronize Deleted Items", null, indeterminate = true, changeContent = false)
+        val statBody = Utils.checkAndGetBody(client.stats)
+        val parsedStat = statBody.parse()
+        persister.persist(parsedStat)
+        var reloadStat = repository.checkReload(parsedStat)
+        if (!reloadStat.loadMedium.isEmpty()) {
+            val media = Utils.checkAndGetBody(client.getMedia(reloadStat.loadMedium))
+            val simpleMedia = media.stream().map { medium: ClientMedium? ->
+                ClientSimpleMedium(
+                    medium!!
+                )
+            }.collect(Collectors.toList())
+            persister.persistMedia(simpleMedia)
+            reloadStat = repository.checkReload(parsedStat)
         }
-
-        if (!reloadStat.getLoadExUser().isEmpty()) {
-            final List<ClientExternalUser> users = Utils.checkAndGetBody(client.getExternalUser(reloadStat.getLoadExUser()));
-            persister.persistExternalUsers(users);
-
-            reloadStat = repository.checkReload(parsedStat);
+        if (!reloadStat.loadExUser.isEmpty()) {
+            val users = Utils.checkAndGetBody(client.getExternalUser(reloadStat.loadExUser))
+            persister.persistExternalUsers(users)
+            reloadStat = repository.checkReload(parsedStat)
         }
-
-        if (!reloadStat.getLoadLists().isEmpty()) {
-            final ClientMultiListQuery listQuery = Utils.checkAndGetBody(client.getLists(reloadStat.getLoadLists()));
-            persister.persist(listQuery);
-
-            reloadStat = repository.checkReload(parsedStat);
+        if (!reloadStat.loadLists.isEmpty()) {
+            val listQuery = Utils.checkAndGetBody(client.getLists(reloadStat.loadLists))
+            persister.persist(listQuery)
+            reloadStat = repository.checkReload(parsedStat)
         }
-
-        if (!reloadStat.getLoadPart().isEmpty()) {
-            Utils.doPartitionedRethrow(reloadStat.getLoadPart(), partIds -> {
-                final List<ClientPart> parts = Utils.checkAndGetBody(client.getParts(partIds));
-                persister.persistParts(parts);
-                return false;
-            });
-            reloadStat = repository.checkReload(parsedStat);
+        if (!reloadStat.loadPart.isEmpty()) {
+            Utils.doPartitionedRethrow(reloadStat.loadPart) { partIds: List<Int> ->
+                val parts = Utils.checkAndGetBody(client.getParts(partIds))
+                persister.persistParts(parts)
+                false
+            }
+            reloadStat = repository.checkReload(parsedStat)
         }
+        if (!reloadStat.loadPartEpisodes.isEmpty()) {
+            val partStringEpisodes =
+                Utils.checkAndGetBody(client.getPartEpisodes(reloadStat.loadPartEpisodes))
+            val partEpisodes: MutableMap<Int, List<Int>> = mapStringToInt(partStringEpisodes)
+            val missingEpisodes: MutableCollection<Int> = HashSet()
 
-        if (!reloadStat.getLoadPartEpisodes().isEmpty()) {
-            Map<String, List<Integer>> partStringEpisodes = Utils.checkAndGetBody(client.getPartEpisodes(reloadStat.getLoadPartEpisodes()));
-
-            Map<Integer, List<Integer>> partEpisodes = mapStringToInt(partStringEpisodes);
-
-            Collection<Integer> missingEpisodes = new HashSet<>();
-
-            for (Map.Entry<Integer, List<Integer>> entry : partEpisodes.entrySet()) {
-                for (Integer episodeId : entry.getValue()) {
+            for ((_, value) in partEpisodes) {
+                for (episodeId in value) {
                     if (!repository.isEpisodeLoaded(episodeId)) {
-                        missingEpisodes.add(episodeId);
+                        missingEpisodes.add(episodeId)
                     }
                 }
             }
+
             if (!missingEpisodes.isEmpty()) {
-                List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(missingEpisodes));
-                this.persistEpisodes(episodes, client, persister, repository);
+                val episodes = Utils.checkAndGetBody(
+                    client.getEpisodes(missingEpisodes)
+                )
+                persistEpisodes(episodes, client, persister, repository)
             }
-            Utils.doPartitionedRethrow(partEpisodes.keySet(), ids -> {
 
-                Map<Integer, List<Integer>> currentEpisodes = new HashMap<>();
-                for (Integer id : ids) {
-                    currentEpisodes.put(id, Objects.requireNonNull(partEpisodes.get(id)));
+            Utils.doPartitionedRethrow(partEpisodes.keys) { ids: List<Int> ->
+                val currentEpisodes: MutableMap<Int, List<Int>> = HashMap()
+                for (id in ids) {
+                    currentEpisodes[id] = partEpisodes[id] ?: throw IllegalStateException("Expected List not found")
                 }
-                persister.deleteLeftoverEpisodes(currentEpisodes);
-                return false;
-            });
-
-            reloadStat = repository.checkReload(parsedStat);
+                persister.deleteLeftoverEpisodes(currentEpisodes)
+                false
+            }
+            reloadStat = repository.checkReload(parsedStat)
         }
 
-
-        if (!reloadStat.getLoadPartReleases().isEmpty()) {
-            Response<Map<String, List<ClientSimpleRelease>>> partReleasesResponse = client.getPartReleases(reloadStat.getLoadPartReleases());
-
-            Map<String, List<ClientSimpleRelease>> partStringReleases = Utils.checkAndGetBody(partReleasesResponse);
-
-            Map<Integer, List<ClientSimpleRelease>> partReleases = mapStringToInt(partStringReleases);
-
-            Collection<Integer> missingEpisodes = new HashSet<>();
-
-            for (Map.Entry<Integer, List<ClientSimpleRelease>> entry : partReleases.entrySet()) {
-                for (ClientSimpleRelease release : entry.getValue()) {
-                    if (!repository.isEpisodeLoaded(release.getId())) {
-                        missingEpisodes.add(release.getId());
+        if (!reloadStat.loadPartReleases.isEmpty()) {
+            val partReleasesResponse = client.getPartReleases(reloadStat.loadPartReleases)
+            val partStringReleases = Utils.checkAndGetBody(partReleasesResponse)
+            val partReleases = mapStringToInt(partStringReleases)
+            val missingEpisodes: MutableCollection<Int> = HashSet()
+            for ((_, value) in partReleases) {
+                for (release in value) {
+                    if (!repository.isEpisodeLoaded(release.id)) {
+                        missingEpisodes.add(release.id)
                     }
                 }
             }
             if (!missingEpisodes.isEmpty()) {
-                List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(missingEpisodes));
-                persistEpisodes(episodes, client, persister, repository);
+                val episodes = Utils.checkAndGetBody(
+                    client.getEpisodes(missingEpisodes)
+                )
+                persistEpisodes(episodes, client, persister, repository)
             }
-            Collection<Integer> episodesToLoad = persister.deleteLeftoverReleases(partReleases);
-
+            val episodesToLoad: Collection<Int> = persister.deleteLeftoverReleases(partReleases)
             if (!episodesToLoad.isEmpty()) {
-                Utils.doPartitionedRethrow(episodesToLoad, ids -> {
-                    List<ClientEpisode> episodes = Utils.checkAndGetBody(client.getEpisodes(ids));
-                    this.persistEpisodes(episodes, client, persister, repository);
-                    return false;
-                });
-            }
-
-            reloadStat = repository.checkReload(parsedStat);
-        }
-
-        if (!reloadStat.getLoadMediumTocs().isEmpty()) {
-            final Response<List<ClientToc>> mediumTocsResponse = client.getMediumTocs(reloadStat.getLoadMediumTocs());
-            final List<ClientToc> mediumTocs = Utils.checkAndGetBody(mediumTocsResponse);
-            Map<Integer, List<String>> mediaTocs = new HashMap<>();
-
-            for (ClientToc mediumToc : mediumTocs) {
-                mediaTocs.computeIfAbsent(mediumToc.getMediumId(), id -> new ArrayList<>()).add(mediumToc.getLink());
-            }
-            Utils.doPartitionedRethrow(mediaTocs.keySet(), mediaIds-> {
-                Map<Integer, List<String>> partitionedMediaTocs = new HashMap<>();
-
-                for (Integer mediaId : mediaIds) {
-                    partitionedMediaTocs.put(mediaId, Objects.requireNonNull(mediaTocs.get(mediaId)));
+                Utils.doPartitionedRethrow(episodesToLoad) { ids: List<Int> ->
+                    val episodes =
+                        Utils.checkAndGetBody(client.getEpisodes(ids))
+                    persistEpisodes(episodes, client, persister, repository)
+                    false
                 }
-                this.persistTocs(partitionedMediaTocs, persister);
-                persister.deleteLeftoverTocs(partitionedMediaTocs);
-                return false;
-            });
+            }
+            reloadStat = repository.checkReload(parsedStat)
+        }
+        if (!reloadStat.loadMediumTocs.isEmpty()) {
+            val mediumTocsResponse = client.getMediumTocs(reloadStat.loadMediumTocs)
+            val mediumTocs = Utils.checkAndGetBody(mediumTocsResponse)
+            val mediaTocs: MutableMap<Int, MutableList<String>> = HashMap()
+            for (mediumToc in mediumTocs) {
+                mediaTocs.computeIfAbsent(mediumToc.mediumId) { ArrayList() }
+                    .add(mediumToc.link)
+            }
+            Utils.doPartitionedRethrow(mediaTocs.keys) { mediaIds: List<Int> ->
+                val partitionedMediaTocs: MutableMap<Int, List<String>> = HashMap()
+                for (mediaId in mediaIds) {
+                    partitionedMediaTocs[mediaId] = Objects.requireNonNull<List<String>>(
+                        mediaTocs[mediaId]
+                    )
+                }
+                persistTocs(partitionedMediaTocs, persister)
+                persister.deleteLeftoverTocs(partitionedMediaTocs)
+                false
+            }
         }
 
         // as even now some errors crop up, just load all this shit and dump it in 100er steps
-        if (!reloadStat.getLoadPartEpisodes().isEmpty() || !reloadStat.getLoadPartReleases().isEmpty()) {
-            Collection<Integer> partsToLoad = new HashSet<>();
-            partsToLoad.addAll(reloadStat.getLoadPartEpisodes());
-            partsToLoad.addAll(reloadStat.getLoadPartReleases());
-
-            Utils.doPartitionedRethrow(partsToLoad, ids -> {
-                List<ClientPart> parts = Utils.checkAndGetBody(client.getParts(ids));
-
-                this.persistParts(parts, client, persister, repository);
-                return false;
-            });
-            reloadStat = repository.checkReload(parsedStat);
+        if (!reloadStat.loadPartEpisodes.isEmpty() || !reloadStat.loadPartReleases.isEmpty()) {
+            val partsToLoad: MutableCollection<Int> = HashSet()
+            partsToLoad.addAll(reloadStat.loadPartEpisodes)
+            partsToLoad.addAll(reloadStat.loadPartReleases)
+            Utils.doPartitionedRethrow(partsToLoad) { ids: List<Int> ->
+                val parts = Utils.checkAndGetBody(client.getParts(ids))
+                persistParts(parts, client, persister, repository)
+                false
+            }
+            reloadStat = repository.checkReload(parsedStat)
         }
-
-        if (!reloadStat.getLoadPartEpisodes().isEmpty()) {
-            @SuppressLint("DefaultLocale")
-            String msg = String.format(
-                    "Episodes of %d Parts to load even after running once",
-                    reloadStat.getLoadPartEpisodes().size()
-            );
-            System.out.println(msg);
-            Log.e("Repository", msg);
+        if (!reloadStat.loadPartEpisodes.isEmpty()) {
+            @SuppressLint("DefaultLocale") val msg = String.format(
+                "Episodes of %d Parts to load even after running once",
+                reloadStat.loadPartEpisodes.size
+            )
+            println(msg)
+            Log.e("Repository", msg)
         }
-
-        if (!reloadStat.getLoadPartReleases().isEmpty()) {
-            @SuppressLint("DefaultLocale")
-            String msg = String.format(
-                    "Releases of %d Parts to load even after running once",
-                    reloadStat.getLoadPartReleases().size()
-            );
-            System.out.println(msg);
-            Log.e("Repository", msg);
+        if (!reloadStat.loadPartReleases.isEmpty()) {
+            @SuppressLint("DefaultLocale") val msg = String.format(
+                "Releases of %d Parts to load even after running once",
+                reloadStat.loadPartReleases.size
+            )
+            println(msg)
+            Log.e("Repository", msg)
         }
     }
 
-    private void persistTocs(Map<Integer, List<String>> mediaTocs, ClientModelPersister persister) {
-        List<Toc> inserts = new LinkedList<>();
-
-        for (Map.Entry<Integer, List<String>> entry : mediaTocs.entrySet()) {
-            final int mediumId = entry.getKey();
-
-            for (String tocLink : entry.getValue()) {
-                inserts.add(new SimpleToc(mediumId, tocLink));
+    private fun persistTocs(mediaTocs: Map<Int, List<String>>, persister: ClientModelPersister) {
+        val inserts: MutableList<Toc> = LinkedList()
+        for ((mediumId, value) in mediaTocs) {
+            for (tocLink in value) {
+                inserts.add(SimpleToc(mediumId, tocLink))
             }
         }
-        persister.persistTocs(inserts);
+        persister.persistTocs(inserts)
     }
 
-    boolean syncWithInvalidation(Repository repository) throws IOException {
-        repository.syncUser();
-
-        if (this.isStopped()) {
-            return true;
+    @Throws(IOException::class)
+    fun syncWithInvalidation(repository: Repository): Boolean {
+        repository.syncUser()
+        if (this.isStopped) {
+            return true
         }
-
-        this.builder.setContentText("Updating Content data");
-        this.notificationManager.notify(this.syncNotificationId, this.builder.build());
-        repository.loadInvalidated();
-
-        if (this.isStopped()) {
-            return true;
+        builder!!.setContentText("Updating Content data")
+        notificationManager!!.notify(syncNotificationId, builder!!.build())
+        repository.loadInvalidated()
+        if (this.isStopped) {
+            return true
         }
-
-        this.builder.setContentText("Loading new Media");
-        this.notificationManager.notify(this.syncNotificationId, this.builder.build());
-        repository.loadAllMedia();
-        return false;
+        builder!!.setContentText("Loading new Media")
+        notificationManager!!.notify(syncNotificationId, builder!!.build())
+        repository.loadAllMedia()
+        return false
     }
 
-    private Result stopSynchronize() {
-        this.notificationManager.notify(
-                this.syncNotificationId,
-                this.builder
-                        .setContentTitle("Synchronization stopped")
-                        .setContentText(null)
-                        .build()
-        );
-        cleanUp();
-        return Result.failure();
+    private fun stopSynchronize(): Result {
+        notificationManager!!.notify(
+            syncNotificationId,
+            builder!!
+                .setContentTitle("Synchronization stopped")
+                .setContentText(null)
+                .build()
+        )
+        cleanUp()
+        return Result.failure()
     }
 
-    private void cleanUp() {
-        Repository repository = RepositoryImpl.getInstance();
-        repository.removeProgressListener(this.progressListener);
-        repository.removeTotalWorkListener(this.totalWorkListener);
-        repository.syncProgress();
+    private fun cleanUp() {
+        val repository = instance
+        repository.removeProgressListener(progressListener)
+        repository.removeTotalWorkListener(totalWorkListener)
+        repository.syncProgress()
         try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.sleep(10000)
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
         }
-        if (this.notificationManager != null) {
-            this.notificationManager.cancel(this.syncNotificationId);
+        if (notificationManager != null) {
+            notificationManager!!.cancel(syncNotificationId)
         }
-        uuid = null;
+        uuid = null
     }
 
+    companion object {
+        const val SYNCHRONIZE_WORKER = "SYNCHRONIZE_WORKER"
+
+        // TODO: 08.08.2019 use this for sdk >= 28
+        private const val CHANNEL_ID = "SYNC_CHANNEL"
+
+        @Volatile
+        private var uuid: UUID? = null
+
+        @JvmStatic
+        fun enqueueOneTime(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.UNMETERED)
+                .build()
+            val workRequest = OneTimeWorkRequest.Builder(SynchronizeWorker::class.java)
+                .setConstraints(constraints)
+                .build()
+            WorkManager.getInstance(context)
+                .beginUniqueWork(SYNCHRONIZE_WORKER, ExistingWorkPolicy.REPLACE, workRequest)
+                .enqueue()
+        }
+
+        fun stopWorker(application: Application) {
+            if (uuid == null) {
+                return
+            }
+            WorkManager.getInstance(application).cancelWorkById(uuid!!)
+        }
+
+        fun isRunning(application: Application): Boolean {
+            if (uuid == null) {
+                return false
+            }
+            val infoFuture = WorkManager.getInstance(
+                application
+            ).getWorkInfoById(uuid!!)
+            try {
+                return infoFuture.get()?.state == WorkInfo.State.RUNNING
+            } catch (e: ExecutionException) {
+                e.printStackTrace()
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            }
+            return false
+        }
+    }
+
+    init {
+        uuid = this.id
+    }
 }
