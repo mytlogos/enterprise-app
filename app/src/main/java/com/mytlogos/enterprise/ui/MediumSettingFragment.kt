@@ -1,301 +1,267 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.annotation.SuppressLint;
-import android.os.Bundle;
-import android.text.InputType;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.RadioButton;
-import android.widget.Switch;
-import android.widget.TextView;
+import android.annotation.SuppressLint
+import android.os.Bundle
+import android.text.InputType
+import android.view.*
+import android.view.inputmethod.EditorInfo
+import android.widget.*
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.ViewModelProvider
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.TimeAgo
+import com.mytlogos.enterprise.model.MediumSetting
+import com.mytlogos.enterprise.model.MediumSetting.MediumSettingBuilder
+import com.mytlogos.enterprise.model.MediumType
+import com.mytlogos.enterprise.model.MediumType.`is`
+import com.mytlogos.enterprise.model.ToDownload
+import com.mytlogos.enterprise.tools.FileTools.isAudioContentSupported
+import com.mytlogos.enterprise.tools.FileTools.isImageContentSupported
+import com.mytlogos.enterprise.tools.FileTools.isTextContentSupported
+import com.mytlogos.enterprise.tools.FileTools.isVideoContentSupported
+import com.mytlogos.enterprise.viewmodel.ListsViewModel
+import org.joda.time.DateTime
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModelProvider;
-
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.TimeAgo;
-import com.mytlogos.enterprise.model.MediumSetting;
-import com.mytlogos.enterprise.model.MediumType;
-import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.tools.FileTools;
-import com.mytlogos.enterprise.viewmodel.ListsViewModel;
-
-import org.joda.time.DateTime;
-
-public class MediumSettingFragment extends BaseFragment {
-    private ListsViewModel mediumViewModel;
-    private LiveData<MediumSetting> liveMediumSettings;
-    private Button openTocButton;
-    private EditText editName;
-    private RadioButton textMedium;
-    private RadioButton imageMedium;
-    private RadioButton videoMedium;
-    private RadioButton audioMedium;
-    private Switch autoDownload;
-    private TextView series;
-    private TextView universe;
-    private TextView currentRead;
-    private TextView lastEpisode;
-    private TextView lastUpdated;
-    private TextView average_release;
-    private TextView author;
-    private TextView artist;
-    private TextView stateTl;
-    private TextView stateOrigin;
-    private TextView countryOfOrigin;
-    private TextView languageOfOrigin;
-    private TextView lang;
-    private TextView additionalInfoBox;
-    private TextView releaseRateBox;
-    private View additionalInfoContainer;
-    private static final String ID = "mediumId";
-
-    static MediumSettingFragment newInstance(int id) {
-        MediumSettingFragment settings = new MediumSettingFragment();
-        Bundle bundle = new Bundle();
-        bundle.putInt(ID, id);
-        settings.setArguments(bundle);
-        return settings;
-    }
-
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.medium_settings, container, false);
-
-        Bundle arguments = this.getArguments();
-
-        if (arguments == null) {
-            return view;
-        }
-        int mediumId = arguments.getInt(ID);
-
-        this.mediumViewModel = new ViewModelProvider(this).get(ListsViewModel.class);
-        this.liveMediumSettings = mediumViewModel.getMediumSettings(mediumId);
-
-        this.liveMediumSettings.observe(getViewLifecycleOwner(), this::handleNewMediumSetting);
-
-        this.openTocButton = view.findViewById(R.id.open_items_button);
-        this.editName = view.findViewById(R.id.editName);
-        this.textMedium = view.findViewById(R.id.text_medium);
-        this.imageMedium = view.findViewById(R.id.image_medium);
-        this.videoMedium = view.findViewById(R.id.video_medium);
-        this.audioMedium = view.findViewById(R.id.audio_medium);
-        this.autoDownload = view.findViewById(R.id.auto_download);
-        this.series = view.findViewById(R.id.series);
-        this.universe = view.findViewById(R.id.universe);
-        this.currentRead = view.findViewById(R.id.currentRead);
-        this.lastEpisode = view.findViewById(R.id.lastEpisode);
-        this.lastUpdated = view.findViewById(R.id.lastUpdated);
-        this.average_release = view.findViewById(R.id.average_release);
-        this.author = view.findViewById(R.id.author);
-        this.artist = view.findViewById(R.id.artist);
-        this.stateTl = view.findViewById(R.id.stateTl);
-        this.stateOrigin = view.findViewById(R.id.stateOrigin);
-        this.countryOfOrigin = view.findViewById(R.id.countryOfOrigin);
-        this.languageOfOrigin = view.findViewById(R.id.languageOfOrigin);
-        this.lang = view.findViewById(R.id.lang);
-        this.additionalInfoBox = view.findViewById(R.id.additional_info_box);
-        this.additionalInfoContainer = view.findViewById(R.id.additional_info_container);
-        this.releaseRateBox = view.findViewById(R.id.release_rate_box);
-        this.checkSupportedMedia();
-
-
-        this.openTocButton.setOnClickListener(v -> {
-            if (this.mediumSettings() == null) {
-                return;
+class MediumSettingFragment : BaseFragment() {
+    private var mediumViewModel: ListsViewModel? = null
+    private var liveMediumSettings: LiveData<MediumSetting>? = null
+    private var openTocButton: Button? = null
+    private var editName: EditText? = null
+    private var textMedium: RadioButton? = null
+    private var imageMedium: RadioButton? = null
+    private var videoMedium: RadioButton? = null
+    private var audioMedium: RadioButton? = null
+    private var autoDownload: Switch? = null
+    private var series: TextView? = null
+    private var universe: TextView? = null
+    private var currentRead: TextView? = null
+    private var lastEpisode: TextView? = null
+    private var lastUpdated: TextView? = null
+    private var average_release: TextView? = null
+    private var author: TextView? = null
+    private var artist: TextView? = null
+    private var stateTl: TextView? = null
+    private var stateOrigin: TextView? = null
+    private var countryOfOrigin: TextView? = null
+    private var languageOfOrigin: TextView? = null
+    private var lang: TextView? = null
+    private var additionalInfoBox: TextView? = null
+    private var releaseRateBox: TextView? = null
+    private var additionalInfoContainer: View? = null
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.medium_settings, container, false)
+        val arguments = this.arguments ?: return view
+        val mediumId = arguments.getInt(ID)
+        mediumViewModel = ViewModelProvider(this).get(ListsViewModel::class.java)
+        liveMediumSettings = mediumViewModel!!.getMediumSettings(mediumId)
+        liveMediumSettings!!.observe(viewLifecycleOwner,
+            { mediumSetting: MediumSetting? -> handleNewMediumSetting(mediumSetting) })
+        openTocButton = view.findViewById(R.id.open_items_button)
+        editName = view.findViewById(R.id.editName)
+        textMedium = view.findViewById(R.id.text_medium)
+        imageMedium = view.findViewById(R.id.image_medium)
+        videoMedium = view.findViewById(R.id.video_medium)
+        audioMedium = view.findViewById(R.id.audio_medium)
+        autoDownload = view.findViewById(R.id.auto_download)
+        series = view.findViewById(R.id.series)
+        universe = view.findViewById(R.id.universe)
+        currentRead = view.findViewById(R.id.currentRead)
+        lastEpisode = view.findViewById(R.id.lastEpisode)
+        lastUpdated = view.findViewById(R.id.lastUpdated)
+        average_release = view.findViewById(R.id.average_release)
+        author = view.findViewById(R.id.author)
+        artist = view.findViewById(R.id.artist)
+        stateTl = view.findViewById(R.id.stateTl)
+        stateOrigin = view.findViewById(R.id.stateOrigin)
+        countryOfOrigin = view.findViewById(R.id.countryOfOrigin)
+        languageOfOrigin = view.findViewById(R.id.languageOfOrigin)
+        lang = view.findViewById(R.id.lang)
+        additionalInfoBox = view.findViewById(R.id.additional_info_box)
+        additionalInfoContainer = view.findViewById(R.id.additional_info_container)
+        releaseRateBox = view.findViewById(R.id.release_rate_box)
+        checkSupportedMedia()
+        openTocButton!!.setOnClickListener {
+            if (mediumSettings() == null) {
+                return@setOnClickListener
             }
-            this.getMainActivity().switchWindow(TocFragment.newInstance(mediumId), true);
-        });
-        this.additionalInfoBox.setOnClickListener(v -> toggleBox(this.additionalInfoContainer, this.additionalInfoBox));
-
-        this.editName.setOnEditorActionListener((v, actionId, event) -> handleEditorEvent(this.editName, actionId, event));
-
-        addMediumListener(this.textMedium, MediumType.TEXT);
-        addMediumListener(this.imageMedium, MediumType.IMAGE);
-        addMediumListener(this.videoMedium, MediumType.VIDEO);
-        addMediumListener(this.audioMedium, MediumType.AUDIO);
-
-        this.autoDownload.setOnCheckedChangeListener((buttonView, isChecked) -> handleAutoDownloadChanges(isChecked));
-        this.setTitle("Medium Settings");
-        return view;
+            this.mainActivity.switchWindow(TocFragment.newInstance(mediumId), true)
+        }
+        additionalInfoBox!!.setOnClickListener {
+            toggleBox(
+                additionalInfoContainer, additionalInfoBox)
+        }
+        editName!!.setOnEditorActionListener { _: TextView?, actionId: Int, event: KeyEvent? ->
+            handleEditorEvent(
+                editName, actionId, event)
+        }
+        addMediumListener(textMedium, MediumType.TEXT)
+        addMediumListener(imageMedium, MediumType.IMAGE)
+        addMediumListener(videoMedium, MediumType.VIDEO)
+        addMediumListener(audioMedium, MediumType.AUDIO)
+        autoDownload!!.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
+            handleAutoDownloadChanges(isChecked)
+        }
+        this.setTitle("Medium Settings")
+        return view
     }
 
-    private void toggleBox(View container, TextView box) {
-        int visibility;
-        int drawable;
-        if (container.getVisibility() == View.GONE) {
-            drawable = R.drawable.ic_minus_box_dark;
-            visibility = View.VISIBLE;
+    private fun toggleBox(container: View?, box: TextView?) {
+        val visibility: Int
+        val drawable: Int
+        if (container!!.visibility == View.GONE) {
+            drawable = R.drawable.ic_minus_box_dark
+            visibility = View.VISIBLE
         } else {
-            drawable = R.drawable.ic_plus_box_dark;
-            visibility = View.GONE;
+            drawable = R.drawable.ic_plus_box_dark
+            visibility = View.GONE
         }
-        container.setVisibility(visibility);
-        box.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, drawable, 0);
+        container.visibility = visibility
+        box!!.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, drawable, 0)
     }
 
-    private void checkSupportedMedia() {
-        this.autoDownload.setEnabled(
-                (this.textMedium.isChecked() && !FileTools.INSTANCE.isTextContentSupported())
-                        || (this.autoDownload.isChecked() && !FileTools.INSTANCE.isAudioContentSupported())
-                        || (this.imageMedium.isChecked() && !FileTools.INSTANCE.isImageContentSupported())
-                        || (this.videoMedium.isChecked() && !FileTools.INSTANCE.isVideoContentSupported())
-        );
+    private fun checkSupportedMedia() {
+        autoDownload!!.isEnabled = (textMedium!!.isChecked && !isTextContentSupported
+                || autoDownload!!.isChecked && !isAudioContentSupported
+                || imageMedium!!.isChecked && !isImageContentSupported
+                || videoMedium!!.isChecked && !isVideoContentSupported)
     }
 
-    private void handleAutoDownloadChanges(boolean isChecked) {
-        MediumSetting mediumSetting = this.mediumSettings();
-
-        if (mediumSetting == null) {
-            return;
-        }
-        if (mediumSetting.getToDownload() != isChecked) {
-            int settingMediumId = mediumSetting.getMediumId();
-
-            ToDownload toDownload = new ToDownload(false, settingMediumId, null, null);
-            this.mediumViewModel.updateToDownload(isChecked, toDownload);
+    private fun handleAutoDownloadChanges(isChecked: Boolean) {
+        val mediumSetting = mediumSettings() ?: return
+        if (mediumSetting.toDownload != isChecked) {
+            val settingMediumId = mediumSetting.mediumId
+            val toDownload = ToDownload(false, settingMediumId, null, null)
+            mediumViewModel!!.updateToDownload(isChecked, toDownload)
         }
     }
 
-    private MediumSetting mediumSettings() {
-        return this.liveMediumSettings.getValue();
+    private fun mediumSettings(): MediumSetting? {
+        return liveMediumSettings!!.value
     }
 
     @SuppressLint("SetTextI18n")
-    private void handleNewMediumSetting(MediumSetting mediumSetting) {
+    private fun handleNewMediumSetting(mediumSetting: MediumSetting?) {
         if (mediumSetting == null) {
-            this.openTocButton.setEnabled(false);
-            this.editName.setInputType(InputType.TYPE_NULL);
-
-            this.textMedium.setEnabled(false);
-            this.imageMedium.setEnabled(false);
-            this.videoMedium.setEnabled(false);
-            this.audioMedium.setEnabled(false);
-
-            this.autoDownload.setEnabled(false);
-
-            this.series.setText(R.string.not_available);
-            this.universe.setText(R.string.not_available);
-            this.currentRead.setText(R.string.not_available);
-            this.lastEpisode.setText(R.string.not_available);
-            this.lastUpdated.setText(R.string.not_available);
-            this.average_release.setText(R.string.not_available);
-            this.author.setText(R.string.not_available);
-            this.artist.setText(R.string.not_available);
-            this.stateTl.setText(R.string.not_available);
-            this.stateOrigin.setText(R.string.not_available);
-            this.countryOfOrigin.setText(R.string.not_available);
-            this.languageOfOrigin.setText(R.string.not_available);
-            this.lang.setText(R.string.not_available);
+            openTocButton!!.isEnabled = false
+            editName!!.inputType = InputType.TYPE_NULL
+            textMedium!!.isEnabled = false
+            imageMedium!!.isEnabled = false
+            videoMedium!!.isEnabled = false
+            audioMedium!!.isEnabled = false
+            autoDownload!!.isEnabled = false
+            series!!.setText(R.string.not_available)
+            universe!!.setText(R.string.not_available)
+            currentRead!!.setText(R.string.not_available)
+            lastEpisode!!.setText(R.string.not_available)
+            lastUpdated!!.setText(R.string.not_available)
+            average_release!!.setText(R.string.not_available)
+            author!!.setText(R.string.not_available)
+            artist!!.setText(R.string.not_available)
+            stateTl!!.setText(R.string.not_available)
+            stateOrigin!!.setText(R.string.not_available)
+            countryOfOrigin!!.setText(R.string.not_available)
+            languageOfOrigin!!.setText(R.string.not_available)
+            lang!!.setText(R.string.not_available)
         } else {
-            this.setTitle("Settings - " + mediumSetting.getTitle());
-            this.editName.setText(mediumSetting.getTitle());
-            this.editName.setInputType(InputType.TYPE_CLASS_TEXT);
-
-            this.textMedium.setChecked(MediumType.is(mediumSetting.getMedium(), MediumType.TEXT));
-            this.imageMedium.setChecked(MediumType.is(mediumSetting.getMedium(), MediumType.IMAGE));
-            this.videoMedium.setChecked(MediumType.is(mediumSetting.getMedium(), MediumType.VIDEO));
-            this.audioMedium.setChecked(MediumType.is(mediumSetting.getMedium(), MediumType.AUDIO));
-
-            this.autoDownload.setChecked(mediumSetting.getToDownload());
-
-            this.autoDownload.setEnabled(true);
-            this.textMedium.setEnabled(true);
-            this.imageMedium.setEnabled(true);
-            this.videoMedium.setEnabled(true);
-            this.audioMedium.setEnabled(true);
-
-
-            this.series.setText(this.defaultText(mediumSetting.getSeries()));
-            this.universe.setText(this.defaultText(mediumSetting.getUniverse()));
+            this.setTitle("Settings - " + mediumSetting.getTitle())
+            editName!!.setText(mediumSetting.getTitle())
+            editName!!.inputType = InputType.TYPE_CLASS_TEXT
+            textMedium!!.isChecked = `is`(mediumSetting.medium, MediumType.TEXT)
+            imageMedium!!.isChecked = `is`(mediumSetting.medium, MediumType.IMAGE)
+            videoMedium!!.isChecked = `is`(mediumSetting.medium, MediumType.VIDEO)
+            audioMedium!!.isChecked = `is`(mediumSetting.medium, MediumType.AUDIO)
+            autoDownload!!.isChecked = mediumSetting.toDownload
+            autoDownload!!.isEnabled = true
+            textMedium!!.isEnabled = true
+            imageMedium!!.isEnabled = true
+            videoMedium!!.isEnabled = true
+            audioMedium!!.isEnabled = true
+            series!!.text = defaultText(mediumSetting.getSeries())
+            universe!!.text = defaultText(mediumSetting.getUniverse())
             // TODO: 15.09.2019 check whether this id or index and change method name to reflect that
-            this.currentRead.setText(Integer.toString(mediumSetting.getCurrentReadEpisode()));
-            this.lastEpisode.setText(Integer.toString(mediumSetting.getLastEpisode()));
-            this.lastUpdated.setText(this.defaultText(TimeAgo.toRelative(mediumSetting.getLastUpdated(), DateTime.now())));
+            currentRead!!.text = Integer.toString(mediumSetting.currentReadEpisode)
+            lastEpisode!!.text = Integer.toString(mediumSetting.lastEpisode)
+            lastUpdated!!.text = defaultText(TimeAgo.toRelative(mediumSetting.getLastUpdated(),
+                DateTime.now()))
             // TODO: 15.09.2019 calculate average
-            this.average_release.setText(R.string.not_available);
-            this.author.setText(this.defaultText(mediumSetting.getAuthor()));
-            this.artist.setText(this.defaultText(mediumSetting.getArtist()));
-            this.stateTl.setText((Integer.toString(mediumSetting.getStateTL())));
-            this.stateOrigin.setText(Integer.toString(mediumSetting.getStateOrigin()));
-            this.countryOfOrigin.setText(this.defaultText(mediumSetting.getCountryOfOrigin()));
-            this.languageOfOrigin.setText(this.defaultText(mediumSetting.getLanguageOfOrigin()));
-            this.lang.setText(this.defaultText(mediumSetting.getLang()));
+            average_release!!.setText(R.string.not_available)
+            author!!.text = defaultText(mediumSetting.getAuthor())
+            artist!!.text = defaultText(mediumSetting.getArtist())
+            stateTl!!.text = Integer.toString(mediumSetting.stateTL)
+            stateOrigin!!.text = Integer.toString(mediumSetting.stateOrigin)
+            countryOfOrigin!!.text = defaultText(mediumSetting.getCountryOfOrigin())
+            languageOfOrigin!!.text = defaultText(mediumSetting.getLanguageOfOrigin())
+            lang!!.text = defaultText(mediumSetting.getLang())
         }
     }
 
-    private String defaultText(String text) {
-        return text == null || text.isEmpty() ? "N/A" : text;
+    private fun defaultText(text: String?): String {
+        return if (text == null || text.isEmpty()) "N/A" else text
     }
 
-    private void addMediumListener(RadioButton button, int mediumType) {
-        button.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (this.mediumSettings() == null) {
-                return;
+    private fun addMediumListener(button: RadioButton?, mediumType: Int) {
+        button!!.setOnCheckedChangeListener { buttonView: CompoundButton?, isChecked: Boolean ->
+            if (mediumSettings() == null) {
+                return@setOnCheckedChangeListener
             }
-            this.checkSupportedMedia();
-
+            checkSupportedMedia()
             if (isChecked) {
-                MediumSetting setting = new MediumSetting
-                        .MediumSettingBuilder(this.mediumSettings())
-                        .setMedium(mediumType)
-                        .createMediumSetting();
-
-                this.mediumViewModel.updateMedium(setting);
+                val setting = MediumSettingBuilder(mediumSettings()!!)
+                    .setMedium(mediumType)
+                    .createMediumSetting()
+                mediumViewModel!!.updateMedium(setting)
             }
-        });
-
+        }
     }
 
-    private boolean handleEditorEvent(EditText editName, int actionId, KeyEvent event) {
-        MediumSetting currentMediumSetting = this.mediumSettings();
-
-        if ((currentMediumSetting != null) && ((actionId == EditorInfo.IME_ACTION_SEARCH) ||
-                (actionId == EditorInfo.IME_ACTION_DONE) ||
-                ((event != null) &&
-                        (event.getAction() == KeyEvent.ACTION_DOWN) &&
-                        (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)))) {
+    private fun handleEditorEvent(editName: EditText?, actionId: Int, event: KeyEvent?): Boolean {
+        val currentMediumSetting = mediumSettings()
+        if (currentMediumSetting != null && (actionId == EditorInfo.IME_ACTION_SEARCH ||
+                    actionId == EditorInfo.IME_ACTION_DONE ||
+                    event != null &&
+                    event.action == KeyEvent.ACTION_DOWN &&
+                    event.keyCode == KeyEvent.KEYCODE_ENTER)
+        ) {
             // the user is done typing.
-
-            String newTitle = editName.getText().toString();
-
+            val newTitle = editName!!.text.toString()
             if (newTitle.isEmpty()) {
-                editName.setText(currentMediumSetting.getTitle());
-
-            } else if (!newTitle.equals(currentMediumSetting.getTitle())) {
-
-                MediumSetting setting = new MediumSetting
-                        .MediumSettingBuilder(currentMediumSetting)
-                        .setTitle(newTitle)
-                        .createMediumSetting();
-
-                this.mediumViewModel
-                        .updateMedium(setting)
-                        .handle((s, throwable) -> {
-                            if (this.getContext() != null && s != null && !s.isEmpty()) {
-                                showToast(s);
-                                editName.setText(currentMediumSetting.getTitle());
-
-                            } else if (throwable != null) {
-                                throwable.printStackTrace();
-
-                                if (this.getContext() != null) {
-                                    showToast("An Error occurred saving the new Title");
-                                }
+                editName.setText(currentMediumSetting.getTitle())
+            } else if (newTitle != currentMediumSetting.getTitle()) {
+                val setting = MediumSettingBuilder(currentMediumSetting)
+                    .setTitle(newTitle)
+                    .createMediumSetting()
+                mediumViewModel!!
+                    .updateMedium(setting)
+                    .handle<Any?> { s: String?, throwable: Throwable? ->
+                        if (this.context != null && s != null && !s.isEmpty()) {
+                            showToast(s)
+                            editName.setText(currentMediumSetting.getTitle())
+                        } else if (throwable != null) {
+                            throwable.printStackTrace()
+                            if (this.context != null) {
+                                showToast("An Error occurred saving the new Title")
                             }
-                            return null;
-                        });
+                        }
+                        null
+                    }
             }
-            return true;
+            return true
         }
-        return false;
+        return false
+    }
+
+    companion object {
+        private const val ID = "mediumId"
+        fun newInstance(id: Int): MediumSettingFragment {
+            val settings = MediumSettingFragment()
+            val bundle = Bundle()
+            bundle.putInt(ID, id)
+            settings.arguments = bundle
+            return settings
+        }
     }
 }

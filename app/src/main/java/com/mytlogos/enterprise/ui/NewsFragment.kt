@@ -1,290 +1,260 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.annotation.SuppressLint;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
-
-import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.News;
-import com.mytlogos.enterprise.tools.Utils;
-import com.mytlogos.enterprise.viewmodel.NewsViewModel;
-
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-
-import eu.davidea.flexibleadapter.FlexibleAdapter;
-import eu.davidea.flexibleadapter.items.AbstractHeaderItem;
-import eu.davidea.flexibleadapter.items.AbstractSectionableItem;
-import eu.davidea.flexibleadapter.items.IFlexible;
-import eu.davidea.flexibleadapter.utils.LayoutUtils;
-import eu.davidea.viewholders.FlexibleViewHolder;
+import android.annotation.SuppressLint
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.model.News
+import com.mytlogos.enterprise.tools.Utils.getDomain
+import com.mytlogos.enterprise.ui.NewsFragment.AttachedListener
+import com.mytlogos.enterprise.viewmodel.NewsViewModel
+import eu.davidea.flexibleadapter.FlexibleAdapter
+import eu.davidea.flexibleadapter.items.AbstractHeaderItem
+import eu.davidea.flexibleadapter.items.AbstractSectionableItem
+import eu.davidea.flexibleadapter.items.IFlexible
+import eu.davidea.flexibleadapter.utils.LayoutUtils
+import eu.davidea.viewholders.FlexibleViewHolder
+import org.joda.time.DateTime
+import org.joda.time.LocalDate
+import java.util.*
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 
 /**
  * A fragment representing a list of Items.
- * <p/>
+ *
+ *
  */
-public class NewsFragment extends BaseSwipeListFragment<News, NewsViewModel> {
+class NewsFragment
+/**
+ * Mandatory empty constructor for the fragment manager to instantiate the
+ * fragment (e.g. upon screen orientation changes).
+ */
+    : BaseSwipeListFragment<News, NewsViewModel>() {
+    private var attachedListener: AttachedListener? = null
+    private var attachedFuture: ScheduledFuture<*>? = null
 
-    private AttachedListener attachedListener;
-    private ScheduledFuture<?> attachedFuture;
-
-    /**
-     * Mandatory empty constructor for the fragment manager to instantiate the
-     * fragment (e.g. upon screen orientation changes).
-     */
-    public NewsFragment() {
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-    }
-
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-
-        RecyclerView recyclerView = view.findViewById(R.id.list);
-
-        ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-        Runnable attachedTask = new Runnable() {
-            @Override
-            public void run() {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        val recyclerView: RecyclerView = view.findViewById(R.id.list)
+        val service = Executors.newSingleThreadScheduledExecutor()
+        val attachedTask: Runnable = object : Runnable {
+            override fun run() {
                 if (attachedListener == null) {
-                    attachedFuture = service.schedule(this, 2, TimeUnit.SECONDS);
-                    return;
+                    attachedFuture = service.schedule(this, 2, TimeUnit.SECONDS)
+                    return
                 }
-                attachedListener.handle();
+                attachedListener!!.handle()
             }
-        };
-        attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS);
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+        }
+        attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS)
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 if (attachedFuture != null) {
-                    attachedFuture.cancel(true);
+                    attachedFuture!!.cancel(true)
                 }
-
                 if (RecyclerView.SCROLL_STATE_IDLE == newState) {
-                    attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS);
+                    attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS)
                 }
             }
-        });
+        })
 
         // FIXME: 22.07.2019 does not work quite correctly:
         //  -when one does not scroll
         //  -one switches to one news page a second time
         //  it does not get the correct newsItems
-        this.attachedListener = () -> {
-            int firstPosition = LayoutUtils.findFirstCompletelyVisibleItemPosition(recyclerView);
-            int lastPosition = LayoutUtils.findLastCompletelyVisibleItemPosition(recyclerView);
-
+        attachedListener = AttachedListener {
+            val firstPosition = LayoutUtils.findFirstCompletelyVisibleItemPosition(recyclerView)
+            val lastPosition = LayoutUtils.findLastCompletelyVisibleItemPosition(recyclerView)
             if (firstPosition == RecyclerView.NO_POSITION || lastPosition == RecyclerView.NO_POSITION) {
-                return;
+                return@AttachedListener
             }
-            DateTime minimumVisible = DateTime.now().minusSeconds(2);
-            List<Integer> readNews = new ArrayList<>();
-
-            for (int i = firstPosition; i <= lastPosition; i++) {
-                IFlexible item = getFlexibleAdapter().getItem(i);
-
-                if (!(item instanceof NewsItem)) {
-                    continue;
+            val minimumVisible = DateTime.now().minusSeconds(2)
+            val readNews: MutableList<Int> = ArrayList()
+            var i = firstPosition
+            while (i <= lastPosition) {
+                val item = flexibleAdapter!!.getItem(i)
+                if (item !is NewsItem) {
+                    i++
+                    continue
                 }
-                NewsItem newsItem = (NewsItem) item;
+                val newsItem = item
                 if (newsItem.attached == null) {
-                    continue;
+                    i++
+                    continue
                 }
-                if (newsItem.attached.isBefore(minimumVisible) && !newsItem.news.getRead()) {
-                    readNews.add(newsItem.news.getId());
+                if (newsItem.attached!!.isBefore(minimumVisible) && !newsItem.news.read) {
+                    readNews.add(newsItem.news.id)
                 }
+                i++
             }
-            if (!readNews.isEmpty()) {
-                this.getViewModel().markNewsRead(readNews);
+            if (readNews.isNotEmpty()) {
+                viewModel!!.markNewsRead(readNews)
             }
-        };
-        this.setTitle("News");
-        return view;
+        }
+        this.setTitle("News")
+        return view
     }
 
-    @Override
-    Class<NewsViewModel> getViewModelClass() {
-        return NewsViewModel.class;
+    override val viewModelClass: Class<NewsViewModel>
+        get() = NewsViewModel::class.java
+
+    override fun createPagedListLiveData(): LiveData<PagedList<News>> {
+        return viewModel!!.news
     }
 
-    @Override
-    LiveData<PagedList<News>> createPagedListLiveData() {
-        return this.getViewModel().getNews();
+    override fun createFlexible(value: News): IFlexible<*> {
+        val item = NewsItem(value)
+        item.listener = attachedListener
+        return item
     }
 
-    @Override
-    IFlexible createFlexible(News news) {
-        NewsItem item = new NewsItem(news);
-        item.listener = this.attachedListener;
-        return item;
-    }
-
-    @Override
-    void onSwipeRefresh() {
-        List<News> news = this.getLivePagedList().getValue();
-        DateTime latest = null;
-
+    override fun onSwipeRefresh() {
+        val news: List<News?>? = livePagedList!!.value
+        var latest: DateTime? = null
         if (news != null) {
-            Comparator<News> newsComparator = Comparator.nullsLast((o1, o2) -> o1.getTimeStamp().compareTo(o2.getTimeStamp()));
-            News latestNews = Collections.max(news, newsComparator);
-            latest = latestNews == null ? null : latestNews.getTimeStamp();
-        }
-        this.getViewModel().refresh(latest).observe(this, loadingComplete -> {
-            if (loadingComplete != null && loadingComplete) {
-                getListContainer().setRefreshing(false);
+            val newsComparator = Comparator.nullsLast { o1: News, o2: News ->
+                o1.getTimeStamp().compareTo(o2.getTimeStamp())
             }
-        });
+            val latestNews = Collections.max(news, newsComparator)
+            latest = latestNews?.getTimeStamp()
+        }
+        viewModel!!.refresh(latest).observe(this, { loadingComplete: Boolean? ->
+            if (loadingComplete != null && loadingComplete) {
+                (listContainer!! as SwipeRefreshLayout).isRefreshing = false
+            }
+        })
     }
 
-    @Override
-    public boolean onItemClick(View view, int position) {
-        IFlexible item = getFlexibleAdapter().getItem(position);
-        if (!(item instanceof NewsItem)) {
-            return false;
-        }
-        String url = ((NewsItem) item).news.getUrl();
-        this.openInBrowser(url);
-        return false;
+    override fun onItemClick(view: View, position: Int): Boolean {
+        val item = flexibleAdapter!!.getItem(position) as? NewsItem ?: return false
+        val url = item.news.url
+        this.openInBrowser(url)
+        return false
     }
 
-    @FunctionalInterface
-    private interface AttachedListener {
-        void handle();
-
+    private fun interface AttachedListener {
+        fun handle()
     }
 
-    private static class HeaderItem extends AbstractHeaderItem<HeaderViewHolder> {
-        private final LocalDate date;
-
-        private HeaderItem(LocalDate date) {
-            this.date = date;
+    private class HeaderItem(private val date: LocalDate) : AbstractHeaderItem<HeaderViewHolder>() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is HeaderItem) return false
+            return date == other.date
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof HeaderItem)) return false;
-
-            HeaderItem other = (HeaderItem) o;
-            return this.date.equals(other.date);
+        override fun hashCode(): Int {
+            return date.hashCode()
         }
 
-        @Override
-        public int hashCode() {
-            return date.hashCode();
+        override fun getLayoutRes(): Int {
+            return R.layout.flexible_header
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.flexible_header;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): HeaderViewHolder {
+            return HeaderViewHolder(view, adapter)
         }
 
-        @Override
-        public HeaderViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new HeaderViewHolder(view, adapter);
-        }
-
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, HeaderViewHolder holder, int position, List<Object> payloads) {
-            holder.textView.setText(this.date.toString("E, dd.MM.yyyy"));
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: HeaderViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            holder.textView.text = date.toString("E, dd.MM.yyyy")
         }
     }
 
-    private static class HeaderViewHolder extends FlexibleViewHolder {
-        private TextView textView;
+    private class HeaderViewHolder(
+        itemView: View,
+        adapter: FlexibleAdapter<IFlexible<*>?>?
+    ) : FlexibleViewHolder(itemView, adapter, true) {
+        val textView: TextView
 
-        HeaderViewHolder(@NonNull View itemView, FlexibleAdapter<IFlexible> adapter) {
-            super(itemView, adapter, true);
-            textView = itemView.findViewById(R.id.text);
+        init {
+            textView = itemView.findViewById(R.id.text)
         }
     }
 
-    private static class NewsItem extends AbstractSectionableItem<MetaViewHolder, HeaderItem> {
-        private final News news;
-        private DateTime attached;
-        private AttachedListener listener;
-
-        NewsItem(@NonNull News news) {
-            super(new HeaderItem(news.getTimeStamp().toLocalDate()));
-            this.news = news;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
+    private class NewsItem(val news: News) :
+        AbstractSectionableItem<MetaViewHolder, HeaderItem?>(
+            HeaderItem(
+                news.getTimeStamp().toLocalDate())) {
+        var attached: DateTime? = null
+        var listener: AttachedListener? = null
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is NewsItem) return false
+            return news.id == other.news.id
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof NewsItem)) return false;
-
-            NewsItem other = (NewsItem) o;
-            return this.news.getId() == other.news.getId();
+        override fun hashCode(): Int {
+            return news.id
         }
 
-        @Override
-        public int hashCode() {
-            return this.news.getId();
+        override fun getLayoutRes(): Int {
+            return R.layout.meta_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.meta_item;
-        }
-
-        @Override
-        public MetaViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new MetaViewHolder(view, adapter);
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): MetaViewHolder {
+            return MetaViewHolder(view, adapter)
         }
 
         @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position, List<Object> payloads) {
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: MetaViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            holder.topLeftText.setText(this.news.getTimeStamp().toString("HH:mm:ss"));
-            holder.mainText.setText(this.news.getTitle());
-            holder.topRightText.setText(Utils.getDomain(this.news.getUrl()));
+            holder.topLeftText.text = news.getTimeStamp().toString("HH:mm:ss")
+            holder.mainText.text = news.getTitle()
+            holder.topRightText.text = getDomain(news.url)
         }
 
-        @Override
-        public void onViewAttached(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position) {
-            super.onViewAttached(adapter, holder, position);
-            this.attached = DateTime.now();
+        override fun onViewAttached(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: MetaViewHolder,
+            position: Int
+        ) {
+            super.onViewAttached(adapter, holder, position)
+            attached = DateTime.now()
         }
 
-        @Override
-        public void onViewDetached(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position) {
-            super.onViewDetached(adapter, holder, position);
-            this.attached = null;
+        override fun onViewDetached(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: MetaViewHolder,
+            position: Int
+        ) {
+            super.onViewDetached(adapter, holder, position)
+            attached = null
+            listener?.handle()
+        }
 
-            if (this.listener != null) {
-                this.listener.handle();
-            }
+        init {
+            this.isDraggable = false
+            this.isSwipeable = false
+            this.isSelectable = false
         }
     }
 }

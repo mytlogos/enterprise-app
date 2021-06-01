@@ -1,83 +1,61 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.View;
+import android.view.*
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.model.ExternalUser
+import com.mytlogos.enterprise.tools.Utils.externalUserTypeToName
+import com.mytlogos.enterprise.viewmodel.ExternalUserViewModel
+import eu.davidea.flexibleadapter.FlexibleAdapter
+import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
+import eu.davidea.flexibleadapter.items.IFlexible
 
-import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
+class ExternalUserListFragment : BaseListFragment<ExternalUser, ExternalUserViewModel>() {
+    override val viewModelClass: Class<ExternalUserViewModel>
+        get() = ExternalUserViewModel::class.java
 
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.ExternalUser;
-import com.mytlogos.enterprise.tools.Utils;
-import com.mytlogos.enterprise.viewmodel.ExternalUserViewModel;
-
-import java.util.List;
-
-import eu.davidea.flexibleadapter.FlexibleAdapter;
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
-import eu.davidea.flexibleadapter.items.IFlexible;
-
-public class ExternalUserListFragment extends BaseListFragment<ExternalUser, ExternalUserViewModel> {
-
-    @Override
-    Class<ExternalUserViewModel> getViewModelClass() {
-        return ExternalUserViewModel.class;
+    override fun createPagedListLiveData(): LiveData<PagedList<ExternalUser>> {
+        return viewModel!!.externalUser
     }
 
-    @Override
-    LiveData<PagedList<ExternalUser>> createPagedListLiveData() {
-        return getViewModel().getExternalUser();
+    override fun createFlexible(value: ExternalUser): IFlexible<*> {
+        return UserItem(value)
     }
 
-    @Override
-    IFlexible createFlexible(ExternalUser externalUser) {
-        return new UserItem(externalUser);
-    }
-
-    @Override
-    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
-        super.onCreateOptionsMenu(menu, inflater);
-        // TODO: 02.08.2019 implement add external user
-    }
-
-    private static class UserItem extends AbstractFlexibleItem<MetaViewHolder> {
-        private final ExternalUser externalUser;
-
-        private UserItem(@NonNull ExternalUser externalUser) {
-            this.externalUser = externalUser;
+    private class UserItem(private val externalUser: ExternalUser) :
+        AbstractFlexibleItem<MetaViewHolder>() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val userItem = other as UserItem
+            return externalUser == userItem.externalUser
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            UserItem userItem = (UserItem) o;
-
-            return externalUser.equals(userItem.externalUser);
+        override fun hashCode(): Int {
+            return externalUser.hashCode()
         }
 
-        @Override
-        public int hashCode() {
-            return externalUser.hashCode();
+        override fun getLayoutRes(): Int {
+            return R.layout.meta_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.meta_item;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): MetaViewHolder {
+            return MetaViewHolder(view, adapter)
         }
 
-        @Override
-        public MetaViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new MetaViewHolder(view, adapter);
-        }
-
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position, List<Object> payloads) {
-            holder.topLeftText.setText(Utils.externalUserTypeToName(this.externalUser.getType()));
-            holder.mainText.setText(this.externalUser.getIdentifier());
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: MetaViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            holder.topLeftText.text = externalUserTypeToName(
+                externalUser.type)
+            holder.mainText.text = externalUser.identifier
         }
     }
 }

@@ -1,76 +1,63 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-
-import androidx.annotation.NonNull;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentPagerAdapter;
-import androidx.viewpager.widget.ViewPager;
-
-import com.google.android.material.tabs.TabLayout;
-import com.mytlogos.enterprise.R;
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentPagerAdapter
+import androidx.viewpager.widget.ViewPager
+import com.google.android.material.tabs.TabLayout
+import com.mytlogos.enterprise.R
 
 /**
  *
  */
-public class Statistics extends BaseFragment {
-
-    public Statistics() {
-        // Required empty public constructor
+class Statistics : BaseFragment() {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        this.setTitle("Statistics")
+        val pager = inflater.inflate(R.layout.statistics, container, false) as ViewPager
+        val tabLayout = this.mainActivity.tabLayout
+        pager.adapter = SectionsPagerAdapter(childFragmentManager)
+        tabLayout.setupWithViewPager(pager)
+        tabLayout.tabMode = TabLayout.MODE_SCROLLABLE
+        return pager
     }
 
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-
-        this.setTitle("Statistics");
-        ViewPager pager = (ViewPager) inflater.inflate(R.layout.statistics, container, false);
-
-        TabLayout tabLayout = this.getMainActivity().getTabLayout();
-        pager.setAdapter(new SectionsPagerAdapter(getChildFragmentManager()));
-        tabLayout.setupWithViewPager(pager);
-        tabLayout.setTabMode(TabLayout.MODE_SCROLLABLE);
-        return pager;
-    }
-
-    private class SectionsPagerAdapter extends FragmentPagerAdapter {
-        private Fragment[] fragments;
-
-        SectionsPagerAdapter(FragmentManager fm) {
-            super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
-            fragments = new Fragment[getCount()];
-        }
-
-        @Override
-        public Fragment getItem(int position) {
-            Fragment fragment = fragments[position];
-
+    private inner class SectionsPagerAdapter(fm: FragmentManager?) :
+        FragmentPagerAdapter(
+            fm!!, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
+        private val fragments: Array<Fragment?>
+        override fun getItem(position: Int): Fragment {
+            var fragment = fragments[position]
             if (fragment == null) {
                 if (position == 0) {
-                    fragments[0] = fragment = new SpaceViewFragment();
+                    fragment = SpaceViewFragment()
+                    fragments[0] = fragment
                 }
             }
-            return fragment;
+            return fragment!!
         }
 
-        @Override
-        public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
-            super.destroyItem(container, position, object);
-            this.fragments[position] = null;
+        override fun destroyItem(container: ViewGroup, position: Int, `object`: Any) {
+            super.destroyItem(container, position, `object`)
+            fragments[position] = null
         }
 
-        @Override
-        public int getCount() {
-            return 1;
+        override fun getCount(): Int {
+            return 1
         }
 
-        @Override
-        public CharSequence getPageTitle(int position) {
-            return "Space Usage";
+        override fun getPageTitle(position: Int): CharSequence {
+            return "Space Usage"
+        }
+
+        init {
+            fragments = arrayOfNulls(count)
         }
     }
 }

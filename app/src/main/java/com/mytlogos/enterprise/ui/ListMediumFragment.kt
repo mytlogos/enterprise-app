@@ -1,287 +1,215 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.app.AlertDialog;
-import android.content.Context;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.ActionMode;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
+import android.app.AlertDialog
+import android.content.DialogInterface
+import android.os.*
+import android.view.*
+import android.widget.*
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Transformations
+import androidx.lifecycle.ViewModelProvider
+import androidx.paging.PagedList
+import androidx.recyclerview.widget.RecyclerView
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.tools.Sortings
+import com.mytlogos.enterprise.tools.Utils.transform
+import com.mytlogos.enterprise.ui.MediumListFragment.FlexibleMediumItem
+import com.mytlogos.enterprise.viewmodel.ListMediaViewModel
+import com.mytlogos.enterprise.viewmodel.ListsViewModel
+import eu.davidea.flexibleadapter.SelectableAdapter
+import eu.davidea.flexibleadapter.items.IFlexible
+import java.util.*
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Transformations;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.paging.PagedList;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.ExternalMediaList;
-import com.mytlogos.enterprise.model.MediaList;
-import com.mytlogos.enterprise.model.MediumItem;
-import com.mytlogos.enterprise.tools.Sortings;
-import com.mytlogos.enterprise.tools.Utils;
-import com.mytlogos.enterprise.viewmodel.ListMediaViewModel;
-import com.mytlogos.enterprise.viewmodel.ListsViewModel;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-
-import eu.davidea.flexibleadapter.SelectableAdapter;
-import eu.davidea.flexibleadapter.items.IFlexible;
-
-public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaViewModel> {
-    static final String ID = "id";
-    static final String TITLE = "listTitle";
-    static final String EXTERNAL = "external";
-    private int listId;
-    private boolean isExternal;
-    private String listTitle;
-    private boolean inActionMode;
-    private ActionMode.Callback callback = new ActionMode.Callback() {
-        @Override
-        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-            mode.setTitle("Edit MediumList");
-            mode.getMenuInflater().inflate(R.menu.list_medium_action_mode_menu, menu);
-            Objects.requireNonNull(getMainActivity().getSupportActionBar()).hide();
-            getFlexibleAdapter().setMode(SelectableAdapter.Mode.MULTI);
-            return true;
+class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
+    private var listId = 0
+    private var isExternal = false
+    private var listTitle: String? = null
+    private var inActionMode = false
+    private val callback: ActionMode.Callback = object : ActionMode.Callback {
+        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+            mode.title = "Edit MediumList"
+            mode.menuInflater.inflate(R.menu.list_medium_action_mode_menu, menu)
+            Objects.requireNonNull(mainActivity.supportActionBar)!!.hide()
+            flexibleAdapter!!.mode = SelectableAdapter.Mode.MULTI
+            return true
         }
 
-        @Override
-        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-            return false;
+        override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean {
+            return false
         }
 
-        @Override
-        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-            if (item.getItemId() == R.id.move_item_to_list) {
-                return moveItemsToList(mode);
-            } else if (item.getItemId() == R.id.delete_items) {
-                return deleteItemsFromList(mode);
+        override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+            if (item.itemId == R.id.move_item_to_list) {
+                return moveItemsToList(mode)
+            } else if (item.itemId == R.id.delete_items) {
+                return deleteItemsFromList(mode)
             }
-            return false;
+            return false
         }
 
-        private boolean deleteItemsFromList(ActionMode mode) {
-            if (ListsFragment.TRASH_LIST.getListId() == listId) {
-                showToast("You cannot delete from the Trash list");
-                mode.finish();
+        private fun deleteItemsFromList(mode: ActionMode): Boolean {
+            if (ListsFragment.TRASH_LIST.listId == listId) {
+                showToast("You cannot delete from the Trash list")
+                mode.finish()
                 // TODO: 01.08.2019 ask if we really want to remove this item
-                return true;
+                return true
             }
-            List<Integer> selectedPositions = getFlexibleAdapter().getSelectedPositions();
-            List<Integer> selectedMediaIds = new ArrayList<>();
-            for (Integer selectedPosition : selectedPositions) {
-                IFlexible flexible = getFlexibleAdapter().getItem(selectedPosition);
-
-                if (!(flexible instanceof MediumListFragment.FlexibleMediumItem)) {
-                    continue;
-                }
-                MediumItem mediumItem = ((MediumListFragment.FlexibleMediumItem) flexible).item;
-
-                if (mediumItem != null) {
-                    selectedMediaIds.add(mediumItem.getMediumId());
-                }
+            val selectedPositions = flexibleAdapter!!.selectedPositions
+            val selectedMediaIds: MutableList<Int> = ArrayList()
+            for (selectedPosition in selectedPositions) {
+                val flexible =
+                    flexibleAdapter!!.getItem(selectedPosition) as? FlexibleMediumItem ?: continue
+                val mediumItem = flexible.item
+                selectedMediaIds.add(mediumItem.mediumId)
             }
-            int size = selectedMediaIds.size();
-            getViewModel().removeMedia(listId, selectedMediaIds).whenComplete((aBoolean, throwable) -> {
-                Handler mainHandler = new Handler(Looper.getMainLooper());
-                mainHandler.post(() -> {
-                    String text;
-                    if (aBoolean == null || !aBoolean || throwable != null) {
-                        text = String.format("Could not delete %s Media from List '%s'", size, listTitle);
-                    } else {
-                        text = String.format("Removed %s Media from '%s'", size, listTitle);
-                        // TODO: 29.07.2019 replace toast with undoable snackbar
-                        mode.finish();
-                    }
-                    requireActivity().runOnUiThread(() -> showToast(text));
-                });
-            });
-            return false;
-        }
-
-        boolean moveItemsToList(ActionMode mode) {
-            Context context = Objects.requireNonNull(getContext());
-            AlertDialog.Builder builder = new AlertDialog.Builder(context);
-
-            ListsViewModel listsViewModel = new ViewModelProvider(ListMediumFragment.this)
-                    .get(ListsViewModel.class);
-
-            LiveData<List<MediaList>> listLiveData = Transformations.map(
-                    listsViewModel.getInternLists(),
-                    input -> {
-                        input.removeIf(list -> list.getListId() == listId);
-                        return input;
-                    }
-            );
-            ArrayAdapter<MediaList> adapter = new TextOnlyListAdapter<>(
-                    ListMediumFragment.this,
-                    listLiveData,
-                    MediaList::getName
-            );
-
-            builder.setAdapter(adapter, (dialog, which) -> {
-                MediaList list = adapter.getItem(which);
-
-                if (list == null) {
-                    return;
-                }
-                List<Integer> selectedPositions = getFlexibleAdapter().getSelectedPositions();
-                List<Integer> selectedMediaIds = new ArrayList<>();
-                for (Integer selectedPosition : selectedPositions) {
-                    IFlexible flexible = getFlexibleAdapter().getItem(selectedPosition);
-
-                    if (!(flexible instanceof MediumListFragment.FlexibleMediumItem)) {
-                        continue;
-                    }
-                    MediumItem mediumItem = ((MediumListFragment.FlexibleMediumItem) flexible).item;
-
-                    if (mediumItem != null) {
-                        selectedMediaIds.add(mediumItem.getMediumId());
-                    }
-                }
-                CompletableFuture<Boolean> future = listsViewModel.moveMediumToList(listId, list.getListId(), selectedMediaIds);
-                future.whenComplete((aBoolean, throwable) -> {
-                    Handler mainHandler = new Handler(Looper.getMainLooper());
-                    mainHandler.post(() -> {
-                        String text;
+            val size = selectedMediaIds.size
+            viewModel!!.removeMedia(listId, selectedMediaIds)
+                .whenComplete { aBoolean: Boolean?, throwable: Throwable? ->
+                    val mainHandler = Handler(Looper.getMainLooper())
+                    mainHandler.post {
+                        val text: String
                         if (aBoolean == null || !aBoolean || throwable != null) {
-                            text = "Could not move Media to List '" + list.getName() + "'";
+                            text = String.format("Could not delete %s Media from List '%s'",
+                                size,
+                                listTitle)
                         } else {
-                            text = "Moved " + selectedMediaIds.size() + " Media to " + list.getName();
+                            text = String.format("Removed %s Media from '%s'", size, listTitle)
                             // TODO: 29.07.2019 replace toast with undoable snackbar
-                            mode.finish();
+                            mode.finish()
                         }
-                        requireActivity().runOnUiThread(() -> showToast(text));
-                    });
-                });
-
-            });
-            builder.show();
-            return true;
+                        requireActivity().runOnUiThread { showToast(text) }
+                    }
+                }
+            return false
         }
 
-        @Override
-        public void onDestroyActionMode(ActionMode mode) {
-            Objects.requireNonNull(getMainActivity().getSupportActionBar()).show();
-            getFlexibleAdapter().setMode(SelectableAdapter.Mode.IDLE);
-            getFlexibleAdapter().clearSelection();
-            System.out.println("destroyed action mode");
-            inActionMode = false;
+        fun moveItemsToList(mode: ActionMode): Boolean {
+            val context = Objects.requireNonNull(context)
+            val builder = AlertDialog.Builder(context)
+            val listsViewModel = ViewModelProvider(this@ListMediumFragment)
+                .get(ListsViewModel::class.java)
+            val listLiveData = Transformations.map<MutableList<MediaList>, List<MediaList>>(
+                listsViewModel.internLists
+            ) { input: MutableList<MediaList> ->
+                input.removeIf { list: MediaList -> list.listId == listId }
+                input
+            }
+            val adapter: ArrayAdapter<MediaList> = TextOnlyListAdapter(
+                this@ListMediumFragment,
+                listLiveData,
+                MediaList::name
+            )
+            builder.setAdapter(adapter) { _: DialogInterface?, which: Int ->
+                val list = adapter.getItem(which) ?: return@setAdapter
+                val selectedPositions = flexibleAdapter!!.selectedPositions
+                val selectedMediaIds: MutableList<Int> = ArrayList()
+                for (selectedPosition in selectedPositions) {
+                    val flexible =
+                        flexibleAdapter!!.getItem(selectedPosition) as? FlexibleMediumItem ?: continue
+                    val mediumItem = flexible.item
+                    selectedMediaIds.add(mediumItem.mediumId)
+                }
+                val future = listsViewModel.moveMediumToList(listId, list.listId, selectedMediaIds)
+                future.whenComplete { aBoolean: Boolean?, throwable: Throwable? ->
+                    val mainHandler = Handler(Looper.getMainLooper())
+                    mainHandler.post {
+                        val text: String
+                        if (aBoolean == null || !aBoolean || throwable != null) {
+                            text = "Could not move Media to List '" + list.name + "'"
+                        } else {
+                            text = "Moved " + selectedMediaIds.size + " Media to " + list.name
+                            // TODO: 29.07.2019 replace toast with undoable snackbar
+                            mode.finish()
+                        }
+                        requireActivity().runOnUiThread { showToast(text) }
+                    }
+                }
+            }
+            builder.show()
+            return true
         }
-    };
 
-
-    public static ListMediumFragment getInstance(MediaList list) {
-        Bundle bundle = new Bundle();
-        bundle.putInt(ListMediumFragment.ID, list.getListId());
-        bundle.putString(ListMediumFragment.TITLE, list.getName());
-        bundle.putBoolean(ListMediumFragment.EXTERNAL, list instanceof ExternalMediaList);
-
-        ListMediumFragment fragment = new ListMediumFragment();
-        fragment.setArguments(bundle);
-        return fragment;
+        override fun onDestroyActionMode(mode: ActionMode) {
+            Objects.requireNonNull(mainActivity.supportActionBar)!!.show()
+            flexibleAdapter!!.mode = SelectableAdapter.Mode.IDLE
+            flexibleAdapter!!.clearSelection()
+            println("destroyed action mode")
+            inActionMode = false
+        }
     }
 
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        Bundle arguments = this.requireArguments();
-        listId = arguments.getInt(ID);
-        isExternal = arguments.getBoolean(EXTERNAL);
-        listTitle = arguments.getString(TITLE);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val arguments = requireArguments()
+        listId = arguments.getInt(ID)
+        isExternal = arguments.getBoolean(EXTERNAL)
+        listTitle = arguments.getString(TITLE)
     }
 
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        this.setTitle(listTitle);
-        return view;
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        this.setTitle(listTitle)
+        return view
     }
 
-    @Override
-    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
-        super.onCreateOptionsMenu(menu, inflater);
-        inflater.inflate(R.menu.list_menu, menu);
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.list_menu, menu)
     }
 
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        Fragment fragment = null;
-        Bundle bundle = null;
-        boolean selected = false;
-
-        if (item.getItemId() == R.id.list_setting) {
-            fragment = new ListSettings();
-            bundle = Objects.requireNonNull(this.getArguments());
-            selected = true;
+        var fragment: Fragment? = null
+        var bundle: Bundle? = null
+        var selected = false
+        if (item.itemId == R.id.list_setting) {
+            fragment = ListSettings()
+            bundle = this.requireArguments()
+            selected = true
         }
-
         if (fragment != null) {
-            this.getMainActivity().switchWindow(fragment, bundle, true);
+            this.mainActivity.switchWindow(fragment, bundle, true)
         }
-        if (selected) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+        return if (selected) {
+            true
+        } else super.onOptionsItemSelected(item)
     }
 
-    @Override
-    public void onItemLongClick(int position) {
-        if (!inActionMode && !this.isExternal) {
-            inActionMode = true;
-            System.out.println("starting action mode");
-            getFlexibleAdapter().addSelection(position);
-
-            this.getMainActivity().startActionMode(callback);
+    override fun onItemLongClick(position: Int) {
+        if (!inActionMode && !isExternal) {
+            inActionMode = true
+            println("starting action mode")
+            flexibleAdapter!!.addSelection(position)
+            this.mainActivity.startActionMode(callback)
         }
     }
 
-    @Override
-    public boolean onItemClick(View view, int position) {
-        if (this.inActionMode) {
-            if (position != RecyclerView.NO_POSITION) {
-                getFlexibleAdapter().toggleSelection(position);
-                return true;
+    override fun onItemClick(view: View, position: Int): Boolean {
+        if (inActionMode) {
+            return if (position != RecyclerView.NO_POSITION) {
+                flexibleAdapter!!.toggleSelection(position)
+                true
             } else {
-                return false;
+                false
             }
         }
-        IFlexible item = this.getFlexibleAdapter().getItem(position);
-
-        if (!(item instanceof MediumListFragment.FlexibleMediumItem)) {
-            return false;
-        }
-        MediumItem mediumItem = ((MediumListFragment.FlexibleMediumItem) item).item;
-
+        val item = flexibleAdapter!!.getItem(position) as? FlexibleMediumItem ?: return false
+        val mediumItem = item.item
         if (mediumItem != null) {
-            TocFragment fragment = TocFragment.newInstance(mediumItem.getMediumId());
-            getMainActivity().switchWindow(fragment, true);
+            val fragment: TocFragment = TocFragment.newInstance(mediumItem.mediumId)
+            mainActivity.switchWindow(fragment, true)
         }
-        return false;
+        return false
     }
 
-    @Override
-    public void onItemSwipe(int position, int direction) {
+    override fun onItemSwipe(position: Int, direction: Int) {
         /*CompletableFuture<Boolean> future = this.getViewModel().removeMedia(this.listId, item.item.getMediumId());
         future.whenComplete((aBoolean, throwable) -> {
             Context context = this.getContext();
@@ -303,37 +231,46 @@ public class ListMediumFragment extends BaseListFragment<MediumItem, ListMediaVi
         });*/
     }
 
+    override val sortMap: LinkedHashMap<String, Sortings>
+        get() {
+            val map = LinkedHashMap<String, Sortings>()
+            map["Title A-Z"] = Sortings.TITLE_AZ
+            map["Title Z-A"] = Sortings.TITLE_ZA
+            map["Medium Asc"] = Sortings.MEDIUM
+            map["Medium Desc"] = Sortings.MEDIUM_REVERSE
+            map["Latest Update Asc"] = Sortings.LAST_UPDATE_ASC
+            map["Latest Update Desc"] = Sortings.LAST_UPDATE_DESC
+            map["Episodes Asc"] = Sortings.NUMBER_EPISODE_ASC
+            map["Episodes Desc"] = Sortings.NUMBER_EPISODE_DESC
+            map["Episodes Read Asc"] = Sortings.NUMBER_EPISODE_READ_ASC
+            map["Episodes Read Desc"] = Sortings.NUMBER_EPISODE_READ_DESC
+            map["Episodes UnRead Asc"] = Sortings.NUMBER_EPISODE_UNREAD_ASC
+            map["Episodes UnRead Desc"] = Sortings.NUMBER_EPISODE_UNREAD_DESC
+            return map
+        }
+    override val viewModelClass: Class<ListMediaViewModel>
+        get() = ListMediaViewModel::class.java
 
-    @Override
-    LinkedHashMap<String, Sortings> getSortMap() {
-        LinkedHashMap<String, Sortings> map = new LinkedHashMap<>();
-        map.put("Title A-Z", Sortings.TITLE_AZ);
-        map.put("Title Z-A", Sortings.TITLE_ZA);
-        map.put("Medium Asc", Sortings.MEDIUM);
-        map.put("Medium Desc", Sortings.MEDIUM_REVERSE);
-        map.put("Latest Update Asc", Sortings.LAST_UPDATE_ASC);
-        map.put("Latest Update Desc", Sortings.LAST_UPDATE_DESC);
-        map.put("Episodes Asc", Sortings.NUMBER_EPISODE_ASC);
-        map.put("Episodes Desc", Sortings.NUMBER_EPISODE_DESC);
-        map.put("Episodes Read Asc", Sortings.NUMBER_EPISODE_READ_ASC);
-        map.put("Episodes Read Desc", Sortings.NUMBER_EPISODE_READ_DESC);
-        map.put("Episodes UnRead Asc", Sortings.NUMBER_EPISODE_UNREAD_ASC);
-        map.put("Episodes UnRead Desc", Sortings.NUMBER_EPISODE_UNREAD_DESC);
-        return map;
+    override fun createPagedListLiveData(): LiveData<PagedList<MediumItem>> {
+        return transform(viewModel!!.getMedia(listId, isExternal))
     }
 
-    @Override
-    Class<ListMediaViewModel> getViewModelClass() {
-        return ListMediaViewModel.class;
+    override fun createFlexible(value: MediumItem): IFlexible<*> {
+        return FlexibleMediumItem(value)
     }
 
-    @Override
-    LiveData<PagedList<MediumItem>> createPagedListLiveData() {
-        return Utils.transform(this.getViewModel().getMedia(this.listId, this.isExternal));
-    }
-
-    @Override
-    IFlexible createFlexible(MediumItem mediumItem) {
-        return new MediumListFragment.FlexibleMediumItem(mediumItem);
+    companion object {
+        const val ID = "id"
+        const val TITLE = "listTitle"
+        const val EXTERNAL = "external"
+        fun getInstance(list: MediaList): ListMediumFragment {
+            val bundle = Bundle()
+            bundle.putInt(ID, list.listId)
+            bundle.putString(TITLE, list.name)
+            bundle.putBoolean(EXTERNAL, list is ExternalMediaList)
+            val fragment = ListMediumFragment()
+            fragment.arguments = bundle
+            return fragment
+        }
     }
 }

@@ -1,210 +1,158 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Bundle;
+import android.content.Context
+import android.content.SharedPreferences
+import android.os.Bundle
+import androidx.preference.PreferenceDataStore
+import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceManager
+import com.mytlogos.enterprise.R
+import java.util.regex.Pattern
 
-import androidx.annotation.Nullable;
-import androidx.preference.PreferenceDataStore;
-import androidx.preference.PreferenceFragmentCompat;
-import androidx.preference.PreferenceManager;
-
-import com.mytlogos.enterprise.R;
-
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-public class ListSettingsPreference extends PreferenceFragmentCompat {
-
-    @Override
-    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        setPreferencesFromResource(R.xml.list_preferences, rootKey);
-
-        Bundle arguments = getArguments();
-
-        if (arguments == null) {
-            throw new IllegalArgumentException("no arguments available");
-        }
-
-        String prefix = arguments.getString("prefix");
-        int intId = arguments.getInt("id");
-        String stringId = arguments.getString("id");
-
-        if (prefix == null || prefix.isEmpty()) {
-            throw new IllegalArgumentException("invalid 'prefix' argument: empty or null");
-        }
-
-        if ((intId == 0) && (stringId == null || stringId.isEmpty())) {
-            throw new IllegalArgumentException("invalid 'id' argument: zero, empty or null");
-        }
-        PreferenceManager manager = this.getPreferenceManager();
-        ItemPreferenceDataStore store;
-
-        if (intId != 0) {
-            store = new ItemPreferenceDataStore(this.getContext(), prefix, intId);
+class ListSettingsPreference : PreferenceFragmentCompat() {
+    override fun onCreatePreferences(savedInstanceState: Bundle, rootKey: String) {
+        setPreferencesFromResource(R.xml.list_preferences, rootKey)
+        val arguments = arguments ?: throw IllegalArgumentException("no arguments available")
+        val prefix = arguments.getString("prefix")
+        val intId = arguments.getInt("id")
+        val stringId = arguments.getString("id")
+        require(!(prefix == null || prefix.isEmpty())) { "invalid 'prefix' argument: empty or null" }
+        require(!(intId == 0 && (stringId == null || stringId.isEmpty()))) { "invalid 'id' argument: zero, empty or null" }
+        val manager = this.preferenceManager
+        val store: ItemPreferenceDataStore
+        store = if (intId != 0) {
+            ItemPreferenceDataStore(this.context, prefix, intId)
         } else {
-            store = new ItemPreferenceDataStore(this.getContext(), prefix, stringId);
+            ItemPreferenceDataStore(this.context, prefix, stringId)
         }
-        manager.setPreferenceDataStore(store);
+        manager.preferenceDataStore = store
     }
 
+    class ItemPreferenceDataStore : PreferenceDataStore {
+        private val sharedPreferences: SharedPreferences
+        val prefixKey: String
+        val intId: Int
+        val stringId: String?
+        private val prefix: String
 
-    public static class ItemPreferenceDataStore extends PreferenceDataStore {
-
-        private final SharedPreferences sharedPreferences;
-        private final String prefixKey;
-        private final int intId;
-        private final String stringId;
-        private final String prefix;
-
-        public ItemPreferenceDataStore(Context context, String prefixKey, int intId) {
-            this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-            this.prefixKey = prefixKey;
-            this.intId = intId;
-            this.stringId = null;
-            this.prefix = getPrefix(prefixKey, intId);
+        constructor(context: Context?, prefixKey: String, intId: Int) {
+            sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+            this.prefixKey = prefixKey
+            this.intId = intId
+            stringId = null
+            prefix = getPrefix(prefixKey, intId)
         }
 
-        public ItemPreferenceDataStore(Context context, String prefixKey, String stringId) {
-            this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-            this.prefixKey = prefixKey;
-            this.intId = 0;
-            this.stringId = stringId;
-            this.prefix = getPrefix(prefixKey, stringId);
+        constructor(context: Context?, prefixKey: String, stringId: String?) {
+            sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+            this.prefixKey = prefixKey
+            intId = 0
+            this.stringId = stringId
+            prefix = getPrefix(prefixKey, stringId)
         }
 
-        public String getPrefixKey() {
-            return prefixKey;
+        override fun putString(key: String, value: String?) {
+            sharedPreferences
+                .edit()
+                .putString(transformKey(key, prefix), value)
+                .apply()
         }
 
-        public int getIntId() {
-            return intId;
+        override fun putStringSet(key: String, values: Set<String>?) {
+            sharedPreferences
+                .edit()
+                .putStringSet(transformKey(key, prefix), values)
+                .apply()
         }
 
-        public String getStringId() {
-            return stringId;
+        override fun putInt(key: String, value: Int) {
+            sharedPreferences
+                .edit()
+                .putInt(transformKey(key, prefix), value)
+                .apply()
         }
 
-        private static Pattern intIdPattern = Pattern.compile("\\w+-(\\d+)-.+");
-        private static Pattern stringIdPattern = Pattern.compile("\\w+-(\\w+)-.+");
-        private static Pattern prefixKeyPattern = Pattern.compile("(\\w+)-(\\w+|\\d+)-.+");
+        override fun putLong(key: String, value: Long) {
+            sharedPreferences
+                .edit()
+                .putLong(transformKey(key, prefix), value)
+                .apply()
+        }
 
-        public static String getPrefixKey(String key) {
-            Matcher matcher = prefixKeyPattern.matcher(key);
-            if (matcher.matches()) {
-                return matcher.group(1);
+        override fun putFloat(key: String, value: Float) {
+            sharedPreferences
+                .edit()
+                .putFloat(transformKey(key, prefix), value)
+                .apply()
+        }
+
+        override fun putBoolean(key: String, value: Boolean) {
+            sharedPreferences
+                .edit()
+                .putBoolean(transformKey(key, prefix), value)
+                .apply()
+        }
+
+        override fun getString(key: String, defValue: String?): String? {
+            return sharedPreferences.getString(transformKey(key, prefix), defValue)
+        }
+
+        override fun getStringSet(key: String, defValues: Set<String>?): Set<String>? {
+            return sharedPreferences.getStringSet(transformKey(key, prefix), defValues)
+        }
+
+        override fun getInt(key: String, defValue: Int): Int {
+            return sharedPreferences.getInt(transformKey(key, prefix), defValue)
+        }
+
+        override fun getLong(key: String, defValue: Long): Long {
+            return sharedPreferences.getLong(transformKey(key, prefix), defValue)
+        }
+
+        override fun getFloat(key: String, defValue: Float): Float {
+            return sharedPreferences.getFloat(transformKey(key, prefix), defValue)
+        }
+
+        override fun getBoolean(key: String, defValue: Boolean): Boolean {
+            return sharedPreferences.getBoolean(transformKey(key, prefix), defValue)
+        }
+
+        companion object {
+            private val intIdPattern = Pattern.compile("\\w+-(\\d+)-.+")
+            private val stringIdPattern = Pattern.compile("\\w+-(\\w+)-.+")
+            private val prefixKeyPattern = Pattern.compile("(\\w+)-(\\w+|\\d+)-.+")
+            fun getPrefixKey(key: String?): String? {
+                val matcher = prefixKeyPattern.matcher(key)
+                return if (matcher.matches()) {
+                    matcher.group(1)
+                } else null
             }
-            return null;
-        }
 
-        public static int getIntId(String key) {
-            Matcher matcher = intIdPattern.matcher(key);
-            if (matcher.matches()) {
-                return Integer.parseInt(matcher.group(1));
+            fun getIntId(key: String?): Int {
+                val matcher = intIdPattern.matcher(key)
+                return if (matcher.matches()) {
+                    matcher.group(1).toInt()
+                } else 0
             }
-            return 0;
-        }
 
-        public static String getStringId(String key) {
-            Matcher matcher = stringIdPattern.matcher(key);
-            if (matcher.matches()) {
-                return matcher.group(1);
+            fun getStringId(key: String?): String? {
+                val matcher = stringIdPattern.matcher(key)
+                return if (matcher.matches()) {
+                    matcher.group(1)
+                } else null
             }
-            return null;
-        }
 
-        public static String transformKey(String key, String prefix) {
-            return prefix + key;
-        }
+            fun transformKey(key: String, prefix: String): String {
+                return prefix + key
+            }
 
-        public static String getPrefix(String prefix, int id) {
-            return prefix + "-" + id + "-";
-        }
+            fun getPrefix(prefix: String, id: Int): String {
+                return "$prefix-$id-"
+            }
 
-        public static String getPrefix(String prefix, String id) {
-            return prefix + "-" + id + "-";
-        }
-
-        @Override
-        public void putString(String key, @Nullable String value) {
-            this.sharedPreferences
-                    .edit()
-                    .putString(transformKey(key, this.prefix), value)
-                    .apply();
-        }
-
-        @Override
-        public void putStringSet(String key, @Nullable Set<String> values) {
-            this.sharedPreferences
-                    .edit()
-                    .putStringSet(transformKey(key, this.prefix), values)
-                    .apply();
-        }
-
-        @Override
-        public void putInt(String key, int value) {
-            this.sharedPreferences
-                    .edit()
-                    .putInt(transformKey(key, this.prefix), value)
-                    .apply();
-        }
-
-        @Override
-        public void putLong(String key, long value) {
-            this.sharedPreferences
-                    .edit()
-                    .putLong(transformKey(key, this.prefix), value)
-                    .apply();
-        }
-
-        @Override
-        public void putFloat(String key, float value) {
-            this.sharedPreferences
-                    .edit()
-                    .putFloat(transformKey(key, this.prefix), value)
-                    .apply();
-        }
-
-        @Override
-        public void putBoolean(String key, boolean value) {
-            this.sharedPreferences
-                    .edit()
-                    .putBoolean(transformKey(key, this.prefix), value)
-                    .apply();
-        }
-
-        @Nullable
-        @Override
-        public String getString(String key, @Nullable String defValue) {
-            return sharedPreferences.getString(transformKey(key, this.prefix), defValue);
-        }
-
-        @Nullable
-        @Override
-        public Set<String> getStringSet(String key, @Nullable Set<String> defValues) {
-            return sharedPreferences.getStringSet(transformKey(key, this.prefix), defValues);
-        }
-
-        @Override
-        public int getInt(String key, int defValue) {
-            return sharedPreferences.getInt(transformKey(key, this.prefix), defValue);
-        }
-
-        @Override
-        public long getLong(String key, long defValue) {
-            return sharedPreferences.getLong(transformKey(key, this.prefix), defValue);
-        }
-
-        @Override
-        public float getFloat(String key, float defValue) {
-            return sharedPreferences.getFloat(transformKey(key, this.prefix), defValue);
-        }
-
-        @Override
-        public boolean getBoolean(String key, boolean defValue) {
-            return sharedPreferences.getBoolean(transformKey(key, this.prefix), defValue);
+            fun getPrefix(prefix: String, id: String?): String {
+                return "$prefix-$id-"
+            }
         }
     }
 }
-

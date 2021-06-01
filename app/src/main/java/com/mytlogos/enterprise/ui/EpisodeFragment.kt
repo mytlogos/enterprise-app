@@ -1,645 +1,539 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.annotation.SuppressLint;
-import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageButton;
-import android.widget.PopupMenu;
-import android.widget.TextView;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.background.RepositoryImpl;
-import com.mytlogos.enterprise.background.TaskManager;
-import com.mytlogos.enterprise.model.DisplayRelease;
-import com.mytlogos.enterprise.model.ExternalMediaList;
-import com.mytlogos.enterprise.model.MediaList;
-import com.mytlogos.enterprise.tools.Utils;
-import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-
-import eu.davidea.flexibleadapter.FlexibleAdapter;
-import eu.davidea.flexibleadapter.SelectableAdapter;
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
-import eu.davidea.flexibleadapter.items.AbstractHeaderItem;
-import eu.davidea.flexibleadapter.items.AbstractSectionableItem;
-import eu.davidea.flexibleadapter.items.IFlexible;
-import eu.davidea.flexibleadapter.utils.DrawableUtils;
-import eu.davidea.viewholders.FlexibleViewHolder;
+import android.annotation.SuppressLint
+import android.graphics.Color
+import android.os.Bundle
+import android.view.*
+import android.view.ViewGroup.MarginLayoutParams
+import android.widget.*
+import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
+import com.mytlogos.enterprise.background.TaskManager.Companion.runCompletableTask
+import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.tools.Utils.getDomain
+import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
+import eu.davidea.flexibleadapter.FlexibleAdapter
+import eu.davidea.flexibleadapter.SelectableAdapter
+import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
+import eu.davidea.flexibleadapter.items.AbstractHeaderItem
+import eu.davidea.flexibleadapter.items.AbstractSectionableItem
+import eu.davidea.flexibleadapter.items.IFlexible
+import eu.davidea.flexibleadapter.utils.DrawableUtils
+import eu.davidea.viewholders.FlexibleViewHolder
+import java.util.*
 
 /**
  * A fragment representing a list of Items.
  */
-public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeViewModel> {
+class EpisodeFragment
+/**
+ * Mandatory empty constructor for the fragment manager to instantiate the
+ * fragment (e.g. upon screen orientation changes).
+ */
+    : BaseListFragment<DisplayRelease, EpisodeViewModel>() {
+    private var groupByMedium = false
 
-    private boolean groupByMedium;
-
-    /**
-     * Mandatory empty constructor for the fragment manager to instantiate the
-     * fragment (e.g. upon screen orientation changes).
-     */
-    public EpisodeFragment() {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        this.setTitle("Chapters")
+        return view
     }
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    override val viewModelClass: Class<EpisodeViewModel>
+        get() = EpisodeViewModel::class.java
+
+    override fun createPagedListLiveData(): LiveData<PagedList<DisplayRelease>> {
+        return viewModel!!.displayEpisodes
     }
 
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        this.setTitle("Chapters");
-        return view;
-    }
+    override fun createFilterable(): Filterable {
+        return object : Filterable {
+            override val searchFilterProperties: Array<Property<*>>
+                get() = arrayOf(
+                    object : TextProperty {
+                        override val viewId: Int
+                            get() = R.id.minIndex
 
-    @Override
-    Class<EpisodeViewModel> getViewModelClass() {
-        return EpisodeViewModel.class;
-    }
+                        override fun get(): String {
+                            return viewModel!!.minIndex.toString() + ""
+                        }
 
-    @Override
-    LiveData<PagedList<DisplayRelease>> createPagedListLiveData() {
-        return this.getViewModel().getDisplayEpisodes();
-    }
-
-    @Nullable
-    @Override
-    Filterable createFilterable() {
-        return new Filterable() {
-
-            @Override
-            public Property[] getSearchFilterProperties() {
-                return new Property[]{
-                        new TextProperty() {
-                            @Override
-                            public int getViewId() {
-                                return R.id.minIndex;
-                            }
-
-                            @Override
-                            public String get() {
-                                return getViewModel().getMinIndex() + "";
-                            }
-
-                            @Override
-                            public void set(String newFilter) {
-
-                                try {
-                                    int index = Integer.parseInt(newFilter);
-                                    getViewModel().setMinIndex(index);
-                                } catch (NumberFormatException e) {
-                                    showToast("Invalid Input");
-                                }
-                            }
-                        },
-                        new TextProperty() {
-                            @Override
-                            public int getViewId() {
-                                return R.id.maxIndex;
-                            }
-
-                            @Override
-                            public String get() {
-                                return getViewModel().getMaxIndex() + "";
-                            }
-
-                            @Override
-                            public void set(String newFilter) {
-                                try {
-                                    int index = Integer.parseInt(newFilter);
-                                    getViewModel().setMaxIndex(index);
-                                } catch (NumberFormatException e) {
-                                    showToast("Invalid Input");
-                                }
-                            }
-                        },
-                        new TextProperty() {
-                            @Override
-                            public int getViewId() {
-                                return R.id.host_filter;
-                            }
-
-                            @Override
-                            public String get() {
-                                return getViewModel().getHost();
-                            }
-
-                            @Override
-                            public void set(String newFilter) {
-                                getViewModel().setHost(newFilter == null ? null : newFilter.toLowerCase());
-                            }
-                        },
-                        new PositionProperty() {
-                            @Override
-                            public int getViewId() {
-                                return R.id.read;
-                            }
-
-                            @Override
-                            public Integer get() {
-                                return getViewModel().getRead();
-                            }
-
-                            @Override
-                            public int[] positionalMapping() {
-                                return new int[]{1, 0, -1};
-                            }
-
-                            @Override
-                            public void set(Integer value) {
-                                getViewModel().setRead(value);
-                            }
-                        },
-                        new PositionProperty() {
-                            @Override
-                            public int getViewId() {
-                                return R.id.saved;
-                            }
-
-                            @Override
-                            public int[] positionalMapping() {
-                                return new int[]{1, 0, -1};
-                            }
-
-                            @Override
-                            public Integer get() {
-                                return getViewModel().getSaved();
-                            }
-
-                            @Override
-                            public void set(Integer value) {
-                                getViewModel().setSaved(value);
-                            }
-                        },
-                        new BooleanProperty() {
-                            @Override
-                            public int getViewId() {
-                                return R.id.latest_only;
-                            }
-
-                            @Override
-                            public Boolean get() {
-                                return getViewModel().isLatestOnly();
-                            }
-
-                            @Override
-                            public void set(Boolean newFilter) {
-                                getViewModel().setLatestOnly(newFilter);
+                        override fun set(newFilter: String) {
+                            try {
+                                val index = newFilter.toInt()
+                                viewModel!!.minIndex = index
+                            } catch (e: NumberFormatException) {
+                                showToast("Invalid Input")
                             }
                         }
-                };
-            }
+                    },
+                    object : TextProperty {
+                        override val viewId: Int
+                            get() = R.id.maxIndex
 
-            @Override
-            public void onCreateFilter(View view, AlertDialog.Builder builder) {
-                RecyclerView recycler = view.findViewById(R.id.listsFilter);
-                LiveData<List<MediaList>> lists = getViewModel().getLists();
+                        override fun get(): String {
+                            return viewModel!!.maxIndex.toString() + ""
+                        }
 
-                LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
-                recycler.setLayoutManager(layoutManager);
-
-                DividerItemDecoration decoration = new DividerItemDecoration(requireContext(), layoutManager.getOrientation());
-                recycler.addItemDecoration(decoration);
-
-                FlexibleAdapter<IFlexible> flexibleAdapter = new FlexibleAdapter<>(null);
-
-                this.updateRecycler(flexibleAdapter, lists.getValue());
-
-                lists.observe(EpisodeFragment.this, mediaLists -> updateRecycler(flexibleAdapter, mediaLists));
-
-                flexibleAdapter.setMode(SelectableAdapter.Mode.MULTI);
-                flexibleAdapter.addListener((FlexibleAdapter.OnItemClickListener) (view1, position) -> {
-                    flexibleAdapter.toggleSelection(position);
-
-                    List<Integer> listIds = new ArrayList<>();
-
-                    for (Integer selectedPosition : flexibleAdapter.getSelectedPositions()) {
-                        FlexibleListItem item = flexibleAdapter.getItem(selectedPosition, FlexibleListItem.class);
-                        listIds.add(Objects.requireNonNull(item).mediaList.getListId());
-                    }
-                    getViewModel().setFilterListIds(listIds);
-                    sortFlexibleList(flexibleAdapter);
-                    return true;
-                });
-
-                recycler.setAdapter(flexibleAdapter);
-            }
-
-            void updateRecycler(FlexibleAdapter<IFlexible> flexibleAdapter, List<MediaList> mediaLists) {
-                System.out.println("List: " + mediaLists);
-                if (mediaLists == null) {
-                    return;
-                }
-                List<Integer> shouldListIds = getViewModel().getFilterListIds();
-
-                Collections.sort(mediaLists, (o1, o2) -> {
-                    boolean selected1 = shouldListIds.contains(o1.getListId());
-                    boolean selected2 = shouldListIds.contains(o2.getListId());
-                    if (selected1 == selected2) {
-                        return o1.getName().compareTo(o2.getName());
-                    } else {
-                        return selected1 ? -1 : 1;
-                    }
-                });
-
-                List<IFlexible> flexibles = new ArrayList<>(mediaLists.size());
-
-                for (MediaList mediaList : mediaLists) {
-                    flexibles.add(new FlexibleListItem(mediaList));
-                }
-
-                flexibleAdapter.updateDataSet(flexibles);
-                List<IFlexible> currentItems = flexibleAdapter.getCurrentItems();
-
-                for (int i = 0, currentItemsSize = currentItems.size(); i < currentItemsSize; i++) {
-                    FlexibleListItem item = (FlexibleListItem) currentItems.get(i);
-
-                    if (shouldListIds.contains(item.mediaList.getListId())) {
-                        flexibleAdapter.addSelection(i);
-                    } else {
-                        flexibleAdapter.removeSelection(i);
-                    }
-                }
-            }
-
-            private void sortFlexibleList(FlexibleAdapter<IFlexible> flexibleAdapter) {
-                List<IFlexible> list = new ArrayList<>(flexibleAdapter.getCurrentItems());
-                List<Integer> listIds = getViewModel().getFilterListIds();
-
-                Collections.sort(list, (o1, o2) -> {
-                    FlexibleListItem item1 = (FlexibleListItem) o1;
-                    FlexibleListItem item2 = (FlexibleListItem) o2;
-
-                    boolean selected1 = listIds.contains(item1.mediaList.getListId());
-                    boolean selected2 = listIds.contains(item2.mediaList.getListId());
-                    if (selected1 == selected2) {
-                        return item1.mediaList.getName().compareTo(item2.mediaList.getName());
-                    } else {
-                        return selected1 ? -1 : 1;
-                    }
-                });
-                flexibleAdapter.updateDataSet(list);
-
-                for (int i = 0, currentItemsSize = list.size(); i < currentItemsSize; i++) {
-                    FlexibleListItem item = (FlexibleListItem) list.get(i);
-
-                    if (listIds.contains(item.mediaList.getListId())) {
-                        flexibleAdapter.addSelection(i);
-                    } else {
-                        flexibleAdapter.removeSelection(i);
-                    }
-                }
-            }
-
-            @Override
-            public int getFilterLayout() {
-                return R.layout.filter_unread_episode_layout;
-            }
-        };
-    }
-
-    private static class FlexibleListItem extends AbstractFlexibleItem<TextOnlyViewHolder> {
-        private final MediaList mediaList;
-
-        private FlexibleListItem(MediaList mediaList) {
-            this.mediaList = mediaList;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            FlexibleListItem that = (FlexibleListItem) o;
-
-            return mediaList.equals(that.mediaList);
-        }
-
-        @Override
-        public int hashCode() {
-            return mediaList.hashCode();
-        }
-
-        @Override
-        public int getLayoutRes() {
-            return R.layout.text_only_item;
-        }
-
-        @Override
-        public TextOnlyViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new TextOnlyViewHolder(view, adapter);
-        }
-
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, TextOnlyViewHolder holder, int position, List<Object> payloads) {
-            String listSource = mediaList instanceof ExternalMediaList ? "External" : "Internal";
-            String title = String.format("%s (%s)", this.mediaList.getName(), listSource);
-            holder.textView.setText(title);
-
-            Drawable drawable = DrawableUtils.getSelectableBackgroundCompat(
-                    Color.WHITE,             // normal background
-                    Color.GRAY, // pressed background
-                    Color.BLACK);                 // ripple color
-            DrawableUtils.setBackgroundCompat(holder.itemView, drawable);
-        }
-    }
-
-    private static class TextOnlyViewHolder extends FlexibleViewHolder {
-        private TextView textView;
-
-        TextOnlyViewHolder(View view, FlexibleAdapter adapter) {
-            super(view, adapter);
-            textView = (TextView) view;
-            ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) textView.getLayoutParams();
-            params.setMargins(0, 0, 0, 0);
-            textView.setTextSize(15);
-            textView.requestLayout();
-        }
-    }
-
-
-    @Override
-    IFlexible createFlexible(DisplayRelease displayRelease) {
-        if (groupByMedium) {
-            return new SectionableEpisodeItem(displayRelease, this);
-        } else {
-            return new EpisodeItem(displayRelease, this);
-        }
-    }
-
-    @Override
-    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
-        super.onCreateOptionsMenu(menu, inflater);
-        inflater.inflate(R.menu.unread_chapter_options, menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.group_by_medium) {
-            toggleGroupByMedium(item);
-        } else if (item.getItemId() == R.id.group_by_medium_first) {
-            item.setChecked(!item.isChecked());
-            getViewModel().setGrouped(item.isChecked());
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onItemClick(View view, int position) {
-        IFlexible item = getFlexibleAdapter().getItem(position);
-
-
-        int mediumId;
-        if (item instanceof EpisodeItem) {
-            mediumId = ((EpisodeItem) item).episode.getMediumId();
-        } else if (item instanceof SectionableEpisodeItem) {
-            mediumId = ((SectionableEpisodeItem) item).episode.getMediumId();
-        } else {
-            return false;
-        }
-        TocFragment fragment = TocFragment.newInstance(mediumId);
-        getMainActivity().switchWindow(fragment);
-        return true;
-    }
-
-    private void toggleGroupByMedium(MenuItem item) {
-        item.setChecked(!item.isChecked());
-        this.groupByMedium = item.isChecked();
-        PagedList<DisplayRelease> list = this.getLivePagedList().getValue();
-
-        if (list == null) {
-            return;
-        }
-        List<IFlexible> flexibles = this.convertToFlexible(list);
-        this.getFlexibleAdapter().updateDataSet(flexibles);
-    }
-
-    private void openPopup(ViewHolder holder, DisplayRelease episode) {
-        PopupMenu popupMenu = new PopupMenu(getContext(), holder.optionsButtonView);
-
-        if (episode.getSaved()) {
-            popupMenu
-                    .getMenu()
-                    .add("Open Local")
-                    .setOnMenuItemClickListener(item -> {
-
-                        CompletableFuture<Integer> task = TaskManager.runCompletableTask(
-                                () -> RepositoryImpl.getInstance().getMediumType(episode.getMediumId())
-                        );
-                        task.whenComplete((type, throwable) -> {
-                            if (type != null) {
-                                openLocal(episode.getEpisodeId(), episode.getMediumId(), type);
+                        override fun set(newFilter: String) {
+                            try {
+                                val index = newFilter.toInt()
+                                viewModel!!.maxIndex = index
+                            } catch (e: NumberFormatException) {
+                                showToast("Invalid Input")
                             }
-                        });
-                        return true;
-                    });
+                        }
+                    },
+                    object : TextProperty {
+                        override val viewId: Int
+                            get() = R.id.host_filter
+
+                        override fun get(): String {
+                            return viewModel!!.host
+                        }
+
+                        override fun set(newFilter: String) {
+                            viewModel!!.host = newFilter.lowercase(Locale.getDefault())
+                        }
+                    },
+                    object : PositionProperty {
+                        override val viewId: Int
+                            get() = R.id.read
+
+                        override fun get(): Int {
+                            return viewModel!!.read
+                        }
+
+                        override fun positionalMapping(): IntArray {
+                            return intArrayOf(1, 0, -1)
+                        }
+
+                        override fun set(newFilter: Int) {
+                            viewModel!!.read = newFilter
+                        }
+                    },
+                    object : PositionProperty {
+                        override val viewId: Int
+                            get() = R.id.saved
+
+                        override fun positionalMapping(): IntArray {
+                            return intArrayOf(1, 0, -1)
+                        }
+
+                        override fun get(): Int {
+                            return viewModel!!.saved
+                        }
+
+                        override fun set(newFilter: Int) {
+                            viewModel!!.saved = newFilter
+                        }
+                    },
+                    object : BooleanProperty {
+                        override val viewId: Int
+                            get() = R.id.latest_only
+
+                        override fun get(): Boolean {
+                            return viewModel!!.isLatestOnly
+                        }
+
+                        override fun set(newFilter: Boolean) {
+                            viewModel!!.isLatestOnly = newFilter
+                        }
+                    }
+                )
+
+            override fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {
+                val recycler: RecyclerView = view.findViewById(R.id.listsFilter)
+                val lists = viewModel!!.lists
+                val layoutManager = LinearLayoutManager(requireContext())
+                recycler.layoutManager = layoutManager
+                val decoration = DividerItemDecoration(requireContext(), layoutManager.orientation)
+                recycler.addItemDecoration(decoration)
+                val flexibleAdapter = FlexibleAdapter<IFlexible<*>>(null)
+                updateRecycler(flexibleAdapter, lists.value)
+                lists.observe(this@EpisodeFragment,
+                    { mediaLists: MutableList<MediaList> -> updateRecycler(flexibleAdapter, mediaLists) })
+                flexibleAdapter.mode = SelectableAdapter.Mode.MULTI
+                flexibleAdapter.addListener(FlexibleAdapter.OnItemClickListener { _: View?, position: Int ->
+                    flexibleAdapter.toggleSelection(position)
+                    val listIds: MutableList<Int> = ArrayList()
+                    for (selectedPosition in flexibleAdapter.selectedPositions) {
+                        val item = flexibleAdapter.getItem(selectedPosition!!,
+                            FlexibleListItem::class.java)
+                        listIds.add(Objects.requireNonNull(item)!!.mediaList.listId)
+                    }
+                    viewModel!!.filterListIds = listIds
+                    sortFlexibleList(flexibleAdapter)
+                    true
+                })
+                recycler.adapter = flexibleAdapter
+            }
+
+            fun updateRecycler(
+                flexibleAdapter: FlexibleAdapter<IFlexible<*>>,
+                mediaLists: MutableList<MediaList>?
+            ) {
+                println("List: $mediaLists")
+                if (mediaLists == null) {
+                    return
+                }
+                val shouldListIds = viewModel!!.filterListIds
+                mediaLists.sortWith(Comparator { o1: MediaList, o2: MediaList ->
+                    val selected1 = shouldListIds.contains(o1.listId)
+                    val selected2 = shouldListIds.contains(o2.listId)
+                    if (selected1 == selected2) {
+                        return@Comparator o1.name.compareTo(o2.name)
+                    } else {
+                        return@Comparator if (selected1) -1 else 1
+                    }
+                })
+                val flexibles: MutableList<IFlexible<*>> = ArrayList(mediaLists.size)
+                for (mediaList in mediaLists) {
+                    flexibles.add(FlexibleListItem(mediaList))
+                }
+                flexibleAdapter.updateDataSet(flexibles)
+                val currentItems = flexibleAdapter.currentItems
+                var i = 0
+                val currentItemsSize = currentItems.size
+                while (i < currentItemsSize) {
+                    val item = currentItems[i] as FlexibleListItem
+                    if (shouldListIds.contains(item.mediaList.listId)) {
+                        flexibleAdapter.addSelection(i)
+                    } else {
+                        flexibleAdapter.removeSelection(i)
+                    }
+                    i++
+                }
+            }
+
+            private fun sortFlexibleList(flexibleAdapter: FlexibleAdapter<IFlexible<*>>) {
+                val list: MutableList<IFlexible<*>> = ArrayList(flexibleAdapter.currentItems)
+                val listIds = viewModel!!.filterListIds
+                list.sortWith(Comparator { o1: IFlexible<*>, o2: IFlexible<*> ->
+                    val item1 = o1 as FlexibleListItem
+                    val item2 = o2 as FlexibleListItem
+                    val selected1 = listIds.contains(item1.mediaList.listId)
+                    val selected2 = listIds.contains(item2.mediaList.listId)
+                    if (selected1 == selected2) {
+                        return@Comparator item1.mediaList.name.compareTo(item2.mediaList.name)
+                    } else {
+                        return@Comparator if (selected1) -1 else 1
+                    }
+                })
+                flexibleAdapter.updateDataSet(list)
+                var i = 0
+                val currentItemsSize = list.size
+                while (i < currentItemsSize) {
+                    val item = list[i] as FlexibleListItem
+                    if (listIds.contains(item.mediaList.listId)) {
+                        flexibleAdapter.addSelection(i)
+                    } else {
+                        flexibleAdapter.removeSelection(i)
+                    }
+                    i++
+                }
+            }
+
+            override val filterLayout: Int
+                get() = R.layout.filter_unread_episode_layout
+        }
+    }
+
+    private class FlexibleListItem(val mediaList: MediaList) :
+        AbstractFlexibleItem<TextOnlyViewHolder>() {
+        override fun equals(o: Any?): Boolean {
+            if (this === o) return true
+            if (o == null || javaClass != o.javaClass) return false
+            val that = o as FlexibleListItem
+            return mediaList == that.mediaList
+        }
+
+        override fun hashCode(): Int {
+            return mediaList.hashCode()
+        }
+
+        override fun getLayoutRes(): Int {
+            return R.layout.text_only_item
+        }
+
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): TextOnlyViewHolder {
+            return TextOnlyViewHolder(view, adapter)
+        }
+
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: TextOnlyViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            val listSource = if (mediaList is ExternalMediaList) "External" else "Internal"
+            val title = String.format("%s (%s)", mediaList.name, listSource)
+            holder.textView.text = title
+            val drawable = DrawableUtils.getSelectableBackgroundCompat(
+                Color.WHITE,  // normal background
+                Color.GRAY,  // pressed background
+                Color.BLACK) // ripple color
+            DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
+        }
+    }
+
+    private class TextOnlyViewHolder(
+        view: View,
+        adapter: FlexibleAdapter<*>?
+    ) : FlexibleViewHolder(view, adapter) {
+        val textView: TextView = view as TextView
+
+        init {
+            val params = textView.layoutParams as MarginLayoutParams
+            params.setMargins(0, 0, 0, 0)
+            textView.textSize = 15f
+            textView.requestLayout()
+        }
+    }
+
+    override fun createFlexible(value: DisplayRelease): IFlexible<*> {
+        return if (groupByMedium) {
+            SectionableEpisodeItem(value, this)
+        } else {
+            EpisodeItem(value, this)
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.unread_chapter_options, menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.group_by_medium) {
+            toggleGroupByMedium(item)
+        } else if (item.itemId == R.id.group_by_medium_first) {
+            item.isChecked = !item.isChecked
+            viewModel!!.setGrouped(item.isChecked)
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    override fun onItemClick(view: View, position: Int): Boolean {
+        val mediumId: Int = when (val item = flexibleAdapter!!.getItem(position)) {
+            is EpisodeItem -> {
+                item.episode.mediumId
+            }
+            is SectionableEpisodeItem -> {
+                item.episode.mediumId
+            }
+            else -> {
+                return false
+            }
+        }
+        val fragment: TocFragment = TocFragment.newInstance(mediumId)
+        mainActivity.switchWindow(fragment)
+        return true
+    }
+
+    private fun toggleGroupByMedium(item: MenuItem) {
+        item.isChecked = !item.isChecked
+        groupByMedium = item.isChecked
+        val list = livePagedList!!.value ?: return
+        val flexibles = convertToFlexible(list)
+        flexibleAdapter!!.updateDataSet(flexibles)
+    }
+
+    private fun openPopup(holder: ViewHolder, episode: DisplayRelease) {
+        val popupMenu = PopupMenu(context, holder.optionsButtonView)
+        if (episode.saved) {
+            popupMenu
+                .menu
+                .add("Open Local")
+                .setOnMenuItemClickListener {
+                    val task = runCompletableTask { instance.getMediumType(episode.mediumId) }
+                    task.whenComplete { type: Int?, _: Throwable? ->
+                        if (type != null) {
+                            openLocal(episode.episodeId, episode.mediumId, type)
+                        }
+                    }
+                    true
+                }
         }
         popupMenu
-                .getMenu()
-                .add("Open in Browser")
-                .setOnMenuItemClickListener(item -> {
-                    this.openInBrowser(episode.getUrl());
-                    return true;
-                });
-        popupMenu.show();
+            .menu
+            .add("Open in Browser")
+            .setOnMenuItemClickListener {
+                this.openInBrowser(episode.url)
+                true
+            }
+        popupMenu.show()
     }
 
-    private static class SectionableEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
-        private final DisplayRelease episode;
-        private final EpisodeFragment fragment;
-
-        SectionableEpisodeItem(@NonNull DisplayRelease episode, EpisodeFragment fragment) {
-            super(new HeaderItem(episode.getMediumTitle(), episode.getMediumId()));
-            this.episode = episode;
-            this.fragment = fragment;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
+    private class SectionableEpisodeItem(
+        val episode: DisplayRelease,
+        private val fragment: EpisodeFragment
+    ) : AbstractSectionableItem<ViewHolder, HeaderItem?>(
+        HeaderItem(
+            episode.mediumTitle, episode.mediumId)) {
+        override fun equals(o: Any?): Boolean {
+            if (this === o) return true
+            if (o !is SectionableEpisodeItem) return false
+            return episode == o.episode
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SectionableEpisodeItem)) return false;
-
-            SectionableEpisodeItem other = (SectionableEpisodeItem) o;
-            return this.episode.equals(other.episode);
+        override fun hashCode(): Int {
+            return episode.hashCode()
         }
 
-        @Override
-        public int hashCode() {
-            return this.episode.hashCode();
+        override fun getLayoutRes(): Int {
+            return R.layout.unreadchapter_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.unreadchapter_item;
-        }
-
-        @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view, adapter);
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): ViewHolder {
+            return ViewHolder(view, adapter)
         }
 
         @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.metaView.setText(episode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
-            holder.novelView.setText(this.episode.getMediumTitle());
-            holder.contentView.setText(episode.getTitle());
-            holder.optionsButtonView.setOnClickListener(v -> this.fragment.openPopup(holder, episode));
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: ViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            holder.metaView.text = episode.releaseDate.toString("dd.MM.yyyy HH:mm:ss")
+            holder.novelView.text = episode.mediumTitle
+            holder.contentView.text = episode.title
+            holder.optionsButtonView.setOnClickListener {
+                fragment.openPopup(holder,
+                    episode)
+            }
+        }
+
+        init {
+            this.isDraggable = false
+            this.isSwipeable = false
+            this.isSelectable = false
         }
     }
 
-    private static class HeaderItem extends AbstractHeaderItem<HeaderViewHolder> {
-        private final String title;
-        private final int mediumId;
-
-        private HeaderItem(String title, int mediumId) {
-            this.title = title;
-            this.mediumId = mediumId;
+    private class HeaderItem(private val title: String, private val mediumId: Int) :
+        AbstractHeaderItem<HeaderViewHolder>() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is HeaderItem) return false
+            return mediumId == other.mediumId
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof HeaderItem)) return false;
-
-            HeaderItem other = (HeaderItem) o;
-            return this.mediumId == other.mediumId;
+        override fun hashCode(): Int {
+            return mediumId
         }
 
-        @Override
-        public int hashCode() {
-            return mediumId;
+        override fun getLayoutRes(): Int {
+            return R.layout.flexible_header
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.flexible_header;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): HeaderViewHolder {
+            return HeaderViewHolder(view, adapter)
         }
 
-        @Override
-        public HeaderViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new HeaderViewHolder(view, adapter);
-        }
-
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, HeaderViewHolder holder, int position, List<Object> payloads) {
-            holder.textView.setText(this.title);
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: HeaderViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            holder.textView.text = title
         }
     }
 
-    private static class EpisodeItem extends AbstractFlexibleItem<ViewHolder> {
-        private final DisplayRelease episode;
-        private final EpisodeFragment fragment;
-
-        EpisodeItem(@NonNull DisplayRelease episode, EpisodeFragment fragment) {
-            this.episode = episode;
-            this.fragment = fragment;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
+    private class EpisodeItem(
+        val episode: DisplayRelease,
+        private val fragment: EpisodeFragment
+    ) : AbstractFlexibleItem<ViewHolder>() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is SectionableEpisodeItem) return false
+            return episode.episodeId == other.episode.episodeId
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SectionableEpisodeItem)) return false;
-
-            SectionableEpisodeItem other = (SectionableEpisodeItem) o;
-            return this.episode.getEpisodeId() == other.episode.getEpisodeId();
+        override fun hashCode(): Int {
+            return episode.episodeId
         }
 
-        @Override
-        public int hashCode() {
-            return this.episode.getEpisodeId();
+        override fun getLayoutRes(): Int {
+            return R.layout.unreadchapter_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.unreadchapter_item;
-        }
-
-        @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view, adapter);
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): ViewHolder {
+            return ViewHolder(view, adapter)
         }
 
         @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: ViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            holder.metaView.setText(episode.getReleaseDate().toString("dd.MM.yyyy HH:mm:ss"));
-            holder.novelView.setText(this.episode.getMediumTitle());
-
-            String title = episode.getTitle();
-
-            if (episode.getPartialIndex() > 0) {
-                title = String.format("#%d.%d - %s", episode.getTotalIndex(), episode.getPartialIndex(), title);
+            holder.metaView.text = episode.releaseDate.toString("dd.MM.yyyy HH:mm:ss")
+            holder.novelView.text = episode.mediumTitle
+            var title = episode.title
+            title = if (episode.partialIndex > 0) {
+                String.format("#%d.%d - %s", episode.totalIndex, episode.partialIndex, title)
             } else {
-                title = String.format("#%d - %s", episode.getTotalIndex(), title);
+                String.format("#%d - %s", episode.totalIndex, title)
             }
-            title = String.format("%s (%s) ", title, Utils.getDomain(episode.getUrl()));
-            holder.contentView.setText(title);
+            title = String.format("%s (%s) ", title, getDomain(
+                episode.url))
+            holder.contentView.text = title
+            holder.optionsButtonView.setOnClickListener {
+                fragment.openPopup(holder,
+                    episode)
+            }
+        }
 
-            holder.optionsButtonView.setOnClickListener(v -> this.fragment.openPopup(holder, episode));
+        init {
+            this.isDraggable = false
+            this.isSwipeable = false
+            this.isSelectable = false
         }
     }
 
-    private static class HeaderViewHolder extends FlexibleViewHolder {
-        private TextView textView;
-
-        HeaderViewHolder(@NonNull View itemView, FlexibleAdapter<IFlexible> adapter) {
-            super(itemView, adapter, true);
-            textView = itemView.findViewById(R.id.text);
-        }
+    private class HeaderViewHolder(
+        itemView: View,
+        adapter: FlexibleAdapter<IFlexible<*>?>?
+    ) : FlexibleViewHolder(itemView, adapter, true) {
+        val textView: TextView = itemView.findViewById(R.id.text)
     }
 
-    private static class ViewHolder extends FlexibleViewHolder {
-        final View mView;
-        final TextView contentView;
-        private final TextView metaView;
-        private final TextView novelView;
-        private final ImageButton optionsButtonView;
+    private class ViewHolder(mView: View, adapter: FlexibleAdapter<*>?) :
+        FlexibleViewHolder(mView, adapter) {
+        val contentView: TextView = mView.findViewById(R.id.content)
+        val metaView: TextView = mView.findViewById(R.id.item_top_left)
+        val novelView: TextView = mView.findViewById(R.id.item_top_right)
+        val optionsButtonView: ImageButton = mView.findViewById(R.id.item_options_button)
 
-        ViewHolder(@NonNull View view, FlexibleAdapter adapter) {
-            super(view, adapter);
-            mView = view;
-            metaView = view.findViewById(R.id.item_top_left);
-            novelView = view.findViewById(R.id.item_top_right);
-            contentView = view.findViewById(R.id.content);
-            optionsButtonView = view.findViewById(R.id.item_options_button);
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return super.toString() + " '" + contentView.getText() + "'";
+        override fun toString(): String {
+            return super.toString() + " '" + contentView.text + "'"
         }
     }
 }

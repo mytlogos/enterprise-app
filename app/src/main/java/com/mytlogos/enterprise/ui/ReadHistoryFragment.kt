@@ -1,274 +1,235 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageButton;
-import android.widget.TextView;
-
-import androidx.annotation.NonNull;
-import androidx.fragment.app.Fragment;
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
-
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.ReadEpisode;
-import com.mytlogos.enterprise.model.Release;
-import com.mytlogos.enterprise.viewmodel.ReadEpisodeViewModel;
-
-import java.util.Comparator;
-import java.util.List;
-
-import eu.davidea.flexibleadapter.FlexibleAdapter;
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
-import eu.davidea.flexibleadapter.items.AbstractHeaderItem;
-import eu.davidea.flexibleadapter.items.AbstractSectionableItem;
-import eu.davidea.flexibleadapter.items.IFlexible;
-import eu.davidea.viewholders.FlexibleViewHolder;
+import android.annotation.SuppressLint
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageButton
+import android.widget.TextView
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.model.ReadEpisode
+import com.mytlogos.enterprise.model.Release
+import com.mytlogos.enterprise.viewmodel.ReadEpisodeViewModel
+import eu.davidea.flexibleadapter.FlexibleAdapter
+import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
+import eu.davidea.flexibleadapter.items.AbstractHeaderItem
+import eu.davidea.flexibleadapter.items.AbstractSectionableItem
+import eu.davidea.flexibleadapter.items.IFlexible
+import eu.davidea.viewholders.FlexibleViewHolder
+import java.util.*
 
 /**
  * A fragment representing a list of Items.
  */
-public class ReadHistoryFragment extends BaseListFragment<ReadEpisode, ReadEpisodeViewModel> {
+class ReadHistoryFragment
+/**
+ * Mandatory empty constructor for the fragment manager to instantiate the
+ * fragment (e.g. upon screen orientation changes).
+ */
+    : BaseListFragment<ReadEpisode, ReadEpisodeViewModel>() {
 
-    /**
-     * Mandatory empty constructor for the fragment manager to instantiate the
-     * fragment (e.g. upon screen orientation changes).
-     */
-    public ReadHistoryFragment() {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        this.setTitle("Read History")
+        return view
     }
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    override val viewModelClass: Class<ReadEpisodeViewModel>
+        get() = ReadEpisodeViewModel::class.java
+
+    override fun createPagedListLiveData(): LiveData<PagedList<ReadEpisode>> {
+        return viewModel!!.readEpisodes
     }
 
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        this.setTitle("Read History");
-        return view;
+    override fun createFlexible(value: ReadEpisode): IFlexible<*> {
+        return ReadEpisodeItem(value, this)
     }
 
-    @Override
-    Class<ReadEpisodeViewModel> getViewModelClass() {
-        return ReadEpisodeViewModel.class;
-    }
-
-    @Override
-    LiveData<PagedList<ReadEpisode>> createPagedListLiveData() {
-        return getViewModel().getReadEpisodes();
-    }
-
-    @Override
-    IFlexible createFlexible(ReadEpisode readEpisode) {
-        return new ReadEpisodeItem(readEpisode, this);
-    }
-
-    private static class SectionableReadEpisodeItem extends AbstractSectionableItem<ViewHolder, HeaderItem> {
-        private final ReadEpisode displayReadEpisode;
-
-        SectionableReadEpisodeItem(@NonNull ReadEpisode displayReadEpisode) {
-            super(new HeaderItem(displayReadEpisode
-                    .getReleases()
+    private class SectionableReadEpisodeItem(val displayReadEpisode: ReadEpisode) :
+        AbstractSectionableItem<ViewHolder, HeaderItem?>(
+            HeaderItem(
+                displayReadEpisode
+                    .releases
                     .stream()
-                    .max(Comparator.comparingInt(value -> value.getTitle().length()))
-                    .map(Release::getTitle)
-                    .orElse("Not available"),
-                    displayReadEpisode.getMediumId())
-            );
-            this.displayReadEpisode = displayReadEpisode;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
+                    .max(Comparator.comparingInt { value: Release -> value.title!!.length })
+                    .map(Release::title)
+                    .orElse("Not available")!!,
+                displayReadEpisode.mediumId)
+        ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is SectionableReadEpisodeItem) return false
+            return displayReadEpisode.episodeId == other.displayReadEpisode.episodeId
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SectionableReadEpisodeItem)) return false;
-
-            SectionableReadEpisodeItem other = (SectionableReadEpisodeItem) o;
-            return this.displayReadEpisode.getEpisodeId() == other.displayReadEpisode.getEpisodeId();
+        override fun hashCode(): Int {
+            return displayReadEpisode.episodeId
         }
 
-        @Override
-        public int hashCode() {
-            return this.displayReadEpisode.getEpisodeId();
+        override fun getLayoutRes(): Int {
+            return R.layout.unreadchapter_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.unreadchapter_item;
-        }
-
-        @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view, adapter);
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): ViewHolder {
+            return ViewHolder(view, adapter)
         }
 
         @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            holder.mItem = this.displayReadEpisode;
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: ViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            holder.mItem = displayReadEpisode
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            holder.novelView.setText(this.displayReadEpisode.getMediumTitle());
-            holder.contentView.setText(this.displayReadEpisode
-                    .getReleases()
-                    .stream()
-                    .max(Comparator.comparingInt(value -> value.getTitle().length()))
-                    .map(Release::getTitle)
-                    .orElse("Not available"));
+            holder.novelView.text = displayReadEpisode.mediumTitle
+            holder.contentView.text = displayReadEpisode
+                .releases
+                .stream()
+                .max(Comparator.comparingInt { value: Release -> value.title!!.length })
+                .map(Release::title)
+                .orElse("Not available")
+        }
+
+        init {
+            this.isDraggable = false
+            this.isSwipeable = false
+            this.isSelectable = false
         }
     }
 
-    private static class ReadEpisodeItem extends AbstractFlexibleItem<ViewHolder> {
-        private final ReadEpisode displayReadEpisode;
-
-        ReadEpisodeItem(@NonNull ReadEpisode displayReadEpisode, Fragment fragment) {
-            this.displayReadEpisode = displayReadEpisode;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
+    private class ReadEpisodeItem(
+        private val displayReadEpisode: ReadEpisode,
+        fragment: Fragment?
+    ) : AbstractFlexibleItem<ViewHolder>() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is SectionableReadEpisodeItem) return false
+            return displayReadEpisode.episodeId == other.displayReadEpisode.episodeId
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SectionableReadEpisodeItem)) return false;
-
-            SectionableReadEpisodeItem other = (SectionableReadEpisodeItem) o;
-            return this.displayReadEpisode.getEpisodeId() == other.displayReadEpisode.getEpisodeId();
+        override fun hashCode(): Int {
+            return displayReadEpisode.episodeId
         }
 
-        @Override
-        public int hashCode() {
-            return this.displayReadEpisode.getEpisodeId();
+        override fun getLayoutRes(): Int {
+            return R.layout.unreadchapter_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.unreadchapter_item;
-        }
-
-        @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view, adapter);
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): ViewHolder {
+            return ViewHolder(view, adapter)
         }
 
         @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            ReadEpisode episode = this.displayReadEpisode;
-            holder.mItem = episode;
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: ViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            val episode = displayReadEpisode
+            holder.mItem = episode
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            holder.novelView.setText(episode.getMediumTitle());
-
-            String title = this.displayReadEpisode
-                    .getReleases()
-                    .stream()
-                    .max(Comparator.comparingInt(value -> value.getTitle().length()))
-                    .map(Release::getTitle)
-                    .orElse("Not available");
-
-            if (episode.getPartialIndex() > 0) {
-                title = String.format("#%d.%d - %s", episode.getTotalIndex(), episode.getPartialIndex(), title);
+            holder.novelView.text = episode.mediumTitle
+            var title = displayReadEpisode
+                .releases
+                .stream()
+                .max(Comparator.comparingInt { value: Release -> value.title!!.length })
+                .map(Release::title)
+                .orElse("Not available")
+            title = if (episode.partialIndex > 0) {
+                String.format("#%d.%d - %s", episode.totalIndex, episode.partialIndex, title)
             } else {
-                title = String.format("#%d - %s", episode.getTotalIndex(), title);
+                String.format("#%d - %s", episode.totalIndex, title)
             }
-            holder.contentView.setText(title);
+            holder.contentView.text = title
+        }
+
+        init {
+            this.isDraggable = false
+            this.isSwipeable = false
+            this.isSelectable = false
         }
     }
 
-    private static class HeaderItem extends AbstractHeaderItem<HeaderViewHolder> {
-
-        private final String title;
-        private final int mediumId;
-
-        private HeaderItem(String title, int mediumId) {
-            this.title = title;
-            this.mediumId = mediumId;
+    private class HeaderItem(private val title: String, private val mediumId: Int) :
+        AbstractHeaderItem<HeaderViewHolder>() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is HeaderItem) return false
+            return mediumId == other.mediumId
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof HeaderItem)) return false;
-
-            HeaderItem other = (HeaderItem) o;
-            return this.mediumId == other.mediumId;
+        override fun hashCode(): Int {
+            return mediumId
         }
 
-        @Override
-        public int hashCode() {
-            return mediumId;
+        override fun getLayoutRes(): Int {
+            return R.layout.flexible_header
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.flexible_header;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): HeaderViewHolder {
+            return HeaderViewHolder(view, adapter)
         }
 
-        @Override
-        public HeaderViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new HeaderViewHolder(view, adapter);
-        }
-
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, HeaderViewHolder holder, int position, List<Object> payloads) {
-            holder.textView.setText(this.title);
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: HeaderViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            holder.textView.text = title
         }
     }
 
-    private static class HeaderViewHolder extends FlexibleViewHolder {
-        private TextView textView;
+    private class HeaderViewHolder(
+        itemView: View,
+        adapter: FlexibleAdapter<IFlexible<*>?>?
+    ) : FlexibleViewHolder(itemView, adapter, true) {
+        val textView: TextView
 
-        HeaderViewHolder(@NonNull View itemView, FlexibleAdapter<IFlexible> adapter) {
-            super(itemView, adapter, true);
-            textView = itemView.findViewById(R.id.text);
+        init {
+            textView = itemView.findViewById(R.id.text)
         }
     }
 
-    private static class ViewHolder extends FlexibleViewHolder {
-        final View mView;
-        final TextView contentView;
-        private final TextView metaView;
-        private final TextView novelView;
-        private final ImageButton optionsButtonView;
-        private ReadEpisode mItem;
-
-        ViewHolder(@NonNull View view, FlexibleAdapter adapter) {
-            super(view, adapter);
-            mView = view;
-            metaView = view.findViewById(R.id.item_top_left);
-            novelView = view.findViewById(R.id.item_top_right);
-            contentView = view.findViewById(R.id.content);
-            optionsButtonView = view.findViewById(R.id.item_options_button);
+    private class ViewHolder(mView: View, adapter: FlexibleAdapter<*>?) :
+        FlexibleViewHolder(
+            mView, adapter) {
+        val contentView: TextView
+        private val metaView: TextView
+        val novelView: TextView
+        private val optionsButtonView: ImageButton
+        var mItem: ReadEpisode? = null
+        override fun toString(): String {
+            return super.toString() + " '" + contentView.text + "'"
         }
 
-        @NonNull
-        @Override
-        public String toString() {
-            return super.toString() + " '" + contentView.getText() + "'";
+        init {
+            metaView = mView.findViewById(R.id.item_top_left)
+            novelView = mView.findViewById(R.id.item_top_right)
+            contentView = mView.findViewById(R.id.content)
+            optionsButtonView = mView.findViewById(R.id.item_options_button)
         }
-    }
-
-
-    @Override
-    public void onAttach(@NonNull Context context) {
-        super.onAttach(context);
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
     }
 
     /**
@@ -276,13 +237,12 @@ public class ReadHistoryFragment extends BaseListFragment<ReadEpisode, ReadEpiso
      * fragment to allow an interaction in this fragment to be communicated
      * to the activity and potentially other fragments contained in that
      * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
+     *
+     *
+     * See the Android Training lesson [Communicating with Other Fragments](http://developer.android.com/training/basics/fragments/communicating.html) for more information.
      */
-    public interface ReadChapterClickListener {
+    interface ReadChapterClickListener {
         // TODO: Update argument type and name
-        void onListFragmentInteraction(Object item);
+        fun onListFragmentInteraction(item: Any?)
     }
 }

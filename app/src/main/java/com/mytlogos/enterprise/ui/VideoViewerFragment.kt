@@ -1,9 +1,11 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import androidx.fragment.app.Fragment;
+import androidx.fragment.app.Fragment
 
-public class VideoViewerFragment extends BaseFragment {
-    public static Fragment newInstance(int episodeId, String path) {
-        return new VideoViewerFragment();
+class VideoViewerFragment : BaseFragment() {
+    companion object {
+        fun newInstance(episodeId: Int, path: String?): Fragment {
+            return VideoViewerFragment()
+        }
     }
 }

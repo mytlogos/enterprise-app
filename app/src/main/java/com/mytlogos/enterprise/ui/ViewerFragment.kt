@@ -1,218 +1,217 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.annotation.IdRes
+import androidx.annotation.LayoutRes
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.tools.ScrollHideHelper
+import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout
+import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.util.*
 
-import androidx.annotation.IdRes;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+abstract class ViewerFragment<T> : BaseFragment() {
+    private val scrollHideHelper = ScrollHideHelper()
+    private var navigationView: View? = null
+    private var appbar: View? = null
+    private var swipeLayout: SwipyRefreshLayout? = null
+    private var progressView: TextView? = null
+    private var scrollView: View? = null
+    private var progress = 0f
+    private var maxScrolledY = 0
+    var currentEpisode = 0
+    var currentBook: String? = null
+    var readableEpisodes: MutableList<T> = ArrayList()
+    var currentlyReading: T? = null
 
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.tools.ScrollHideHelper;
-import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout;
-import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-
-abstract class ViewerFragment<T> extends BaseFragment {
-    private final ScrollHideHelper scrollHideHelper = new ScrollHideHelper();
-    private View navigationView;
-    private View appbar;
-    private SwipyRefreshLayout swipeLayout;
-    private TextView progressView;
-    private View scrollView;
-    private float progress = 0;
-    private int maxScrolledY = 0;
-    int currentEpisode;
-    String currentBook;
-    List<T> readableEpisodes = new ArrayList<>();
-    T currentlyReading;
-    static final String MEDIUM = "MEDIUM_FILE";
-    static final String START_EPISODE = "START_EPISODE";
-
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.viewer_layout, container, false);
-        this.swipeLayout = view.findViewById(R.id.swiper);
-        inflater.inflate(getLayoutRes(), this.swipeLayout, true);
-
-        this.navigationView = view.findViewById(R.id.navigation);
-        this.appbar = requireActivity().findViewById(R.id.appbar);
-        this.swipeLayout.setOnRefreshListener(this::navigateEpisode);
-        this.progressView = view.findViewById(R.id.progress);
-        view.findViewById(R.id.left_nav).setOnClickListener(v -> navigateEpisode(SwipyRefreshLayoutDirection.TOP));
-        view.findViewById(R.id.right_nav).setOnClickListener(v -> navigateEpisode(SwipyRefreshLayoutDirection.BOTTOM));
-
-        int scrolledViewId = this.getScrolledViewId();
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = inflater.inflate(R.layout.viewer_layout, container, false)
+        swipeLayout = view.findViewById(R.id.swiper)
+        inflater.inflate(layoutRes, swipeLayout, true)
+        navigationView = view.findViewById(R.id.navigation)
+        appbar = requireActivity().findViewById(R.id.appbar)
+        val localSwipeLayout = swipeLayout
+        localSwipeLayout!!.setOnRefreshListener { direction: SwipyRefreshLayoutDirection ->
+            navigateEpisode(direction)
+        }
+        progressView = view.findViewById(R.id.progress)
+        view.findViewById<View>(R.id.left_nav)
+            .setOnClickListener { navigateEpisode(SwipyRefreshLayoutDirection.TOP) }
+        view.findViewById<View>(R.id.right_nav)
+            .setOnClickListener { navigateEpisode(SwipyRefreshLayoutDirection.BOTTOM) }
+        val scrolledViewId = scrolledViewId
         if (scrolledViewId != View.NO_ID) {
-            this.scrollView = view.findViewById(scrolledViewId);
-            this.scrollView.setOnScrollChangeListener(
-                    (v, scrollX, scrollY, oldScrollX, oldScrollY) ->
-                            this.onScroll(scrollX, scrollY, oldScrollX, oldScrollY)
-            );
+            scrollView = view.findViewById(scrolledViewId)
+            val localScrollView = scrollView
+            localScrollView!!.setOnScrollChangeListener { _: View?, scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int ->
+                onScroll(scrollX,
+                    scrollY,
+                    oldScrollX,
+                    oldScrollY)
+            }
         }
-        return view;
+        return view
     }
 
-    void onScroll(int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+    open fun onScroll(scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int) {
         if (scrollY != oldScrollY) {
-            this.scrollHideHelper.hideGroups(oldScrollX, scrollX, oldScrollY, scrollY, this.navigationView, null, this.appbar, null);
+            scrollHideHelper.hideGroups(oldScrollX,
+                scrollX,
+                oldScrollY,
+                scrollY,
+                navigationView,
+                null,
+                appbar,
+                null)
         }
-        if (scrollY > this.maxScrolledY) {
-            this.maxScrolledY = scrollY;
-            float progress = this.calculateProgressByScroll(scrollY, scrollX);
-            this.updateProgress(progress);
+        if (scrollY > maxScrolledY) {
+            maxScrolledY = scrollY
+            val progress = calculateProgressByScroll(scrollY, scrollX)
+            updateProgress(progress)
         }
     }
 
-    void toggleReadingMode() {
-        this.scrollHideHelper.toggleGroups(this.navigationView, null, this.appbar, null);
+    fun toggleReadingMode() {
+        scrollHideHelper.toggleGroups(navigationView, null, appbar, null)
     }
 
-    void onLoadFinished() {
-        this.maxScrolledY = 0;
-        this.updateProgress(this.getCurrentProgress());
-        this.seekFromProgress(this.progress);
-        this.swipeLayout.setRefreshing(false);
+    fun onLoadFinished() {
+        maxScrolledY = 0
+        updateProgress(currentProgress)
+        seekFromProgress(progress)
+        swipeLayout!!.isRefreshing = false
     }
 
-    @IdRes
-    int getScrolledViewId() {
-        return View.NO_ID;
-    }
+    @get:IdRes
+    open val scrolledViewId: Int
+        get() = View.NO_ID
 
-    void seekFromProgress(float progress) {
-
-    }
+    fun seekFromProgress(progress: Float) {}
 
     /**
      * Progress with value of 0 to 1.
      *
      * @param progress newProgress
      */
-    void updateProgress(float progress) {
-        if (progress > 1) {
-            progress = 1;
+    fun updateProgress(progress: Float) {
+        var newProgress = progress
+        if (newProgress > 1) {
+            newProgress = 1f
         }
-        progress = BigDecimal
-                .valueOf(progress)
-                .setScale(3, RoundingMode.CEILING)
-                .floatValue();
-
-        if (progress > this.progress) {
-            this.progress = progress;
+        newProgress = BigDecimal
+            .valueOf(newProgress.toDouble())
+            .setScale(3, RoundingMode.CEILING)
+            .toFloat()
+        if (newProgress > this.progress) {
+            this.progress = newProgress
         } else {
-            return;
+            return
         }
-        progress = progress * 100;
-        this.updateViewProgress(this.getProgressDescription(progress));
+        newProgress *= 100
+        updateViewProgress(getProgressDescription(newProgress))
     }
 
-    float calculateProgressByScroll(int scrollY, int scrollX) {
-        if (this.scrollView == null || scrollY == 0) {
-            return 0;
+    open fun calculateProgressByScroll(scrollY: Int, scrollX: Int): Float {
+        var scrollY = scrollY
+        if (scrollView == null || scrollY == 0) {
+            return 0.0f
         }
-        float maxHeight = 0;
-
-        if (this.scrollView instanceof ViewGroup) {
-            ViewGroup viewGroup = (ViewGroup) this.scrollView;
-
-            for (int i = 0; i < viewGroup.getChildCount(); i++) {
-                View child = viewGroup.getChildAt(i);
-                maxHeight += child.getHeight();
+        var maxHeight = 0f
+        if (scrollView is ViewGroup) {
+            val viewGroup = scrollView as ViewGroup?
+            for (i in 0 until viewGroup!!.childCount) {
+                val child = viewGroup.getChildAt(i)
+                maxHeight += child.height.toFloat()
             }
         } else {
-            maxHeight = this.scrollView.getHeight();
+            maxHeight = scrollView!!.height.toFloat()
         }
-        scrollY = this.scrollView.getHeight() + scrollY;
-        if (maxHeight == 0) {
-            return 0;
-        }
-        return scrollY / maxHeight;
+        scrollY += scrollView!!.height
+        return if (maxHeight == 0f) {
+            0.0f
+        } else scrollY / maxHeight
     }
 
-    String getProgressDescription(float progress) {
-        return String.format(Locale.getDefault(), "%.1f%%", progress);
+    fun getProgressDescription(progress: Float): String {
+        return String.format(Locale.getDefault(), "%.1f%%", progress)
     }
 
-    void updateViewProgress(String progressDescription) {
-        this.progressView.setText(progressDescription);
+    fun updateViewProgress(progressDescription: String?) {
+        progressView!!.text = progressDescription
     }
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        if (getArguments() != null) {
-            this.currentEpisode = getArguments().getInt(START_EPISODE);
-            this.currentBook = getArguments().getString(MEDIUM);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (arguments != null) {
+            currentEpisode = requireArguments().getInt(START_EPISODE)
+            currentBook = requireArguments().getString(MEDIUM)
         }
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        this.scrollHideHelper.showGroups(this.navigationView, null, this.appbar, null);
-
-        Bundle bundle = new Bundle();
-        bundle.putInt(START_EPISODE, currentEpisode);
-        bundle.putString(MEDIUM, currentBook);
-        this.setArguments(bundle);
+    override fun onDestroy() {
+        super.onDestroy()
+        scrollHideHelper.showGroups(navigationView, null, appbar, null)
+        val bundle = Bundle()
+        bundle.putInt(START_EPISODE, currentEpisode)
+        bundle.putString(MEDIUM, currentBook)
+        this.arguments = bundle
     }
 
-    private void navigateEpisode(SwipyRefreshLayoutDirection direction) {
-        if (this.currentlyReading == null) {
-            if (this.readableEpisodes.isEmpty()) {
-                return;
+    private fun navigateEpisode(direction: SwipyRefreshLayoutDirection) {
+        if (currentlyReading == null) {
+            if (readableEpisodes.isEmpty()) {
+                return
             } else {
-                this.currentlyReading = this.readableEpisodes.get(0);
+                currentlyReading = readableEpisodes[0]
             }
         } else {
-            int index = this.readableEpisodes.indexOf(currentlyReading);
-            if (direction == SwipyRefreshLayoutDirection.TOP) {
-                index--;
-            } else if (direction == SwipyRefreshLayoutDirection.BOTTOM) {
-                index++;
-            } else {
-                System.out.println("Unknown swipe direction in TextViewerFragment, neither top or bottom");
-                return;
+            var index = readableEpisodes.indexOf(currentlyReading)
+            when (direction) {
+                SwipyRefreshLayoutDirection.TOP -> index--
+                SwipyRefreshLayoutDirection.BOTTOM -> index++
+                else -> {
+                    println("Unknown swipe direction in TextViewerFragment, neither top or bottom")
+                    return
+                }
             }
-            if (index >= this.readableEpisodes.size()) {
+            if (index >= readableEpisodes.size) {
                 // TODO: 26.07.2019 check with if there are more episodes and save them
-                showToast("You are already reading the last saved episode");
-                return;
+                showToast("You are already reading the last saved episode")
+                return
             } else if (index < 0) {
                 // TODO: 26.07.2019 check with if there are more episodes and save them
-                showToast("You are already reading the first saved episode");
-                return;
+                showToast("You are already reading the first saved episode")
+                return
             }
-            this.currentlyReading = this.readableEpisodes.get(index);
+            currentlyReading = readableEpisodes[index]
         }
-        this.saveProgress(this.progress);
-        this.updateContent();
+        saveProgress(progress)
+        updateContent()
     }
 
-    @Override
-    public void onStop() {
-        super.onStop();
-        this.saveProgress(this.progress);
+    override fun onStop() {
+        super.onStop()
+        saveProgress(progress)
     }
 
-    abstract float getCurrentProgress();
+    abstract val currentProgress: Float
+    abstract fun saveProgress(progress: Float)
 
-    abstract void saveProgress(float progress);
+    @get:LayoutRes
+    abstract val layoutRes: Int
+    abstract fun updateContent()
 
-    @LayoutRes
-    abstract int getLayoutRes();
-
-    abstract void updateContent();
+    companion object {
+        const val MEDIUM = "MEDIUM_FILE"
+        const val START_EPISODE = "START_EPISODE"
+    }
 }

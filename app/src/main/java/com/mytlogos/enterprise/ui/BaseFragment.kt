@@ -1,154 +1,127 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.app.Activity;
-import android.app.Application;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
-import android.view.View;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.app.Activity
+import android.content.DialogInterface
+import android.content.Intent
+import android.net.Uri
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
+import android.widget.Toast
+import androidx.annotation.StringRes
+import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.Fragment
+import com.mytlogos.enterprise.MainActivity
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.model.MediumType
+import com.mytlogos.enterprise.tools.FileTools.getContentTool
+import com.mytlogos.enterprise.tools.Utils
+import java.util.*
+import java.util.function.Function
 
-import androidx.annotation.StringRes;
-import androidx.appcompat.app.AlertDialog;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-
-import com.mytlogos.enterprise.MainActivity;
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.MediumType;
-import com.mytlogos.enterprise.tools.ContentTool;
-import com.mytlogos.enterprise.tools.FileTools;
-import com.mytlogos.enterprise.tools.Utils;
-
-import java.util.List;
-import java.util.Objects;
-
-public class BaseFragment extends Fragment {
-
-    protected void setTitle(String title) {
-        this.getMainActivity().setTitle(title);
+open class BaseFragment : Fragment() {
+    protected fun setTitle(title: String?) {
+        mainActivity.setTitle(title)
     }
 
-    protected void setTitle(@StringRes int title) {
-        this.getMainActivity().setTitle(title);
+    protected fun setTitle(@StringRes title: Int) {
+        mainActivity.setTitle(title)
     }
 
-    protected MainActivity getMainActivity() {
-        return (MainActivity) Objects.requireNonNull(this.getActivity());
-    }
+    protected val mainActivity: MainActivity
+        get() = this.requireActivity() as MainActivity
 
-    void openInBrowser(String url) {
+    fun openInBrowser(url: String?) {
         if (url == null || url.isEmpty()) {
-            this.showToast("No Link available");
-            return;
+            showToast("No Link available")
+            return
         }
-
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-
-        PackageManager manager = Objects.requireNonNull(this.getActivity()).getPackageManager();
-
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        val manager = this.requireActivity().packageManager
         if (intent.resolveActivity(manager) != null) {
-            this.startActivity(intent);
+            this.startActivity(intent)
         } else {
-            this.showToast("No Browser available");
+            showToast("No Browser available")
         }
     }
 
-    void openInBrowser(List<String> urls) {
+    fun openInBrowser(urls: List<String>) {
         if (urls.isEmpty()) {
-            return;
+            return
         }
-        if (urls.size() == 1) {
-            this.openInBrowser(urls.get(0));
+        if (urls.size == 1) {
+            this.openInBrowser(urls[0])
         } else {
-            String[] domains = urls.stream().map(Utils::getDomain).toArray(String[]::new);
-            new AlertDialog
-                    .Builder(requireContext())
-                    .setItems(domains, (dialog, which) -> {
-                        if (which >= 0 && which < urls.size()) {
-                            String url = urls.get(which);
-                            this.openInBrowser(url);
-                        }
-                    })
-                    .show();
+            val domains =
+                urls.stream().map { obj: String -> Utils.getDomain(obj) }
+                    .toArray<String> { arrayOf() }
+            AlertDialog.Builder(requireContext())
+                .setItems(domains) { _: DialogInterface?, which: Int ->
+                    if (which >= 0 && which < urls.size) {
+                        val url = urls[which]
+                        this.openInBrowser(url)
+                    }
+                }
+                .show()
         }
     }
 
-    boolean checkEmptyList(List<?> list, View root, View listView) {
-        TextView textView = root.findViewById(R.id.empty_view);
+    fun checkEmptyList(list: List<*>?, root: View, listView: View?): Boolean {
+        val textView = root.findViewById<TextView>(R.id.empty_view)
 
         // TODO: 22.07.2019 this one not seem to work
         //  it doesn't throw an error, but also does not display any text if empty
         if (list == null || list.isEmpty()) {
-            textView.setVisibility(View.VISIBLE);
-            return true;
+            textView.visibility = View.VISIBLE
+            return true
         }
-        textView.setVisibility(View.GONE);
-        return false;
+        textView.visibility = View.GONE
+        return false
     }
 
-    void showToast(CharSequence msg) {
-        showToast(msg, Toast.LENGTH_SHORT);
-    }
-
-    void showToast(CharSequence msg, int duration) {
-        Toast.makeText(requireContext(), msg, duration).show();
+    @JvmOverloads
+    fun showToast(msg: CharSequence?, duration: Int = Toast.LENGTH_SHORT) {
+        Toast.makeText(requireContext(), msg, duration).show()
     }
 
     /**
      * Copied and modified a little from
-     * <a href="https://stackoverflow.com/a/17789187">
-     * Close/hide the Android Soft Keyboard
-     * </a>
+     * [
+ * Close/hide the Android Soft Keyboard
+](https://stackoverflow.com/a/17789187) *
      */
-    void hideKeyboard() {
-        FragmentActivity activity = requireActivity();
-        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
+    fun hideKeyboard() {
+        val activity = requireActivity()
+        val imm = activity.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
         //Find the currently focused view, so we can grab the correct window token from it.
-        View view = activity.getCurrentFocus();
+        var view = activity.currentFocus
         //If no view currently has focus, create a new one, just so we can grab a window token from it
         if (view == null) {
-            view = Objects.requireNonNull(getView()).getRootView();
+            view = this.requireView().rootView
         }
-        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        imm.hideSoftInputFromWindow(view!!.windowToken, 0)
     }
 
-    void openLocal(int episodeId, int mediumId, int mediumType) {
-        Application application = getMainActivity().getApplication();
-
-        Fragment fragment;
-        ContentTool tool = FileTools.getContentTool(mediumType, application);
-
-        if (!tool.isSupported()) {
-            showToast("This medium type is not yet supported");
-            return;
+    fun openLocal(episodeId: Int, mediumId: Int, mediumType: Int) {
+        val application = mainActivity.application
+        val fragment: Fragment?
+        val tool = getContentTool(mediumType, application)
+        if (!tool.isSupported) {
+            showToast("This medium type is not yet supported")
+            return
         }
-        String path = tool.getItemPath(mediumId);
-
-        if (path.isEmpty()) {
-            this.showToast("No Medium Found");
-            return;
+        val path = tool.getItemPath(mediumId)
+        if (path!!.isEmpty()) {
+            showToast("No Medium Found")
+            return
         }
-
-        switch (mediumType) {
-            case MediumType.TEXT:
-                fragment = TextViewerFragment.newInstance(episodeId, path);
-                break;
-            case MediumType.AUDIO:
-                fragment = AudioViewerFragment.newInstance(episodeId, path);
-                break;
-            case MediumType.IMAGE:
-                fragment = ImageViewerFragment.newInstance(episodeId, path);
-                break;
-            case MediumType.VIDEO:
-                fragment = VideoViewerFragment.newInstance(episodeId, path);
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown medium type");
+        fragment = when (mediumType) {
+            MediumType.TEXT -> TextViewerFragment.newInstance(episodeId, path)
+            MediumType.AUDIO -> AudioViewerFragment.newInstance(episodeId, path)
+            MediumType.IMAGE -> ImageViewerFragment.newInstance(episodeId, path)
+            MediumType.VIDEO -> VideoViewerFragment.newInstance(episodeId, path)
+            else -> throw IllegalArgumentException("Unknown medium type")
         }
-
-        getMainActivity().switchWindow(fragment);
+        mainActivity.switchWindow(fragment)
     }
 }

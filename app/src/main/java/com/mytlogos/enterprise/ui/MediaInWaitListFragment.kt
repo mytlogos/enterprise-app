@@ -1,266 +1,207 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.annotation.SuppressLint;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.annotation.SuppressLint
+import android.os.AsyncTask
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.model.MediumInWait
+import com.mytlogos.enterprise.model.MediumType
+import com.mytlogos.enterprise.tools.Sortings
+import com.mytlogos.enterprise.tools.Utils.getDomain
+import com.mytlogos.enterprise.viewmodel.MediaInWaitListViewModel
+import eu.davidea.flexibleadapter.FlexibleAdapter
+import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
+import eu.davidea.flexibleadapter.items.IFlexible
+import java.io.IOException
+import java.io.Serializable
+import java.util.*
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
-
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.MediumInWait;
-import com.mytlogos.enterprise.model.MediumType;
-import com.mytlogos.enterprise.tools.Sortings;
-import com.mytlogos.enterprise.tools.Utils;
-import com.mytlogos.enterprise.viewmodel.MediaInWaitListViewModel;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Objects;
-
-import eu.davidea.flexibleadapter.FlexibleAdapter;
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
-import eu.davidea.flexibleadapter.items.IFlexible;
-
-public class MediaInWaitListFragment extends BaseSwipeListFragment<MediumInWait, MediaInWaitListViewModel> {
-
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        this.setTitle("Unused Media");
-        return view;
+class MediaInWaitListFragment : BaseSwipeListFragment<MediumInWait, MediaInWaitListViewModel>() {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        this.setTitle("Unused Media")
+        return view
     }
 
-    @Nullable
-    @Override
-    Filterable createFilterable() {
-        return new Filterable() {
+    override fun createFilterable(): Filterable {
+        return object : Filterable {
+            override fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {}
+            override val filterLayout: Int
+                get() = R.layout.filter_medium_in_wait_layout
+            override val searchFilterProperties: Array<Property<*>>
+                get() = arrayOf(
+                    object : TextProperty {
+                        override val viewId: Int
+                            get() = R.id.title_filter
+                        override val clearViewId: Int
+                            get() = R.id.clear_title
 
-            @Override
-            public void onCreateFilter(View view, AlertDialog.Builder builder) {
-            }
-
-            @Override
-            public int getFilterLayout() {
-                return R.layout.filter_medium_in_wait_layout;
-            }
-
-            @Override
-            public Property[] getSearchFilterProperties() {
-                return new Property[]{
-                        new TextProperty() {
-                            @Override
-                            public int getViewId() {
-                                return R.id.title_filter;
-                            }
-
-                            @Override
-                            public int getClearViewId() {
-                                return R.id.clear_title;
-                            }
-
-                            @Override
-                            public String get() {
-                                return getViewModel().getTitleFilter();
-                            }
-
-                            @Override
-                            public void set(String newFilter) {
-                                getViewModel().setTitleFilter(newFilter);
-                            }
-                        },
-                        new TextProperty() {
-                            @Override
-                            public int getViewId() {
-                                return R.id.host_filter;
-                            }
-
-                            @Override
-                            public int getClearViewId() {
-                                return R.id.clear_host;
-                            }
-
-                            @Override
-                            public String get() {
-                                return getViewModel().getHostFilter();
-                            }
-
-                            @Override
-                            public void set(String newFilter) {
-                                getViewModel().setHostFilter(newFilter);
-                            }
+                        override fun get(): String {
+                            return viewModel!!.titleFilter
                         }
-                };
-            }
 
-        };
-    }
+                        override fun set(newFilter: String) {
+                            viewModel!!.titleFilter = newFilter
+                        }
+                    },
+                    object : TextProperty {
+                        override val viewId: Int
+                            get() = R.id.host_filter
+                        override val clearViewId: Int
+                            get() = R.id.clear_host
 
-    @Override
-    LinkedHashMap<String, Sortings> getSortMap() {
-        LinkedHashMap<String, Sortings> map = new LinkedHashMap<>();
-        map.put("Title A-Z", Sortings.TITLE_AZ);
-        map.put("Title Z-A", Sortings.TITLE_ZA);
-        map.put("Medium Asc", Sortings.MEDIUM);
-        map.put("Medium Desc", Sortings.MEDIUM_REVERSE);
-        map.put("Host A-Z", Sortings.HOST_AZ);
-        map.put("Host Z-A", Sortings.HOST_ZA);
-        return map;
-    }
+                        override fun get(): String {
+                            return viewModel!!.hostFilter
+                        }
 
-    @Override
-    Class<MediaInWaitListViewModel> getViewModelClass() {
-        return MediaInWaitListViewModel.class;
-    }
-
-    @Override
-    LiveData<PagedList<MediumInWait>> createPagedListLiveData() {
-        return this.getViewModel().getMediaInWait();
-    }
-
-    @Override
-    IFlexible createFlexible(MediumInWait mediumInWait) {
-        return new MediumItem(mediumInWait);
-    }
-
-    @Override
-    void onSwipeRefresh() {
-        new LoadingTask().execute();
-    }
-
-    @Override
-    public boolean onItemClick(View view, int position) {
-        MediumItem item = (MediumItem) getFlexibleAdapter().getItem(position);
-
-        if (item == null) {
-            return false;
+                        override fun set(newFilter: String) {
+                            viewModel!!.hostFilter = newFilter
+                        }
+                    }
+                )
         }
-        getMainActivity().switchWindow(MediaInWaitFragment.getInstance(item.item));
-        return true;
+    }
+
+    override val sortMap: LinkedHashMap<String, Sortings>
+        get() {
+            val map = LinkedHashMap<String, Sortings>()
+            map["Title A-Z"] = Sortings.TITLE_AZ
+            map["Title Z-A"] = Sortings.TITLE_ZA
+            map["Medium Asc"] = Sortings.MEDIUM
+            map["Medium Desc"] = Sortings.MEDIUM_REVERSE
+            map["Host A-Z"] = Sortings.HOST_AZ
+            map["Host Z-A"] = Sortings.HOST_ZA
+            return map
+        }
+    override val viewModelClass: Class<MediaInWaitListViewModel>
+        get() = MediaInWaitListViewModel::class.java
+
+    override fun createPagedListLiveData(): LiveData<PagedList<MediumInWait>> {
+        return viewModel!!.mediaInWait
+    }
+
+    override fun createFlexible(value: MediumInWait): IFlexible<*> {
+        return MediumItem(value)
+    }
+
+    override fun onSwipeRefresh() {
+        LoadingTask().execute()
+    }
+
+    override fun onItemClick(view: View, position: Int): Boolean {
+        val item = flexibleAdapter!!.getItem(position) as MediumItem?
+            ?: return false
+        mainActivity.switchWindow(MediaInWaitFragment.getInstance(item.item))
+        return true
     }
 
     @SuppressLint("StaticFieldLeak")
-    private class LoadingTask extends AsyncTask<Void, Void, Void> {
-        private String errorMsg = null;
-
-        @Override
-        protected Void doInBackground(Void... voids) {
+    private inner class LoadingTask : AsyncTask<Void, Void, Void>() {
+        private var errorMsg: String? = null
+        override fun doInBackground(vararg voids: Void?): Void? {
             try {
-                getViewModel().loadMediaInWait();
-            } catch (IOException e) {
-                errorMsg = "Loading went wrong";
-                e.printStackTrace();
+                viewModel!!.loadMediaInWait()
+            } catch (e: IOException) {
+                errorMsg = "Loading went wrong"
+                e.printStackTrace()
             }
-            return null;
+            return null
         }
 
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            if (this.errorMsg != null) {
-                showToast(errorMsg);
+        override fun onPostExecute(aVoid: Void?) {
+            if (errorMsg != null) {
+                showToast(errorMsg)
             }
-            getListContainer().setRefreshing(false);
+            (listContainer!! as SwipeRefreshLayout).isRefreshing = false
         }
     }
 
-    private static class MediumFilter implements Serializable {
-        private final String title;
-        private final int medium;
-        private final String link;
+    private class MediumFilter private constructor(title: String?, val medium: Int, link: String?) :
+        Serializable {
+        val title: String = title?.lowercase(Locale.getDefault()) ?: ""
+        val link: String = link?.lowercase(Locale.getDefault()) ?: ""
 
-        private MediumFilter(String title, int medium, String link) {
-            this.title = title == null ? "" : title.toLowerCase();
-            this.medium = medium;
-            this.link = link == null ? "" : link.toLowerCase();
-        }
     }
 
-    private static class MediumItem extends AbstractFlexibleItem<MetaViewHolder> /*implements IFilterable<MediumFilter>*/ {
-        private final MediumInWait item;
-
-        MediumItem(@NonNull MediumInWait item) {
-            this.item = item;
-            this.setDraggable(false);
-            this.setSwipeable(false);
-            this.setSelectable(false);
+    private class MediumItem(item: MediumInWait) :
+        AbstractFlexibleItem<MetaViewHolder>() /*implements IFilterable<MediumFilter>*/ {
+        val item: MediumInWait?
+        override fun getLayoutRes(): Int {
+            return R.layout.meta_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.meta_item;
-        }
-
-        @Override
-        public MetaViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new MetaViewHolder(view, adapter);
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): MetaViewHolder {
+            return MetaViewHolder(view, adapter)
         }
 
         @SuppressLint("DefaultLocale")
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position, List<Object> payloads) {
-            String mediumType;
-
-            switch (this.item.getMedium()) {
-                case MediumType.AUDIO:
-                    mediumType = "Audio";
-                    break;
-                case MediumType.IMAGE:
-                    mediumType = "Bild";
-                    break;
-                case MediumType.TEXT:
-                    mediumType = "Text";
-                    break;
-                case MediumType.VIDEO:
-                    mediumType = "Video";
-                    break;
-                default:
-                    String msg = String.format("no valid medium type: %d", this.item.getMedium());
-                    throw new IllegalStateException(msg);
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: MetaViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            val mediumType: String
+            mediumType = when (item!!.medium) {
+                MediumType.AUDIO -> "Audio"
+                MediumType.IMAGE -> "Bild"
+                MediumType.TEXT -> "Text"
+                MediumType.VIDEO -> "Video"
+                else -> {
+                    val msg = String.format("no valid medium type: %d", item.medium)
+                    throw IllegalStateException(msg)
+                }
             }
-            holder.topLeftText.setText(mediumType);
-
-            String domain = Utils.getDomain(this.item.getLink());
-            holder.topRightText.setText(domain);
-            holder.mainText.setText(this.item.getTitle());
+            holder.topLeftText.text = mediumType
+            val domain = getDomain(item.link)
+            holder.topRightText.text = domain
+            holder.mainText.text = item.title
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            MediumItem that = (MediumItem) o;
-
-            return Objects.equals(item, that.item);
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val that = other as MediumItem
+            return item == that.item
         }
 
-        @Override
-        public int hashCode() {
-            return item != null ? item.hashCode() : 0;
+        override fun hashCode(): Int {
+            return item?.hashCode() ?: 0
         }
 
-        public boolean filter(MediumFilter constraint) {
+        fun filter(constraint: MediumFilter?): Boolean {
             if (constraint == null) {
-                return true;
+                return true
             }
-            if (constraint.medium > 0 && (this.item.getMedium() & constraint.medium) == 0) {
-                return false;
+            if (constraint.medium > 0 && item!!.medium and constraint.medium == 0) {
+                return false
             }
-            if (!constraint.link.isEmpty() && !(this.item.getLink().toLowerCase().contains(constraint.link))) {
-                return false;
-            }
-            return constraint.title.isEmpty() || this.item.getTitle().toLowerCase().contains(constraint.title);
+            return if (!constraint.link.isEmpty() && !item!!.link.lowercase(Locale.getDefault())
+                    .contains(constraint.link)
+            ) {
+                false
+            } else constraint.title.isEmpty() || item!!.title.lowercase(Locale.getDefault())
+                .contains(constraint.title)
+        }
+
+        init {
+            this.item = item
+            this.isDraggable = false
+            this.isSwipeable = false
+            this.isSelectable = false
         }
     }
-
 }

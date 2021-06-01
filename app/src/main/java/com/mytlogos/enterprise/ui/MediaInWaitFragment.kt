@@ -1,435 +1,368 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.content.Context;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.RadioButton;
-import android.widget.SearchView;
-import android.widget.Spinner;
-import android.widget.TextView;
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.*
+import androidx.lifecycle.Transformations
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.tools.Utils.getDomain
+import com.mytlogos.enterprise.viewmodel.MediumInWaitViewModel
+import eu.davidea.flexibleadapter.FlexibleAdapter
+import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
+import eu.davidea.flexibleadapter.items.IFilterable
+import eu.davidea.flexibleadapter.items.IFlexible
+import java.io.Serializable
+import java.util.*
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Transformations;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.MediaList;
-import com.mytlogos.enterprise.model.MediumInWait;
-import com.mytlogos.enterprise.model.SimpleMedium;
-import com.mytlogos.enterprise.tools.Utils;
-import com.mytlogos.enterprise.viewmodel.MediumInWaitViewModel;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-
-import eu.davidea.flexibleadapter.FlexibleAdapter;
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
-import eu.davidea.flexibleadapter.items.IFilterable;
-import eu.davidea.flexibleadapter.items.IFlexible;
-
-public class MediaInWaitFragment extends BaseFragment {
-
-    private static final String MEDIUM_IN_WAIT = "MEDIUM_IN_WAIT";
-    private final MediaList NO_LIST = new MediaList("", 0, "Don't add to List", 0, 0);
-    private SimpleMedium selectedMedium = null;
-    private MediumInWaitViewModel viewModel;
-    private MediumInWait mediumInWait;
-    private RadioButton addMedium;
-    private RadioButton addToc;
-    private Spinner listSelect;
-    private View listSelectContainer;
-    private boolean running;
-    private SearchView searchMediumView;
-    private SearchView searchMediumInWaitView;
-    private final Set<MediumInWait> selectedInWaits = new HashSet<>();
-
-    public MediaInWaitFragment() {
-
-    }
-
-    static MediaInWaitFragment getInstance(MediumInWait inWait) {
-        MediaInWaitFragment fragment = new MediaInWaitFragment();
-        Bundle bundle = new Bundle();
-        bundle.putSerializable(MEDIUM_IN_WAIT, inWait);
-        fragment.setArguments(bundle);
-        return fragment;
-    }
-
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.medium_in_wait, container, false);
-
-        Bundle bundle = requireArguments();
-        mediumInWait = (MediumInWait) bundle.getSerializable(MediaInWaitFragment.MEDIUM_IN_WAIT);
-
-        if (mediumInWait == null) {
-            throw new IllegalArgumentException("no arguments");
-        }
-        TextView titleView = view.findViewById(R.id.title);
-        String domain = Utils.getDomain(this.mediumInWait.getLink());
-
-        titleView.setText(String.format("%s (%s)", this.mediumInWait.getTitle(), domain));
-
-        viewModel = new ViewModelProvider(this).get(MediumInWaitViewModel.class);
-
-        FlexibleAdapter<IFlexible> listAdapter = getFlexibleRecyclerAdapter(view, R.id.list);
-        FlexibleAdapter<IFlexible> mediumSuggestAdapter = getFlexibleRecyclerAdapter(view, R.id.medium_suggestions);
-        FlexibleAdapter<IFlexible> mediumInWaitSuggestAdapter = getFlexibleRecyclerAdapter(view, R.id.medium_in_wait_suggestions);
-
-        mediumSuggestAdapter.addListener((FlexibleAdapter.OnItemClickListener) (view1, position) -> {
-            IFlexible flexible = mediumSuggestAdapter.getItem(position);
-            if (!(flexible instanceof FlexibleMedium)) {
-                return false;
-            }
-            FlexibleMedium medium = (FlexibleMedium) flexible;
-            this.selectedMedium = medium.medium;
-            this.searchMediumView.setQuery(medium.medium.getTitle(), false);
-            return false;
-        });
-        mediumInWaitSuggestAdapter.addListener((FlexibleAdapter.OnItemClickListener) (view1, position) -> {
-            IFlexible flexible = mediumInWaitSuggestAdapter.getItem(position);
-            if (!(flexible instanceof FlexibleMediumInWaitSuggestion)) {
-                return false;
-            }
-            FlexibleMediumInWaitSuggestion medium = (FlexibleMediumInWaitSuggestion) flexible;
-            MediumInWaitSimpleFilter filter = mediumInWaitSuggestAdapter.getFilter(MediumInWaitSimpleFilter.class);
-
+class MediaInWaitFragment : BaseFragment() {
+    private val NO_LIST = MediaList("", 0, "Don't add to List", 0, 0)
+    private var selectedMedium: SimpleMedium? = null
+    private var viewModel: MediumInWaitViewModel? = null
+    private var mediumInWait: MediumInWait? = null
+    private var addMedium: RadioButton? = null
+    private var addToc: RadioButton? = null
+    private var listSelect: Spinner? = null
+    private var listSelectContainer: View? = null
+    private var running = false
+    private var searchMediumView: SearchView? = null
+    private var searchMediumInWaitView: SearchView? = null
+    private val selectedInWaits: MutableSet<MediumInWait> = HashSet()
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.medium_in_wait, container, false)
+        val bundle = requireArguments()
+        mediumInWait = bundle.getSerializable(MEDIUM_IN_WAIT) as MediumInWait
+        requireNotNull(mediumInWait) { "no arguments" }
+        val titleView = view.findViewById<TextView>(R.id.title)
+        val domain = getDomain(mediumInWait!!.link)
+        titleView.text = String.format("%s (%s)", mediumInWait!!.title, domain)
+        viewModel = ViewModelProvider(this).get(MediumInWaitViewModel::class.java)
+        val listAdapter = getFlexibleRecyclerAdapter(view, R.id.list)
+        val mediumSuggestAdapter = getFlexibleRecyclerAdapter(view, R.id.medium_suggestions)
+        val mediumInWaitSuggestAdapter =
+            getFlexibleRecyclerAdapter(view, R.id.medium_in_wait_suggestions)
+        mediumSuggestAdapter.addListener(FlexibleAdapter.OnItemClickListener { _: View?, position: Int ->
+            val flexible =
+                mediumSuggestAdapter.getItem(position)!! as? FlexibleMedium
+                    ?: return@OnItemClickListener false
+            selectedMedium = flexible.medium
+            searchMediumView!!.setQuery(flexible.medium.title, false)
+            false
+        })
+        mediumInWaitSuggestAdapter.addListener(FlexibleAdapter.OnItemClickListener { _: View?, position: Int ->
+            val flexible =
+                mediumInWaitSuggestAdapter.getItem(position)!! as? FlexibleMediumInWaitSuggestion
+                    ?: return@OnItemClickListener false
+            var filter = mediumInWaitSuggestAdapter.getFilter(
+                MediumInWaitSimpleFilter::class.java)
             if (filter == null) {
-                filter = new MediumInWaitSimpleFilter();
+                filter = MediumInWaitSimpleFilter()
             }
-            filter.filterOut.add(medium.mediumInWait);
-            this.selectedInWaits.add(medium.mediumInWait);
-            listAdapter.addItem(new FlexibleMediumInWait(medium.mediumInWait));
-
-            mediumInWaitSuggestAdapter.setFilter(filter);
-            mediumInWaitSuggestAdapter.filterItems();
-            return false;
-        });
-
-        searchMediumView = view.findViewById(R.id.search_medium_view);
-        searchMediumView.setOnQueryTextListener(searchMediumListener());
-
-        searchMediumInWaitView = view.findViewById(R.id.search_medium_in_wait_view);
-        searchMediumInWaitView.setOnQueryTextListener(searchMediumInWaitListener());
-
-        listSelect = view.findViewById(R.id.list_select);
-        listSelectContainer = view.findViewById(R.id.list_select_container);
-        listSelect.setAdapter(new TextOnlyListAdapter<>(
-                this,
-                Transformations.map(viewModel.getInternalLists(), input -> {
-                    input.add(0, NO_LIST);
-                    return input;
-                }),
-                MediaList::getName
-        ));
-
-        addMedium = view.findViewById(R.id.add_medium);
-        addToc = view.findViewById(R.id.add_toc);
-
-        switchAddMode(searchMediumView, addMedium.isChecked());
-
-        addMedium.setOnCheckedChangeListener((buttonView, isChecked) -> switchAddMode(searchMediumView, isChecked));
-
-        view.findViewById(R.id.cancel_button).setOnClickListener(v -> requireActivity().onBackPressed());
-        view.findViewById(R.id.add_btn).setOnClickListener(v -> process(listAdapter));
-
-        LiveData<List<MediumInWait>> similarMediaInWait = viewModel.getSimilarMediaInWait(mediumInWait);
-        similarMediaInWait.observe(this, mediumInWaits -> {
-            List<IFlexible> list = new ArrayList<>();
-
-            mediumInWaits.addAll(this.selectedInWaits);
-
-            for (MediumInWait inWait : mediumInWaits) {
-                FlexibleMediumInWait flexible = new FlexibleMediumInWait(inWait);
-
-                if (!flexible.mediumInWait.equals(this.mediumInWait)) {
-                    list.add(flexible);
+            filter.filterOut.add(flexible.mediumInWait)
+            selectedInWaits.add(flexible.mediumInWait)
+            listAdapter.addItem(FlexibleMediumInWait(flexible.mediumInWait))
+            mediumInWaitSuggestAdapter.setFilter(filter)
+            mediumInWaitSuggestAdapter.filterItems()
+            false
+        })
+        searchMediumView = view.findViewById(R.id.search_medium_view)
+        searchMediumView!!.setOnQueryTextListener(searchMediumListener())
+        searchMediumInWaitView = view.findViewById(R.id.search_medium_in_wait_view)
+        searchMediumInWaitView!!.setOnQueryTextListener(searchMediumInWaitListener())
+        listSelect = view.findViewById(R.id.list_select)
+        listSelectContainer = view.findViewById(R.id.list_select_container)
+        listSelect!!.adapter = TextOnlyListAdapter(
+            this,
+            Transformations.map(
+                viewModel!!.internalLists) { input: MutableList<MediaList> ->
+                input.add(0, NO_LIST)
+                input
+            },
+            MediaList::name
+        )
+        addMedium = view.findViewById(R.id.add_medium)
+        addToc = view.findViewById(R.id.add_toc)
+        switchAddMode(searchMediumView, addMedium!!.isChecked)
+        addMedium!!.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
+            switchAddMode(searchMediumView,
+                isChecked)
+        }
+        view.findViewById<View>(R.id.cancel_button)
+            .setOnClickListener { requireActivity().onBackPressed() }
+        view.findViewById<View>(R.id.add_btn)
+            .setOnClickListener { process(listAdapter) }
+        val similarMediaInWait = viewModel!!.getSimilarMediaInWait(mediumInWait)
+        similarMediaInWait.observe(viewLifecycleOwner, { mediumInWaits: MutableList<MediumInWait> ->
+            val list: MutableList<IFlexible<*>> = ArrayList()
+            mediumInWaits.addAll(selectedInWaits)
+            for (inWait in mediumInWaits) {
+                val flexible = FlexibleMediumInWait(inWait)
+                if (flexible.mediumInWait != mediumInWait) {
+                    list.add(flexible)
                 }
             }
-            listAdapter.updateDataSet(list);
-        });
-
-        LiveData<List<MediumInWait>> inWaitSuggestions = viewModel.getMediumInWaitSuggestions(mediumInWait.getMedium());
-        inWaitSuggestions.observe(this, mediumInWaits -> mediumInWaitSuggestAdapter.updateDataSet(
-                mediumInWaits.stream().map(FlexibleMediumInWaitSuggestion::new).collect(Collectors.toList())
-        ));
-
-        LiveData<List<SimpleMedium>> mediumSuggestions = viewModel.getMediumSuggestions(mediumInWait.getMedium());
-        mediumSuggestions.observe(this, medium -> mediumSuggestAdapter.updateDataSet(
-                medium.stream().map(FlexibleMedium::new).collect(Collectors.toList())
-        ));
-
-        return view;
+            listAdapter.updateDataSet(list)
+        })
+        val inWaitSuggestions = viewModel!!.getMediumInWaitSuggestions(
+            mediumInWait!!.medium)
+        inWaitSuggestions.observe(viewLifecycleOwner, { mediumInWaits: List<MediumInWait> ->
+            mediumInWaitSuggestAdapter.updateDataSet(
+                mediumInWaits
+                    .map { mediumInWait: MediumInWait -> FlexibleMediumInWaitSuggestion(mediumInWait) }
+            )
+        })
+        val mediumSuggestions = viewModel!!.getMediumSuggestions(
+            mediumInWait!!.medium)
+        mediumSuggestions.observe(viewLifecycleOwner, { medium: List<SimpleMedium> ->
+            mediumSuggestAdapter.updateDataSet(
+                medium.map(::FlexibleMedium)
+            )
+        })
+        return view
     }
 
-    private static class MediumInWaitSimpleFilter implements Serializable {
-        private final Set<MediumInWait> filterOut = new HashSet<>();
+    private class MediumInWaitSimpleFilter : Serializable {
+        val filterOut: MutableSet<MediumInWait> = HashSet()
     }
 
-
-    private SearchView.OnQueryTextListener searchMediumListener() {
-        return new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                return false;
+    private fun searchMediumListener(): SearchView.OnQueryTextListener {
+        return object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String): Boolean {
+                return false
             }
 
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                viewModel.setMediumTitleFilter(newText);
-                return true;
+            override fun onQueryTextChange(newText: String): Boolean {
+                viewModel!!.setMediumTitleFilter(newText)
+                return true
             }
-        };
+        }
     }
 
-    private SearchView.OnQueryTextListener searchMediumInWaitListener() {
-        return new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                return false;
+    private fun searchMediumInWaitListener(): SearchView.OnQueryTextListener {
+        return object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String): Boolean {
+                return false
             }
 
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                viewModel.setMediumInWaitTitleFilter(newText);
-                return true;
+            override fun onQueryTextChange(newText: String): Boolean {
+                viewModel!!.setMediumInWaitTitleFilter(newText)
+                return true
             }
-        };
+        }
     }
 
-    private void switchAddMode(SearchView searchMediumView, boolean addMedium) {
+    private fun switchAddMode(searchMediumView: SearchView?, addMedium: Boolean) {
         if (addMedium) {
-            listSelectContainer.setVisibility(View.VISIBLE);
-            searchMediumView.setVisibility(View.GONE);
+            listSelectContainer!!.visibility = View.VISIBLE
+            searchMediumView!!.visibility = View.GONE
         } else {
-            listSelectContainer.setVisibility(View.GONE);
-            searchMediumView.setVisibility(View.VISIBLE);
+            listSelectContainer!!.visibility = View.GONE
+            searchMediumView!!.visibility = View.VISIBLE
         }
     }
 
-    private void process(FlexibleAdapter<IFlexible> listAdapter) {
-        if (this.running) {
-            return;
+    private fun process(listAdapter: FlexibleAdapter<IFlexible<*>>) {
+        if (running) {
+            return
         }
-        this.running = true;
-
-        if (addMedium.isChecked()) {
-            List<IFlexible> items = listAdapter.getCurrentItems();
-            List<MediumInWait> mediumInWaits = new ArrayList<>();
-
-            for (IFlexible item : items) {
-                if (item instanceof FlexibleMediumInWait) {
-                    mediumInWaits.add(((FlexibleMediumInWait) item).mediumInWait);
+        running = true
+        if (addMedium!!.isChecked) {
+            val items = listAdapter.currentItems
+            val mediumInWaits: MutableList<MediumInWait> = ArrayList()
+            for (item in items) {
+                if (item is FlexibleMediumInWait) {
+                    mediumInWaits.add(item.mediumInWait)
                 }
             }
-            MediaList item = (MediaList) listSelect.getSelectedItem();
-
-            if (Objects.equals(item, NO_LIST)) {
-                item = null;
+            var item: MediaList? = listSelect!!.selectedItem as MediaList
+            if (item == NO_LIST) {
+                item = null
             }
-
-            CompletableFuture<Boolean> success = viewModel.createMedium(mediumInWait, mediumInWaits, item);
-            success.whenComplete((aBoolean, throwable) -> {
-                String msg;
-                if (aBoolean == null || !aBoolean || throwable != null) {
-                    msg = "Could not create Medium";
+            val success = viewModel!!.createMedium(mediumInWait, mediumInWaits, item)
+            success.whenComplete { aBoolean: Boolean?, throwable: Throwable? ->
+                val msg: String = if (aBoolean == null || !aBoolean || throwable != null) {
+                    "Could not create Medium"
                 } else {
-                    msg = "Created a Medium and consumed " + mediumInWaits.size() + " other unused Media";
+                    "Created a Medium and consumed " + mediumInWaits.size + " other unused Media"
                 }
-                this.running = false;
-                requireActivity().runOnUiThread(() -> {
-                    showToast(msg);
-                    requireActivity().onBackPressed();
-                });
-            });
-        } else if (addToc.isChecked()) {
-            if (this.selectedMedium == null) {
-                showToast("No Medium selected");
-                return;
-            }
-            List<IFlexible> items = listAdapter.getCurrentItems();
-            List<MediumInWait> mediumInWaits = new ArrayList<>();
-
-            for (IFlexible item : items) {
-                if (item instanceof FlexibleMediumInWait) {
-                    mediumInWaits.add(((FlexibleMediumInWait) item).mediumInWait);
+                running = false
+                requireActivity().runOnUiThread {
+                    showToast(msg)
+                    requireActivity().onBackPressed()
                 }
             }
-            mediumInWaits.add(this.mediumInWait);
-
-            CompletableFuture<Boolean> success = viewModel.consumeMediumInWait(this.selectedMedium, mediumInWaits);
-            success.whenComplete((aBoolean, throwable) -> {
-                String msg;
-                if (aBoolean == null || !aBoolean || throwable != null) {
-                    msg = "Could not process Media";
+        } else if (addToc!!.isChecked) {
+            if (selectedMedium == null) {
+                showToast("No Medium selected")
+                return
+            }
+            val items = listAdapter.currentItems
+            val mediumInWaits: MutableList<MediumInWait?> = ArrayList()
+            for (item in items) {
+                if (item is FlexibleMediumInWait) {
+                    mediumInWaits.add(item.mediumInWait)
+                }
+            }
+            mediumInWaits.add(mediumInWait)
+            val success = viewModel!!.consumeMediumInWait(selectedMedium, mediumInWaits)
+            success.whenComplete { aBoolean: Boolean?, throwable: Throwable? ->
+                val msg: String = if (aBoolean == null || !aBoolean || throwable != null) {
+                    "Could not process Media"
                 } else {
-                    msg = "Consumed " + mediumInWaits.size() + " Media";
+                    "Consumed " + mediumInWaits.size + " Media"
                 }
-                this.running = false;
-                requireActivity().runOnUiThread(() -> {
-                    showToast(msg);
-                    requireActivity().onBackPressed();
-                });
-            });
+                running = false
+                requireActivity().runOnUiThread {
+                    showToast(msg)
+                    requireActivity().onBackPressed()
+                }
+            }
         }
     }
 
-    private FlexibleAdapter<IFlexible> getFlexibleRecyclerAdapter(View view, int id) {
-        RecyclerView recyclerView = view.findViewById(id);
+    private fun getFlexibleRecyclerAdapter(view: View, id: Int): FlexibleAdapter<IFlexible<*>> {
+        val recyclerView: RecyclerView = view.findViewById(id)
         // Set the adapter
-        Context context = view.getContext();
-
-        LinearLayoutManager layoutManager = new LinearLayoutManager(context);
-        recyclerView.setLayoutManager(layoutManager);
-
-        DividerItemDecoration decoration = new DividerItemDecoration(context, layoutManager.getOrientation());
-        recyclerView.addItemDecoration(decoration);
-
-        FlexibleAdapter<IFlexible> adapter = new FlexibleAdapter<>(null);
-        recyclerView.setAdapter(adapter);
-        return adapter;
+        val context = view.context
+        val layoutManager = LinearLayoutManager(context)
+        recyclerView.layoutManager = layoutManager
+        val decoration = DividerItemDecoration(context, layoutManager.orientation)
+        recyclerView.addItemDecoration(decoration)
+        val adapter = FlexibleAdapter<IFlexible<*>>(null)
+        recyclerView.adapter = adapter
+        return adapter
     }
 
-    private static class FlexibleMediumInWait extends AbstractFlexibleItem<CloseableTextViewHolder> {
-        private final MediumInWait mediumInWait;
-
-        private FlexibleMediumInWait(MediumInWait mediumInWait) {
-            this.mediumInWait = mediumInWait;
+    private class FlexibleMediumInWait(val mediumInWait: MediumInWait) :
+        AbstractFlexibleItem<CloseableTextViewHolder>() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val that = other as FlexibleMediumInWait
+            return mediumInWait == that.mediumInWait
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            FlexibleMediumInWait that = (FlexibleMediumInWait) o;
-
-            return mediumInWait.equals(that.mediumInWait);
+        override fun hashCode(): Int {
+            return mediumInWait.hashCode()
         }
 
-        @Override
-        public int hashCode() {
-            return mediumInWait.hashCode();
+        override fun getLayoutRes(): Int {
+            return R.layout.closeable_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.closeable_item;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>
+        ): CloseableTextViewHolder {
+            return CloseableTextViewHolder(view, adapter)
         }
 
-        @Override
-        public CloseableTextViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new CloseableTextViewHolder(view, adapter);
-        }
-
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, CloseableTextViewHolder holder, int position, List<Object> payloads) {
-            String domain = Utils.getDomain(this.mediumInWait.getLink());
-
-            String title = String.format("%s (%s)", this.mediumInWait.getTitle(), domain);
-            holder.textView.setText(title);
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: CloseableTextViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            val domain = getDomain(mediumInWait.link)
+            val title = String.format("%s (%s)", mediumInWait.title, domain)
+            holder.textView.text = title
         }
     }
 
-    private static class FlexibleMedium extends AbstractFlexibleItem<CloseableTextViewHolder> {
-        private final SimpleMedium medium;
-
-        private FlexibleMedium(SimpleMedium medium) {
-            this.medium = medium;
+    private class FlexibleMedium(val medium: SimpleMedium) :
+        AbstractFlexibleItem<CloseableTextViewHolder>() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val that = other as FlexibleMedium
+            return medium == that.medium
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            FlexibleMedium that = (FlexibleMedium) o;
-
-            return medium.equals(that.medium);
+        override fun hashCode(): Int {
+            return medium.hashCode()
         }
 
-        @Override
-        public int hashCode() {
-            return medium.hashCode();
+        override fun getLayoutRes(): Int {
+            return R.layout.text_only_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.text_only_item;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>
+        ): CloseableTextViewHolder {
+            return CloseableTextViewHolder(view, adapter)
         }
 
-        @Override
-        public CloseableTextViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new CloseableTextViewHolder(view, adapter);
-        }
-
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, CloseableTextViewHolder holder, int position, List<Object> payloads) {
-            holder.textView.setText(this.medium.getTitle());
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: CloseableTextViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            holder.textView.text = medium.title
         }
     }
 
-    private static class FlexibleMediumInWaitSuggestion extends AbstractFlexibleItem<CloseableTextViewHolder> implements IFilterable<MediumInWaitSimpleFilter> {
-        private final MediumInWait mediumInWait;
-
-        private FlexibleMediumInWaitSuggestion(MediumInWait mediumInWait) {
-            this.mediumInWait = mediumInWait;
+    private class FlexibleMediumInWaitSuggestion(val mediumInWait: MediumInWait) :
+        AbstractFlexibleItem<CloseableTextViewHolder>(), IFilterable<MediumInWaitSimpleFilter?> {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val that = other as FlexibleMediumInWaitSuggestion
+            return mediumInWait == that.mediumInWait
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            FlexibleMediumInWaitSuggestion that = (FlexibleMediumInWaitSuggestion) o;
-
-            return mediumInWait.equals(that.mediumInWait);
+        override fun hashCode(): Int {
+            return mediumInWait.hashCode()
         }
 
-        @Override
-        public int hashCode() {
-            return mediumInWait.hashCode();
+        override fun getLayoutRes(): Int {
+            return R.layout.text_only_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.text_only_item;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>
+        ): CloseableTextViewHolder {
+            return CloseableTextViewHolder(view, adapter)
         }
 
-        @Override
-        public CloseableTextViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new CloseableTextViewHolder(view, adapter);
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: CloseableTextViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            val domain = getDomain(mediumInWait.link)
+            val title = String.format("%s (%s)", mediumInWait.title, domain)
+            holder.textView.text = title
         }
 
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, CloseableTextViewHolder holder, int position, List<Object> payloads) {
-            String domain = Utils.getDomain(this.mediumInWait.getLink());
-
-            String title = String.format("%s (%s)", this.mediumInWait.getTitle(), domain);
-            holder.textView.setText(title);
-        }
-
-        @Override
-        public boolean filter(MediumInWaitSimpleFilter constraint) {
-            if (constraint == null) {
-                return true;
-            }
-            return !constraint.filterOut.contains(this.mediumInWait);
+        override fun filter(constraint: MediumInWaitSimpleFilter?): Boolean {
+            return if (constraint == null) {
+                true
+            } else !constraint.filterOut.contains(mediumInWait)
         }
     }
 
+    companion object {
+        private const val MEDIUM_IN_WAIT = "MEDIUM_IN_WAIT"
+        fun getInstance(inWait: MediumInWait?): MediaInWaitFragment {
+            val fragment = MediaInWaitFragment()
+            val bundle = Bundle()
+            bundle.putSerializable(MEDIUM_IN_WAIT, inWait)
+            fragment.arguments = bundle
+            return fragment
+        }
+    }
 }

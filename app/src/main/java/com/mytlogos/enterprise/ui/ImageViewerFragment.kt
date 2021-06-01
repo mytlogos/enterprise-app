@@ -1,382 +1,324 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.annotation.SuppressLint;
-import android.graphics.Bitmap;
-import android.graphics.Rect;
-import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.graphics.Rect
+import android.net.Uri
+import android.os.AsyncTask
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.*
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DecodeFormat
+import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
+import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
+import com.bumptech.glide.request.target.Target
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
+import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
+import com.mytlogos.enterprise.model.ChapterPage
+import com.mytlogos.enterprise.model.SimpleEpisode
+import com.mytlogos.enterprise.tools.FileTools.getImageContentTool
+import eu.davidea.flexibleadapter.FlexibleAdapter
+import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
+import eu.davidea.flexibleadapter.items.IFlexible
+import eu.davidea.viewholders.FlexibleViewHolder
+import java.io.File
+import java.security.MessageDigest
+import java.util.*
+import kotlin.math.abs
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>() {
+    private var adapter: FlexibleAdapter<IFlexible<ViewHolder>>? = null
+    override val layoutRes: Int
+        get() = R.layout.image_reader_fragment
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.DecodeFormat;
-import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
-import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
-import com.bumptech.glide.request.target.Target;
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.background.Repository;
-import com.mytlogos.enterprise.background.RepositoryImpl;
-import com.mytlogos.enterprise.model.ChapterPage;
-import com.mytlogos.enterprise.model.SimpleEpisode;
-import com.mytlogos.enterprise.tools.FileTools;
-import com.mytlogos.enterprise.tools.ImageContentTool;
-
-import java.io.File;
-import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
-import eu.davidea.flexibleadapter.FlexibleAdapter;
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
-import eu.davidea.flexibleadapter.items.IFlexible;
-import eu.davidea.viewholders.FlexibleViewHolder;
-
-public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.ReadableEpisode> {
-    private FlexibleAdapter<IFlexible<ViewHolder>> adapter;
-
-
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @return A new instance of fragment ImageViewerFragment.
-     */
-    public static ImageViewerFragment newInstance(int startEpisode, String zipFile) {
-        ImageViewerFragment fragment = new ImageViewerFragment();
-        Bundle args = new Bundle();
-        args.putInt(START_EPISODE, startEpisode);
-        args.putString(MEDIUM, zipFile);
-        fragment.setArguments(args);
-        return fragment;
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        val recyclerView: RecyclerView = view.findViewById(R.id.list)
+        adapter = FlexibleAdapter(null)
+        val manager = LinearLayoutManager(context)
+        recyclerView.layoutManager = manager
+        val decoration = DividerItemDecoration(requireContext(), manager.orientation)
+        recyclerView.addItemDecoration(decoration)
+        adapter!!.addListener(FlexibleAdapter.OnItemClickListener { _: View?, _: Int ->
+            toggleReadingMode()
+            false
+        })
+        recyclerView.adapter = adapter
+        recyclerView.setOnScrollChangeListener { _: View?, scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int ->
+            onScroll(scrollX,
+                scrollY,
+                oldScrollX,
+                oldScrollY)
+        }
+        loadEpisodes()
+        return view
     }
 
-    @Override
-    int getLayoutRes() {
-        return R.layout.image_reader_fragment;
-    }
+    override val scrolledViewId: Int
+        get() = R.id.list
+    override val currentProgress: Float
+        get() = if (currentlyReading != null) currentlyReading!!.progress else 0.0f
 
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        RecyclerView recyclerView = view.findViewById(R.id.list);
-
-        this.adapter = new FlexibleAdapter<>(null);
-        LinearLayoutManager manager = new LinearLayoutManager(getContext());
-        recyclerView.setLayoutManager(manager);
-
-        DividerItemDecoration decoration = new DividerItemDecoration(requireContext(), manager.getOrientation());
-        recyclerView.addItemDecoration(decoration);
-        this.adapter.addListener((FlexibleAdapter.OnItemClickListener) (view1, position) -> {
-            this.toggleReadingMode();
-            return false;
-        });
-
-        recyclerView.setAdapter(this.adapter);
-        recyclerView.setOnScrollChangeListener(
-                (v, scrollX, scrollY, oldScrollX, oldScrollY) ->
-                        this.onScroll(scrollX, scrollY, oldScrollX, oldScrollY)
-        );
-        this.loadEpisodes();
-        return view;
-    }
-
-    @Override
-    int getScrolledViewId() {
-        return R.id.list;
-    }
-
-    @Override
-    float getCurrentProgress() {
-        return this.currentlyReading != null ? this.currentlyReading.getProgress() : 0;
-    }
-
-    @Override
-    void saveProgress(float progress) {
-        if (this.currentEpisode > 0) {
-            RepositoryImpl.getInstance().updateProgress(this.currentEpisode, progress);
+    override fun saveProgress(progress: Float) {
+        if (currentEpisode > 0) {
+            instance.updateProgress(currentEpisode, progress)
         }
     }
 
-    @Override
-    void onScroll(int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
-        super.onScroll(scrollX, scrollY, oldScrollX, oldScrollY);
-        if (this.currentlyReading == null) {
-            return;
+    override fun onScroll(scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int) {
+        super.onScroll(scrollX, scrollY, oldScrollX, oldScrollY)
+        if (currentlyReading == null) {
+            return
         }
-        float progress = this.calculateProgressByScroll(scrollY, scrollX);
-        this.updateProgress(progress);
+        val progress = calculateProgressByScroll(scrollY, scrollX)
+        updateProgress(progress)
     }
 
-    @Override
-    float calculateProgressByScroll(int scrollY, int scrollX) {
-        int childCount = this.adapter.getRecyclerView().getChildCount();
-
+    override fun calculateProgressByScroll(scrollY: Int, scrollX: Int): Float {
+        val childCount = adapter!!.recyclerView.childCount
         if (childCount == 0) {
-            return 0;
+            return 0.0f
         }
-        List<View> visibleChildren = new ArrayList<>();
-
-        for (int i = 0; i < childCount; i++) {
-            View child = this.adapter.getRecyclerView().getChildAt(i);
-            if (child == null) {
-                continue;
-            }
-            int height = child.getHeight();
-
+        val visibleChildren: MutableList<View> = ArrayList()
+        for (i in 0 until childCount) {
+            val child = adapter!!.recyclerView.getChildAt(i) ?: continue
+            val height = child.height
             if (height > 0) {
-                visibleChildren.add(child);
+                visibleChildren.add(child)
             }
         }
         if (visibleChildren.isEmpty()) {
-            return 0;
+            return 0.0f
         }
-
-        Rect lastVisibleRect = null;
-        View lastVisibleView = null;
-
-        for (int i = visibleChildren.size() - 1; i >= 0; i--) {
-            Rect rect = new Rect();
-
-            View view = visibleChildren.get(i);
-            view.getLocalVisibleRect(rect);
-
+        var lastVisibleRect: Rect? = null
+        var lastVisibleView: View? = null
+        for (i in visibleChildren.indices.reversed()) {
+            val rect = Rect()
+            val view = visibleChildren[i]
+            view.getLocalVisibleRect(rect)
             if (rect.bottom > 0) {
-                lastVisibleRect = rect;
-                lastVisibleView = view;
-                break;
+                lastVisibleRect = rect
+                lastVisibleView = view
+                break
             }
         }
-
-        if (lastVisibleRect == null || lastVisibleView.getHeight() <= 0) {
-            return 0;
+        if (lastVisibleRect == null || lastVisibleView!!.height <= 0) {
+            return 0.0f
         }
-        int lastVisiblePosition = -1;
-        for (FlexibleViewHolder holder : this.adapter.getAllBoundViewHolders()) {
-            if (holder.getFrontView() == lastVisibleView) {
-                lastVisiblePosition = holder.getFlexibleAdapterPosition();
-                break;
+        var lastVisiblePosition = -1
+        for (holder in adapter!!.allBoundViewHolders) {
+            if (holder.frontView === lastVisibleView) {
+                lastVisiblePosition = holder.flexibleAdapterPosition
+                break
             }
         }
-        int itemCount = this.adapter.getItemCount();
-        int viewedItems = 0;
+        val itemCount = adapter!!.itemCount
+        var viewedItems = 0
         if (lastVisiblePosition > 0) {
-            viewedItems = lastVisiblePosition;
+            viewedItems = lastVisiblePosition
         }
-        float viewedProgress = viewedItems / ((float) itemCount);
+        val viewedProgress = viewedItems / itemCount.toFloat()
         // todo height may be negative (doc), but when?
         //  check how the case where it is negative should be treated
-        float lastItemProgress = Math.abs(lastVisibleRect.height()) / ((float) lastVisibleView.getHeight() * itemCount);
-        return viewedProgress + lastItemProgress;
+        val lastItemProgress = abs(lastVisibleRect.height()) / (lastVisibleView.height
+            .toFloat() * itemCount)
+        return viewedProgress + lastItemProgress
     }
 
-    @Override
-    void updateContent() {
-        if (this.currentlyReading != null) {
-            this.currentEpisode = this.currentlyReading.getEpisodeId();
-
-            List<IFlexible<ViewHolder>> flexibles = new ArrayList<>();
-
-            for (int i = 1; i < this.currentlyReading.pageMap.size() + 1; i++) {
-                ChapterPage page = this.currentlyReading.pageMap.get(i);
-
-                ImageItem item;
-                if (page == null) {
-                    item = new ImageItem("", i);
+    override fun updateContent() {
+        if (currentlyReading != null) {
+            currentEpisode = currentlyReading!!.episodeId
+            val flexibles: MutableList<IFlexible<ViewHolder>> = ArrayList()
+            for (i in 1 until currentlyReading!!.pageMap.size + 1) {
+                val page = currentlyReading!!.pageMap[i]
+                val item: ImageItem = if (page == null) {
+                    ImageItem("", i)
                 } else {
-                    item = new ImageItem(page.getPath(), i);
+                    ImageItem(page.path, i)
                 }
-                flexibles.add(item);
+                flexibles.add(item)
             }
-            this.adapter.updateDataSet(flexibles);
-
-            if (this.currentlyReading.getPartialIndex() > 0) {
-                setTitle(String.format("Episode %s.%s", this.currentlyReading.getTotalIndex(), this.currentlyReading.getPartialIndex()));
+            adapter!!.updateDataSet(flexibles)
+            if (currentlyReading!!.partialIndex > 0) {
+                setTitle(String.format("Episode %s.%s",
+                    currentlyReading!!.totalIndex,
+                    currentlyReading!!.partialIndex))
             } else {
-                setTitle(String.format("Episode %s", this.currentlyReading.getTotalIndex()));
+                setTitle(String.format("Episode %s", currentlyReading!!.totalIndex))
             }
         } else {
             // TODO: 06.08.2019 display an empty episode indicator?
-            System.out.println("empty episode");
+            println("empty episode")
         }
-        onLoadFinished();
+        onLoadFinished()
     }
 
-
-    private static class ImageItem extends AbstractFlexibleItem<ViewHolder> {
-        private final String imagePath;
-        private final int page;
-
-        private ImageItem(String imagePath, int page) {
-            this.imagePath = imagePath;
-            this.page = page;
+    private class ImageItem(imagePath: String, page: Int) : AbstractFlexibleItem<ViewHolder>() {
+        private val imagePath: String?
+        private val page: Int
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val imageItem = other as ImageItem
+            return imagePath == imageItem.imagePath
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            ImageItem imageItem = (ImageItem) o;
-
-            return Objects.equals(imagePath, imageItem.imagePath);
+        override fun hashCode(): Int {
+            return imagePath?.hashCode() ?: 0
         }
 
-        @Override
-        public int hashCode() {
-            return imagePath != null ? imagePath.hashCode() : 0;
+        override fun getLayoutRes(): Int {
+            return R.layout.image_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.image_item;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>
+        ): ViewHolder {
+            return ViewHolder(view, adapter)
         }
 
-        @Override
-        public ViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new ViewHolder(view, adapter);
-        }
-
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, ViewHolder holder, int position, List<Object> payloads) {
-            boolean empty = this.imagePath.isEmpty();
-
-            holder.emptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
-            holder.imageView.setVisibility(empty ? View.GONE : View.VISIBLE);
-
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: ViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            val empty = imagePath!!.isEmpty()
+            holder.emptyText.visibility = if (empty) View.VISIBLE else View.GONE
+            holder.imageView.visibility = if (empty) View.GONE else View.VISIBLE
             if (empty) {
-                Glide.with(holder.itemView).clear(holder.imageView);
-//                holder.imageView.setImageURI(null);
-                holder.emptyText.setText(String.format("Page %s is missing", this.page));
+                Glide.with(holder.itemView).clear(holder.imageView)
+                //                holder.imageView.setImageURI(null);
+                holder.emptyText.text = String.format("Page %s is missing", page)
             } else {
-                holder.emptyText.setText(null);
+                holder.emptyText.text = null
                 Glide
-                        .with(holder.itemView)
-                        .load(Uri.fromFile(new File(this.imagePath)))
-                        .format(DecodeFormat.PREFER_ARGB_8888)
-                        .override(Target.SIZE_ORIGINAL)
-                        .into(holder.imageView);
-//                holder.imageView.setImageURI(Uri.fromFile(new File(this.imagePath)));
+                    .with(holder.itemView)
+                    .load(Uri.fromFile(File(imagePath)))
+                    .format(DecodeFormat.PREFER_ARGB_8888)
+                    .override(Target.SIZE_ORIGINAL)
+                    .into(holder.imageView)
+                //                holder.imageView.setImageURI(Uri.fromFile(new File(this.imagePath)));
             }
         }
-    }
 
-    private static class CropBitMap extends BitmapTransformation {
-        @Override
-        protected Bitmap transform(@NonNull BitmapPool pool, @NonNull Bitmap toTransform, int outWidth, int outHeight) {
-            return null;
-        }
-
-        @Override
-        public void updateDiskCacheKey(@NonNull MessageDigest messageDigest) {
-
+        init {
+            this.imagePath = imagePath
+            this.page = page
         }
     }
 
+    private class CropBitMap : BitmapTransformation() {
+        override fun transform(
+            pool: BitmapPool,
+            toTransform: Bitmap,
+            outWidth: Int,
+            outHeight: Int
+        ): Bitmap? {
+            return null
+        }
 
-    private static class ViewHolder extends FlexibleViewHolder {
-        private final ImageView imageView;
-        private final TextView emptyText;
+        override fun updateDiskCacheKey(messageDigest: MessageDigest) {}
+    }
 
-        private ViewHolder(View view, FlexibleAdapter adapter) {
-            super(view, adapter);
-            this.emptyText = view.findViewById(R.id.empty_view);
-            this.imageView = view.findViewById(R.id.image);
-            this.emptyText.setOnClickListener(this);
-            this.imageView.setOnClickListener(this);
+    private class ViewHolder(view: View, adapter: FlexibleAdapter<*>) :
+        FlexibleViewHolder(view, adapter) {
+        val imageView: ImageView = view.findViewById(R.id.image)
+        val emptyText: TextView = view.findViewById(R.id.empty_view)
+
+        init {
+            emptyText.setOnClickListener(this)
+            imageView.setOnClickListener(this)
         }
     }
 
+    class ReadableEpisode(
+        episode: SimpleEpisode,
+        @field:SuppressLint("UseSparseArrays") val pageMap: Map<Int, ChapterPage>
+    ) : SimpleEpisode(episode.episodeId, episode.totalIndex, episode.partialIndex, episode.progress)
 
-    static class ReadableEpisode extends SimpleEpisode {
-        @SuppressLint("UseSparseArrays")
-        private final Map<Integer, ChapterPage> pageMap;
+    private fun loadEpisodes() {
+        @SuppressLint("StaticFieldLeak") val task: AsyncTask<Void, Void, Void> =
+            object : AsyncTask<Void, Void, Void>() {
+                override fun doInBackground(vararg voids: Void?): Void? {
+                    val bookTool = getImageContentTool(mainActivity.application)
+                    val chapterPages: Map<Int, Set<ChapterPage>> =
+                        bookTool.getEpisodePagePaths(currentBook)
 
-        ReadableEpisode(SimpleEpisode episode, Map<Integer, ChapterPage> pageMap) {
-            super(episode.getEpisodeId(), episode.getTotalIndex(), episode.getPartialIndex(), episode.getProgress());
-            this.pageMap = pageMap;
-        }
-    }
-
-    private void loadEpisodes() {
-        @SuppressLint("StaticFieldLeak")
-        AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
-
-            @Override
-            protected Void doInBackground(Void... voids) {
-                ImageContentTool bookTool = FileTools.INSTANCE.getImageContentTool(getMainActivity().getApplication());
-                Map<Integer, Set<ChapterPage>> chapterPages = bookTool.getEpisodePagePaths(currentBook);
-
-                if (chapterPages == null || chapterPages.isEmpty()) {
-                    return null;
-                }
-                Repository repository = RepositoryImpl.Companion.getInstance(getMainActivity().getApplication());
-
-                List<SimpleEpisode> episodes = repository.getSimpleEpisodes(chapterPages.keySet());
-
-                for (SimpleEpisode simpleEpisode : episodes) {
-                    int episodeId = simpleEpisode.getEpisodeId();
-                    Set<ChapterPage> pages = chapterPages.get(episodeId);
-
-                    if (pages == null || pages.isEmpty()) {
-                        System.err.println("Could not find file for episodeId: " + episodeId);
-                        continue;
+                    if (chapterPages.isEmpty()) {
+                        return null
                     }
-
-                    @SuppressLint("UseSparseArrays")
-                    Map<Integer, ChapterPage> pageMap = new HashMap<>();
-                    int max = 0;
-
-                    for (ChapterPage page : pages) {
-                        pageMap.put(page.getPage(), page);
-
-                        if (max < page.getPage()) {
-                            max = page.getPage();
+                    val repository = getInstance(mainActivity.application)
+                    val episodes = repository.getSimpleEpisodes(chapterPages.keys)
+                    for (simpleEpisode in episodes) {
+                        val episodeId = simpleEpisode.episodeId
+                        val pages = chapterPages[episodeId]
+                        if (pages == null || pages.isEmpty()) {
+                            System.err.println("Could not find file for episodeId: $episodeId")
+                            continue
                         }
+                        @SuppressLint("UseSparseArrays") val pageMap: MutableMap<Int, ChapterPage> =
+                            HashMap()
+                        var max = 0
+                        for (page in pages) {
+                            pageMap[page.page] = page
+                            if (max < page.page) {
+                                max = page.page
+                            }
+                        }
+                        for (i in 1 until max) {
+                            pageMap.putIfAbsent(i, ChapterPage(episodeId, i, ""))
+                        }
+                        val readableEpisode = ReadableEpisode(simpleEpisode, pageMap)
+                        if (episodeId == currentEpisode) {
+                            currentlyReading = readableEpisode
+                        }
+                        readableEpisodes.add(readableEpisode)
                     }
-                    for (int i = 1; i < max; i++) {
-                        pageMap.putIfAbsent(i, new ChapterPage(episodeId, i, ""));
-                    }
-                    ReadableEpisode readableEpisode = new ReadableEpisode(simpleEpisode, pageMap);
-
-                    if (episodeId == currentEpisode) {
-                        currentlyReading = readableEpisode;
-                    }
-
-                    readableEpisodes.add(readableEpisode);
+                    return null
                 }
-                return null;
-            }
 
-            @SuppressLint("DefaultLocale")
-            @Override
-            protected void onPostExecute(Void data) {
-                updateContent();
-            }
+                @SuppressLint("DefaultLocale")
+                override fun onPostExecute(data: Void?) {
+                    updateContent()
+                }
 
-            @Override
-            protected void onCancelled() {
-                showToastError("Could not load Book");
+                override fun onCancelled() {
+                    showToastError("Could not load Book")
+                }
             }
-        };
-        task.execute();
+        task.execute()
     }
 
-    private void showToastError(String s) {
-        getMainActivity().runOnUiThread(() -> showToast(s));
+    private fun showToastError(s: String) {
+        mainActivity.runOnUiThread { showToast(s) }
+    }
+
+    companion object {
+        /**
+         * Use this factory method to create a new instance of
+         * this fragment using the provided parameters.
+         *
+         * @return A new instance of fragment ImageViewerFragment.
+         */
+        fun newInstance(startEpisode: Int, zipFile: String?): ImageViewerFragment {
+            val fragment = ImageViewerFragment()
+            val args = Bundle()
+            args.putInt(START_EPISODE, startEpisode)
+            args.putString(MEDIUM, zipFile)
+            fragment.arguments = args
+            return fragment
+        }
     }
 }

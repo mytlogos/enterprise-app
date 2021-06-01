@@ -227,12 +227,13 @@ public class MainActivity extends AppCompatActivity implements
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         Class<?> activityClass = null;
+        Fragment fragment = null;
 
         boolean selected = false;
 
         switch (item.getItemId()) {
             case R.id.action_settings:
-                activityClass = SettingsFragment.class;
+                fragment = new SettingsFragment();
                 selected = true;
                 break;
             case R.id.logout:
@@ -262,6 +263,10 @@ public class MainActivity extends AppCompatActivity implements
             case android.R.id.home:
                 onBackPressed();
                 return true;
+        }
+
+        if (fragment != null) {
+            this.switchWindow(fragment, true);
         }
 
         if (activityClass != null) {
@@ -319,7 +324,7 @@ public class MainActivity extends AppCompatActivity implements
                 activityClass = AddListActivity.class;
                 break;
             case R.id.settings:
-                activityClass = SettingsFragment.class;
+                fragment = new SettingsFragment();
                 break;
         }
         boolean selected = false;

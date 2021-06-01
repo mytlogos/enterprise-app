@@ -65,6 +65,10 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         TaskManager.runTask { storage.deleteAllUser() }
     }
 
+    fun getUserNow(): User? {
+        return this.storage.getUserNow()
+    }
+
     /**
      * Synchronous Login.
      *

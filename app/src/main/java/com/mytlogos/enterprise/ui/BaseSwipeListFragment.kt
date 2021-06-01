@@ -1,46 +1,35 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.annotation.LayoutRes
+import androidx.lifecycle.AndroidViewModel
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.mytlogos.enterprise.R
 
-import androidx.annotation.LayoutRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+abstract class BaseSwipeListFragment<Value : Any, ViewModel : AndroidViewModel?> :
+    BaseListFragment<Value, ViewModel>() {
+    override var listContainer: View? = null
 
-import com.mytlogos.enterprise.R;
-
-abstract class BaseSwipeListFragment<Value, ViewModel extends AndroidViewModel> extends BaseListFragment<Value, ViewModel> {
-
-    private SwipeRefreshLayout listContainer;
-
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        listContainer = view.findViewById(getListContainerId());
-        listContainer.setOnRefreshListener(this::onSwipeRefresh);
-        return view;
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        val localListContainer = view.findViewById<SwipeRefreshLayout>(listContainerId)
+        listContainer = localListContainer
+        localListContainer.setOnRefreshListener { onSwipeRefresh() }
+        return view
     }
 
-    @LayoutRes
-    @Override
-    public int getLayoutId() {
-        return R.layout.swipe_list;
-    }
+    @get:LayoutRes
+    override val layoutId: Int
+        get() = R.layout.swipe_list
+    override val listContainerId: Int
+        get() = R.id.swiper
 
-    @Override
-    public SwipeRefreshLayout getListContainer() {
-        return listContainer;
-    }
-
-    @Override
-    int getListContainerId() {
-        return R.id.swiper;
-    }
-
-    abstract void onSwipeRefresh();
+    abstract fun onSwipeRefresh()
 }

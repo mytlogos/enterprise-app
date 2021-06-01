@@ -1,43 +1,41 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import com.github.barteksc.pdfviewer.PDFView
+import com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle
+import com.mytlogos.enterprise.R
+import java.io.File
 
-import androidx.annotation.NonNull;
-
-import com.github.barteksc.pdfviewer.PDFView;
-import com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle;
-import com.mytlogos.enterprise.R;
-
-import java.io.File;
-
-class PdfViewerFragment extends TextViewerFragment {
-    private PDFView pdfDisplay;
-
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        this.pdfDisplay = view.findViewById(R.id.pdfView);
-        this.setHasOptionsMenu(true);
-        this.pdfDisplay.setOnClickListener(v -> this.toggleReadingMode());
-        return view;
+internal class PdfViewerFragment : TextViewerFragment() {
+    private var pdfDisplay: PDFView? = null
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        pdfDisplay = view.findViewById(R.id.pdfView)
+        setHasOptionsMenu(true)
+        pdfDisplay!!.setOnClickListener { toggleReadingMode() }
+        return view
     }
 
-    @Override
-    void updateContent() {
-        this.pdfDisplay
-                .fromFile(new File(this.currentBook))
-                .defaultPage(0)
-                .onPageScroll((page, positionOffset) -> System.out.printf("Page: %d and Offset: %s%n", page, positionOffset))
-                .scrollHandle(new DefaultScrollHandle(this.requireContext()))
-                .load();
+    override fun updateContent() {
+        pdfDisplay!!
+            .fromFile(File(currentBook))
+            .defaultPage(0)
+            .onPageScroll { page: Int, positionOffset: Float ->
+                System.out.printf("Page: %d and Offset: %s%n",
+                    page,
+                    positionOffset)
+            }
+            .scrollHandle(DefaultScrollHandle(requireContext()))
+            .load()
     }
 
-    @Override
-    int getLayoutRes() {
-        return R.layout.fragment_reader_pdf;
-    }
+    override val layoutRes: Int
+        get() = R.layout.fragment_reader_pdf
 }

@@ -1,105 +1,88 @@
-package com.mytlogos.enterprise.ui;
+package com.mytlogos.enterprise.ui
 
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
+import android.os.Bundle
+import android.view.*
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.model.NotificationItem
+import com.mytlogos.enterprise.viewmodel.NotificationViewModel
+import eu.davidea.flexibleadapter.FlexibleAdapter
+import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
+import eu.davidea.flexibleadapter.items.IFlexible
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
-
-import com.mytlogos.enterprise.R;
-import com.mytlogos.enterprise.model.NotificationItem;
-import com.mytlogos.enterprise.viewmodel.NotificationViewModel;
-
-import java.util.List;
-import java.util.Objects;
-
-import eu.davidea.flexibleadapter.FlexibleAdapter;
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem;
-import eu.davidea.flexibleadapter.items.IFlexible;
-
-public class NotificationFragment extends BaseListFragment<NotificationItem, NotificationViewModel> {
-
-    @NonNull
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        setTitle("Notification History");
-        return view;
+class NotificationFragment : BaseListFragment<NotificationItem, NotificationViewModel>() {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        setTitle("Notification History")
+        return view
     }
 
-    @Override
-    Class<NotificationViewModel> getViewModelClass() {
-        return NotificationViewModel.class;
+    override val viewModelClass: Class<NotificationViewModel>
+        get() = NotificationViewModel::class.java
+
+    override fun createPagedListLiveData(): LiveData<PagedList<NotificationItem>> {
+        return viewModel!!.notifications
     }
 
-    @Override
-    LiveData<PagedList<NotificationItem>> createPagedListLiveData() {
-        return getViewModel().getNotifications();
+    override fun createFlexible(value: NotificationItem): IFlexible<*> {
+        return FlexibleNotification(value)
     }
 
-    @Override
-    IFlexible createFlexible(NotificationItem notificationItem) {
-        return new FlexibleNotification(notificationItem);
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.notification_menu, menu)
+        super.onCreateOptionsMenu(menu, inflater)
     }
 
-    @Override
-    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
-        inflater.inflate(R.menu.notification_menu, menu);
-        super.onCreateOptionsMenu(menu, inflater);
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.clear_notifications) {
+            viewModel!!.clearNotifications()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.clear_notifications) {
-            getViewModel().clearNotifications();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    private static class FlexibleNotification extends AbstractFlexibleItem<MetaViewHolder> {
-        private final NotificationItem item;
-
-        private FlexibleNotification(NotificationItem item) {
-            this.item = item;
+    private class FlexibleNotification(item: NotificationItem) :
+        AbstractFlexibleItem<MetaViewHolder>() {
+        private val item: NotificationItem?
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val that = other as FlexibleNotification
+            return item == that.item
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            FlexibleNotification that = (FlexibleNotification) o;
-
-            return Objects.equals(item, that.item);
+        override fun hashCode(): Int {
+            return item?.hashCode() ?: 0
         }
 
-        @Override
-        public int hashCode() {
-            return item != null ? item.hashCode() : 0;
+        override fun getLayoutRes(): Int {
+            return R.layout.meta_item
         }
 
-        @Override
-        public int getLayoutRes() {
-            return R.layout.meta_item;
+        override fun createViewHolder(
+            view: View,
+            adapter: FlexibleAdapter<IFlexible<*>?>?
+        ): MetaViewHolder {
+            return MetaViewHolder(view, adapter)
         }
 
-        @Override
-        public MetaViewHolder createViewHolder(View view, FlexibleAdapter<IFlexible> adapter) {
-            return new MetaViewHolder(view, adapter);
+        override fun bindViewHolder(
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            holder: MetaViewHolder,
+            position: Int,
+            payloads: List<Any>
+        ) {
+            holder.mainText.text = item!!.title
+            holder.topLeftText.text = item.dateTime.toString("dd.MM.yyyy HH:mm:ss")
         }
 
-        @Override
-        public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position, List<Object> payloads) {
-            holder.mainText.setText(this.item.getTitle());
-            holder.topLeftText.setText(this.item.getDateTime().toString("dd.MM.yyyy HH:mm:ss"));
+        init {
+            this.item = item
         }
     }
 }
