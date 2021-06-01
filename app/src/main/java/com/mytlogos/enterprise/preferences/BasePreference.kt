@@ -1,51 +1,36 @@
-package com.mytlogos.enterprise.preferences;
+package com.mytlogos.enterprise.preferences
 
-import android.content.SharedPreferences;
+import android.content.SharedPreferences
 
-class BasePreference {
-    final SharedPreferences preferences;
-    public static int IGNORE_INT_VALUE = -1;
-
-    BasePreference(SharedPreferences preferences) {
-        this.preferences = preferences;
-    }
-
-    protected int getInt(String key, int defaultV) {
-        try {
-            return this.preferences.getInt(key, defaultV);
-        } catch (ClassCastException e) {
-            String string = this.preferences.getString(key, "");
-
-            if (string == null) {
-                return defaultV;
-            }
-            return Integer.parseInt(string);
+open class BasePreference(val preferences: SharedPreferences) {
+    protected fun getInt(key: String?, defaultV: Int): Int {
+        return try {
+            preferences.getInt(key, defaultV)
+        } catch (e: ClassCastException) {
+            val string = preferences.getString(key, "") ?: return defaultV
+            string.toInt()
         }
     }
 
-    protected float getLong(String key, long defaultV) {
-        try {
-            return this.preferences.getLong(key, defaultV);
-        } catch (ClassCastException e) {
-            String string = this.preferences.getString(key, "");
-
-            if (string == null) {
-                return defaultV;
-            }
-            return Long.parseLong(string);
+    protected fun getLong(key: String?, defaultV: Long): Float {
+        return try {
+            preferences.getLong(key, defaultV).toFloat()
+        } catch (e: ClassCastException) {
+            val string = preferences.getString(key, "") ?: return defaultV.toFloat()
+            string.toLong().toFloat()
         }
     }
 
-    protected float getFloat(String key, float defaultV) {
-        try {
-            return this.preferences.getFloat(key, defaultV);
-        } catch (ClassCastException e) {
-            String string = this.preferences.getString(key, "");
-
-            if (string == null) {
-                return defaultV;
-            }
-            return Float.parseFloat(string);
+    protected fun getFloat(key: String?, defaultV: Float): Float {
+        return try {
+            preferences.getFloat(key, defaultV)
+        } catch (e: ClassCastException) {
+            val string = preferences.getString(key, "") ?: return defaultV
+            string.toFloat()
         }
+    }
+
+    companion object {
+        var IGNORE_INT_VALUE = -1
     }
 }

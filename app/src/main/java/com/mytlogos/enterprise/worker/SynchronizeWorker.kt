@@ -166,9 +166,9 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     private fun syncWithTime(repository: Repository): Boolean {
         val client = repository.getClient(this)
         val persister = repository.getPersister(this)
-        val lastSync = UserPreferences.getLastSync()
+        val lastSync = UserPreferences.lastSync
         syncChanged(lastSync, client, persister, repository)
-        UserPreferences.setLastSync(DateTime.now())
+        UserPreferences.lastSync = DateTime.now()
         syncDeleted(client, persister, repository)
         return false
     }

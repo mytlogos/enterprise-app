@@ -858,7 +858,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
     }
 
     override fun clearLocalMediaData(context: Context) {
-        UserPreferences.setLastSync(DateTime(0))
+        UserPreferences.lastSync = DateTime(0)
         TaskManager.Companion.runTask(Runnable {
             loadedData.part.clear()
             loadedData.episodes.clear()

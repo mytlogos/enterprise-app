@@ -1,66 +1,57 @@
-package com.mytlogos.enterprise.preferences;
+package com.mytlogos.enterprise.preferences
 
-import android.content.SharedPreferences;
+import android.content.SharedPreferences
+import com.mytlogos.enterprise.model.MediumType
+import com.mytlogos.enterprise.model.MediumType.`is`
+import java.util.*
+import java.util.function.BiConsumer
+import kotlin.math.min
 
-import com.mytlogos.enterprise.model.MediumType;
+class DownloadPreference internal constructor(preferences: SharedPreferences) :
+    BasePreference(preferences) {
+    private val map: Map<String, Set<BiConsumer<Int, Int>>> = HashMap()
+    val isDownloadEnabled: Boolean
+        get() = preferences.getBoolean("enable_download", true)
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
-
-public class DownloadPreference extends BasePreference {
-    private final Map<String, Set<BiConsumer<Integer, Integer>>> map = new HashMap<>();
-
-    DownloadPreference(SharedPreferences preferences) {
-        super(preferences);
-    }
-
-    public boolean isDownloadEnabled() {
-        return this.preferences.getBoolean("enable_download", true);
-    }
-
-    private int getDefaultMediumCountLimit(int medium) {
-        int limit = Integer.MAX_VALUE;
-        if (MediumType.is(medium, MediumType.TEXT)) {
-            limit = Math.min(limit, 100);
+    private fun getDefaultMediumCountLimit(medium: Int): Int {
+        var limit = Int.MAX_VALUE
+        if (`is`(medium, MediumType.TEXT)) {
+            limit = min(limit, 100)
         }
-        if (MediumType.is(medium, MediumType.IMAGE)) {
-            limit = Math.min(limit, 10);
+        if (`is`(medium, MediumType.IMAGE)) {
+            limit = min(limit, 10)
         }
-        if (MediumType.is(medium, MediumType.VIDEO)) {
-            limit = Math.min(limit, 5);
+        if (`is`(medium, MediumType.VIDEO)) {
+            limit = min(limit, 5)
         }
-        if (MediumType.is(medium, MediumType.IMAGE)) {
-            limit = Math.min(limit, 20);
+        if (`is`(medium, MediumType.IMAGE)) {
+            limit = min(limit, 20)
         }
-        if (limit == Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("unknown mediumType: " + medium);
-        }
-        return limit;
+        require(limit != Int.MAX_VALUE) { "unknown mediumType: $medium" }
+        return limit
     }
 
-    public int getDownloadLimitCount(int medium) {
-        return this.getInt("download-medium-" + medium + "-count", this.getDefaultMediumCountLimit(medium));
+    fun getDownloadLimitCount(medium: Int): Int {
+        return getInt("download-medium-$medium-count", getDefaultMediumCountLimit(medium))
     }
 
-    public int getDownloadLimitSize(int medium) {
-        return this.getInt("download-medium-" + medium + "-space", IGNORE_INT_VALUE);
+    fun getDownloadLimitSize(medium: Int): Int {
+        return getInt("download-medium-$medium-space", IGNORE_INT_VALUE)
     }
 
-    public int getMediumDownloadLimitCount(int mediumId) {
-        return this.getInt("download-mediumId-" + mediumId + "-count", IGNORE_INT_VALUE);
+    fun getMediumDownloadLimitCount(mediumId: Int): Int {
+        return getInt("download-mediumId-$mediumId-count", IGNORE_INT_VALUE)
     }
 
-    public int getMediumDownloadLimitSize(int mediumId) {
-        return this.getInt("download-mediumId-" + mediumId + "-space", IGNORE_INT_VALUE);
+    fun getMediumDownloadLimitSize(mediumId: Int): Int {
+        return getInt("download-mediumId-$mediumId-space", IGNORE_INT_VALUE)
     }
 
-    public int getListDownloadLimitCount(int listId) {
-        return this.getInt("download-listId-" + listId + "-count", IGNORE_INT_VALUE);
+    fun getListDownloadLimitCount(listId: Int): Int {
+        return getInt("download-listId-$listId-count", IGNORE_INT_VALUE)
     }
 
-    public int getListDownloadLimitSize(int listId) {
-        return this.getInt("download-listId-" + listId + "-space", IGNORE_INT_VALUE);
+    fun getListDownloadLimitSize(listId: Int): Int {
+        return getInt("download-listId-$listId-space", IGNORE_INT_VALUE)
     }
 }
