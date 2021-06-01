@@ -1,6 +1,6 @@
-package com.mytlogos.enterprise.tools;
+package com.mytlogos.enterprise.tools
 
-public enum Sortings {
+enum class Sortings(val sortValue: Int) {
     HOST_AZ(1),
     HOST_ZA(-1),
     MEDIUM(2),
@@ -21,14 +21,4 @@ public enum Sortings {
     LAST_UPDATE_ASC(9),
     NUMBER_EPISODE_UNREAD_ASC(10),
     NUMBER_EPISODE_UNREAD_DESC(-10);
-
-    private final int sortValue;
-
-    Sortings(int sortValue) {
-        this.sortValue = sortValue;
-    }
-
-    public int getSortValue() {
-        return sortValue;
-    }
 }

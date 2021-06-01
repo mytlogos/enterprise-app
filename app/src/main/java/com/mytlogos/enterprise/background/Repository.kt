@@ -114,9 +114,9 @@ interface Repository {
     fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
     val readTodayEpisodes: LiveData<PagedList<ReadEpisode>>
     fun getMediaInWaitBy(
-        filter: String,
+        filter: String?,
         mediumFilter: Int,
-        hostFilter: String,
+        hostFilter: String?,
         sortings: Sortings
     ): LiveData<PagedList<MediumInWait>>
 

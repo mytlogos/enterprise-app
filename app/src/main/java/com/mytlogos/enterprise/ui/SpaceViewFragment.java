@@ -264,13 +264,13 @@ public class SpaceViewFragment extends BaseFragment {
         Application application = requireActivity().getApplication();
 
         if (node.equals(textNode)) {
-            return FileTools.getTextContentTool(application);
+            return FileTools.INSTANCE.getTextContentTool(application);
         } else if (node.equals(videoNode)) {
-            return FileTools.getVideoContentTool(application);
+            return FileTools.INSTANCE.getVideoContentTool(application);
         } else if (node.equals(imageNode)) {
-            return FileTools.getImageContentTool(application);
+            return FileTools.INSTANCE.getImageContentTool(application);
         } else if (node.equals(audioNode)) {
-            return FileTools.getAudioContentTool(application);
+            return FileTools.INSTANCE.getAudioContentTool(application);
         } else {
             throw new IllegalArgumentException("not a media sub root node");
         }
@@ -357,17 +357,17 @@ public class SpaceViewFragment extends BaseFragment {
 
             Application application = requireActivity().getApplication();
 
-            gatherData(false, FileTools.getTextContentTool(application), textNode);
-            gatherData(true, FileTools.getTextContentTool(application), textNode);
+            gatherData(false, FileTools.INSTANCE.getTextContentTool(application), textNode);
+            gatherData(true, FileTools.INSTANCE.getTextContentTool(application), textNode);
 
-            gatherData(false, FileTools.getAudioContentTool(application), audioNode);
-            gatherData(true, FileTools.getAudioContentTool(application), audioNode);
+            gatherData(false, FileTools.INSTANCE.getAudioContentTool(application), audioNode);
+            gatherData(true, FileTools.INSTANCE.getAudioContentTool(application), audioNode);
 
-            gatherData(false, FileTools.getImageContentTool(application), imageNode);
-            gatherData(true, FileTools.getImageContentTool(application), imageNode);
+            gatherData(false, FileTools.INSTANCE.getImageContentTool(application), imageNode);
+            gatherData(true, FileTools.INSTANCE.getImageContentTool(application), imageNode);
 
-            gatherData(false, FileTools.getVideoContentTool(application), videoNode);
-            gatherData(true, FileTools.getVideoContentTool(application), videoNode);
+            gatherData(false, FileTools.INSTANCE.getVideoContentTool(application), videoNode);
+            gatherData(true, FileTools.INSTANCE.getVideoContentTool(application), videoNode);
             return null;
         }
 

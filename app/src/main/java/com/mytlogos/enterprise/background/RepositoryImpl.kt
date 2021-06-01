@@ -27,6 +27,7 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
 import java.util.function.Supplier
+import kotlin.collections.ArrayList
 
 class RepositoryImpl private constructor(application: Application) : Repository {
     private val persister: ClientModelPersister
@@ -546,7 +547,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     @Throws(Exception::class)
     private fun reloadEpisodes(episodeIds: Collection<Int>) {
-        Utils.doPartitionedEx(episodeIds) { integers: MutableList<Int> ->
+        Utils.doPartitionedEx(episodeIds) { integers: List<Int> ->
             val episodes = client.getEpisodes(integers).body()
                 ?: return@doPartitionedEx true
             val generator = LoadWorkGenerator(loadedData)
@@ -556,8 +557,9 @@ class RepositoryImpl private constructor(application: Application) : Repository 
             for (episode in episodes) {
                 loadedIds.add(episode.id)
             }
-            integers.removeAll(loadedIds)
-            storage.removeEpisodes(integers)
+            val ids = ArrayList(integers)
+            ids.removeAll(loadedIds)
+            storage.removeEpisodes(ids)
             true
         }
     }
@@ -687,9 +689,9 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         get() = storage.getReadTodayEpisodes()
 
     override fun getMediaInWaitBy(
-        filter: String,
+        filter: String?,
         mediumFilter: Int,
-        hostFilter: String,
+        hostFilter: String?,
         sortings: Sortings
     ): LiveData<PagedList<MediumInWait>> {
         return storage.getMediaInWaitBy(filter, mediumFilter, hostFilter, sortings)

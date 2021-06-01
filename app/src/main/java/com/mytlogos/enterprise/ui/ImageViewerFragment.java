@@ -318,7 +318,7 @@ public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.Read
 
             @Override
             protected Void doInBackground(Void... voids) {
-                ImageContentTool bookTool = FileTools.getImageContentTool(getMainActivity().getApplication());
+                ImageContentTool bookTool = FileTools.INSTANCE.getImageContentTool(getMainActivity().getApplication());
                 Map<Integer, Set<ChapterPage>> chapterPages = bookTool.getEpisodePagePaths(currentBook);
 
                 if (chapterPages == null || chapterPages.isEmpty()) {

@@ -1,187 +1,165 @@
-package com.mytlogos.enterprise.tools;
+package com.mytlogos.enterprise.tools
 
-import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Transformations;
-import androidx.paging.DataSource;
-import androidx.paging.LivePagedListBuilder;
-import androidx.paging.PageKeyedDataSource;
-import androidx.paging.PagedList;
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Transformations
+import androidx.paging.DataSource
+import androidx.paging.LivePagedListBuilder
+import androidx.paging.PageKeyedDataSource
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.background.api.NotConnectedException
+import com.mytlogos.enterprise.background.api.ServerException
+import retrofit2.Response
+import java.io.IOException
+import java.net.URI
+import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.regex.Pattern
+import java.util.stream.Collectors
 
-import com.mytlogos.enterprise.background.api.NotConnectedException;
-import com.mytlogos.enterprise.background.api.ServerException;
-
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import retrofit2.Response;
-
-public class Utils {
-    public static String getDomain(String url) {
-        String host = URI.create(url).getHost();
-        if (host == null) {
-            return null;
-        }
-        Matcher matcher = Pattern.compile("(www\\.)?(.+?)/?").matcher(host);
-
-        String domain;
+object Utils {
+    @JvmStatic
+    fun getDomain(url: String?): String? {
+        val host = URI.create(url).host ?: return null
+        val matcher = Pattern.compile("(www\\.)?(.+?)/?").matcher(host)
+        var domain: String
         if (matcher.matches()) {
-            domain = matcher.group(2);
-            int index = domain.indexOf("/");
-
+            domain = matcher.group(2)
+            val index = domain.indexOf("/")
             if (index >= 0) {
-                domain = domain.substring(0, index);
+                domain = domain.substring(0, index)
             }
         } else {
-            domain = host;
+            domain = host
         }
-        return domain;
+        return domain
     }
 
-    public static String externalUserTypeToName(int type) {
-        switch (type) {
-            case 0:
-                return "NovelUpdates";
-            default:
-                throw new IllegalArgumentException("unknown type");
+    @JvmStatic
+    fun externalUserTypeToName(type: Int): String {
+        return when (type) {
+            0 -> "NovelUpdates"
+            else -> throw IllegalArgumentException("unknown type")
         }
     }
 
-    public static <E> LiveData<PagedList<E>> transform(LiveData<List<E>> listLiveData) {
+    @JvmStatic
+    fun <E : Any> transform(listLiveData: LiveData<List<E>>): LiveData<PagedList<E>> {
         return Transformations.switchMap(
-                listLiveData,
-                input -> new LivePagedListBuilder<>(
-                        new DataSource.Factory<Integer, E>() {
-                            @NonNull
-                            @Override
-                            public DataSource<Integer, E> create() {
-                                return new StaticDataSource<>(input);
-                            }
-                        }, 1000
-                ).build()
-        );
+            listLiveData
+        ) { input: List<E> ->
+            LivePagedListBuilder(
+                object : DataSource.Factory<Int, E>() {
+                    override fun create(): DataSource<Int, E> {
+                        return StaticDataSource(input)
+                    }
+                }, 1000
+            ).build()
+        }
     }
 
-    public static <E> void doPartitionedEx(Collection<E> collection, FunctionEx<List<E>, Boolean> consumer) throws Exception {
-        List<E> list = new ArrayList<>(collection);
-        int steps = 100;
-        int minItem = 0;
-        int maxItem = minItem + steps;
-
+    @Throws(Exception::class)
+    fun <E : Any> doPartitionedEx(collection: Collection<E>?, consumer: (List<E>) -> Boolean?) {
+        val list: List<E> = ArrayList(collection)
+        val steps = 100
+        var minItem = 0
+        var maxItem = minItem + steps
         do {
-            if (maxItem > list.size()) {
-                maxItem = list.size();
+            if (maxItem > list.size) {
+                maxItem = list.size
             }
-
-            List<E> subList = list.subList(minItem, maxItem);
-
-            Boolean result = consumer.apply(subList);
+            val subList = list.subList(minItem, maxItem)
+            val result = consumer(subList)
 
             if (result != null && result) {
-                continue;
+                continue
             } else if (result == null) {
-                break;
+                break
             }
-
-            minItem = minItem + steps;
-            maxItem = minItem + steps;
-
-            if (maxItem > list.size()) {
-                maxItem = list.size();
+            minItem += steps
+            maxItem = minItem + steps
+            if (maxItem > list.size) {
+                maxItem = list.size
             }
-        } while (minItem < list.size() && maxItem <= list.size());
+        } while (minItem < list.size && maxItem <= list.size)
     }
 
-    public static <E> void doPartitioned(Collection<E> collection, Function<List<E>, Boolean> consumer) {
-        List<E> list = new ArrayList<>(collection);
-        int steps = 100;
-        int minItem = 0;
-        int maxItem = minItem + steps;
-
+    fun <E : Any> doPartitioned(
+        collection: Collection<E>?,
+        consumer: (List<E>) -> Boolean?,
+    ) {
+        val list: List<E> = ArrayList(collection)
+        val steps = 100
+        var minItem = 0
+        var maxItem = minItem + steps
         do {
-            if (maxItem > list.size()) {
-                maxItem = list.size();
+            if (maxItem > list.size) {
+                maxItem = list.size
             }
-
-            List<E> subList = list.subList(minItem, maxItem);
-
-            Boolean result = consumer.apply(subList);
+            val subList = list.subList(minItem, maxItem)
+            val result = consumer(subList)
 
             if (result != null && result) {
-                continue;
+                continue
             } else if (result == null) {
-                break;
+                break
             }
-
-            minItem = minItem + steps;
-            maxItem = minItem + steps;
-
-            if (maxItem > list.size()) {
-                maxItem = list.size();
+            minItem += steps
+            maxItem = minItem + steps
+            if (maxItem > list.size) {
+                maxItem = list.size
             }
-        } while (minItem < list.size() && maxItem <= list.size());
+        } while (minItem < list.size && maxItem <= list.size)
     }
 
-    public static <T> void doPartitionedRethrow(Collection<T> collection, FunctionEx<List<T>, Boolean> functionEx) throws IOException {
+    @Throws(IOException::class)
+    fun <T : Any> doPartitionedRethrow(
+        collection: Collection<T>?,
+        functionEx: (List<T>) -> Boolean?,
+    ) {
         try {
-            doPartitionedEx(collection, functionEx);
-        } catch (NotConnectedException e) {
-            throw new NotConnectedException(e);
-        } catch (ServerException e) {
-            throw new ServerException(e);
-        } catch (IOException e) {
-            throw new IOException(e);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            doPartitionedEx(collection, functionEx)
+        } catch (e: NotConnectedException) {
+            throw NotConnectedException(e)
+        } catch (e: ServerException) {
+            throw ServerException(e)
+        } catch (e: IOException) {
+            throw IOException(e)
+        } catch (e: Exception) {
+            throw RuntimeException(e)
         }
     }
 
-    public static <T> CompletableFuture<List<T>> finishAll(Collection<CompletableFuture<T>> futuresList) {
-        CompletableFuture<Void> allFuturesResult = CompletableFuture.allOf(futuresList.toArray(new CompletableFuture[0]));
-        return allFuturesResult.thenApply(v -> futuresList.stream().
-                map(CompletableFuture::join).
-                collect(Collectors.toList())
-        );
+    fun <T> finishAll(futuresList: Collection<CompletableFuture<T>>): CompletableFuture<List<T>> {
+        val allFuturesResult =
+            CompletableFuture.allOf(*futuresList.toTypedArray<CompletableFuture<*>>())
+        return allFuturesResult.thenApply {
+            futuresList.stream().map { obj: CompletableFuture<T> -> obj.join() }
+                .collect(Collectors.toList())
+        }
     }
 
-    public static <T> T checkAndGetBody(Response<T> response) throws IOException {
-        T body = response.body();
-
+    @Throws(IOException::class)
+    fun <T> checkAndGetBody(response: Response<T>): T {
+        val body = response.body()
         if (body == null) {
-            String errorMsg = response.errorBody() != null ? response.errorBody().string() : null;
-            throw new ServerException(response.code(), errorMsg);
+            val errorMsg = if (response.errorBody() != null) response.errorBody()!!
+                .string() else null
+            throw ServerException(response.code(), errorMsg)
         }
-        return body;
+        return body
     }
 
-    private static class StaticDataSource<E> extends PageKeyedDataSource<Integer, E> {
-        private final List<E> data;
-
-        private StaticDataSource(List<E> data) {
-            this.data = data;
+    private class StaticDataSource<E : Any>(
+        private val data: List<E>,
+    ) : PageKeyedDataSource<Int, E>() {
+        override fun loadInitial(
+            params: LoadInitialParams<Int>,
+            callback: LoadInitialCallback<Int, E>
+        ) {
+            callback.onResult(data, null, null)
         }
 
-        @Override
-        public void loadInitial(@NonNull LoadInitialParams<Integer> params, @NonNull LoadInitialCallback<Integer, E> callback) {
-            callback.onResult(data, null, null);
-        }
-
-        @Override
-        public void loadBefore(@NonNull LoadParams<Integer> params, @NonNull LoadCallback<Integer, E> callback) {
-
-        }
-
-        @Override
-        public void loadAfter(@NonNull LoadParams<Integer> params, @NonNull LoadCallback<Integer, E> callback) {
-
-        }
+        override fun loadBefore(params: LoadParams<Int>, callback: LoadCallback<Int, E>) {}
+        override fun loadAfter(params: LoadParams<Int>, callback: LoadCallback<Int, E>) {}
     }
 }

@@ -1,20 +1,10 @@
-package com.mytlogos.enterprise.tools;
+package com.mytlogos.enterprise.tools
 
-import java.io.IOException;
+import java.io.IOException
 
-public class NotEnoughSpaceException extends IOException {
-    public NotEnoughSpaceException() {
-    }
-
-    public NotEnoughSpaceException(String message) {
-        super(message);
-    }
-
-    public NotEnoughSpaceException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public NotEnoughSpaceException(Throwable cause) {
-        super(cause);
-    }
+class NotEnoughSpaceException : IOException {
+    constructor()
+    constructor(message: String?) : super(message)
+    constructor(message: String?, cause: Throwable?) : super(message, cause)
+    constructor(cause: Throwable?) : super(cause)
 }

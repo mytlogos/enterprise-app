@@ -18,5 +18,5 @@ class MediumItem(
     override val currentRead: Int,
     val currentReadEpisode: Int,
     val lastEpisode: Int,
-    val lastUpdated: DateTime
+    val lastUpdated: DateTime?
 ) : Medium

@@ -76,9 +76,9 @@ interface DatabaseStorage {
     fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
     fun updateProgress(episodeIds: Collection<Int>, progress: Float)
     fun getMediaInWaitBy(
-        filter: String,
+        filter: String?,
         mediumFilter: Int,
-        hostFilter: String,
+        hostFilter: String?,
         sortings: Sortings
     ): LiveData<PagedList<MediumInWait>>
 

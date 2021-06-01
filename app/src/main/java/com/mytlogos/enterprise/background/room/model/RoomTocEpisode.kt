@@ -9,7 +9,7 @@ class RoomTocEpisode(
     val partId: Int,
     val partialIndex: Int,
     val totalIndex: Int,
-    val readDate: DateTime,
+    val readDate: DateTime?,
     val saved: Boolean,
     @field:Relation(
         parentColumn = "episodeId",

@@ -314,7 +314,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
         episodeDao.updateProgress(episodeIds, progress, DateTime.now())
     }
 
-    override fun getMediaInWaitBy(filter: String, mediumFilter: Int, hostFilter: String, sortings: Sortings): LiveData<PagedList<MediumInWait>> {
+    override fun getMediaInWaitBy(
+        filter: String?,
+        mediumFilter: Int,
+        hostFilter: String?,
+        sortings: Sortings,
+    ): LiveData<PagedList<MediumInWait>> {
         val factory: DataSource.Factory<Int, RoomMediumInWait>
         var sortValue = sortings.sortValue
         if (sortValue < 0) {

@@ -247,7 +247,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void removeToDownloads(@NotNull Collection<? extends ToDownload> toDownloads) {
+    public void removeToDownloads(@NotNull Collection<ToDownload> toDownloads) {
 
     }
 
@@ -402,12 +402,12 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public CompletableFuture<Boolean> consumeMediumInWait(@NotNull SimpleMedium selectedMedium, @NotNull List<? extends MediumInWait> mediumInWaits) {
+    public CompletableFuture<Boolean> consumeMediumInWait(@NotNull SimpleMedium selectedMedium, @NotNull List<MediumInWait> mediumInWaits) {
         return null;
     }
 
     @Override
-    public CompletableFuture<Boolean> createMedium(@NotNull MediumInWait mediumInWait, @NotNull List<? extends MediumInWait> mediumInWaits, @NotNull MediaList list) {
+    public CompletableFuture<Boolean> createMedium(@NotNull MediumInWait mediumInWait, @NotNull List<MediumInWait> mediumInWaits, @NotNull MediaList list) {
         return null;
     }
 

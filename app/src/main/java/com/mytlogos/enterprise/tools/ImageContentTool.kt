@@ -1,433 +1,389 @@
-package com.mytlogos.enterprise.tools;
+package com.mytlogos.enterprise.tools
 
-import android.annotation.SuppressLint;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import com.mytlogos.enterprise.background.Repository
+import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
+import com.mytlogos.enterprise.model.ChapterPage
+import com.mytlogos.enterprise.model.MediumType
+import java.io.*
+import java.net.HttpURLConnection
+import java.net.MalformedURLException
+import java.net.URL
+import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
+import java.util.regex.Pattern
 
-import com.mytlogos.enterprise.background.Repository;
-import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
-import com.mytlogos.enterprise.model.ChapterPage;
-import com.mytlogos.enterprise.model.MediumType;
+class ImageContentTool internal constructor(
+    internalContentDir: File?,
+    externalContentDir: File?,
+    private val repository: Repository?
+) : ContentTool(internalContentDir, externalContentDir) {
+    private var internalImageMedia: Map<Int, File>? = null
+    private var externalImageMedia: Map<Int, File>? = null
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+    override val medium = MediumType.IMAGE
 
-public class ImageContentTool extends ContentTool {
-    private final Repository repository;
-    private Map<Integer, File> internalImageMedia;
-    private Map<Integer, File> externalImageMedia;
-
-    ImageContentTool(File internalContentDir, File externalContentDir, Repository repository) {
-        super(internalContentDir, externalContentDir);
-        this.repository = repository;
+    override fun isContentMedium(file: File): Boolean {
+        return file.name.matches(Regex("\\d+")) && file.isDirectory
     }
 
-    @Override
-    public int getMedium() {
-        return MediumType.IMAGE;
-    }
+    override val isSupported: Boolean
+        get() = true
 
-    boolean isContentMedium(File file) {
-        return file.getName().matches("\\d+") && file.isDirectory();
-    }
-
-    @Override
-    public boolean isSupported() {
-        return true;
-    }
-
-    @Override
-    void removeMediaEpisodes(Set<Integer> episodeIds, String path) {
-        if (path == null) {
-            return;
+    override fun removeMediaEpisodes(episodeIds: Set<Int>, internalFile: String?) {
+        if (internalFile == null) {
+            return
         }
-        File file = new File(path);
-        Set<String> prefixes = new HashSet<>();
-
-        for (Integer episodeId : episodeIds) {
-            prefixes.add(episodeId + "-");
+        val file = File(internalFile)
+        val prefixes: MutableSet<String> = HashSet()
+        for (episodeId in episodeIds) {
+            prefixes.add("$episodeId-")
         }
-        for (File episodePath : file.listFiles()) {
-
-            String name = episodePath.getName();
-
-            for (String prefix : prefixes) {
+        for (episodePath in file.listFiles()) {
+            val name = episodePath.name
+            for (prefix in prefixes) {
                 if (!name.startsWith(prefix)) {
-                    continue;
+                    continue
                 }
                 try {
                     if (episodePath.exists() && !episodePath.delete()) {
-                        String idSubString = prefix.substring(0, prefix.indexOf("-"));
-                        System.err.printf("could not delete episode %s totally, deleting: '%s' failed%n", idSubString, file.getName());
+                        val idSubString = prefix.substring(0, prefix.indexOf("-"))
+                        System.err.printf("could not delete episode %s totally, deleting: '%s' failed%n",
+                            idSubString,
+                            file.name)
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-                break;
+                break
             }
         }
     }
 
-    @Override
-    Pattern getMediumContainerPattern() {
-        return Pattern.compile("^(\\d+)$");
-    }
+    override val mediumContainerPattern: Pattern
+        get() = Pattern.compile("^(\\d+)$")
+    override val mediumContainerPatternGroup: Int
+        get() = 1
 
-    @Override
-    int getMediumContainerPatternGroup() {
-        return 1;
-    }
-
-    @Override
-    public Map<Integer, String> getEpisodePaths(String mediumPath) {
-        File file = new File(mediumPath);
-        if (!file.exists() || !file.isDirectory()) {
-            return Collections.emptyMap();
+    override fun getEpisodePaths(mediumPath: String?): Map<Int, String> {
+        val file = File(mediumPath)
+        if (!file.exists() || !file.isDirectory) {
+            return emptyMap()
         }
-        Pattern pagePattern = Pattern.compile("^(\\d+)-\\d+\\.(png|jpg)$");
-
-        @SuppressLint("UseSparseArrays")
-        Map<Integer, String> firstPageEpisodes = new HashMap<>();
-
-        for (String episodePath : file.list()) {
-            Matcher matcher = pagePattern.matcher(episodePath);
-
+        val pagePattern = Pattern.compile("^(\\d+)-\\d+\\.(png|jpg)$")
+        @SuppressLint("UseSparseArrays") val firstPageEpisodes: MutableMap<Int, String> = HashMap()
+        for (episodePath in file.list()) {
+            val matcher = pagePattern.matcher(episodePath)
             if (!matcher.matches()) {
-                continue;
+                continue
             }
-            String episode = matcher.group(1);
-            int episodeId = Integer.parseInt(episode);
+            val episode = matcher.group(1)
+            val episodeId = episode.toInt()
 
             // look for available pages
             if (!firstPageEpisodes.containsKey(episodeId)) {
-                firstPageEpisodes.put(episodeId, episodePath);
+                firstPageEpisodes[episodeId] = episodePath
             }
         }
-        return firstPageEpisodes;
+        return firstPageEpisodes
     }
 
-    @Override
-    String getItemPath(int mediumId, File dir) {
-        for (File file : dir.listFiles()) {
-            if ((mediumId + "").equals(file.getName()) && file.isDirectory()) {
-                return file.getAbsolutePath();
+    override fun getItemPath(mediumId: Int, dir: File): String? {
+        for (file in dir.listFiles()) {
+            if (mediumId.toString() + "" == file.name && file.isDirectory) {
+                return file.absolutePath
             }
         }
-        return null;
+        return null
     }
 
-    @Override
-    public void saveContent(Collection<ClientDownloadedEpisode> episodes, int mediumId) throws IOException {
+    @Throws(IOException::class)
+    override fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) {
         if (externalImageMedia == null) {
-            externalImageMedia = this.getItemContainers(true);
+            externalImageMedia = getItemContainers(true)
         }
         if (internalImageMedia == null) {
-            internalImageMedia = this.getItemContainers(false);
+            internalImageMedia = getItemContainers(false)
         }
-        File file;
+        val writeExternal = writeExternal()
+        val writeInternal = writeInternal()
+        val file: File?
 
-        boolean writeExternal = writeExternal();
-        boolean writeInternal = writeInternal();
-
-        if (writeExternal && externalImageMedia.containsKey(mediumId)) {
-            file = externalImageMedia.get(mediumId);
-        } else if (writeInternal && internalImageMedia.containsKey(mediumId)) {
-            file = internalImageMedia.get(mediumId);
+        if (writeExternal && externalImageMedia!!.containsKey(mediumId)) {
+            file = externalImageMedia!![mediumId]
+        } else if (writeInternal && internalImageMedia!!.containsKey(mediumId)) {
+            file = internalImageMedia!![mediumId]
         } else {
-            File dir;
-
-            if (writeExternal) {
-                dir = externalContentDir;
-            } else if (writeInternal) {
-                dir = internalContentDir;
-            } else {
-                throw new NotEnoughSpaceException("Out of Storage Space: Less than " + minMBSpaceAvailable + " MB available");
+            val dir: File = when {
+                writeExternal -> externalContentDir!!
+                writeInternal -> internalContentDir!!
+                else -> throw NotEnoughSpaceException("Out of Storage Space: Less than $minMBSpaceAvailable MB available")
             }
-            file = new File(dir, mediumId + "");
-
+            file = File(dir, mediumId.toString() + "")
             if (!file.exists() && !file.mkdir()) {
-                throw new IOException("could not create image medium directory");
+                throw IOException("could not create image medium directory")
             }
         }
-        for (ClientDownloadedEpisode episode : episodes) {
-            String[] content = episode.getContent();
-            if (content == null || content.length == 0) {
-                continue;
+        for (episode in episodes) {
+            val content = episode.getContent()
+            if (content.isEmpty()) {
+                continue
             }
-            List<String> links = this.repository.getReleaseLinks(episode.getEpisodeId());
-            List<File> writtenFiles = new ArrayList<>();
-
-            downloadPage(content, 0, file, episode.getEpisodeId(), links, writtenFiles);
-
-            File firstImage = writtenFiles.get(0);
-            long estimatedByteSize = firstImage.length() * content.length;
-
+            val links = repository!!.getReleaseLinks(episode.episodeId)
+            val writtenFiles: MutableList<File> = ArrayList()
+            downloadPage(content, 0, file, episode.episodeId, links, writtenFiles)
+            val firstImage = writtenFiles[0]
+            val estimatedByteSize = firstImage.length() * content.size
             if (!writeable(file, estimatedByteSize)) {
                 if (firstImage.exists() && !firstImage.delete()) {
-                    System.out.println("could not delete image: " + firstImage.getAbsolutePath());
+                    println("could not delete image: " + firstImage.absolutePath)
                 }
-                throw new NotEnoughSpaceException();
+                throw NotEnoughSpaceException()
             }
-
-            List<CompletableFuture<Void>> futures = new ArrayList<>();
-
-            for (int page = 1, contentLength = content.length; page < contentLength; page++) {
-                int tempPage = page;
-                futures.add(CompletableFuture.runAsync(() -> {
+            val futures: MutableList<CompletableFuture<Void>> = ArrayList()
+            var page = 1
+            val contentLength = content.size
+            while (page < contentLength) {
+                val tempPage = page
+                futures.add(CompletableFuture.runAsync {
                     try {
-                        downloadPage(content, tempPage, file, episode.getEpisodeId(), links, writtenFiles);
-                    } catch (IOException e) {
-                        throw new IllegalStateException(e);
+                        downloadPage(content,
+                            tempPage,
+                            file,
+                            episode.episodeId,
+                            links,
+                            writtenFiles)
+                    } catch (e: IOException) {
+                        throw IllegalStateException(e)
                     }
-                }));
+                })
+                page++
             }
             try {
                 CompletableFuture
-                        .allOf(futures.toArray(new CompletableFuture[0]))
-                        .whenComplete((aVoid, throwable) -> {
-                            if (throwable == null) {
-                                return;
-                            }
-                            // first exception is completionException, then the illegalStateException
-                            // followed by notEnoughSpaceException
-                            Throwable cause = throwable.getCause();
-                            if (cause != null && cause.getCause() instanceof NotEnoughSpaceException) {
-                                cause = cause.getCause();
-                                for (File writtenFile : writtenFiles) {
-                                    if (writtenFile.exists() && !writtenFile.delete()) {
-                                        System.out.println("could not delete image: " + writtenFile.getAbsolutePath());
-                                    }
+                    .allOf(*futures.toTypedArray<CompletableFuture<*>>())
+                    .whenComplete { _: Void?, throwable: Throwable? ->
+                        if (throwable == null) {
+                            return@whenComplete
+                        }
+                        // first exception is completionException, then the illegalStateException
+                        // followed by notEnoughSpaceException
+                        var cause = throwable.cause
+                        if (cause != null && cause.cause is NotEnoughSpaceException) {
+                            cause = cause.cause
+                            for (writtenFile in writtenFiles) {
+                                if (writtenFile.exists() && !writtenFile.delete()) {
+                                    println("could not delete image: " + writtenFile.absolutePath)
                                 }
-                                throwable = cause.getCause();
                             }
-                            throw new RuntimeException(throwable);
-                        })
-                        .get();
-            } catch (ExecutionException e) {
-                if (e.getCause() instanceof NotEnoughSpaceException) {
-                    throw new NotEnoughSpaceException();
-                } else if (e.getCause() instanceof IOException) {
-                    throw new IOException(e);
-                } else {
-                    e.printStackTrace();
+                            throw RuntimeException(cause!!.cause)
+                        }
+                        throw RuntimeException(throwable)
+                    }
+                    .get()
+            } catch (e: ExecutionException) {
+                when (e.cause) {
+                    is NotEnoughSpaceException -> throw NotEnoughSpaceException()
+                    is IOException -> throw IOException(e)
+                    else -> e.printStackTrace()
                 }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
             }
         }
     }
 
-    private void downloadPage(String[] content, int page, File file, int episodeId, List<String> links, List<File> writtenFiles) throws IOException {
-        String link = content[page];
-        String pageLinkDomain = Utils.getDomain(link);
-
+    @Throws(IOException::class)
+    private fun downloadPage(
+        content: Array<String>,
+        page: Int,
+        file: File?,
+        episodeId: Int,
+        links: List<String>,
+        writtenFiles: MutableList<File>
+    ) {
+        val link = content[page]
+        val pageLinkDomain = Utils.getDomain(link)
         if (pageLinkDomain == null) {
-            System.err.println("invalid url: '" + link + "'");
-            return;
+            System.err.println("invalid url: '$link'")
+            return
         }
-        String referer = null;
-
-        for (String releaseUrl : links) {
-            if (Objects.equals(Utils.getDomain(link), pageLinkDomain)) {
-                referer = releaseUrl;
-                break;
+        var referer: String? = null
+        for (releaseUrl in links) {
+            if (Utils.getDomain(link) == pageLinkDomain) {
+                referer = releaseUrl
+                break
             }
         }
         if (referer == null || referer.isEmpty()) {
             // we need a referrer for sites like mangahasu
-            return;
+            return
         }
         // TODO: 06.08.2019 instead of continuing maybe create an empty image file to signal
         //  the reader that this page is explicitly missing?
-        if (link == null || link.isEmpty()) {
-            System.err.println("got an invalid link");
-            return;
+        if (link.isEmpty()) {
+            System.err.println("got an invalid link")
+            return
         }
-        String imageFormat;
-
-        if (link.toLowerCase().endsWith(".png")) {
-            imageFormat = "png";
-        } else if (link.toLowerCase().endsWith(".jpg")) {
-            imageFormat = "jpg";
-        } else {
-            System.err.println("got unsupported/unwanted image format: " + link);
-            return;
+        val imageFormat: String = when {
+            link.lowercase(Locale.getDefault()).endsWith(".png") -> {
+                "png"
+            }
+            link.lowercase(Locale.getDefault()).endsWith(".jpg") -> {
+                "jpg"
+            }
+            else -> {
+                System.err.println("got unsupported/unwanted image format: $link")
+                return
+            }
         }
         try {
-            URL url = new URL(link);
-            HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
-            httpURLConnection.setDoInput(true);
-            httpURLConnection.setRequestProperty("Referer", referer);
-            httpURLConnection.connect();
-            int responseCode = httpURLConnection.getResponseCode();
-
+            val url = URL(link)
+            var httpURLConnection = url.openConnection() as HttpURLConnection
+            httpURLConnection.doInput = true
+            httpURLConnection.setRequestProperty("Referer", referer)
+            httpURLConnection.connect()
+            var responseCode = httpURLConnection.responseCode
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                httpURLConnection = (HttpURLConnection) url.openConnection();
-                httpURLConnection.setDoInput(true);
-                httpURLConnection.connect();
-                responseCode = httpURLConnection.getResponseCode();
-
+                httpURLConnection = url.openConnection() as HttpURLConnection
+                httpURLConnection.doInput = true
+                httpURLConnection.connect()
+                responseCode = httpURLConnection.responseCode
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    throw new IOException("could not get resource successfully: " + link);
+                    throw IOException("could not get resource successfully: $link")
                 }
             }
-
-            try (BufferedInputStream in = new BufferedInputStream(httpURLConnection.getInputStream())) {
-                String pageName = String.format("%s-%s.%s", episodeId, page + 1, imageFormat);
-                File image = new File(file, pageName);
-                writtenFiles.add(image);
-
-                saveImageStream(in, image);
+            BufferedInputStream(httpURLConnection.inputStream).use { `in` ->
+                val pageName = String.format("%s-%s.%s", episodeId, page + 1, imageFormat)
+                val image = File(file, pageName)
+                writtenFiles.add(image)
+                saveImageStream(`in`, image)
             }
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
+        } catch (e: MalformedURLException) {
+            e.printStackTrace()
         }
         // if the estimation was too low
         // and subsequent images took more space than expected
         // check if it can still write after this
         if (!this.writeable()) {
-            throw new NotEnoughSpaceException();
+            throw NotEnoughSpaceException()
         }
     }
 
-    private void saveImageStream(InputStream in, File image) throws IOException {
-        try (BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(image))) {
-            int ch;
-            while ((ch = in.read()) != -1) {
-                outputStream.write(ch);
+    @Throws(IOException::class)
+    private fun saveImageStream(`in`: InputStream, image: File) {
+        BufferedOutputStream(FileOutputStream(image)).use { outputStream ->
+            var ch: Int
+            while (`in`.read().also { ch = it } != -1) {
+                outputStream.write(ch)
             }
         }
     }
 
-    private void saveImageBitmap(InputStream in, File image) throws IOException {
-        Bitmap bitmap = BitmapFactory.decodeStream(in);
-
-        try (OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(image))) {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream);
-            outputStream.flush();
+    @Throws(IOException::class)
+    private fun saveImageBitmap(`in`: InputStream, image: File) {
+        val bitmap = BitmapFactory.decodeStream(`in`)
+        BufferedOutputStream(FileOutputStream(image)).use { outputStream ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream)
+            outputStream.flush()
         }
     }
 
-    @Override
-    void mergeExternalAndInternalMedium(boolean toExternal, File source, File goal, File toParent, Integer mediumId) {
-        if (goal == null) {
-            goal = new File(toParent, mediumId + "");
+    override fun mergeExternalAndInternalMedium(
+        toExternal: Boolean,
+        source: File,
+        goal: File?,
+        toParent: File?,
+        mediumId: Int
+    ) {
+        var destinationFile = goal
 
-            if (!goal.mkdirs()) {
-                System.err.println("could not create medium container");
-                return;
+        if (destinationFile == null) {
+            destinationFile = File(toParent, mediumId.toString() + "")
+            if (!destinationFile.mkdirs()) {
+                System.err.println("could not create medium container")
+                return
             }
         }
-        Map<Integer, Set<ChapterPage>> paths = getEpisodePagePaths(source.getAbsolutePath());
-        for (Map.Entry<Integer, Set<ChapterPage>> entry : paths.entrySet()) {
-
-            Set<File> files = new HashSet<>();
-            long neededSpace = 0;
-
-            for (ChapterPage page : entry.getValue()) {
-                File file = new File(page.getPath());
-                files.add(file);
-                neededSpace += file.length();
+        val paths = getEpisodePagePaths(source.absolutePath)
+        for ((_, value) in paths) {
+            val files: MutableSet<File> = HashSet()
+            var neededSpace: Long = 0
+            for (page in value) {
+                val file = File(page.path)
+                files.add(file)
+                neededSpace += file.length()
             }
-            if (!writeable(goal, neededSpace)) {
-                continue;
+            if (!writeable(destinationFile, neededSpace)) {
+                continue
             }
-            boolean successFull = false;
+            var successFull = false
             try {
-                for (File file : files) {
-                    copyFile(file, new File(goal, file.getName()));
+                for (file in files) {
+                    copyFile(file, File(destinationFile, file.name))
                 }
-                successFull = true;
-            } catch (IOException e) {
-                e.printStackTrace();
+                successFull = true
+            } catch (e: IOException) {
+                e.printStackTrace()
             }
             if (!successFull) {
-                continue;
+                continue
             }
-            for (File file : files) {
+            for (file in files) {
                 if (file.exists() && !file.delete()) {
-                    System.err.println("could not delete file");
+                    System.err.println("could not delete file")
                 }
             }
         }
     }
 
-    @Override
-    public long getEpisodeSize(File value, int episodeId) {
-        String prefix = episodeId + "-";
-        long size = 0;
-
-        for (File file : value.listFiles()) {
-            if (!file.getName().startsWith(prefix)) {
-                continue;
+    override fun getEpisodeSize(value: File, episodeId: Int): Long {
+        val prefix = "$episodeId-"
+        var size: Long = 0
+        for (file in value.listFiles()) {
+            if (!file.name.startsWith(prefix)) {
+                continue
             }
-            size += file.length();
+            size += file.length()
         }
-        return size;
+        return size
     }
 
-    @Override
-    public double getAverageEpisodeSize(int mediumId) {
-        String itemPath = this.getItemPath(mediumId);
-        double sum = 0;
-
-        File[] files = new File(itemPath).listFiles();
-        for (File file : files) {
-            sum += file.length();
+    override fun getAverageEpisodeSize(mediumId: Int): Double {
+        val itemPath = this.getItemPath(mediumId)
+        var sum = 0.0
+        val files = File(itemPath).listFiles()
+        for (file in files) {
+            sum += file.length().toDouble()
         }
-        return files.length == 0 ? 0 : sum / files.length;
+        return if (files.isEmpty()) 0.0 else sum / files.size
     }
 
-    public Map<Integer, Set<ChapterPage>> getEpisodePagePaths(String mediumDir) {
-        File file = new File(mediumDir);
-
-        if (!file.exists() || !file.isDirectory()) {
-            return Collections.emptyMap();
+    fun getEpisodePagePaths(mediumDir: String?): Map<Int, MutableSet<ChapterPage>> {
+        val file = File(mediumDir)
+        if (!file.exists() || !file.isDirectory) {
+            return emptyMap()
         }
-        Pattern pagePattern = Pattern.compile("^(\\d+)-(\\d+)\\.(png|jpg)$");
-
-        @SuppressLint("UseSparseArrays")
-        Map<Integer, Set<ChapterPage>> episodePages = new HashMap<>();
-
-        for (String episodePath : file.list()) {
-            Matcher matcher = pagePattern.matcher(episodePath);
-
+        val pagePattern = Pattern.compile("^(\\d+)-(\\d+)\\.(png|jpg)$")
+        @SuppressLint("UseSparseArrays") val episodePages: MutableMap<Int, MutableSet<ChapterPage>> =
+            HashMap()
+        for (episodePath in file.list()) {
+            val matcher = pagePattern.matcher(episodePath)
             if (!matcher.matches()) {
-                continue;
+                continue
             }
-
-            String episodeIdString = matcher.group(1);
-            String pageString = matcher.group(2);
-            int episodeId = Integer.parseInt(episodeIdString);
-            int page = Integer.parseInt(pageString);
-
-            String absolutePath = new File(file, episodePath).getAbsolutePath();
-
+            val episodeIdString = matcher.group(1)
+            val pageString = matcher.group(2)
+            val episodeId = episodeIdString.toInt()
+            val page = pageString.toInt()
+            val absolutePath = File(file, episodePath).absolutePath
             episodePages
-                    .computeIfAbsent(episodeId, integer -> new HashSet<>())
-                    .add(new ChapterPage(episodeId, page, absolutePath));
+                .computeIfAbsent(episodeId) { HashSet() }
+                .add(ChapterPage(episodeId, page, absolutePath))
         }
-        return episodePages;
+        return episodePages
     }
 }

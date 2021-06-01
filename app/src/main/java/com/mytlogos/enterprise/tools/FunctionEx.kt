@@ -1,5 +1,6 @@
-package com.mytlogos.enterprise.tools;
+package com.mytlogos.enterprise.tools
 
-public interface FunctionEx<T, R> {
-    R apply(T t) throws Exception;
+interface FunctionEx<T, R> {
+    @Throws(Exception::class)
+    fun apply(t: T): R
 }

@@ -1,88 +1,70 @@
-package com.mytlogos.enterprise.tools;
+package com.mytlogos.enterprise.tools
 
-import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
-import com.mytlogos.enterprise.model.MediumType;
-
-import java.io.File;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
+import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
+import com.mytlogos.enterprise.model.MediumType
+import java.io.File
+import java.util.regex.Pattern
 
 // TODO: 05.08.2019 implement this class
-public class VideoContentTool extends ContentTool {
-
-    VideoContentTool(File internalContentDir, File externalContentDir) {
-        super(internalContentDir, externalContentDir);
+class VideoContentTool internal constructor(internalContentDir: File?, externalContentDir: File?) :
+    ContentTool(internalContentDir, externalContentDir) {
+    override fun isContentMedium(file: File): Boolean {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    public int getMedium() {
-        return MediumType.VIDEO;
+    override val medium = MediumType.VIDEO
+
+    override val isSupported: Boolean
+        get() = false
+
+    override fun removeMediaEpisodes(episodeIds: Set<Int>, internalFile: String?) {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    boolean isContentMedium(File file) {
-        throw new IllegalStateException("Not yet implemented");
+    override val mediumContainerPattern: Pattern
+        get() {
+            throw IllegalStateException("Not yet implemented")
+        }
+    override val mediumContainerPatternGroup: Int
+        get() {
+            throw IllegalStateException("Not yet implemented")
+        }
+
+    override fun getEpisodePaths(mediumPath: String?): Map<Int, String> {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    public boolean isSupported() {
-        return false;
+    override fun getItemPath(mediumId: Int): String? {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    void removeMediaEpisodes(Set<Integer> episodeIds, String internalFile) {
-        throw new IllegalStateException("Not yet implemented");
+    override fun getItemPath(mediumId: Int, dir: File): String? {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    Pattern getMediumContainerPattern() {
-        throw new IllegalStateException("Not yet implemented");
+    override fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    int getMediumContainerPatternGroup() {
-        throw new IllegalStateException("Not yet implemented");
+    override fun mergeExternalAndInternalMedia(toExternal: Boolean) {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    public Map<Integer, String> getEpisodePaths(String mediumPath) {
-        throw new IllegalStateException("Not yet implemented");
+    override fun mergeExternalAndInternalMedium(
+        toExternal: Boolean,
+        source: File,
+        goal: File?,
+        toParent: File?,
+        mediumId: Int
+    ) {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    public String getItemPath(int mediumId) {
-        throw new IllegalStateException("Not yet implemented");
+    override fun getEpisodeSize(value: File, episodeId: Int): Long {
+        throw IllegalStateException("Not yet implemented")
     }
 
-    @Override
-    String getItemPath(int mediumId, File dir) {
-        throw new IllegalStateException("Not yet implemented");
-    }
-
-    @Override
-    public void saveContent(Collection<ClientDownloadedEpisode> episode, int mediumId) {
-        throw new IllegalStateException("Not yet implemented");
-    }
-
-    @Override
-    public void mergeExternalAndInternalMedia(boolean toExternal) {
-        throw new IllegalStateException("Not yet implemented");
-    }
-
-    @Override
-    void mergeExternalAndInternalMedium(boolean toExternal, File source, File goal, File toParent, Integer mediumId) {
-        throw new IllegalStateException("Not yet implemented");
-    }
-
-    @Override
-    public long getEpisodeSize(File value, int episodeId) {
-        throw new IllegalStateException("Not yet implemented");
-    }
-
-    @Override
-    public double getAverageEpisodeSize(int mediumId) {
-        throw new IllegalStateException("Not yet implemented");
+    override fun getAverageEpisodeSize(mediumId: Int): Double {
+        throw IllegalStateException("Not yet implemented")
     }
 }

@@ -277,7 +277,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         persister: ClientModelPersister,
         repository: Repository
     ) {
-        val missingIds: MutableCollection<Int?> = HashSet()
+        val missingIds: MutableCollection<Int> = HashSet()
         val loadingParts: MutableCollection<ClientPart> = HashSet()
         parts.removeIf { part: ClientPart ->
             if (!repository.isMediumLoaded(part.mediumId)) {
@@ -291,7 +291,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         if (missingIds.isEmpty()) {
             return
         }
-        Utils.doPartitionedRethrow(missingIds) { ids: List<Int?>? ->
+        Utils.doPartitionedRethrow(missingIds) { ids: List<Int> ->
             val parents = Utils.checkAndGetBody(client.getMedia(ids))
                 ?: throw NullPointerException("missing Media")
             val simpleMedia = parents.stream().map { medium: ClientMedium? ->
@@ -349,7 +349,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         if (missingIds.isEmpty()) {
             return
         }
-        Utils.doPartitionedRethrow(missingIds) { ids: MutableList<Int> ->
+        Utils.doPartitionedRethrow(missingIds) { ids: List<Int> ->
             val parents = Utils.checkAndGetBody(client.getParts(ids))
                 ?: throw NullPointerException("missing Parts")
             persistParts(parents, client, persister, repository)
@@ -420,7 +420,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         persister: ClientModelPersister,
         repository: Repository
     ) {
-        val missingIds: MutableCollection<String?> = HashSet()
+        val missingIds: MutableCollection<String> = HashSet()
         val loading: MutableCollection<ClientExternalMediaList> = HashSet()
         externalMediaLists.removeIf { value: ClientExternalMediaList ->
             if (!repository.isExternalUserLoaded(value.uuid)) {
@@ -434,7 +434,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         if (missingIds.isEmpty()) {
             return
         }
-        Utils.doPartitionedRethrow(missingIds) { ids: List<String?>? ->
+        Utils.doPartitionedRethrow(missingIds) { ids: List<String> ->
             val parents = Utils.checkAndGetBody(client.getExternalUser(ids))
                 ?: throw NullPointerException("missing ExternalUser")
             persister.persistExternalUsers(parents)

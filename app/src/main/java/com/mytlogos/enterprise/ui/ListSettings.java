@@ -90,10 +90,10 @@ public class ListSettings extends BaseFragment {
 
     private void checkSupportedMedia() {
         this.autoDownload.setEnabled(
-                (this.textMedium.isChecked() && !FileTools.isTextContentSupported())
-                        || (this.autoDownload.isChecked() && !FileTools.isAudioContentSupported())
-                        || (this.imageMedium.isChecked() && !FileTools.isImageContentSupported())
-                        || (this.videoMedium.isChecked() && !FileTools.isVideoContentSupported())
+                (this.textMedium.isChecked() && !FileTools.INSTANCE.isTextContentSupported())
+                        || (this.autoDownload.isChecked() && !FileTools.INSTANCE.isAudioContentSupported())
+                        || (this.imageMedium.isChecked() && !FileTools.INSTANCE.isImageContentSupported())
+                        || (this.videoMedium.isChecked() && !FileTools.INSTANCE.isVideoContentSupported())
         );
     }
 

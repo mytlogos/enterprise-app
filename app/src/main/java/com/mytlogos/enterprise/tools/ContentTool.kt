@@ -1,268 +1,240 @@
-package com.mytlogos.enterprise.tools;
+package com.mytlogos.enterprise.tools
 
-import android.annotation.SuppressLint;
+import android.annotation.SuppressLint
+import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.util.*
+import java.util.regex.Pattern
 
-import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-public abstract class ContentTool {
-    final File internalContentDir;
-    final File externalContentDir;
-    final int minMBSpaceAvailable = 150;
-
-
-    ContentTool(File internalContentDir, File externalContentDir) {
-        this.internalContentDir = internalContentDir;
-        this.externalContentDir = externalContentDir;
-    }
-
-    public List<String> getMediaPaths() {
-        List<String> books = new ArrayList<>();
-
-        if (externalContentDir != null) {
-            books.addAll(this.getMediaPaths(externalContentDir));
+abstract class ContentTool internal constructor(
+    val internalContentDir: File?,
+    val externalContentDir: File?
+) {
+    val minMBSpaceAvailable = 150
+    val mediaPaths: List<String>
+        get() {
+            val books: MutableList<String> = ArrayList()
+            if (externalContentDir != null) {
+                books.addAll(getMediaPaths(externalContentDir))
+            }
+            if (internalContentDir != null) {
+                books.addAll(getMediaPaths(internalContentDir))
+            }
+            return books
         }
-        if (internalContentDir != null) {
-            books.addAll(this.getMediaPaths(internalContentDir));
-        }
-        return books;
-    }
-
-    public abstract int getMedium();
-
-    private List<String> getMediaPaths(File dir) {
-        List<String> imageMedia = new ArrayList<>();
-        for (File file : dir.listFiles()) {
+    abstract val medium: Int
+    private fun getMediaPaths(dir: File): List<String> {
+        val imageMedia: MutableList<String> = ArrayList()
+        for (file in dir.listFiles()) {
             if (isContentMedium(file)) {
-                imageMedia.add(file.getAbsolutePath());
+                imageMedia.add(file.absolutePath)
             }
         }
-        return imageMedia;
+        return imageMedia
     }
 
-    abstract boolean isContentMedium(File file);
+    abstract fun isContentMedium(file: File): Boolean
 
     @SuppressLint("UseSparseArrays")
-    public Map<Integer, File> getItemContainers(boolean externalSpace) {
-        File file = externalSpace ? externalContentDir : internalContentDir;
-
-        if (file == null) {
-            return new HashMap<>();
-        }
-        Pattern pattern = getMediumContainerPattern();
-        File[] files = file.listFiles((dir, name) -> Pattern.matches(pattern.pattern(), name));
-
-        Map<Integer, File> mediumIdFileMap = new HashMap<>();
-
-        for (File bookFile : files) {
-            Matcher matcher = pattern.matcher(bookFile.getName());
-
+    fun getItemContainers(externalSpace: Boolean): MutableMap<Int, File> {
+        val file = (if (externalSpace) externalContentDir else internalContentDir)
+            ?: return HashMap()
+        val pattern = mediumContainerPattern
+        val files =
+            file.listFiles { _: File?, name: String? -> Pattern.matches(pattern.pattern(), name) }
+        val mediumIdFileMap: MutableMap<Int, File> = HashMap()
+        for (bookFile in files) {
+            val matcher = pattern.matcher(bookFile.name)
             if (!matcher.matches()) {
-                continue;
+                continue
             }
-            String mediumIdString = matcher.group(getMediumContainerPatternGroup());
-            int mediumId;
-
-            try {
-                mediumId = Integer.parseInt(mediumIdString);
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-                continue;
+            val mediumIdString = matcher.group(mediumContainerPatternGroup)
+            val mediumId: Int = try {
+                mediumIdString.toInt()
+            } catch (e: NumberFormatException) {
+                e.printStackTrace()
+                continue
             }
-            mediumIdFileMap.put(mediumId, bookFile);
+            mediumIdFileMap[mediumId] = bookFile
         }
-        return mediumIdFileMap;
+        return mediumIdFileMap
     }
 
-    public void removeMediaEpisodes(int mediumId, Set<Integer> episodeIds) {
+    fun removeMediaEpisodes(mediumId: Int, episodeIds: Set<Int>) {
         if (externalContentDir != null) {
-            String externalFile = getItemPath(mediumId, externalContentDir);
-
+            val externalFile = getItemPath(mediumId, externalContentDir)
             if (externalFile != null) {
-                this.removeMediaEpisodes(episodeIds, externalFile);
+                this.removeMediaEpisodes(episodeIds, externalFile)
             }
         }
         if (internalContentDir != null) {
-            String internalFile = getItemPath(mediumId, internalContentDir);
-
+            val internalFile = getItemPath(mediumId, internalContentDir)
             if (internalFile != null) {
-                this.removeMediaEpisodes(episodeIds, internalFile);
+                this.removeMediaEpisodes(episodeIds, internalFile)
             }
         }
     }
 
-    public abstract boolean isSupported();
-
-    abstract void removeMediaEpisodes(Set<Integer> episodeIds, String internalFile);
-
-    abstract Pattern getMediumContainerPattern();
-
-    abstract int getMediumContainerPatternGroup();
-
-    public abstract Map<Integer, String> getEpisodePaths(String mediumPath);
-
-    public String getItemPath(int mediumId) {
-        String bookZipFile = null;
-
+    abstract val isSupported: Boolean
+    abstract fun removeMediaEpisodes(episodeIds: Set<Int>, internalFile: String?)
+    abstract val mediumContainerPattern: Pattern
+    abstract val mediumContainerPatternGroup: Int
+    abstract fun getEpisodePaths(mediumPath: String?): Map<Int, String>
+    open fun getItemPath(mediumId: Int): String? {
+        var bookZipFile: String? = null
         if (externalContentDir != null) {
-            bookZipFile = getItemPath(mediumId, externalContentDir);
+            bookZipFile = getItemPath(mediumId, externalContentDir)
         }
-
         if (bookZipFile == null && internalContentDir != null) {
-            bookZipFile = getItemPath(mediumId, internalContentDir);
+            bookZipFile = getItemPath(mediumId, internalContentDir)
         }
-
-        if (bookZipFile == null) {
-            return "";
-        }
-        return bookZipFile;
+        return bookZipFile ?: ""
     }
 
     @SuppressLint("UsableSpace")
-    boolean writeExternal() {
-        return externalContentDir != null && externalContentDir.getUsableSpace() >= minByteSpaceAvailable();
+    fun writeExternal(): Boolean {
+        return externalContentDir != null && externalContentDir.usableSpace >= minByteSpaceAvailable()
     }
 
     @SuppressLint("UsableSpace")
-    boolean writeExternal(long toWriteBytes) {
-        return externalContentDir != null && (externalContentDir.getUsableSpace() - toWriteBytes) >= minByteSpaceAvailable();
+    fun writeExternal(toWriteBytes: Long): Boolean {
+        return externalContentDir != null && externalContentDir.usableSpace - toWriteBytes >= minByteSpaceAvailable()
     }
 
     @SuppressLint("UsableSpace")
-    boolean writeInternal() {
-        return internalContentDir != null && internalContentDir.getUsableSpace() >= minByteSpaceAvailable();
+    fun writeInternal(): Boolean {
+        return internalContentDir != null && internalContentDir.usableSpace >= minByteSpaceAvailable()
     }
 
     @SuppressLint("UsableSpace")
-    boolean writeInternal(long toWriteBytes) {
-        return internalContentDir != null && (internalContentDir.getUsableSpace() - toWriteBytes) >= minByteSpaceAvailable();
+    fun writeInternal(toWriteBytes: Long): Boolean {
+        return internalContentDir != null && internalContentDir.usableSpace - toWriteBytes >= minByteSpaceAvailable()
     }
 
-    boolean writeable() {
-        return this.writeExternal() || this.writeInternal();
+    fun writeable(): Boolean {
+        return this.writeExternal() || this.writeInternal()
     }
 
-    boolean writeable(long toWriteBytes) {
-        return writeExternal(toWriteBytes) || writeInternal(toWriteBytes);
+    fun writeable(toWriteBytes: Long): Boolean {
+        return writeExternal(toWriteBytes) || writeInternal(toWriteBytes)
     }
 
     @SuppressLint("UsableSpace")
-    boolean writeable(File file, long toWriteBytes) {
-        return file != null && (file.getUsableSpace() - toWriteBytes) >= minByteSpaceAvailable();
+    fun writeable(file: File?, toWriteBytes: Long): Boolean {
+        return file != null && file.usableSpace - toWriteBytes >= minByteSpaceAvailable()
     }
 
-    private long minByteSpaceAvailable() {
-        return minMBSpaceAvailable * 1024 * 1024;
+    private fun minByteSpaceAvailable(): Long {
+        return (minMBSpaceAvailable * 1024 * 1024).toLong()
     }
 
-    abstract String getItemPath(int mediumId, File dir);
+    abstract fun getItemPath(mediumId: Int, dir: File): String?
 
-    public abstract void saveContent(Collection<ClientDownloadedEpisode> episode, int mediumId) throws IOException;
+    @Throws(IOException::class)
+    abstract fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int)
 
-    synchronized public void mergeExternalAndInternalMedia(boolean toExternal) {
-        Map<Integer, File> internalContainers = this.getItemContainers(false);
-        Map<Integer, File> externalContainers = this.getItemContainers(true);
-
-        Map<Integer, File> sourceContainers = toExternal ? internalContainers : externalContainers;
-        Map<Integer, File> toContainers = toExternal ? externalContainers : internalContainers;
-
-        File toParent = toExternal ? externalContentDir : internalContentDir;
-
-        for (Map.Entry<Integer, File> entry : sourceContainers.entrySet()) {
-            File file = toContainers.get(entry.getKey());
-            this.mergeExternalAndInternalMedium(toExternal, entry.getValue(), file, toParent, entry.getKey());
+    @Synchronized
+    open fun mergeExternalAndInternalMedia(toExternal: Boolean) {
+        val internalContainers = getItemContainers(false)
+        val externalContainers = getItemContainers(true)
+        val sourceContainers = if (toExternal) internalContainers else externalContainers
+        val toContainers = if (toExternal) externalContainers else internalContainers
+        val toParent = if (toExternal) externalContentDir else internalContentDir
+        for ((key, value) in sourceContainers) {
+            val file = toContainers[key]
+            mergeExternalAndInternalMedium(toExternal, value, file, toParent, key)
         }
     }
 
-    public void mergeIfNecessary() {
-        if (!this.isSupported()) {
-            return;
+    fun mergeIfNecessary() {
+        if (!isSupported) {
+            return
         }
         if (this.writeInternal() && !this.writeExternal()) {
-            this.mergeExternalAndInternalMedia(false);
+            mergeExternalAndInternalMedia(false)
         } else if (!this.writeInternal() && this.writeExternal()) {
-            this.mergeExternalAndInternalMedia(true);
+            mergeExternalAndInternalMedia(true)
         }
     }
 
-    /**
-     * Copied from <a href="https://stackoverflow.com/a/4770586/9492864">
-     * How to move/rename file from internal app storage to external storage on Android?
-     * </a>
-     */
-    public static void copyFile(File src, File dst) throws IOException {
-        try (FileChannel inChannel = new FileInputStream(src).getChannel(); FileChannel outChannel = new FileOutputStream(dst).getChannel()) {
-            inChannel.transferTo(0, inChannel.size(), outChannel);
-        }
-    }
+    abstract fun mergeExternalAndInternalMedium(
+        toExternal: Boolean,
+        source: File,
+        goal: File?,
+        toParent: File?,
+        mediumId: Int
+    )
 
-    abstract void mergeExternalAndInternalMedium(boolean toExternal, File source, File goal, File toParent, Integer mediumId);
-
-    public abstract long getEpisodeSize(File value, int episodeId);
-
-    public void removeMedia(int id) {
+    abstract fun getEpisodeSize(value: File, episodeId: Int): Long
+    fun removeMedia(id: Int) {
         if (externalContentDir != null) {
-            String externalFile = getItemPath(id, externalContentDir);
-
-            if (externalFile != null && !new File(externalFile).delete()) {
-                System.err.println("could not delete file: " + externalFile);
+            val externalFile = getItemPath(id, externalContentDir)
+            if (externalFile != null && !File(externalFile).delete()) {
+                System.err.println("could not delete file: $externalFile")
             }
         }
         if (internalContentDir != null) {
-            String internalFile = getItemPath(id, internalContentDir);
-
-            if (internalFile != null && !new File(internalFile).delete()) {
-                System.err.println("could not delete file: " + internalFile);
+            val internalFile = getItemPath(id, internalContentDir)
+            if (internalFile != null && !File(internalFile).delete()) {
+                System.err.println("could not delete file: $internalFile")
             }
         }
     }
 
-    public void removeAll() {
-        for (File file : this.internalContentDir.listFiles()) {
-            if (file.isDirectory()) {
-                this.deleteDir(file);
+    fun removeAll() {
+        for (file in internalContentDir!!.listFiles()) {
+            if (file.isDirectory) {
+                deleteDir(file)
             }
             if (file.exists() && !file.delete()) {
-                System.err.println("could not delete file: " + file.getAbsolutePath());
+                System.err.println("could not delete file: " + file.absolutePath)
             }
         }
-        for (File file : this.externalContentDir.listFiles()) {
-            if (file.isDirectory()) {
-                this.deleteDir(file);
+        for (file in externalContentDir!!.listFiles()) {
+            if (file.isDirectory) {
+                deleteDir(file)
             }
             if (file.exists() && !file.delete()) {
-                System.err.println("could not delete file: " + file.getAbsolutePath());
+                System.err.println("could not delete file: " + file.absolutePath)
             }
         }
     }
 
-    private void deleteDir(File file) {
-        for (File content : file.listFiles()) {
-            if (content.isDirectory()) {
-                this.deleteDir(content);
+    private fun deleteDir(file: File) {
+        for (content in file.listFiles()) {
+            if (content.isDirectory) {
+                deleteDir(content)
             }
             if (content.exists() && !content.delete()) {
-                break;
+                break
             }
         }
     }
 
-    public long getEpisodeSize(File value, int episodeId, Map<Integer, String> episodePaths) {
-        return this.getEpisodeSize(value, episodeId);
+    open fun getEpisodeSize(value: File, episodeId: Int, episodePaths: Map<Int, String>?): Long {
+        return this.getEpisodeSize(value, episodeId)
     }
 
-    public abstract double getAverageEpisodeSize(int mediumId);
+    abstract fun getAverageEpisodeSize(mediumId: Int): Double
+
+    companion object {
+        /**
+         * Copied from [
+ * How to move/rename file from internal app storage to external storage on Android?
+](https://stackoverflow.com/a/4770586/9492864) *
+         */
+        @Throws(IOException::class)
+        fun copyFile(src: File?, dst: File?) {
+            FileInputStream(src).channel.use { inChannel ->
+                FileOutputStream(dst).channel.use { outChannel ->
+                    inChannel.transferTo(0,
+                        inChannel.size(),
+                        outChannel)
+                }
+            }
+        }
+    }
 }

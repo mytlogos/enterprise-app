@@ -20,7 +20,7 @@ import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMedi
         RoomFailedEpisode::class, RoomNotification::class, RoomMediumProgress::class,
         RoomMediumPart::class, RoomPartEpisode::class, RoomEditEvent::class, RoomToc::class
    ],
-    version = 18
+    version = 19
 )
 @TypeConverters(Converters::class)
 abstract class AbstractDatabase : RoomDatabase() {

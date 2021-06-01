@@ -1,197 +1,177 @@
-package com.mytlogos.enterprise.tools;
+package com.mytlogos.enterprise.tools
 
-import android.animation.ValueAnimator;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.animation.LinearInterpolator;
+import android.animation.ValueAnimator
+import android.view.View
+import android.view.ViewGroup.MarginLayoutParams
+import android.view.animation.LinearInterpolator
+import androidx.annotation.IntDef
 
-import androidx.annotation.IntDef;
+class ScrollHideHelper {
+    private var previousScrollDiffY = 0
+    private var lastScrollY: Long = 0
+    private var lastScrollX: Long = 0
+    private var previousScrollDiffX = 0
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+    @kotlin.annotation.Retention(AnnotationRetention.SOURCE)
+    @IntDef(value = [BOTTOM, TOP, RIGHT, LEFT])
+    internal annotation class Direction
 
-public class ScrollHideHelper {
-    private int previousScrollDiffY;
-    private long lastScrollY;
-    private long lastScrollX;
-    private int previousScrollDiffX;
-    static final int BOTTOM = 1;
-    static final int TOP = 2;
-    static final int RIGHT = 3;
-    static final int LEFT = 4;
-
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef(value = {BOTTOM, TOP, RIGHT, LEFT})
-    @interface Direction {
-
-    }
-
-    public void hideGroups(int oldX, int newX, int oldY, int newY, View bottom, View left, View top, View right) {
-        int diffY = newY - oldY;
-        long currentTime = System.currentTimeMillis();
-        long lastScrollTimeDiffY = currentTime - this.lastScrollY;
-
-        if (lastScrollTimeDiffY >= 100 || diffY >= 10 || Integer.signum(diffY) == Integer.signum(this.previousScrollDiffY)) {
+    fun hideGroups(
+        oldX: Int,
+        newX: Int,
+        oldY: Int,
+        newY: Int,
+        bottom: View?,
+        left: View?,
+        top: View?,
+        right: View?
+    ) {
+        val diffY = newY - oldY
+        val currentTime = System.currentTimeMillis()
+        val lastScrollTimeDiffY = currentTime - lastScrollY
+        if (lastScrollTimeDiffY >= 100 || diffY >= 10 || Integer.signum(diffY) == Integer.signum(
+                previousScrollDiffY)
+        ) {
             if (bottom != null) {
-                this.setHideViewGroupParams(diffY, bottom, BOTTOM);
+                setHideViewGroupParams(diffY, bottom, BOTTOM)
             }
             if (top != null) {
-                this.setHideViewGroupParams(diffY, top, TOP);
+                setHideViewGroupParams(diffY, top, TOP)
             }
-            this.lastScrollY = currentTime;
-            this.previousScrollDiffY = diffY;
+            lastScrollY = currentTime
+            previousScrollDiffY = diffY
         }
-        int diffX = newX - oldX;
-        long lastScrollTimeDiffX = currentTime - this.lastScrollX;
-        if (lastScrollTimeDiffX >= 100 || diffX >= 10 || Integer.signum(diffX) == Integer.signum(this.previousScrollDiffX)) {
+        val diffX = newX - oldX
+        val lastScrollTimeDiffX = currentTime - lastScrollX
+        if (lastScrollTimeDiffX >= 100 || diffX >= 10 || Integer.signum(diffX) == Integer.signum(
+                previousScrollDiffX)
+        ) {
             if (left != null) {
-                this.setHideViewGroupParams(diffX, left, LEFT);
+                setHideViewGroupParams(diffX, left, LEFT)
             }
             if (right != null) {
-                this.setHideViewGroupParams(diffX, right, RIGHT);
+                setHideViewGroupParams(diffX, right, RIGHT)
             }
-            this.lastScrollX = currentTime;
-            this.previousScrollDiffX = diffX;
+            lastScrollX = currentTime
+            previousScrollDiffX = diffX
         }
     }
 
-    public void toggleGroups(View bottom, View left, View top, View right) {
+    fun toggleGroups(bottom: View?, left: View?, top: View?, right: View?) {
         if (bottom != null) {
-            this.toggleDirectionGroup(bottom, BOTTOM);
+            toggleDirectionGroup(bottom, BOTTOM)
         }
         if (top != null) {
-            this.toggleDirectionGroup(top, TOP);
+            toggleDirectionGroup(top, TOP)
         }
         if (left != null) {
-            this.toggleDirectionGroup(left, LEFT);
+            toggleDirectionGroup(left, LEFT)
         }
         if (right != null) {
-            this.toggleDirectionGroup(right, RIGHT);
+            toggleDirectionGroup(right, RIGHT)
         }
-
     }
 
-    private void toggleDirectionGroup(View view, @Direction int direction) {
-        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
-
-        int margin;
-        if (direction == BOTTOM) {
-            margin = layoutParams.bottomMargin;
-        } else if (direction == LEFT) {
-            margin = layoutParams.leftMargin;
-        } else if (direction == TOP) {
-            margin = layoutParams.topMargin;
-        } else if (direction == RIGHT) {
-            margin = layoutParams.rightMargin;
-        } else {
-            throw new IllegalArgumentException("unknown direction: " + direction);
+    private fun toggleDirectionGroup(view: View, @Direction direction: Int) {
+        val layoutParams = view.layoutParams as MarginLayoutParams
+        val margin: Int = when (direction) {
+            BOTTOM -> layoutParams.bottomMargin
+            LEFT -> layoutParams.leftMargin
+            TOP -> layoutParams.topMargin
+            RIGHT -> layoutParams.rightMargin
+            else -> throw IllegalArgumentException("unknown direction: $direction")
         }
-
-        int start;
-        int end;
-
+        val start: Int
+        val end: Int
         if (margin == 0) {
-            start = 0;
-            end = (direction == BOTTOM || direction == TOP) ? -view.getHeight() : -view.getWidth();
+            start = 0
+            end = if (direction == BOTTOM || direction == TOP) -view.height else -view.width
         } else {
-            start = margin;
-            end = 0;
+            start = margin
+            end = 0
         }
-
-        ValueAnimator animator = ValueAnimator.ofInt(start, end);
-        animator.setInterpolator(new LinearInterpolator());
-        animator.setDuration(200);
-        animator.addUpdateListener(animation -> {
-            Object value = animation.getAnimatedValue();
-
-            if (value instanceof Integer) {
-                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
-                int intValue = ((Integer) value);
-
-                if (direction == BOTTOM) {
-                    params.bottomMargin = intValue;
-                } else if (direction == LEFT) {
-                    params.leftMargin = intValue;
-                } else if (direction == TOP) {
-                    params.topMargin = intValue;
-                } else {
-                    params.rightMargin = intValue;
+        val animator = ValueAnimator.ofInt(start, end)
+        animator.interpolator = LinearInterpolator()
+        animator.duration = 200
+        animator.addUpdateListener { animation: ValueAnimator ->
+            val value = animation.animatedValue
+            if (value is Int) {
+                val params = view.layoutParams as MarginLayoutParams
+                when (direction) {
+                    BOTTOM -> params.bottomMargin = value
+                    LEFT -> params.leftMargin = value
+                    TOP -> params.topMargin = value
+                    else -> params.rightMargin = value
                 }
-                view.setLayoutParams(params);
+                view.layoutParams = params
             } else {
-                System.err.println("expected an integer, got: " + value);
+                System.err.println("expected an integer, got: $value")
             }
-        });
-        animator.start();
+        }
+        animator.start()
     }
 
-    public void showGroups(View bottom, View left, View top, View right) {
+    fun showGroups(bottom: View?, left: View?, top: View?, right: View?) {
         if (bottom != null) {
-            this.setShowViewGroupParams(bottom, BOTTOM);
+            setShowViewGroupParams(bottom, BOTTOM)
         }
         if (top != null) {
-            this.setShowViewGroupParams(top, TOP);
+            setShowViewGroupParams(top, TOP)
         }
         if (left != null) {
-            this.setShowViewGroupParams(left, LEFT);
+            setShowViewGroupParams(left, LEFT)
         }
         if (right != null) {
-            this.setShowViewGroupParams(right, RIGHT);
+            setShowViewGroupParams(right, RIGHT)
         }
     }
 
-    private void setShowViewGroupParams(View view, @Direction int direction) {
-        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
-        if (direction == BOTTOM) {
-            layoutParams.bottomMargin = 0;
-        } else if (direction == LEFT) {
-            layoutParams.leftMargin = 0;
-        } else if (direction == TOP) {
-            layoutParams.topMargin = 0;
-        } else if (direction == RIGHT) {
-            layoutParams.rightMargin = 0;
-        } else {
-            throw new IllegalArgumentException("unknown direction: " + direction);
+    private fun setShowViewGroupParams(view: View, @Direction direction: Int) {
+        val layoutParams = view.layoutParams as MarginLayoutParams
+        when (direction) {
+            BOTTOM -> layoutParams.bottomMargin = 0
+            LEFT -> layoutParams.leftMargin = 0
+            TOP -> layoutParams.topMargin = 0
+            RIGHT -> layoutParams.rightMargin = 0
+            else -> throw IllegalArgumentException("unknown direction: $direction")
         }
-        view.setLayoutParams(layoutParams);
+        view.layoutParams = layoutParams
     }
 
-    private void setHideViewGroupParams(int diff, View view, @Direction int direction) {
+    private fun setHideViewGroupParams(diff: Int, view: View, @Direction direction: Int) {
         if (diff == 0) {
-            return;
+            return
         }
-        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
-        int margin;
-        if (direction == BOTTOM) {
-            margin = layoutParams.bottomMargin;
-        } else if (direction == LEFT) {
-            margin = layoutParams.leftMargin;
-        } else if (direction == TOP) {
-            margin = layoutParams.topMargin;
-        } else if (direction == RIGHT) {
-            margin = layoutParams.rightMargin;
-        } else {
-            throw new IllegalArgumentException("unknown direction: " + direction);
+        val layoutParams = view.layoutParams as MarginLayoutParams
+        var margin: Int = when (direction) {
+            BOTTOM -> layoutParams.bottomMargin
+            LEFT -> layoutParams.leftMargin
+            TOP -> layoutParams.topMargin
+            RIGHT -> layoutParams.rightMargin
+            else -> throw IllegalArgumentException("unknown direction: $direction")
         }
-        margin = margin - diff;
+        margin -= diff
 
-        int minMargin = (direction == BOTTOM || direction == TOP) ? -view.getHeight() : -view.getWidth();
-        int maxMargin = 0;
-
+        val minMargin = if (direction == BOTTOM || direction == TOP) -view.height else -view.width
+        val maxMargin = 0
         if (margin < minMargin) {
-            margin = minMargin;
+            margin = minMargin
         } else if (margin > maxMargin) {
-            margin = maxMargin;
+            margin = maxMargin
         }
-        if (direction == BOTTOM) {
-            layoutParams.bottomMargin = margin;
-        } else if (direction == LEFT) {
-            layoutParams.leftMargin = margin;
-        } else if (direction == TOP) {
-            layoutParams.topMargin = margin;
-        } else {
-            layoutParams.rightMargin = margin;
+        when (direction) {
+            BOTTOM -> layoutParams.bottomMargin = margin
+            LEFT -> layoutParams.leftMargin = margin
+            TOP -> layoutParams.topMargin = margin
+            else -> layoutParams.rightMargin = margin
         }
-        view.setLayoutParams(layoutParams);
+        view.layoutParams = layoutParams
+    }
+
+    companion object {
+        const val BOTTOM = 1
+        const val TOP = 2
+        const val RIGHT = 3
+        const val LEFT = 4
     }
 }
