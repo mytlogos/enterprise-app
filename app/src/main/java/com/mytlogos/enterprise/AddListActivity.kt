@@ -1,9 +1,8 @@
-package com.mytlogos.enterprise;
+package com.mytlogos.enterprise
 
-public class AddListActivity extends BaseActivity {
-    @Override
-    protected int getContent() {
-        // todo implement layout
-        return 0;
-    }
+class AddListActivity : BaseActivity() {
+    // todo implement layout
+    override val content: Int
+        get() =// todo implement layout
+            0
 }

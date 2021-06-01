@@ -1,7 +1,7 @@
-package com.mytlogos.enterprise;
+package com.mytlogos.enterprise
 
-import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayout
 
-public interface TabbedFragment {
-    void addTabs(TabLayout layout);
+interface TabbedFragment {
+    fun addTabs(layout: TabLayout?)
 }

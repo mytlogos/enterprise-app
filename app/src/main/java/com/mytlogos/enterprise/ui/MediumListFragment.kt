@@ -243,10 +243,9 @@ class MediumListFragment : BaseListFragment<MediumItem, MediumViewModel>() {
             val currentReadEpisode = if (item.currentReadEpisode < 0) 0 else item.currentReadEpisode
             val lastEpisode = if (item.lastEpisode < 0) 0 else item.lastEpisode
             holder.topLeftText.text = String.format("%d/%d", currentReadEpisode, lastEpisode)
-            val relativeTime: CharSequence
             val lastUpdated = item.lastUpdated
-            relativeTime = if (lastUpdated != null) {
-                TimeAgo.toRelative(lastUpdated, DateTime.now())
+            val relativeTime: String = if (lastUpdated != null) {
+                TimeAgo.toRelative(lastUpdated, DateTime.now())!!
             } else {
                 "No Updates"
             }
@@ -307,7 +306,7 @@ class MediumListFragment : BaseListFragment<MediumItem, MediumViewModel>() {
             val relativeTime: CharSequence
             val lastUpdated = item.lastUpdated
             relativeTime = if (lastUpdated != null) {
-                TimeAgo.toRelative(lastUpdated, DateTime.now())
+                TimeAgo.toRelative(lastUpdated, DateTime.now())!!
             } else {
                 "No Updates"
             }

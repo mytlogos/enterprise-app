@@ -1,112 +1,94 @@
-package com.mytlogos.enterprise;
+package com.mytlogos.enterprise
 
-import android.content.res.Configuration;
-import android.os.Bundle;
-import android.preference.PreferenceActivity;
-import android.view.MenuInflater;
-import android.view.View;
-import android.view.ViewGroup;
-
-import androidx.annotation.LayoutRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.appcompat.widget.Toolbar;
+import android.content.res.Configuration
+import android.os.Bundle
+import android.preference.PreferenceActivity
+import android.view.MenuInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.annotation.LayoutRes
+import androidx.appcompat.app.ActionBar
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.widget.Toolbar
 
 /**
- * A {@link android.preference.PreferenceActivity} which implements and proxies the necessary calls
+ * A [android.preference.PreferenceActivity] which implements and proxies the necessary calls
  * to be used with AppCompat.
  */
-public abstract class AppCompatPreferenceActivity extends PreferenceActivity {
-
-    private AppCompatDelegate mDelegate;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        getDelegate().installViewFactory();
-        getDelegate().onCreate(savedInstanceState);
-        super.onCreate(savedInstanceState);
+abstract class AppCompatPreferenceActivity : PreferenceActivity() {
+    private var mDelegate: AppCompatDelegate? = null
+    override fun onCreate(savedInstanceState: Bundle) {
+        delegate.installViewFactory()
+        delegate.onCreate(savedInstanceState)
+        super.onCreate(savedInstanceState)
     }
 
-    @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
-        getDelegate().onPostCreate(savedInstanceState);
+    override fun onPostCreate(savedInstanceState: Bundle) {
+        super.onPostCreate(savedInstanceState)
+        delegate.onPostCreate(savedInstanceState)
     }
 
-    public ActionBar getSupportActionBar() {
-        return getDelegate().getSupportActionBar();
+    val supportActionBar: ActionBar?
+        get() = delegate.supportActionBar
+
+    fun setSupportActionBar(toolbar: Toolbar?) {
+        delegate.setSupportActionBar(toolbar)
     }
 
-    public void setSupportActionBar(@Nullable Toolbar toolbar) {
-        getDelegate().setSupportActionBar(toolbar);
+    override fun getMenuInflater(): MenuInflater {
+        return delegate.menuInflater
     }
 
-    @NonNull
-    @Override
-    public MenuInflater getMenuInflater() {
-        return getDelegate().getMenuInflater();
+    override fun setContentView(@LayoutRes layoutResID: Int) {
+        delegate.setContentView(layoutResID)
     }
 
-    @Override
-    public void setContentView(@LayoutRes int layoutResID) {
-        getDelegate().setContentView(layoutResID);
+    override fun setContentView(view: View) {
+        delegate.setContentView(view)
     }
 
-    @Override
-    public void setContentView(View view) {
-        getDelegate().setContentView(view);
+    override fun setContentView(view: View, params: ViewGroup.LayoutParams) {
+        delegate.setContentView(view, params)
     }
 
-    @Override
-    public void setContentView(View view, ViewGroup.LayoutParams params) {
-        getDelegate().setContentView(view, params);
+    override fun addContentView(view: View, params: ViewGroup.LayoutParams) {
+        delegate.addContentView(view, params)
     }
 
-    @Override
-    public void addContentView(View view, ViewGroup.LayoutParams params) {
-        getDelegate().addContentView(view, params);
+    override fun onPostResume() {
+        super.onPostResume()
+        delegate.onPostResume()
     }
 
-    @Override
-    protected void onPostResume() {
-        super.onPostResume();
-        getDelegate().onPostResume();
+    override fun onTitleChanged(title: CharSequence, color: Int) {
+        super.onTitleChanged(title, color)
+        delegate.setTitle(title)
     }
 
-    @Override
-    protected void onTitleChanged(CharSequence title, int color) {
-        super.onTitleChanged(title, color);
-        getDelegate().setTitle(title);
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        delegate.onConfigurationChanged(newConfig)
     }
 
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        getDelegate().onConfigurationChanged(newConfig);
+    override fun onStop() {
+        super.onStop()
+        delegate.onStop()
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        getDelegate().onStop();
+    override fun onDestroy() {
+        super.onDestroy()
+        delegate.onDestroy()
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        getDelegate().onDestroy();
+    override fun invalidateOptionsMenu() {
+        delegate.invalidateOptionsMenu()
     }
 
-    public void invalidateOptionsMenu() {
-        getDelegate().invalidateOptionsMenu();
-    }
-
-    private AppCompatDelegate getDelegate() {
-        if (mDelegate == null) {
-            mDelegate = AppCompatDelegate.create(this, null);
+    private val delegate: AppCompatDelegate
+        private get() {
+            if (mDelegate == null) {
+                mDelegate = AppCompatDelegate.create(this, null)
+            }
+            return mDelegate!!
         }
-        return mDelegate;
-    }
 }

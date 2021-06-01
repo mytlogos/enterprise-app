@@ -1,5 +1,5 @@
-package com.mytlogos.enterprise;
+package com.mytlogos.enterprise
 
-public interface ClickListener<T> {
-    void onClick(T item);
+interface ClickListener<T> {
+    fun onClick(item: T)
 }

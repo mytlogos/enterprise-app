@@ -1,29 +1,27 @@
-package com.mytlogos.enterprise;
+package com.mytlogos.enterprise
 
-import android.os.Bundle;
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentPagerAdapter
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import androidx.viewpager.widget.ViewPager
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.tabs.TabLayout.TabLayoutOnPageChangeListener
+import com.mytlogos.enterprise.model.User
+import com.mytlogos.enterprise.ui.LoginFragment
+import com.mytlogos.enterprise.ui.RegisterFragment
+import com.mytlogos.enterprise.viewmodel.UserViewModel
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentPagerAdapter;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.viewpager.widget.ViewPager;
-
-import com.google.android.material.tabs.TabLayout;
-import com.mytlogos.enterprise.ui.LoginFragment;
-import com.mytlogos.enterprise.ui.RegisterFragment;
-import com.mytlogos.enterprise.viewmodel.UserViewModel;
-
-public class LoginRegisterActivity extends AppCompatActivity {
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login_register);
-
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+class LoginRegisterActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_login_register)
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
 
@@ -35,53 +33,45 @@ public class LoginRegisterActivity extends AppCompatActivity {
           may be best to switch to a
           {@link android.support.v4.app.FragmentStatePagerAdapter}.
          */
-        SectionsPagerAdapter mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+        val mSectionsPagerAdapter: SectionsPagerAdapter = SectionsPagerAdapter(
+            supportFragmentManager)
 
         // Set up the ViewPager with the sections adapter.
-        ViewPager mViewPager = findViewById(R.id.container);
-        mViewPager.setAdapter(mSectionsPagerAdapter);
-
-        TabLayout tabLayout = findViewById(R.id.tabs);
-
-        mViewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));
-        tabLayout.addOnTabSelectedListener(new TabLayout.ViewPagerOnTabSelectedListener(mViewPager));
-
-        new ViewModelProvider(this)
-                .get(UserViewModel.class)
-                .getUserLiveData()
-                .observe(this, user -> {
-                    if (user != null) {
-                        this.finish();
-                    }
-                });
+        val mViewPager = findViewById<ViewPager>(R.id.container)
+        mViewPager.adapter = mSectionsPagerAdapter
+        val tabLayout = findViewById<TabLayout>(R.id.tabs)
+        mViewPager.addOnPageChangeListener(TabLayoutOnPageChangeListener(tabLayout))
+        tabLayout.addOnTabSelectedListener(TabLayout.ViewPagerOnTabSelectedListener(mViewPager))
+        ViewModelProvider(this)
+            .get(UserViewModel::class.java)
+            .userLiveData
+            .observe(this, Observer { user: User? ->
+                if (user != null) {
+                    finish()
+                }
+            })
     }
 
-
     /**
-     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
+     * A [FragmentPagerAdapter] that returns a fragment corresponding to
      * one of the sections/tabs/pages.
      */
-    private class SectionsPagerAdapter extends FragmentPagerAdapter {
-
-        SectionsPagerAdapter(FragmentManager fm) {
-            super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
-        }
-
-        @Override
-        public Fragment getItem(int position) {
+    private inner class SectionsPagerAdapter internal constructor(fm: FragmentManager?) :
+        FragmentPagerAdapter(
+            fm!!, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
+        override fun getItem(position: Int): Fragment {
             // getItem is called to instantiate the fragment for the given page.
             // Return a LoginFragment (defined as a static inner class below).
-            if (position == 0) {
-                return LoginFragment.newInstance();
+            return if (position == 0) {
+                LoginFragment.newInstance()
             } else {
-                return RegisterFragment.newInstance();
+                RegisterFragment.newInstance()
             }
         }
 
-        @Override
-        public int getCount() {
+        override fun getCount(): Int {
             // Show 2 total pages.
-            return 2;
+            return 2
         }
     }
 }

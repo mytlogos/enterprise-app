@@ -1,16 +1,9 @@
-package com.mytlogos.enterprise;
+package com.mytlogos.enterprise
 
-import android.os.Bundle;
+import android.os.Bundle
 
-public class AddMediumActivity extends BaseActivity {
+class AddMediumActivity : BaseActivity() {
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-    }
-
-    @Override
-    protected int getContent() {
-        return R.layout.add_medium_activity;
-    }
+    override val content: Int
+        get() = R.layout.add_medium_activity
 }
