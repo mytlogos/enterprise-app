@@ -12,19 +12,19 @@ import com.mytlogos.enterprise.model.Medium
         entity = RoomEpisode::class)],
         indices = [Index(value = arrayOf("currentRead")), Index(value = arrayOf("mediumId"))])
 class RoomMedium(
-    private val currentRead: Int?,
-    @field:PrimaryKey private val mediumId: Int,
-    private val countryOfOrigin: String?,
-    private val languageOfOrigin: String?,
-    private val author: String?,
-    private val title: String,
-    private val medium: Int,
-    private val artist: String?,
-    private val lang: String?,
-    private val stateOrigin: Int,
-    private val stateTL: Int,
-    private val series: String?,
-    private val universe: String?
+    override val currentRead: Int?,
+    @field:PrimaryKey override val mediumId: Int,
+    override val countryOfOrigin: String,
+    override val languageOfOrigin: String,
+    override val author: String,
+    override val title: String,
+    override val medium: Int,
+    override val artist: String,
+    override val lang: String,
+    override val stateOrigin: Int,
+    override val stateTL: Int,
+    override val series: String,
+    override val universe: String
 ) : Medium {
     override fun toString(): String {
         return "RoomMedium{" +
@@ -53,57 +53,5 @@ class RoomMedium(
 
     override fun hashCode(): Int {
         return mediumId
-    }
-
-    override fun getCurrentRead(): Int? {
-        return currentRead
-    }
-
-    override fun getMediumId(): Int {
-        return mediumId
-    }
-
-    override fun getCountryOfOrigin(): String? {
-        return countryOfOrigin
-    }
-
-    override fun getLanguageOfOrigin(): String? {
-        return languageOfOrigin
-    }
-
-    override fun getAuthor(): String? {
-        return author
-    }
-
-    override fun getTitle(): String {
-        return title
-    }
-
-    override fun getMedium(): Int {
-        return medium
-    }
-
-    override fun getArtist(): String? {
-        return artist
-    }
-
-    override fun getLang(): String? {
-        return lang
-    }
-
-    override fun getStateOrigin(): Int {
-        return stateOrigin
-    }
-
-    override fun getStateTL(): Int {
-        return stateTL
-    }
-
-    override fun getSeries(): String? {
-        return series
-    }
-
-    override fun getUniverse(): String? {
-        return universe
     }
 }

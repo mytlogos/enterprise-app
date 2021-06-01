@@ -235,21 +235,21 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
 
     fun convert(medium: ClientMedium, curredRead: Int?): RoomMedium {
         return RoomMedium(
-            curredRead, medium.id, medium.countryOfOrigin,
-            medium.languageOfOrigin, medium.author, medium.title,
-            medium.medium, medium.artist, medium.lang,
-            medium.stateOrigin, medium.stateTL, medium.series,
-            medium.universe
+            curredRead, medium.id, medium.countryOfOrigin ?: "",
+            medium.languageOfOrigin ?: "", medium.author ?: "", medium.title,
+            medium.medium, medium.artist ?: "", medium.lang ?: "",
+            medium.stateOrigin, medium.stateTL, medium.series ?: "",
+            medium.universe ?: ""
         )
     }
 
     fun convert(medium: ClientSimpleMedium): RoomMedium {
         return RoomMedium(
-            null, medium.id, medium.countryOfOrigin,
-            medium.languageOfOrigin, medium.author, medium.title,
-            medium.medium, medium.artist, medium.lang,
-            medium.stateOrigin, medium.stateTL, medium.series,
-            medium.universe
+            null, medium.id, medium.countryOfOrigin ?: "",
+            medium.languageOfOrigin ?: "", medium.author ?: "", medium.title,
+            medium.medium, medium.artist ?: "", medium.lang ?: "",
+            medium.stateOrigin, medium.stateTL, medium.series ?: "",
+            medium.universe ?: ""
         )
     }
 

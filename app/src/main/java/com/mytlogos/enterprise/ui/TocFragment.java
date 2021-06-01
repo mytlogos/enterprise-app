@@ -230,7 +230,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.item_setting) {
-            int mediumId = Objects.requireNonNull(this.getArguments()).getInt(MEDIUM_ID);
+            int mediumId = this.requireArguments().getInt(MEDIUM_ID);
             MediumSettingFragment fragment = MediumSettingFragment.newInstance(mediumId);
             this.getMainActivity().switchWindow(fragment, true);
             return true;
@@ -606,7 +606,7 @@ public class TocFragment extends BaseListFragment<TocEpisode, TocEpisodeViewMode
                     .max((o1, o2) -> o1.length() - o2.length())
                     .orElse("Not available");
             boolean hasOnline = this.item.getReleases().stream().anyMatch(any -> any.getUrl() != null && !any.getUrl().isEmpty());
-            boolean isLocked = this.item.getReleases().stream().allMatch(Release::isLocked);
+            boolean isLocked = this.item.getReleases().stream().allMatch(Release::getLocked);
 
             holder.textTopLeft.setText(index);
             holder.textTopRight.setText(topRight);

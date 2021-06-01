@@ -1,52 +1,20 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-public class MediaList {
-    private final String uuid;
-    private final int listId;
-    private final String name;
-    private final int medium;
-    private final int size;
-
-    public MediaList(String uuid, int listId, String name, int medium, int size) {
-        this.uuid = uuid;
-        this.listId = listId;
-        this.name = name;
-        this.medium = medium;
-        this.size = size;
+open class MediaList(
+    val uuid: String,
+    val listId: Int,
+    val name: String,
+    val medium: Int,
+    val size: Int
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val mediaList = other as MediaList
+        return listId == mediaList.listId
     }
 
-    public String getUuid() {
-        return uuid;
-    }
-
-    public int getListId() {
-        return listId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public int getMedium() {
-        return medium;
-    }
-
-    public int getSize() {
-        return size;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        MediaList mediaList = (MediaList) o;
-
-        return listId == mediaList.listId;
-    }
-
-    @Override
-    public int hashCode() {
-        return listId;
+    override fun hashCode(): Int {
+        return listId
     }
 }

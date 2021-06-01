@@ -1,42 +1,18 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-public class ToDownload {
-    private final boolean prohibited;
-    private final Integer mediumId;
-    private final Integer listId;
-    private final Integer externalListId;
+class ToDownload(val isProhibited: Boolean, mediumId: Int?, listId: Int?, externalListId: Int?) {
+    val mediumId: Int?
+    val listId: Int?
+    val externalListId: Int?
 
-    public ToDownload(boolean prohibited, Integer mediumId, Integer listId, Integer externalListId) {
-        this.prohibited = prohibited;
-
-        boolean isMedium = mediumId != null && mediumId > 0;
-        boolean isList = listId != null && listId > 0;
-        boolean isExternalList = externalListId != null && externalListId > 0;
-
-        if (isMedium && (isList || isExternalList) || isList && isExternalList) {
-            throw new IllegalArgumentException("only one id allowed");
-        }
-        if (!isMedium && !isList && !isExternalList) {
-            throw new IllegalArgumentException("one id is necessary!");
-        }
-        this.mediumId = mediumId;
-        this.listId = listId;
-        this.externalListId = externalListId;
-    }
-
-    public boolean isProhibited() {
-        return prohibited;
-    }
-
-    public Integer getMediumId() {
-        return mediumId;
-    }
-
-    public Integer getListId() {
-        return listId;
-    }
-
-    public Integer getExternalListId() {
-        return externalListId;
+    init {
+        val isMedium = mediumId != null && mediumId > 0
+        val isList = listId != null && listId > 0
+        val isExternalList = externalListId != null && externalListId > 0
+        require(!(isMedium && (isList || isExternalList) || isList && isExternalList)) { "only one id allowed" }
+        require(!(!isMedium && !isList && !isExternalList)) { "one id is necessary!" }
+        this.mediumId = mediumId
+        this.listId = listId
+        this.externalListId = externalListId
     }
 }

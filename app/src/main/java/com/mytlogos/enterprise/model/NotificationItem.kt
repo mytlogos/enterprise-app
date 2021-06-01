@@ -1,57 +1,24 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-import androidx.annotation.NonNull;
+import org.joda.time.DateTime
 
-import org.joda.time.DateTime;
-
-public class NotificationItem {
-    @NonNull
-    private String title;
-    @NonNull
-    private String description;
-    @NonNull
-    private DateTime dateTime;
-
-    public NotificationItem(@NonNull String title, @NonNull String description, @NonNull DateTime dateTime) {
-        this.title = title;
-        this.description = description;
-        this.dateTime = dateTime;
+class NotificationItem(val title: String, val description: String, val dateTime: DateTime) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as NotificationItem
+        return if (title != that.title) false else dateTime == that.dateTime
     }
 
-    public static NotificationItem createNow(String title, String description) {
-        return new NotificationItem(title, description, DateTime.now());
+    override fun hashCode(): Int {
+        var result = title.hashCode()
+        result = 31 * result + dateTime.hashCode()
+        return result
     }
 
-    @NonNull
-    public String getTitle() {
-        return title;
-    }
-
-    @NonNull
-    public String getDescription() {
-        return description;
-    }
-
-    @NonNull
-    public DateTime getDateTime() {
-        return dateTime;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        NotificationItem that = (NotificationItem) o;
-
-        if (!getTitle().equals(that.getTitle())) return false;
-        return getDateTime().equals(that.getDateTime());
-    }
-
-    @Override
-    public int hashCode() {
-        int result = getTitle().hashCode();
-        result = 31 * result + getDateTime().hashCode();
-        return result;
+    companion object {
+        fun createNow(title: String, description: String): NotificationItem {
+            return NotificationItem(title, description, DateTime.now())
+        }
     }
 }

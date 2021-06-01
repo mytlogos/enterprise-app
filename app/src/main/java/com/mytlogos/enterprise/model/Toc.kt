@@ -1,10 +1,9 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
 /**
  *
  */
-public interface Toc {
-    int getMediumId();
-
-    String getLink();
+interface Toc {
+    val mediumId: Int
+    val link: String
 }

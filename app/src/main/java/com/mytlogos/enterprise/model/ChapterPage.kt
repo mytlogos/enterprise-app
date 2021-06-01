@@ -1,54 +1,23 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-import androidx.annotation.NonNull;
-
-public class ChapterPage {
-    private final int episodeId;
-    private final int page;
-    private final String path;
-
-    public ChapterPage(int episodeId, int page, String path) {
-        this.episodeId = episodeId;
-        this.page = page;
-        this.path = path;
+class ChapterPage(val episodeId: Int, val page: Int, val path: String) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as ChapterPage
+        return if (episodeId != that.episodeId) false else page == that.page
     }
 
-    public String getPath() {
-        return path;
+    override fun hashCode(): Int {
+        var result = episodeId
+        result = 31 * result + page
+        return result
     }
 
-    public int getEpisodeId() {
-        return episodeId;
-    }
-
-    public int getPage() {
-        return page;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ChapterPage that = (ChapterPage) o;
-
-        if (episodeId != that.episodeId) return false;
-        return page == that.page;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = episodeId;
-        result = 31 * result + page;
-        return result;
-    }
-
-    @NonNull
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ChapterPage{" +
                 "episodeId=" + episodeId +
                 ", page=" + page +
-                '}';
+                '}'
     }
 }

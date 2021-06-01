@@ -1,97 +1,53 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-import androidx.room.Ignore;
+import androidx.room.Ignore
+import com.mytlogos.enterprise.Formatter
+import org.joda.time.DateTime
 
-import com.mytlogos.enterprise.Formatter;
+class News @JvmOverloads constructor(
+    private val title: String,
+    private val timeStamp: DateTime,
+    val id: Int,
+    val read: Boolean,
+    val url: String, // this is so ugly, but at the moment mediumType is not saved in storage
+    @field:Ignore val mediumType: Int = MediumType.ALL
+) {
 
-import org.joda.time.DateTime;
+    val timeStampString: String
+        get() = Formatter.formatDateTime(getTimeStamp())
 
-public class News {
-    private final String title;
-    private final DateTime timeStamp;
-    private final int id;
-    private final boolean read;
-    private final String url;
-    // this is so ugly, but at the moment mediumType is not saved in storage
-    @Ignore
-    private final int mediumType;
-
-    public News(String title, DateTime timeStamp, int id, boolean read, String url) {
-        this(title, timeStamp, id, read, url, MediumType.ALL);
+    fun getTitle(): String {
+        return title
     }
 
-    public News(String title, DateTime timeStamp, int id, boolean read, String url, int mediumType) {
-        this.title = title;
-        this.timeStamp = timeStamp;
-        this.id = id;
-        this.read = read;
-        this.url = url;
-        this.mediumType = mediumType;
+    fun getTimeStamp(): DateTime {
+        return timeStamp
     }
 
-    public int getMediumType() {
-        return mediumType;
-    }
-
-    public String getTimeStampString() {
-        return Formatter.formatDateTime(this.getTimeStamp());
-    }
-
-
-    public String getTitle() {
-        return this.title;
-    }
-
-
-    public int getId() {
-        return this.id;
-    }
-
-
-    public boolean isRead() {
-        return this.read;
-    }
-
-
-    public DateTime getTimeStamp() {
-        return this.timeStamp;
-    }
-
-
-    public String getUrl() {
-        return url;
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "News{" +
                 "title='" + title + '\'' +
                 ", timeStamp=" + timeStamp +
                 ", id=" + id +
                 ", read=" + read +
-                '}';
+                '}'
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        News news = (News) o;
-
-        if (id != news.id) return false;
-        if (isRead() != news.isRead()) return false;
-        if (getTitle() != null ? !getTitle().equals(news.getTitle()) : news.getTitle() != null)
-            return false;
-        return getTimeStamp() != null ? getTimeStamp().equals(news.getTimeStamp()) : news.getTimeStamp() == null;
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val news = other as News
+        if (id != news.id) return false
+        if (read != news.read) return false
+        if (getTitle() != news.getTitle()) return false
+        return getTimeStamp() == news.getTimeStamp()
     }
 
-    @Override
-    public int hashCode() {
-        int result = getTitle() != null ? getTitle().hashCode() : 0;
-        result = 31 * result + (getTimeStamp() != null ? getTimeStamp().hashCode() : 0);
-        result = 31 * result + id;
-        result = 31 * result + (isRead() ? 1 : 0);
-        return result;
+    override fun hashCode(): Int {
+        var result = getTitle().hashCode()
+        result = 31 * result + getTimeStamp().hashCode()
+        result = 31 * result + id
+        result = 31 * result + if (read) 1 else 0
+        return result
     }
 }

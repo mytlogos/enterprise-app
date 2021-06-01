@@ -209,7 +209,8 @@ internal class EditService(
             val value = storage.getUserNow()
                 ?: throw IllegalArgumentException("cannot change user when none is logged in")
             val user = ClientUpdateUser(
-                value.uuid, updateUser.name,
+                value.uuid,
+                updateUser.name,
                 updateUser.password,
                 updateUser.newPassword
             )
@@ -320,30 +321,30 @@ internal class EditService(
                 IntArray(0), IntArray(0),
                 mediumSettings.currentRead, IntArray(0),
                 mediumId,
-                mediumSettings.countryOfOrigin,
-                mediumSettings.languageOfOrigin,
-                mediumSettings.author,
-                mediumSettings.title,
+                mediumSettings.getCountryOfOrigin(),
+                mediumSettings.getLanguageOfOrigin(),
+                mediumSettings.getAuthor(),
+                mediumSettings.getTitle(),
                 mediumSettings.medium,
-                mediumSettings.artist,
-                mediumSettings.lang,
+                mediumSettings.getArtist(),
+                mediumSettings.getLang(),
                 mediumSettings.stateOrigin,
                 mediumSettings.stateTL,
-                mediumSettings.series,
-                mediumSettings.universe
+                mediumSettings.getSeries(),
+                mediumSettings.getUniverse()
             )
             if (!client.isClientOnline) {
                 val setting = storage.getMediumSettingsNow(mediumId)
                     ?: return@runCompletableTask "Not available in storage"
                 val editEvents: MutableList<EditEvent> = ArrayList()
-                if (setting.title != mediumSettings.title) {
+                if (setting.getTitle() != mediumSettings.getTitle()) {
                     editEvents.add(
                         EditEventImpl(
                             mediumId,
                             MEDIUM,
                             CHANGE_NAME,
-                            setting.title,
-                            mediumSettings.title
+                            setting.getTitle(),
+                            mediumSettings.getTitle()
                         )
                     )
                 }

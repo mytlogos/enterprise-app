@@ -440,7 +440,7 @@ public class EpisodeFragment extends BaseListFragment<DisplayRelease, EpisodeVie
     private void openPopup(ViewHolder holder, DisplayRelease episode) {
         PopupMenu popupMenu = new PopupMenu(getContext(), holder.optionsButtonView);
 
-        if (episode.isSaved()) {
+        if (episode.getSaved()) {
             popupMenu
                     .getMenu()
                     .add("Open Local")

@@ -1,15 +1,9 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-import java.util.List;
-
-public interface Part {
-    int getPartId();
-
-    String getTitle();
-
-    int getTotalIndex();
-
-    int getPartialIndex();
-
-    List<Integer> getEpisodes();
+interface Part {
+    val partId: Int
+    val title: String?
+    val totalIndex: Int
+    val partialIndex: Int
+    val episodes: List<Int?>?
 }

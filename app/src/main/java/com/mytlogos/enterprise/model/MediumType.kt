@@ -1,40 +1,39 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-import androidx.annotation.IntDef;
+import androidx.annotation.IntDef
+import kotlin.annotation.Retention
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+object MediumType {
+    const val NOVEL = 0x1
+    const val MANGA = 0x2
+    const val ANIME = 0x4
+    const val SERIES = 0x8
+    const val ALL = ANIME or MANGA or NOVEL or SERIES
+    const val TEXT = 0x1
+    const val AUDIO = 0x2
+    const val VIDEO = 0x4
+    const val IMAGE = 0x8
 
-public class MediumType {
-    public static final int ALL = MediumType.ANIME | MediumType.MANGA | MediumType.NOVEL | MediumType.SERIES;
-    public static final int NOVEL = 0x1;
-    public static final int MANGA = 0x2;
-    public static final int ANIME = 0x4;
-    public static final int SERIES = 0x8;
-    public static final int TEXT = 0x1;
-    public static final int AUDIO = 0x2;
-    public static final int VIDEO = 0x4;
-    public static final int IMAGE = 0x8;
-
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef(value = {TEXT, IMAGE, AUDIO, VIDEO})
-    public @interface Medium {
-
+    @kotlin.jvm.JvmStatic
+    fun addMediumType(mediumType: Int, toAdd: Int): Int {
+        return mediumType or toAdd
     }
 
-    public static int addMediumType(int mediumType, int toAdd) {
-        return mediumType | toAdd;
+    @kotlin.jvm.JvmStatic
+    fun removeMediumType(mediumType: Int, toRemove: Int): Int {
+        return mediumType and toRemove.inv()
     }
 
-    public static int removeMediumType(int mediumType, int toRemove) {
-        return mediumType & ~toRemove;
+    fun toggleMediumType(mediumType: Int, toToggle: Int): Int {
+        return mediumType xor toToggle
     }
 
-    public static int toggleMediumType(int mediumType, int toToggle) {
-        return mediumType ^ toToggle;
+    @kotlin.jvm.JvmStatic
+    fun `is`(type: Int, toCheck: Int): Boolean {
+        return type and toCheck == toCheck
     }
 
-    public static boolean is(int type, int toCheck) {
-        return (type & toCheck) == toCheck;
-    }
+    @Retention(AnnotationRetention.SOURCE)
+    @IntDef(value = [TEXT, IMAGE, AUDIO, VIDEO])
+    annotation class Medium
 }

@@ -71,7 +71,7 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
         @Override
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
             if (item.getItemId() == R.id.add_item_to_list) {
-                Context context = Objects.requireNonNull(getContext());
+                Context context = requireContext();
                 AlertDialog.Builder builder = new AlertDialog.Builder(context);
 
                 ListsViewModel listsViewModel = new ViewModelProvider(MediumListFragment.this)
@@ -325,8 +325,8 @@ public class MediumListFragment extends BaseListFragment<MediumItem, MediumViewM
         public void bindViewHolder(FlexibleAdapter<IFlexible> adapter, MetaViewHolder holder, int position, List<Object> payloads) {
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
-            Integer currentReadEpisode = this.item.getCurrentReadEpisode() == null ? 0 : this.item.getCurrentReadEpisode();
-            Integer lastEpisode = this.item.getLastEpisode() == null ? 0 : this.item.getLastEpisode();
+            Integer currentReadEpisode = this.item.getCurrentReadEpisode() < 0 ? 0 : this.item.getCurrentReadEpisode();
+            Integer lastEpisode = this.item.getLastEpisode() < 0 ? 0 : this.item.getLastEpisode();
             holder.topLeftText.setText(String.format("%d/%d", currentReadEpisode, lastEpisode));
 
             CharSequence relativeTime;

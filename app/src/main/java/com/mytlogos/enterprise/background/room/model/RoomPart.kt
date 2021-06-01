@@ -9,29 +9,37 @@ import java.util.*
         parentColumns = arrayOf("mediumId"),
         childColumns = arrayOf("mediumId"))],
         indices = [Index(value = arrayOf("mediumId")), Index(value = arrayOf("partId"))])
-class RoomPart(@field:PrimaryKey private val partId: Int, val mediumId: Int, private val title: String, private val totalIndex: Int, private val partialIndex: Int, val combiIndex: Double) : Part {
+class RoomPart(
+    @field:PrimaryKey override val partId: Int,
+    val mediumId: Int,
+    override val title: String,
+    override val totalIndex: Int,
+    override val partialIndex: Int,
+    val combiIndex: Double,
+) : Part {
 
     @Ignore
-    private val episodes: List<Int>
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val roomPart = o as RoomPart
-        if (getPartId() != roomPart.getPartId()) return false
+    override val episodes: List<Int>
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val roomPart = other as RoomPart
+        if (partId != roomPart.partId) return false
         if (mediumId != roomPart.mediumId) return false
-        if (getTotalIndex() != roomPart.getTotalIndex()) return false
-        if (getPartialIndex() != roomPart.getPartialIndex()) return false
-        if (if (getTitle() != null) getTitle() != roomPart.getTitle() else roomPart.getTitle() != null) return false
-        return if (getEpisodes() != null) getEpisodes() == roomPart.getEpisodes() else roomPart.getEpisodes() == null
+        if (totalIndex != roomPart.totalIndex) return false
+        if (partialIndex != roomPart.partialIndex) return false
+        if (title != roomPart.title) return false
+        return episodes == roomPart.episodes
     }
 
     override fun hashCode(): Int {
-        var result = getPartId()
+        var result = partId
         result = 31 * result + mediumId
-        result = 31 * result + if (getTitle() != null) getTitle().hashCode() else 0
-        result = 31 * result + getTotalIndex()
-        result = 31 * result + getPartialIndex()
-        result = 31 * result + if (getEpisodes() != null) getEpisodes().hashCode() else 0
+        result = 31 * result + title.hashCode()
+        result = 31 * result + totalIndex
+        result = 31 * result + partialIndex
+        result = 31 * result + episodes.hashCode()
         return result
     }
 
@@ -44,26 +52,6 @@ class RoomPart(@field:PrimaryKey private val partId: Int, val mediumId: Int, pri
                 ", partialIndex=" + partialIndex +
                 ", episodes=" + episodes +
                 '}'
-    }
-
-    override fun getPartId(): Int {
-        return partId
-    }
-
-    override fun getTitle(): String {
-        return title
-    }
-
-    override fun getTotalIndex(): Int {
-        return totalIndex
-    }
-
-    override fun getPartialIndex(): Int {
-        return partialIndex
-    }
-
-    override fun getEpisodes(): List<Int> {
-        return episodes
     }
 
     init {

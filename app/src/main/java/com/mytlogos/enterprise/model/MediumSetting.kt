@@ -1,172 +1,107 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-import org.joda.time.DateTime;
+import org.joda.time.DateTime
 
-public class MediumSetting {
-    private final String title;
-    private final int mediumId;
-    private final String author;
-    private final String artist;
-    private final int medium;
-    private final int stateTL;
-    private final int stateOrigin;
-    private final String countryOfOrigin;
-    private final String languageOfOrigin;
-    private final String lang;
-    private final String series;
-    private final String universe;
-    private final int currentRead;
-    private final int currentReadEpisode;
-    private final int lastEpisode;
-    private final DateTime lastUpdated;
-    private final boolean toDownload;
-
-    public MediumSetting(String title, int mediumId, String author, String artist, int medium, int stateTL, int stateOrigin, String countryOfOrigin, String languageOfOrigin, String lang, String series, String universe, int currentRead, int currentReadEpisode, int lastEpisode, DateTime lastUpdated, boolean toDownload) {
-        this.title = title;
-        this.mediumId = mediumId;
-        this.author = author;
-        this.artist = artist;
-        this.medium = medium;
-        this.stateTL = stateTL;
-        this.stateOrigin = stateOrigin;
-        this.countryOfOrigin = countryOfOrigin;
-        this.languageOfOrigin = languageOfOrigin;
-        this.lang = lang;
-        this.series = series;
-        this.universe = universe;
-        this.currentRead = currentRead;
-        this.currentReadEpisode = currentReadEpisode;
-        this.lastEpisode = lastEpisode;
-        this.lastUpdated = lastUpdated;
-        this.toDownload = toDownload;
+class MediumSetting(
+    private val title: String,
+    val mediumId: Int,
+    private val author: String,
+    private val artist: String,
+    val medium: Int,
+    val stateTL: Int,
+    val stateOrigin: Int,
+    private val countryOfOrigin: String,
+    private val languageOfOrigin: String,
+    private val lang: String,
+    private val series: String,
+    private val universe: String,
+    val currentRead: Int,
+    val currentReadEpisode: Int,
+    val lastEpisode: Int,
+    private val lastUpdated: DateTime,
+    val toDownload: Boolean
+) {
+    fun getTitle(): String {
+        return title
     }
 
-    public String getTitle() {
-        return title;
+    fun getAuthor(): String {
+        return author
     }
 
-    public int getMediumId() {
-        return mediumId;
+    fun getArtist(): String {
+        return artist
     }
 
-    public String getAuthor() {
-        return author;
+    fun getCountryOfOrigin(): String {
+        return countryOfOrigin
     }
 
-    public String getArtist() {
-        return artist;
+    fun getLanguageOfOrigin(): String {
+        return languageOfOrigin
     }
 
-    public int getMedium() {
-        return medium;
+    fun getLang(): String {
+        return lang
     }
 
-    public int getStateTL() {
-        return stateTL;
+    fun getSeries(): String {
+        return series
     }
 
-    public int getStateOrigin() {
-        return stateOrigin;
+    fun getUniverse(): String {
+        return universe
     }
 
-    public String getCountryOfOrigin() {
-        return countryOfOrigin;
+    fun getLastUpdated(): DateTime {
+        return lastUpdated
     }
 
-    public String getLanguageOfOrigin() {
-        return languageOfOrigin;
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as MediumSetting
+        if (mediumId != that.mediumId) return false
+        if (medium != that.medium) return false
+        if (stateTL != that.stateTL) return false
+        if (stateOrigin != that.stateOrigin) return false
+        if (currentRead != that.currentRead) return false
+        if (currentReadEpisode != that.currentReadEpisode) return false
+        if (lastEpisode != that.lastEpisode) return false
+        if (toDownload != that.toDownload) return false
+        if (getTitle() != that.getTitle()) return false
+        if (getAuthor() != that.getAuthor()) return false
+        if (getArtist() != that.getArtist()) return false
+        if (getCountryOfOrigin() != that.getCountryOfOrigin()) return false
+        if (getLanguageOfOrigin() != that.getLanguageOfOrigin()) return false
+        if (getLang() != that.getLang()) return false
+        if (getSeries() != that.getSeries()) return false
+        if (getUniverse() != that.getUniverse()) return false
+        return getLastUpdated() == that.getLastUpdated()
     }
 
-    public String getLang() {
-        return lang;
+    override fun hashCode(): Int {
+        var result = getTitle().hashCode()
+        result = 31 * result + mediumId
+        result = 31 * result + getAuthor().hashCode()
+        result = 31 * result + getArtist().hashCode()
+        result = 31 * result + medium
+        result = 31 * result + stateTL
+        result = 31 * result + stateOrigin
+        result = 31 * result + getCountryOfOrigin().hashCode()
+        result = 31 * result + getLanguageOfOrigin().hashCode()
+        result = 31 * result + getLang().hashCode()
+        result = 31 * result + getSeries().hashCode()
+        result = 31 * result + getUniverse().hashCode()
+        result = 31 * result + currentRead
+        result = 31 * result + currentReadEpisode
+        result = 31 * result + lastEpisode
+        result = 31 * result + getLastUpdated().hashCode()
+        result = 31 * result + if (toDownload) 1 else 0
+        return result
     }
 
-    public String getSeries() {
-        return series;
-    }
-
-    public String getUniverse() {
-        return universe;
-    }
-
-    public int getCurrentRead() {
-        return currentRead;
-    }
-
-    public int getCurrentReadEpisode() {
-        return currentReadEpisode;
-    }
-
-    public int getLastEpisode() {
-        return lastEpisode;
-    }
-
-    public DateTime getLastUpdated() {
-        return lastUpdated;
-    }
-
-    public boolean isToDownload() {
-        return toDownload;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        MediumSetting that = (MediumSetting) o;
-
-        if (getMediumId() != that.getMediumId()) return false;
-        if (getMedium() != that.getMedium()) return false;
-        if (getStateTL() != that.getStateTL()) return false;
-        if (getStateOrigin() != that.getStateOrigin()) return false;
-        if (getCurrentRead() != that.getCurrentRead()) return false;
-        if (getCurrentReadEpisode() != that.getCurrentReadEpisode()) return false;
-        if (getLastEpisode() != that.getLastEpisode()) return false;
-        if (isToDownload() != that.isToDownload()) return false;
-        if (getTitle() != null ? !getTitle().equals(that.getTitle()) : that.getTitle() != null)
-            return false;
-        if (getAuthor() != null ? !getAuthor().equals(that.getAuthor()) : that.getAuthor() != null)
-            return false;
-        if (getArtist() != null ? !getArtist().equals(that.getArtist()) : that.getArtist() != null)
-            return false;
-        if (getCountryOfOrigin() != null ? !getCountryOfOrigin().equals(that.getCountryOfOrigin()) : that.getCountryOfOrigin() != null)
-            return false;
-        if (getLanguageOfOrigin() != null ? !getLanguageOfOrigin().equals(that.getLanguageOfOrigin()) : that.getLanguageOfOrigin() != null)
-            return false;
-        if (getLang() != null ? !getLang().equals(that.getLang()) : that.getLang() != null)
-            return false;
-        if (getSeries() != null ? !getSeries().equals(that.getSeries()) : that.getSeries() != null)
-            return false;
-        if (getUniverse() != null ? !getUniverse().equals(that.getUniverse()) : that.getUniverse() != null)
-            return false;
-        return getLastUpdated() != null ? getLastUpdated().equals(that.getLastUpdated()) : that.getLastUpdated() == null;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = getTitle() != null ? getTitle().hashCode() : 0;
-        result = 31 * result + getMediumId();
-        result = 31 * result + (getAuthor() != null ? getAuthor().hashCode() : 0);
-        result = 31 * result + (getArtist() != null ? getArtist().hashCode() : 0);
-        result = 31 * result + getMedium();
-        result = 31 * result + getStateTL();
-        result = 31 * result + getStateOrigin();
-        result = 31 * result + (getCountryOfOrigin() != null ? getCountryOfOrigin().hashCode() : 0);
-        result = 31 * result + (getLanguageOfOrigin() != null ? getLanguageOfOrigin().hashCode() : 0);
-        result = 31 * result + (getLang() != null ? getLang().hashCode() : 0);
-        result = 31 * result + (getSeries() != null ? getSeries().hashCode() : 0);
-        result = 31 * result + (getUniverse() != null ? getUniverse().hashCode() : 0);
-        result = 31 * result + getCurrentRead();
-        result = 31 * result + getCurrentReadEpisode();
-        result = 31 * result + getLastEpisode();
-        result = 31 * result + (getLastUpdated() != null ? getLastUpdated().hashCode() : 0);
-        result = 31 * result + (isToDownload() ? 1 : 0);
-        return result;
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "MediumSetting{" +
                 "title='" + title + '\'' +
                 ", mediumId=" + mediumId +
@@ -185,115 +120,131 @@ public class MediumSetting {
                 ", lastEpisode=" + lastEpisode +
                 ", lastUpdated=" + lastUpdated +
                 ", toDownload=" + toDownload +
-                '}';
+                '}'
     }
 
-    public static class MediumSettingBuilder {
-        private String title;
-        private int mediumId;
-        private String author;
-        private String artist;
-        private int medium;
-        private int stateTL;
-        private int stateOrigin;
-        private String countryOfOrigin;
-        private String languageOfOrigin;
-        private String lang;
-        private String series;
-        private String universe;
-        private int currentRead;
-        private int currentReadEpisode;
-        private int lastEpisode;
-        private DateTime lastUpdated;
-        private boolean toDownload;
+    class MediumSettingBuilder(setting: MediumSetting) {
+        private var title: String
+        private val mediumId: Int
+        private var author: String
+        private var artist: String
+        private var medium: Int
+        private var stateTL: Int
+        private var stateOrigin: Int
+        private var countryOfOrigin: String
+        private var languageOfOrigin: String
+        private var lang: String
+        private var series: String
+        private var universe: String
+        private var currentRead: Int
+        private val currentReadEpisode: Int
+        private val lastEpisode: Int
+        private val lastUpdated: DateTime
+        private var toDownload: Boolean
 
-        public MediumSettingBuilder(MediumSetting setting) {
-            this.title = setting.title;
-            this.mediumId = setting.mediumId;
-            this.author = setting.author;
-            this.artist = setting.artist;
-            this.medium = setting.medium;
-            this.stateTL = setting.stateTL;
-            this.stateOrigin = setting.stateOrigin;
-            this.countryOfOrigin = setting.countryOfOrigin;
-            this.languageOfOrigin = setting.languageOfOrigin;
-            this.lang = setting.lang;
-            this.series = setting.series;
-            this.universe = setting.universe;
-            this.currentRead = setting.currentRead;
-            this.currentReadEpisode = setting.currentReadEpisode;
-            this.lastEpisode = setting.lastEpisode;
-            this.lastUpdated = setting.lastUpdated;
-            this.toDownload = setting.toDownload;
+        fun setTitle(title: String): MediumSettingBuilder {
+            this.title = title
+            return this
         }
 
-        public MediumSettingBuilder setTitle(String title) {
-            this.title = title;
-            return this;
+        fun setAuthor(author: String): MediumSettingBuilder {
+            this.author = author
+            return this
         }
 
-        public MediumSettingBuilder setAuthor(String author) {
-            this.author = author;
-            return this;
+        fun setArtist(artist: String): MediumSettingBuilder {
+            this.artist = artist
+            return this
         }
 
-        public MediumSettingBuilder setArtist(String artist) {
-            this.artist = artist;
-            return this;
+        fun setMedium(medium: Int): MediumSettingBuilder {
+            this.medium = medium
+            return this
         }
 
-        public MediumSettingBuilder setMedium(int medium) {
-            this.medium = medium;
-            return this;
+        fun setStateTL(stateTL: Int): MediumSettingBuilder {
+            this.stateTL = stateTL
+            return this
         }
 
-        public MediumSettingBuilder setStateTL(int stateTL) {
-            this.stateTL = stateTL;
-            return this;
+        fun setStateOrigin(stateOrigin: Int): MediumSettingBuilder {
+            this.stateOrigin = stateOrigin
+            return this
         }
 
-        public MediumSettingBuilder setStateOrigin(int stateOrigin) {
-            this.stateOrigin = stateOrigin;
-            return this;
+        fun setCountryOfOrigin(countryOfOrigin: String): MediumSettingBuilder {
+            this.countryOfOrigin = countryOfOrigin
+            return this
         }
 
-        public MediumSettingBuilder setCountryOfOrigin(String countryOfOrigin) {
-            this.countryOfOrigin = countryOfOrigin;
-            return this;
+        fun setLanguageOfOrigin(languageOfOrigin: String): MediumSettingBuilder {
+            this.languageOfOrigin = languageOfOrigin
+            return this
         }
 
-        public MediumSettingBuilder setLanguageOfOrigin(String languageOfOrigin) {
-            this.languageOfOrigin = languageOfOrigin;
-            return this;
+        fun setLang(lang: String): MediumSettingBuilder {
+            this.lang = lang
+            return this
         }
 
-        public MediumSettingBuilder setLang(String lang) {
-            this.lang = lang;
-            return this;
+        fun setSeries(series: String): MediumSettingBuilder {
+            this.series = series
+            return this
         }
 
-        public MediumSettingBuilder setSeries(String series) {
-            this.series = series;
-            return this;
+        fun setUniverse(universe: String): MediumSettingBuilder {
+            this.universe = universe
+            return this
         }
 
-        public MediumSettingBuilder setUniverse(String universe) {
-            this.universe = universe;
-            return this;
+        fun setCurrentRead(currentRead: Int): MediumSettingBuilder {
+            this.currentRead = currentRead
+            return this
         }
 
-        public MediumSettingBuilder setCurrentRead(int currentRead) {
-            this.currentRead = currentRead;
-            return this;
+        fun setToDownload(toDownload: Boolean): MediumSettingBuilder {
+            this.toDownload = toDownload
+            return this
         }
 
-        public MediumSettingBuilder setToDownload(boolean toDownload) {
-            this.toDownload = toDownload;
-            return this;
+        fun createMediumSetting(): MediumSetting {
+            return MediumSetting(title,
+                mediumId,
+                author,
+                artist,
+                medium,
+                stateTL,
+                stateOrigin,
+                countryOfOrigin,
+                languageOfOrigin,
+                lang,
+                series,
+                universe,
+                currentRead,
+                currentReadEpisode,
+                lastEpisode,
+                lastUpdated,
+                toDownload)
         }
 
-        public MediumSetting createMediumSetting() {
-            return new MediumSetting(title, mediumId, author, artist, medium, stateTL, stateOrigin, countryOfOrigin, languageOfOrigin, lang, series, universe, currentRead, currentReadEpisode, lastEpisode, lastUpdated, toDownload);
+        init {
+            title = setting.title
+            mediumId = setting.mediumId
+            author = setting.author
+            artist = setting.artist
+            medium = setting.medium
+            stateTL = setting.stateTL
+            stateOrigin = setting.stateOrigin
+            countryOfOrigin = setting.countryOfOrigin
+            languageOfOrigin = setting.languageOfOrigin
+            lang = setting.lang
+            series = setting.series
+            universe = setting.universe
+            currentRead = setting.currentRead
+            currentReadEpisode = setting.currentReadEpisode
+            lastEpisode = setting.lastEpisode
+            lastUpdated = setting.lastUpdated
+            toDownload = setting.toDownload
         }
     }
 }

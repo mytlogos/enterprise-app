@@ -1,24 +1,16 @@
-package com.mytlogos.enterprise.model;
+package com.mytlogos.enterprise.model
 
-public class ExternalMediaListSetting extends MediaListSetting {
-    private final String url;
-
-    public ExternalMediaListSetting(int listId, String uuid, String name, int medium, String url, int size, boolean toDownload) {
-        super(listId, uuid, name, medium, size, toDownload);
-        this.url = url;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    @Override
-    public boolean isNameMutable() {
-        return false;
-    }
-
-    @Override
-    public boolean isMediumMutable() {
-        return false;
-    }
+class ExternalMediaListSetting(
+    listId: Int,
+    uuid: String,
+    name: String,
+    medium: Int,
+    val url: String,
+    size: Int,
+    toDownload: Boolean
+) : MediaListSetting(listId, uuid, name, medium, size, toDownload) {
+    override val isNameMutable: Boolean
+        get() = false
+    override val isMediumMutable: Boolean
+        get() = false
 }

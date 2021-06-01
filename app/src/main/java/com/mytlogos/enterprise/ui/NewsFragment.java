@@ -115,7 +115,7 @@ public class NewsFragment extends BaseSwipeListFragment<News, NewsViewModel> {
                 if (newsItem.attached == null) {
                     continue;
                 }
-                if (newsItem.attached.isBefore(minimumVisible) && !newsItem.news.isRead()) {
+                if (newsItem.attached.isBefore(minimumVisible) && !newsItem.news.getRead()) {
                     readNews.add(newsItem.news.getId());
                 }
             }

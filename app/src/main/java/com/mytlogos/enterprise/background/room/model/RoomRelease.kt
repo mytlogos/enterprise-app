@@ -13,29 +13,10 @@ import org.joda.time.DateTime
                 parentColumns = arrayOf("episodeId"))],
         indices = [Index("episodeId")])
 class RoomRelease(
-    private val episodeId: Int,
-    private val title: String,
-    private val url: String,
-    private val releaseDate: DateTime,
-    private val locked: Boolean
+    override val episodeId: Int,
+    override val title: String,
+    override val url: String,
+    override val releaseDate: DateTime,
+    override val locked: Boolean,
 ) : Release {
-    override fun isLocked(): Boolean {
-        return locked
-    }
-
-    override fun getReleaseDate(): DateTime {
-        return releaseDate
-    }
-
-    override fun getTitle(): String {
-        return title
-    }
-
-    override fun getUrl(): String {
-        return url
-    }
-
-    override fun getEpisodeId(): Int {
-        return episodeId
-    }
 }

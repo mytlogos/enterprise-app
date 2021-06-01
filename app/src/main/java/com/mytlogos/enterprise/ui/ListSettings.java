@@ -46,14 +46,14 @@ public class ListSettings extends BaseFragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.list_settings, container, false);
 
-        Bundle arguments = Objects.requireNonNull(this.getArguments());
+        Bundle arguments = this.requireArguments();
         int listId = arguments.getInt(ID);
         boolean isExternal = arguments.getBoolean(EXTERNAL);
 
         this.listsViewModel = new ViewModelProvider(this).get(ListsViewModel.class);
         this.liveListSettings = listsViewModel.getListSettings(listId, isExternal);
 
-        this.liveListSettings.observe(this, this::handleNewListSetting);
+        this.liveListSettings.observe(getViewLifecycleOwner(), this::handleNewListSetting);
 
         this.openItemsButton = view.findViewById(R.id.open_items_button);
         this.editName = view.findViewById(R.id.editName);
@@ -101,7 +101,7 @@ public class ListSettings extends BaseFragment {
         if (this.listSettings() == null) {
             return;
         }
-        if (this.listSettings().isToDownload() != isChecked) {
+        if (this.listSettings().getToDownload() != isChecked) {
             int settingListId = this.listSettings().getListId();
 
             ToDownload toDownload;
@@ -133,7 +133,7 @@ public class ListSettings extends BaseFragment {
             this.imageMedium.setChecked(MediumType.is(listSetting.getMedium(), MediumType.IMAGE));
             this.videoMedium.setChecked(MediumType.is(listSetting.getMedium(), MediumType.VIDEO));
             this.audioMedium.setChecked(MediumType.is(listSetting.getMedium(), MediumType.AUDIO));
-            this.autoDownload.setChecked(listSetting.isToDownload());
+            this.autoDownload.setChecked(listSetting.getToDownload());
 
             if (listSetting.isNameMutable()) {
                 this.editName.setInputType(InputType.TYPE_CLASS_TEXT);

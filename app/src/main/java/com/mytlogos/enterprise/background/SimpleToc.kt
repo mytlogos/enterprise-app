@@ -5,15 +5,10 @@ import com.mytlogos.enterprise.model.Toc
 /**
  *
  */
-class SimpleToc(private val mediumId: Int, private val link: String) : Toc {
-    override fun getMediumId(): Int {
-        return mediumId
-    }
-
-    override fun getLink(): String {
-        return link
-    }
-
+class SimpleToc(
+    override val mediumId: Int,
+    override val link: String,
+) : Toc {
     override fun hashCode(): Int {
         var result = mediumId
         result = 31 * result + link.hashCode()

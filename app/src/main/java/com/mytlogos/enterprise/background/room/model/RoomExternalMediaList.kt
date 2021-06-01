@@ -10,7 +10,13 @@ import androidx.room.PrimaryKey
         childColumns = arrayOf("uuid"),
         onDelete = ForeignKey.CASCADE)],
         indices = [Index(value = arrayOf("uuid")), Index(value = arrayOf("externalListId"))])
-class RoomExternalMediaList(val uuid: String?, @field:PrimaryKey val externalListId: Int, val name: String?, val medium: Int, val url: String?) {
+class RoomExternalMediaList(
+    val uuid: String?,
+    @field:PrimaryKey val externalListId: Int,
+    val name: String?,
+    val medium: Int,
+    val url: String?,
+) {
     override fun toString(): String {
         return "RoomExternalMediaList{" +
                 "uuid='" + uuid + '\'' +
@@ -49,7 +55,10 @@ class RoomExternalMediaList(val uuid: String?, @field:PrimaryKey val externalLis
                     childColumns = arrayOf("listId"),
                     onDelete = ForeignKey.CASCADE)],
             indices = [Index(value = arrayOf("listId")), Index(value = arrayOf("mediumId"))])
-    class ExternalListMediaJoin(override val listId: Int, override val mediumId: Int) : ListMediaJoin {
+    class ExternalListMediaJoin(
+        override val listId: Int,
+        override val mediumId: Int,
+    ) : ListMediaJoin {
         override fun toString(): String {
             return "ExternalListMediaJoin{" +
                     "listId=" + listId +
@@ -57,10 +66,10 @@ class RoomExternalMediaList(val uuid: String?, @field:PrimaryKey val externalLis
                     '}'
         }
 
-        override fun equals(o: Any?): Boolean {
-            if (this === o) return true
-            if (o == null || javaClass != o.javaClass) return false
-            val that = o as ExternalListMediaJoin
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val that = other as ExternalListMediaJoin
             return if (listId != that.listId) false else mediumId == that.mediumId
         }
 

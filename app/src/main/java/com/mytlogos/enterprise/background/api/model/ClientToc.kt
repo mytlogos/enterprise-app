@@ -8,26 +8,21 @@ import com.mytlogos.enterprise.model.Toc
  * id, countryOfOrigin, languageOfOrigin, author, title, medium,
  * artist, lang, stateOrigin, stateTL, series, universe
  */
-class ClientToc(private val mediumId: Int, private val link: String) : Toc {
-    override fun getMediumId(): Int {
-        return mediumId
-    }
-
-    override fun getLink(): String {
-        return link
-    }
+class ClientToc(
+    override val mediumId: Int,
+    override val link: String,
+) : Toc {
 
     override fun hashCode(): Int {
         var result = mediumId
-        result = 31 * result + (link?.hashCode() ?: 0)
+        result = 31 * result + (link.hashCode())
         return result
     }
 
     override fun equals(o: Any?): Boolean {
         if (this === o) return true
         if (o !is ClientToc) return false
-        val clientToc = o
-        return if (mediumId != clientToc.mediumId) false else link == clientToc.link
+        return if (mediumId != o.mediumId) false else link == o.link
     }
 
     override fun toString(): String {

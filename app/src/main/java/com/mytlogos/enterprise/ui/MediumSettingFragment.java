@@ -80,7 +80,7 @@ public class MediumSettingFragment extends BaseFragment {
         this.mediumViewModel = new ViewModelProvider(this).get(ListsViewModel.class);
         this.liveMediumSettings = mediumViewModel.getMediumSettings(mediumId);
 
-        this.liveMediumSettings.observe(this, this::handleNewMediumSetting);
+        this.liveMediumSettings.observe(getViewLifecycleOwner(), this::handleNewMediumSetting);
 
         this.openTocButton = view.findViewById(R.id.open_items_button);
         this.editName = view.findViewById(R.id.editName);
@@ -157,7 +157,7 @@ public class MediumSettingFragment extends BaseFragment {
         if (mediumSetting == null) {
             return;
         }
-        if (mediumSetting.isToDownload() != isChecked) {
+        if (mediumSetting.getToDownload() != isChecked) {
             int settingMediumId = mediumSetting.getMediumId();
 
             ToDownload toDownload = new ToDownload(false, settingMediumId, null, null);
@@ -205,7 +205,7 @@ public class MediumSettingFragment extends BaseFragment {
             this.videoMedium.setChecked(MediumType.is(mediumSetting.getMedium(), MediumType.VIDEO));
             this.audioMedium.setChecked(MediumType.is(mediumSetting.getMedium(), MediumType.AUDIO));
 
-            this.autoDownload.setChecked(mediumSetting.isToDownload());
+            this.autoDownload.setChecked(mediumSetting.getToDownload());
 
             this.autoDownload.setEnabled(true);
             this.textMedium.setEnabled(true);

@@ -20,7 +20,7 @@ import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMedi
         RoomFailedEpisode::class, RoomNotification::class, RoomMediumProgress::class,
         RoomMediumPart::class, RoomPartEpisode::class, RoomEditEvent::class, RoomToc::class
    ],
-    version = 16
+    version = 18
 )
 @TypeConverters(Converters::class)
 abstract class AbstractDatabase : RoomDatabase() {
@@ -57,6 +57,7 @@ abstract class AbstractDatabase : RoomDatabase() {
                                         DB_Name)
                                 .addMigrations(*migrations())
                                 .fallbackToDestructiveMigrationOnDowngrade()
+                                .fallbackToDestructiveMigration()
                                 .build()
                     }
                 }
