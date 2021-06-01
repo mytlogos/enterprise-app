@@ -36,11 +36,11 @@ interface RoomMediumInWaitDao : MultiBaseDao<RoomMediumInWait> {
     fun getByDesc(sortBy: Int, titleFilter: String?, mediumFilter: Int, hostFilter: String?): DataSource.Factory<Int, RoomMediumInWait>
 
     @Query("SELECT * FROM RoomMediumInWait WHERE INSTR(title, :title) > 0 AND medium=:medium")
-    fun getSimilar(title: String, medium: Int): LiveData<List<MediumInWait>>
+    fun getSimilar(title: String, medium: Int): LiveData<MutableList<MediumInWait>>
 
     @Query("SELECT * FROM RoomMediumInWait " +
             "WHERE medium=:medium AND INSTR(lower(title), :title) ORDER BY title LIMIT 10")
-    fun getSuggestions(title: String, medium: Int): LiveData<List<MediumInWait>>
+    fun getSuggestions(title: String, medium: Int): LiveData<MutableList<MediumInWait>>
 
     @Query("DELETE FROM RoomMediumInWait")
     fun clear()

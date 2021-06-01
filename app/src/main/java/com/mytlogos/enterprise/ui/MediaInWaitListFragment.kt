@@ -87,7 +87,7 @@ class MediaInWaitListFragment : BaseSwipeListFragment<MediumInWait, MediaInWaitL
         get() = MediaInWaitListViewModel::class.java
 
     override fun createPagedListLiveData(): LiveData<PagedList<MediumInWait>> {
-        return viewModel!!.mediaInWait
+        return viewModel!!.mediaInWait!!
     }
 
     override fun createFlexible(value: MediumInWait): IFlexible<*> {

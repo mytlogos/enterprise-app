@@ -36,14 +36,14 @@ interface DatabaseStorage {
     fun getAllToDownloads(): List<ToDownload>
     fun removeToDownloads(toDownloads: Collection<ToDownload>)
     fun getListItems(listId: Int): Collection<Int>
-    fun getLiveListItems(listId: Int): LiveData<List<Int>>
+    fun getLiveListItems(listId: Int): LiveData<MutableList<Int>>
     fun getExternalListItems(externalListId: Int): Collection<Int>
-    fun getLiveExternalListItems(externalListId: Int): LiveData<List<Int>>
+    fun getLiveExternalListItems(externalListId: Int): LiveData<MutableList<Int>>
     fun getDownloadableEpisodes(mediumId: Int, limit: Int): List<Int>
     fun getDownloadableEpisodes(mediaIds: Collection<Int>): List<Int>
     fun getDisplayEpisodes(filter: EpisodeViewModel.Filter): LiveData<PagedList<DisplayRelease>>
     fun getDisplayEpisodesGrouped(saved: Int, medium: Int): LiveData<PagedList<DisplayEpisode>>
-    fun getLists(): LiveData<List<MediaList>>
+    fun getLists(): LiveData<MutableList<MediaList>>
     fun insertDanglingMedia(mediaIds: MutableCollection<Int>)
     fun removeDanglingMedia(mediaIds: Collection<Int>)
     fun getListSetting(id: Int, isExternal: Boolean): LiveData<out MediaListSetting?>
@@ -59,8 +59,8 @@ interface DatabaseStorage {
         minCountReadEpisodes: Int
     ): LiveData<PagedList<MediumItem>>
 
-    fun getMediumSettings(mediumId: Int): LiveData<MediumSetting?>
-    fun getMediumSettingsNow(mediumId: Int): MediumSetting?
+    fun getMediumSettings(mediumId: Int): LiveData<MediumSetting>
+    fun getMediumSettingsNow(mediumId: Int): MediumSetting
     fun getToc(
         mediumId: Int,
         sortings: Sortings,
@@ -68,7 +68,7 @@ interface DatabaseStorage {
         saved: Byte
     ): LiveData<PagedList<TocEpisode>>
 
-    fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<List<MediumItem>>
+    fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>>
     fun listExists(listName: String): Boolean
     fun countSavedEpisodes(mediumId: Int): Int
     fun getSavedEpisodes(mediumId: Int): List<Int>
@@ -83,16 +83,16 @@ interface DatabaseStorage {
     ): LiveData<PagedList<MediumInWait>>
 
     fun getReadTodayEpisodes(): LiveData<PagedList<ReadEpisode>>
-    fun getInternLists(): LiveData<List<MediaList>>
+    fun getInternLists(): LiveData<MutableList<MediaList>>
     fun addItemsToList(listId: Int, ids: Collection<Int>)
-    fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<List<MediumInWait>>
-    fun getMediaSuggestions(title: String, medium: Int): LiveData<List<SimpleMedium>>
-    fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<List<MediumInWait>>
-    fun getListSuggestion(name: String): LiveData<List<MediaList>>
+    fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<MutableList<MediumInWait>>
+    fun getMediaSuggestions(title: String, medium: Int): LiveData<MutableList<SimpleMedium>>
+    fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<MutableList<MediumInWait>>
+    fun getListSuggestion(name: String): LiveData<MutableList<MediaList>>
     fun onDownloadAble(): LiveData<Boolean>
     fun clearMediaInWait()
     fun deleteMediaInWait(toDelete: Collection<MediumInWait>)
-    fun getAllDanglingMedia(): LiveData<List<MediumItem>>
+    fun getAllDanglingMedia(): LiveData<MutableList<MediumItem>>
     fun removeItemFromList(listId: Int, mediumId: Int)
     fun removeItemFromList(listId: Int, mediumId: Collection<Int>)
     fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>)

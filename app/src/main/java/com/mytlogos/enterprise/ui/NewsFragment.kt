@@ -111,7 +111,7 @@ class NewsFragment
         get() = NewsViewModel::class.java
 
     override fun createPagedListLiveData(): LiveData<PagedList<News>> {
-        return viewModel!!.news
+        return viewModel!!.news!!
     }
 
     override fun createFlexible(value: News): IFlexible<*> {

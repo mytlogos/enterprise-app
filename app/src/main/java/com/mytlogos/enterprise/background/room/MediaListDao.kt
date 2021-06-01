@@ -42,12 +42,12 @@ interface MediaListDao : MultiBaseDao<RoomMediaList> {
     val listItems: List<MediaListMediaJoin>
 
     @Query("SELECT mediumId FROM MediaListMediaJoin WHERE listId=:listId")
-    fun getLiveListItems(listId: Int): LiveData<List<Int>>
+    fun getLiveListItems(listId: Int): LiveData<MutableList<Int>>
 
     @get:Query("SELECT RoomMediaList.*, " +
             "(SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size " +
             "FROM RoomMediaList")
-    val listViews: LiveData<List<MediaList>>
+    val listViews: LiveData<MutableList<MediaList>>
 
     @Query("SELECT RoomMediaList.listId,RoomMediaList.uuid,medium,name,toDownload, " +
             "   (SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size " +
@@ -71,7 +71,7 @@ interface MediaListDao : MultiBaseDao<RoomMediaList> {
     fun listExists(listName: String): Boolean
 
     @Query("SELECT RoomMediaList.*, 0 as size FROM RoomMediaList WHERE :name IS NULL OR INSTR(lower(name), :name) > 0 LIMIT 5")
-    fun getSuggestion(name: String): LiveData<List<MediaList>>
+    fun getSuggestion(name: String): LiveData<MutableList<MediaList>>
 
     @get:Query("SELECT DISTINCT mediumId FROM MediaListMediaJoin")
     val allLinkedMedia: List<Int>

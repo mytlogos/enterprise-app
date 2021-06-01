@@ -1,79 +1,82 @@
-package com.mytlogos.enterprise.viewmodel;
+package com.mytlogos.enterprise.viewmodel
 
-import android.app.Application;
+import android.app.Application
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Transformations
+import com.mytlogos.enterprise.model.MediaList
+import com.mytlogos.enterprise.model.MediumInWait
+import com.mytlogos.enterprise.model.SimpleMedium
+import java.util.concurrent.CompletableFuture
 
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Transformations;
+class MediumInWaitViewModel(application: Application?) : FilterableViewModel(application) {
+    private val mediumTitleFilterLiveData = MutableLiveData<String?>()
+    private val mediumInWaitTitleFilterLiveData = MutableLiveData<String?>()
+    private val listNameFilterLiveData = MutableLiveData<String?>()
+    override fun resetFilter() {}
 
-import com.mytlogos.enterprise.model.MediaList;
-import com.mytlogos.enterprise.model.MediumInWait;
-import com.mytlogos.enterprise.model.SimpleMedium;
-
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
-public class MediumInWaitViewModel extends FilterableViewModel {
-
-    private MutableLiveData<String> mediumTitleFilterLiveData = new MutableLiveData<>();
-    private MutableLiveData<String> mediumInWaitTitleFilterLiveData = new MutableLiveData<>();
-    private MutableLiveData<String> listNameFilterLiveData = new MutableLiveData<>();
-
-    public MediumInWaitViewModel(Application application) {
-        super(application);
+    fun getInternalLists(): LiveData<MutableList<MediaList>> {
+        return repository.internLists
     }
 
-    @Override
-    public void resetFilter() {
-
+    fun getSimilarMediaInWait(mediumInWait: MediumInWait?): LiveData<MutableList<MediumInWait>> {
+        return repository.getSimilarMediaInWait(mediumInWait!!)
     }
 
-    public LiveData<List<MediumInWait>> getSimilarMediaInWait(MediumInWait mediumInWait) {
-        return repository.getSimilarMediaInWait(mediumInWait);
-    }
-
-    public LiveData<List<SimpleMedium>> getMediumSuggestions(int medium) {
+    fun getMediumSuggestions(medium: Int): LiveData<MutableList<SimpleMedium>> {
         return Transformations.switchMap(
-                mediumTitleFilterLiveData,
-                input -> repository.getMediaSuggestions(input, medium)
-        );
+            mediumTitleFilterLiveData
+        ) { input: String? ->
+            repository.getMediaSuggestions(
+                input!!, medium)
+        }
     }
 
-    public LiveData<List<MediumInWait>> getMediumInWaitSuggestions(int medium) {
+    fun getMediumInWaitSuggestions(medium: Int): LiveData<MutableList<MediumInWait>> {
         return Transformations.switchMap(
-                mediumInWaitTitleFilterLiveData,
-                input -> repository.getMediaInWaitSuggestions(input, medium)
-        );
+            mediumInWaitTitleFilterLiveData
+        ) { input: String? ->
+            repository.getMediaInWaitSuggestions(
+                input!!, medium)
+        }
     }
 
-    public void setMediumInWaitTitleFilter(String titleFilter) {
-        titleFilter = processStringFilter(titleFilter);
-        this.mediumInWaitTitleFilterLiveData.setValue(titleFilter);
+    fun setMediumInWaitTitleFilter(titleFilter: String) {
+        var titleFilter = titleFilter
+        titleFilter = processStringFilter(titleFilter)
+        mediumInWaitTitleFilterLiveData.value = titleFilter
     }
 
-    public void setMediumTitleFilter(String titleFilter) {
-        titleFilter = processStringFilter(titleFilter);
-        this.mediumTitleFilterLiveData.setValue(titleFilter);
+    fun setMediumTitleFilter(titleFilter: String) {
+        var titleFilter = titleFilter
+        titleFilter = processStringFilter(titleFilter)
+        mediumTitleFilterLiveData.value = titleFilter
     }
 
-    public void setListNameFilter(String filter) {
-        filter = processStringFilter(filter);
-        this.listNameFilterLiveData.setValue(filter);
+    fun setListNameFilter(filter: String) {
+        var filter = filter
+        filter = processStringFilter(filter)
+        listNameFilterLiveData.value = filter
     }
 
-    public CompletableFuture<Boolean> consumeMediumInWait(SimpleMedium selectedMedium, List<MediumInWait> mediumInWaits) {
-        return repository.consumeMediumInWait(selectedMedium, mediumInWaits);
+    fun consumeMediumInWait(
+        selectedMedium: SimpleMedium,
+        mediumInWaits: List<MediumInWait>,
+    ): CompletableFuture<Boolean> {
+        return repository.consumeMediumInWait(selectedMedium, mediumInWaits)
     }
 
-    public CompletableFuture<Boolean> createMedium(MediumInWait mediumInWait, List<MediumInWait> mediumInWaits, MediaList list) {
-        return this.repository.createMedium(mediumInWait, mediumInWaits, list);
+    fun createMedium(
+        mediumInWait: MediumInWait,
+        mediumInWaits: List<MediumInWait>,
+        list: MediaList?,
+    ): CompletableFuture<Boolean> {
+        return repository.createMedium(mediumInWait, mediumInWaits, list!!)
     }
 
-    public LiveData<List<MediaList>> getInternalLists() {
-        return repository.getInternLists();
-    }
-
-    public LiveData<List<MediaList>> getListSuggestion() {
-        return Transformations.switchMap(listNameFilterLiveData, this.repository::getListSuggestion);
-    }
+    val listSuggestion: LiveData<MutableList<MediaList>>
+        get() = Transformations.switchMap(listNameFilterLiveData) { name: String? ->
+            repository.getListSuggestion(
+                name!!)
+        }
 }

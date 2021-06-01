@@ -1,19 +1,12 @@
-package com.mytlogos.enterprise.viewmodel;
+package com.mytlogos.enterprise.viewmodel
 
-import android.app.Application;
+import android.app.Application
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.model.ReadEpisode
 
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
-
-import com.mytlogos.enterprise.model.ReadEpisode;
-
-public class ReadEpisodeViewModel extends RepoViewModel {
-    public ReadEpisodeViewModel(Application application) {
-        super(application);
+class ReadEpisodeViewModel(application: Application?) : RepoViewModel(application) {
+    fun getReadEpisodes(): LiveData<PagedList<ReadEpisode>> {
+        return repository.readTodayEpisodes
     }
-
-    public LiveData<PagedList<ReadEpisode>> getReadEpisodes() {
-        return repository.getReadTodayEpisodes();
-    }
-
 }

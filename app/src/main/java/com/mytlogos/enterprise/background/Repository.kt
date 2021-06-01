@@ -72,7 +72,7 @@ interface Repository {
     fun getDownloadableEpisodes(mediumId: Int, limit: Int): List<Int>
     fun getDisplayEpisodes(filter: EpisodeViewModel.Filter): LiveData<PagedList<DisplayRelease>>
     fun getDisplayEpisodesGrouped(saved: Int, medium: Int): LiveData<PagedList<DisplayEpisode>>
-    val lists: LiveData<List<MediaList>>
+    val lists: LiveData<MutableList<MediaList>>
     fun getListSettings(id: Int, isExternal: Boolean): LiveData<out MediaListSetting?>
     fun updateListName(listSetting: MediaListSetting, newName: String): CompletableFuture<String>
     fun updateListMedium(
@@ -91,7 +91,7 @@ interface Repository {
         minCountReadEpisodes: Int
     ): LiveData<PagedList<MediumItem>>
 
-    fun getMediumSettings(mediumId: Int): LiveData<MediumSetting?>
+    fun getMediumSettings(mediumId: Int): LiveData<MediumSetting>
     fun updateMedium(mediumSettings: MediumSetting): CompletableFuture<String>
     fun getToc(
         mediumId: Int,
@@ -100,7 +100,7 @@ interface Repository {
         saved: Byte
     ): LiveData<PagedList<TocEpisode>>
 
-    fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<List<MediumItem>>
+    fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>>
 
     @Throws(IOException::class)
     fun loadMediaInWaitSync()
@@ -120,16 +120,16 @@ interface Repository {
         sortings: Sortings
     ): LiveData<PagedList<MediumInWait>>
 
-    val internLists: LiveData<List<MediaList>>
+    val internLists: LiveData<MutableList<MediaList>>
     fun moveMediaToList(
         oldListId: Int,
         listId: Int,
         ids: MutableCollection<Int>
     ): CompletableFuture<Boolean>
 
-    fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<List<MediumInWait>>
-    fun getMediaSuggestions(title: String, medium: Int): LiveData<List<SimpleMedium>>
-    fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<List<MediumInWait>>
+    fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<MutableList<MediumInWait>>
+    fun getMediaSuggestions(title: String, medium: Int): LiveData<MutableList<SimpleMedium>>
+    fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<MutableList<MediumInWait>>
     fun consumeMediumInWait(
         selectedMedium: SimpleMedium,
         mediumInWaits: List<MediumInWait>
@@ -149,10 +149,10 @@ interface Repository {
         mediumId: Int
     ): CompletableFuture<Boolean>
 
-    fun getListSuggestion(name: String): LiveData<List<MediaList>>
+    fun getListSuggestion(name: String): LiveData<MutableList<MediaList>>
     fun onDownloadable(): LiveData<Boolean>
     fun removeDanglingMedia(mediaIds: Collection<Int>)
-    val allDanglingMedia: LiveData<List<MediumItem>>
+    val allDanglingMedia: LiveData<MutableList<MediumItem>>
     fun addMediumToList(listId: Int, ids: MutableCollection<Int>): CompletableFuture<Boolean>
     val externalUser: LiveData<PagedList<ExternalUser>>
     fun getSpaceMedium(mediumId: Int): SpaceMedium

@@ -43,7 +43,7 @@ object Utils {
     }
 
     @JvmStatic
-    fun <E : Any> transform(listLiveData: LiveData<List<E>>): LiveData<PagedList<E>> {
+    fun <E : Any> transform(listLiveData: LiveData<MutableList<E>>): LiveData<PagedList<E>> {
         return Transformations.switchMap(
             listLiveData
         ) { input: List<E> ->

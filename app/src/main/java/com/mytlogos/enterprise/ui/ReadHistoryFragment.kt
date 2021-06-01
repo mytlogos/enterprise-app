@@ -45,7 +45,7 @@ class ReadHistoryFragment
         get() = ReadEpisodeViewModel::class.java
 
     override fun createPagedListLiveData(): LiveData<PagedList<ReadEpisode>> {
-        return viewModel!!.readEpisodes
+        return viewModel!!.getReadEpisodes()
     }
 
     override fun createFlexible(value: ReadEpisode): IFlexible<*> {

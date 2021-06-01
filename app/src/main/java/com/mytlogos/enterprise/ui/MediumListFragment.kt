@@ -137,7 +137,7 @@ class MediumListFragment : BaseListFragment<MediumItem, MediumViewModel>() {
         get() = MediumViewModel::class.java
 
     override fun createPagedListLiveData(): LiveData<PagedList<MediumItem>> {
-        return viewModel!!.allMedia
+        return viewModel!!.allMedia!!
     }
 
     override fun createFlexible(value: MediumItem): IFlexible<*> {

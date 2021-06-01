@@ -1,7 +1,5 @@
-package com.mytlogos.enterprise.viewmodel;
+package com.mytlogos.enterprise.viewmodel
 
-public interface MediumFilterableViewModel {
-    void setMediumFilter(int filter);
-
-    int getMediumFilter();
+interface MediumFilterableViewModel {
+    var mediumFilter: Int
 }

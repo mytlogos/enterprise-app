@@ -11,7 +11,7 @@ interface PartDao : MultiBaseDao<RoomPart> {
     fun loaded(): List<Int>
 
     @Query("SELECT * FROM RoomPart WHERE mediumId=:mediumId ORDER BY combiIndex DESC")
-    fun getParts(mediumId: Int): LiveData<List<RoomPart>>
+    fun getParts(mediumId: Int): LiveData<MutableList<RoomPart>>
 
     @Query("SELECT * FROM RoomPart WHERE mediumId=:mediumId ORDER BY combiIndex DESC")
     fun getPartsNow(mediumId: Int): List<RoomPart>

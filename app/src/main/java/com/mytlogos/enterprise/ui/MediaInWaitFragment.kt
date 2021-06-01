@@ -84,7 +84,7 @@ class MediaInWaitFragment : BaseFragment() {
         listSelect!!.adapter = TextOnlyListAdapter(
             this,
             Transformations.map(
-                viewModel!!.internalLists) { input: MutableList<MediaList> ->
+                viewModel!!.getInternalLists()) { input: MutableList<MediaList> ->
                 input.add(0, NO_LIST)
                 input
             },
@@ -175,6 +175,9 @@ class MediaInWaitFragment : BaseFragment() {
         if (running) {
             return
         }
+        if (mediumInWait == null) {
+            return
+        }
         running = true
         if (addMedium!!.isChecked) {
             val items = listAdapter.currentItems
@@ -188,7 +191,7 @@ class MediaInWaitFragment : BaseFragment() {
             if (item == NO_LIST) {
                 item = null
             }
-            val success = viewModel!!.createMedium(mediumInWait, mediumInWaits, item)
+            val success = viewModel!!.createMedium(mediumInWait!!, mediumInWaits, item)
             success.whenComplete { aBoolean: Boolean?, throwable: Throwable? ->
                 val msg: String = if (aBoolean == null || !aBoolean || throwable != null) {
                     "Could not create Medium"
@@ -207,14 +210,14 @@ class MediaInWaitFragment : BaseFragment() {
                 return
             }
             val items = listAdapter.currentItems
-            val mediumInWaits: MutableList<MediumInWait?> = ArrayList()
+            val mediumInWaits: MutableList<MediumInWait> = ArrayList()
             for (item in items) {
                 if (item is FlexibleMediumInWait) {
                     mediumInWaits.add(item.mediumInWait)
                 }
             }
-            mediumInWaits.add(mediumInWait)
-            val success = viewModel!!.consumeMediumInWait(selectedMedium, mediumInWaits)
+            mediumInWaits.add(mediumInWait!!)
+            val success = viewModel!!.consumeMediumInWait(selectedMedium!!, mediumInWaits)
             success.whenComplete { aBoolean: Boolean?, throwable: Throwable? ->
                 val msg: String = if (aBoolean == null || !aBoolean || throwable != null) {
                     "Could not process Media"

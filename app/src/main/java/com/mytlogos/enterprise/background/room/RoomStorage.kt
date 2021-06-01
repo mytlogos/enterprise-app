@@ -134,7 +134,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return mediaListDao.getListItems(listId)
     }
 
-    override fun getLiveListItems(listId: Int): LiveData<List<Int>> {
+    override fun getLiveListItems(listId: Int): LiveData<MutableList<Int>> {
         return mediaListDao.getLiveListItems(listId)
     }
 
@@ -142,7 +142,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return externalMediaListDao.getExternalListItems(externalListId)
     }
 
-    override fun getLiveExternalListItems(externalListId: Int): LiveData<List<Int>> {
+    override fun getLiveExternalListItems(externalListId: Int): LiveData<MutableList<Int>> {
         return externalMediaListDao.getLiveExternalListItems(externalListId)
     }
 
@@ -171,8 +171,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
         ).build()
     }
 
-    override fun getLists(): LiveData<List<MediaList>> {
-        val liveData = MediatorLiveData<List<MediaList>>()
+    override fun getLists(): LiveData<MutableList<MediaList>> {
+        val liveData = MediatorLiveData<MutableList<MediaList>>()
         liveData.addSource(mediaListDao.listViews) { mediaLists: List<MediaList>? ->
             val set = HashSet<MediaList>()
             if (liveData.value != null) {
@@ -258,11 +258,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
     }
 
-    override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting?> {
+    override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
         return mediumDao.getMediumSettings(mediumId)
     }
 
-    override fun getMediumSettingsNow(mediumId: Int): MediumSetting? {
+    override fun getMediumSettingsNow(mediumId: Int): MediumSetting {
         return mediumDao.getMediumSettingsNow(mediumId)
     }
 
@@ -280,7 +280,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }, 50).build()
     }
 
-    override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<List<MediumItem>> {
+    override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>> {
         return if (isExternal) {
             mediumDao.getExternalListMedia(listId)
         } else {
@@ -343,7 +343,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         ).build()
     }
 
-    override fun getInternLists(): LiveData<List<MediaList>> {
+    override fun getInternLists(): LiveData<MutableList<MediaList>> {
         return mediaListDao.listViews
     }
 
@@ -355,19 +355,19 @@ class RoomStorage(application: Application) : DatabaseStorage {
         mediaListDao.addJoin(joins)
     }
 
-    override fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<List<MediumInWait>> {
+    override fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<MutableList<MediumInWait>> {
         return mediumInWaitDao.getSimilar(mediumInWait.title, mediumInWait.medium)
     }
 
-    override fun getMediaSuggestions(title: String, medium: Int): LiveData<List<SimpleMedium>> {
+    override fun getMediaSuggestions(title: String, medium: Int): LiveData<MutableList<SimpleMedium>> {
         return mediumDao.getSuggestions(title, medium)
     }
 
-    override fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<List<MediumInWait>> {
+    override fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<MutableList<MediumInWait>> {
         return mediumInWaitDao.getSuggestions(title, medium)
     }
 
-    override fun getListSuggestion(name: String): LiveData<List<MediaList>> {
+    override fun getListSuggestion(name: String): LiveData<MutableList<MediaList>> {
         return mediaListDao.getSuggestion(name)
     }
 
@@ -401,7 +401,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         mediumInWaitDao.deleteBulk(converter.convertMediaInWait(toDelete))
     }
 
-    override fun getAllDanglingMedia(): LiveData<List<MediumItem>> {
+    override fun getAllDanglingMedia(): LiveData<MutableList<MediumItem>> {
         return roomDanglingDao.all
     }
 

@@ -187,7 +187,7 @@ class TocFragment
         if (value == null || position < 0) {
             return position
         }
-        val sort = viewModel!!.sort
+        val sort = viewModel!!.getSort()
         if (sort === Sortings.INDEX_DESC) {
             position = value.size - position
         } else if (sort !== Sortings.INDEX_ASC) {

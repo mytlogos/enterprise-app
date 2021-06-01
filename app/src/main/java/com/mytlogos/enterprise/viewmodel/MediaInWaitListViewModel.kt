@@ -1,150 +1,127 @@
-package com.mytlogos.enterprise.viewmodel;
+package com.mytlogos.enterprise.viewmodel
 
-import android.app.Application;
+import android.app.Application
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Transformations
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.model.MediumInWait
+import com.mytlogos.enterprise.tools.Sortings
+import java.io.IOException
 
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Transformations;
-import androidx.paging.PagedList;
-
-import com.mytlogos.enterprise.model.MediumInWait;
-import com.mytlogos.enterprise.tools.Sortings;
-
-import java.io.IOException;
-
-public class MediaInWaitListViewModel extends FilterableViewModel implements SortableViewModel, MediumFilterableViewModel {
-
-    private LiveData<PagedList<MediumInWait>> mediaInWait;
-    private MutableLiveData<FilterSort> filterSortLiveData = new MutableLiveData<>();
-
-    public MediaInWaitListViewModel(Application application) {
-        super(application);
-    }
-
-    public LiveData<PagedList<MediumInWait>> getMediaInWait() {
-        if (this.mediaInWait == null) {
-            this.mediaInWait = Transformations.switchMap(
-                    this.filterSortLiveData,
-                    input -> {
-                        if (input == null) {
-                            return repository.getMediaInWaitBy(
-                                    null,
-                                    0,
-                                    null,
-                                    Sortings.TITLE_AZ
-                            );
-                        } else {
-                            return repository.getMediaInWaitBy(
-                                    input.titleFilter,
-                                    input.mediumFilter,
-                                    input.hostFilter,
-                                    input.sortings
-                            );
-                        }
+class MediaInWaitListViewModel(application: Application?) : FilterableViewModel(application),
+    SortableViewModel, MediumFilterableViewModel {
+    var mediaInWait: LiveData<PagedList<MediumInWait>>? = null
+        get() {
+            if (field == null) {
+                field = Transformations.switchMap(
+                    filterSortLiveData
+                ) { input: FilterSort? ->
+                    if (input == null) {
+                        return@switchMap repository.getMediaInWaitBy(
+                            null,
+                            0,
+                            null,
+                            Sortings.TITLE_AZ
+                        )
+                    } else {
+                        return@switchMap repository.getMediaInWaitBy(
+                            input.titleFilter,
+                            input.mediumFilter,
+                            input.hostFilter,
+                            input.sortings
+                        )
                     }
-            );
-            this.filterSortLiveData.setValue(new FilterSort());
+                }
+                filterSortLiveData.value = FilterSort()
+            }
+            return field
         }
-        return this.mediaInWait;
+        private set
+    private val filterSortLiveData = MutableLiveData<FilterSort?>()
+    @Throws(IOException::class)
+    fun loadMediaInWait() {
+        repository.loadMediaInWaitSync()
     }
 
-    public void loadMediaInWait() throws IOException {
-        this.repository.loadMediaInWaitSync();
-    }
-
-    @Override
-    public void setSort(Sortings sort) {
-        FilterSort value = filterSortLiveData.getValue();
-
-        if (value != null) {
-            value = new FilterSort(sort, value.mediumFilter, value.titleFilter, value.hostFilter);
+    override fun setSort(sort: Sortings) {
+        var value = filterSortLiveData.value
+        value = if (value != null) {
+            FilterSort(sort, value.mediumFilter, value.titleFilter, value.hostFilter)
         } else {
-            value = new FilterSort(sort, 0, null, null);
+            FilterSort(sort, 0, null, null)
         }
-        filterSortLiveData.setValue(value);
+        filterSortLiveData.value = value
     }
 
-    public void setTitleFilter(String filter) {
-        FilterSort value = filterSortLiveData.getValue();
+    var titleFilter: String
+        get() {
+            val value = filterSortLiveData.value
+            return if (value == null) "" else value.titleFilter ?: ""
+        }
+        set(filter) {
+            var filter = filter
+            var value = filterSortLiveData.value
+            filter = processStringFilter(filter)
+            value = if (value != null) {
+                FilterSort(value.sortings, value.mediumFilter, filter, value.hostFilter)
+            } else {
+                FilterSort(Sortings.TITLE_AZ, 0, filter, null)
+            }
+            filterSortLiveData.value = value
+        }
+    var hostFilter: String
+        get() {
+            val value = filterSortLiveData.value
+            return if (value == null) "" else value.hostFilter ?: ""
+        }
+        set(filter) {
+            var filter = filter
+            var value = filterSortLiveData.value
+            filter = processStringFilter(filter)
+            value = if (value != null) {
+                FilterSort(value.sortings, value.mediumFilter, value.titleFilter, filter)
+            } else {
+                FilterSort(Sortings.TITLE_AZ, 0, null, filter)
+            }
+            filterSortLiveData.value = value
+        }
+    override var mediumFilter: Int
+        get() {
+            val value = filterSortLiveData.value
+            return if (value == null) 0 else if (value.mediumFilter < 0) 0 else value.mediumFilter
+        }
+        set(filter) {
+            var value = filterSortLiveData.value
+            value = if (value != null) {
+                FilterSort(value.sortings, filter, value.titleFilter, value.hostFilter)
+            } else {
+                FilterSort(Sortings.TITLE_AZ, filter, null, null)
+            }
+            filterSortLiveData.value = value
+        }
 
-        filter = processStringFilter(filter);
-        if (value != null) {
-            value = new FilterSort(value.sortings, value.mediumFilter, filter, value.hostFilter);
+    override fun resetFilter() {
+        val sort: FilterSort
+        sort = if (filterSortLiveData.value != null) {
+            FilterSort(filterSortLiveData.value!!.sortings)
         } else {
-            value = new FilterSort(Sortings.TITLE_AZ, 0, filter, null);
+            FilterSort()
         }
-        filterSortLiveData.setValue(value);
+        filterSortLiveData.value = sort
     }
 
-    public void setHostFilter(String filter) {
-        FilterSort value = filterSortLiveData.getValue();
-
-        filter = processStringFilter(filter);
-        if (value != null) {
-            value = new FilterSort(value.sortings, value.mediumFilter, value.titleFilter, filter);
-        } else {
-            value = new FilterSort(Sortings.TITLE_AZ, 0, null, filter);
-        }
-        filterSortLiveData.setValue(value);
-    }
-
-    @Override
-    public void setMediumFilter(int filter) {
-        FilterSort value = filterSortLiveData.getValue();
-
-        if (value != null) {
-            value = new FilterSort(value.sortings, filter, value.titleFilter, value.hostFilter);
-        } else {
-            value = new FilterSort(Sortings.TITLE_AZ, filter, null, null);
-        }
-        filterSortLiveData.setValue(value);
-    }
-
-    public String getTitleFilter() {
-        FilterSort value = this.filterSortLiveData.getValue();
-        return value == null ? "" : value.titleFilter == null ? "" : value.titleFilter;
-    }
-
-    public String getHostFilter() {
-        FilterSort value = this.filterSortLiveData.getValue();
-        return value == null ? "" : value.hostFilter == null ? "" : value.hostFilter;
-    }
-
-    @Override
-    public int getMediumFilter() {
-        FilterSort value = this.filterSortLiveData.getValue();
-        return value == null ? 0 : value.mediumFilter < 0 ? 0 : value.mediumFilter;
-    }
-
-    public void resetFilter() {
-        FilterSort sort;
-        if (this.filterSortLiveData.getValue() != null) {
-            sort = new FilterSort(this.filterSortLiveData.getValue().sortings);
-        } else {
-            sort = new FilterSort();
-        }
-        this.filterSortLiveData.setValue(sort);
-    }
-
-    private static class FilterSort {
-        private final Sortings sortings;
-        private final int mediumFilter;
-        private final String titleFilter;
-        private final String hostFilter;
-
-        private FilterSort(Sortings sortings, int mediumFilter, String titleFilter, String hostFilter) {
-            this.sortings = sortings;
-            this.mediumFilter = mediumFilter;
-            this.titleFilter = titleFilter;
-            this.hostFilter = hostFilter;
-        }
-
-        FilterSort() {
-            this(Sortings.TITLE_AZ);
-        }
-
-        FilterSort(Sortings sortings) {
-            this(sortings, 0, null, null);
+    private class FilterSort(
+        val sortings: Sortings,
+        val mediumFilter: Int,
+        val titleFilter: String?,
+        val hostFilter: String?
+    ) {
+        @JvmOverloads
+        constructor(sortings: Sortings = Sortings.TITLE_AZ) : this(sortings,
+            0,
+            null,
+            null) {
         }
     }
 }

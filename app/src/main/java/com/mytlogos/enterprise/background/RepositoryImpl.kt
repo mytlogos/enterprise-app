@@ -26,7 +26,6 @@ import java.io.IOException
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
-import java.util.function.Supplier
 import kotlin.collections.ArrayList
 
 class RepositoryImpl private constructor(application: Application) : Repository {
@@ -363,7 +362,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getDisplayEpisodesGrouped(saved, medium)
     }
 
-    override val lists: LiveData<List<MediaList>>
+    override val lists: LiveData<MutableList<MediaList>>
         get() = storage.getLists()
 
     override fun getListSettings(id: Int, isExternal: Boolean): LiveData<out MediaListSetting> {
@@ -408,7 +407,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         )
     }
 
-    override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting?> {
+    override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
         return storage.getMediumSettings(mediumId)
     }
 
@@ -425,7 +424,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getToc(mediumId, sortings, read, saved)
     }
 
-    override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<List<MediumItem>> {
+    override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>> {
         return storage.getMediumItems(listId, isExternal)
     }
 
@@ -701,21 +700,21 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getMediaInWaitBy(filter, mediumFilter, hostFilter, sortings)
     }
 
-    override val internLists: LiveData<List<MediaList>>
+    override val internLists: LiveData<MutableList<MediaList>>
         get() = storage.getInternLists()
 
-    override fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<List<MediumInWait>> {
+    override fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<MutableList<MediumInWait>> {
         return storage.getSimilarMediaInWait(mediumInWait)
     }
 
-    override fun getMediaSuggestions(title: String, medium: Int): LiveData<List<SimpleMedium>> {
+    override fun getMediaSuggestions(title: String, medium: Int): LiveData<MutableList<SimpleMedium>> {
         return storage.getMediaSuggestions(title, medium)
     }
 
     override fun getMediaInWaitSuggestions(
         title: String,
         medium: Int
-    ): LiveData<List<MediumInWait>> {
+    ): LiveData<MutableList<MediumInWait>> {
         return storage.getMediaInWaitSuggestions(title, medium)
     }
 
@@ -903,7 +902,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         TaskManager.runAsyncTask { storage.clearFailEpisodes() }
     }
 
-    override fun getListSuggestion(name: String): LiveData<List<MediaList>> {
+    override fun getListSuggestion(name: String): LiveData<MutableList<MediaList>> {
         return storage.getListSuggestion(name)
     }
 
@@ -915,7 +914,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         storage.removeDanglingMedia(mediaIds)
     }
 
-    override val allDanglingMedia: LiveData<List<MediumItem>>
+    override val allDanglingMedia: LiveData<MutableList<MediumItem>>
         get() = storage.getAllDanglingMedia()
 
     companion object {

@@ -90,7 +90,7 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
             val builder = AlertDialog.Builder(context)
             val listsViewModel = ViewModelProvider(this@ListMediumFragment)
                 .get(ListsViewModel::class.java)
-            val listLiveData = Transformations.map<MutableList<MediaList>, List<MediaList>>(
+            val listLiveData = Transformations.map(
                 listsViewModel.internLists
             ) { input: MutableList<MediaList> ->
                 input.removeIf { list: MediaList -> list.listId == listId }
@@ -202,10 +202,8 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
         }
         val item = flexibleAdapter!!.getItem(position) as? FlexibleMediumItem ?: return false
         val mediumItem = item.item
-        if (mediumItem != null) {
-            val fragment: TocFragment = TocFragment.newInstance(mediumItem.mediumId)
-            mainActivity.switchWindow(fragment, true)
-        }
+        val fragment: TocFragment = TocFragment.newInstance(mediumItem.mediumId)
+        mainActivity.switchWindow(fragment, true)
         return false
     }
 

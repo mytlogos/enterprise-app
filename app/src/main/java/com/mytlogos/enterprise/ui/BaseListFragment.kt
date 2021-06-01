@@ -39,8 +39,8 @@ import java.util.function.Consumer
 import kotlin.math.min
 
 abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : BaseFragment(),
-    FlexibleAdapter.OnItemClickListener, EndlessScrollListener, OnActionStateListener,
-    OnDeleteCompleteListener, OnFilterListener, FlexibleAdapter.OnItemLongClickListener,
+    OnItemClickListener, EndlessScrollListener, OnActionStateListener,
+    OnDeleteCompleteListener, OnFilterListener, OnItemLongClickListener,
     OnItemMoveListener, OnItemSwipeListener, OnStickyHeaderChangeListener, OnUpdateListener {
     var flexibleAdapter: FlexibleAdapter<IFlexible<*>>? = null
         private set
@@ -537,7 +537,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     open val sortMap: LinkedHashMap<String, Sortings>
         get() = LinkedHashMap()
 
-    fun onSortingChanged(sortings: Sortings?) {
+    fun onSortingChanged(sortings: Sortings) {
         if (viewModel is SortableViewModel) {
             (viewModel as SortableViewModel).setSort(sortings)
         }
@@ -551,7 +551,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
             if (which < strings.size && which >= 0) {
                 val title = strings[which]
                 val sortings = map[title]
-                onSortingChanged(sortings)
+                onSortingChanged(sortings!!)
             }
         }
         builder.setTitle("Sort By")

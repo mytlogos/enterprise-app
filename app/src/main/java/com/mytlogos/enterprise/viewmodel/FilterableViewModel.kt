@@ -1,22 +1,12 @@
-package com.mytlogos.enterprise.viewmodel;
+package com.mytlogos.enterprise.viewmodel
 
-import android.app.Application;
+import android.app.Application
 
-public abstract class FilterableViewModel extends RepoViewModel {
-
-    FilterableViewModel(Application application) {
-        super(application);
+abstract class FilterableViewModel internal constructor(application: Application?) :
+    RepoViewModel(application) {
+    fun processStringFilter(filter: String): String {
+        return filter.lowercase()
     }
 
-    String processStringFilter(String filter) {
-        if (filter != null && filter.isEmpty()) {
-            filter = null;
-        }
-        if (filter != null) {
-            filter = filter.toLowerCase();
-        }
-        return filter;
-    }
-
-    public abstract void resetFilter();
+    abstract fun resetFilter()
 }

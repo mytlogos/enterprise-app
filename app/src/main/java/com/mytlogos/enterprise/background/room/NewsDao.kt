@@ -23,7 +23,7 @@ interface NewsDao {
     fun deleteOldNews()
 
     @Query("SELECT * FROM RoomNews WHERE read=0  ORDER BY timeStamp DESC")
-    fun geUnreadNews(): LiveData<List<RoomNews>>
+    fun geUnreadNews(): LiveData<MutableList<RoomNews>>
 
     @Insert
     fun insertNews(user: RoomNews)

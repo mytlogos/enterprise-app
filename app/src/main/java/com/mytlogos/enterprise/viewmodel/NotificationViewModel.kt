@@ -1,24 +1,16 @@
-package com.mytlogos.enterprise.viewmodel;
+package com.mytlogos.enterprise.viewmodel
 
-import android.app.Application;
+import android.app.Application
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.background.TaskManager.Companion.runTask
+import com.mytlogos.enterprise.model.NotificationItem
 
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
+class NotificationViewModel(application: Application?) : RepoViewModel(application) {
+    val notifications: LiveData<PagedList<NotificationItem>>
+        get() = repository.notifications
 
-import com.mytlogos.enterprise.background.TaskManager;
-import com.mytlogos.enterprise.model.NotificationItem;
-
-public class NotificationViewModel extends RepoViewModel {
-
-    public NotificationViewModel(Application application) {
-        super(application);
-    }
-
-    public LiveData<PagedList<NotificationItem>> getNotifications() {
-        return this.repository.getNotifications();
-    }
-
-    public void clearNotifications() {
-        TaskManager.runTask(this.repository::clearNotifications);
+    fun clearNotifications() {
+        runTask { repository.clearNotifications() }
     }
 }

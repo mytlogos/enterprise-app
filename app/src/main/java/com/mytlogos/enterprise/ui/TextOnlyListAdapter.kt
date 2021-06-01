@@ -15,7 +15,7 @@ class TextOnlyListAdapter<E> : ArrayAdapter<E> {
 
     internal constructor(
         fragment: Fragment,
-        liveData: LiveData<List<E>>,
+        liveData: LiveData<MutableList<E>>,
         extractor: Function<E, String>?
     ) : super(fragment.requireContext(), R.layout.text_only_item) {
         this.extractor = extractor

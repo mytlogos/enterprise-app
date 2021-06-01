@@ -1,67 +1,58 @@
-package com.mytlogos.enterprise.viewmodel;
+package com.mytlogos.enterprise.viewmodel
 
-import android.app.Application;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
+import android.app.Application
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.paging.PagedList
+import com.mytlogos.enterprise.background.TaskManager.Companion.runTask
+import com.mytlogos.enterprise.model.News
+import org.joda.time.DateTime
 
-import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.paging.PagedList;
-
-import com.mytlogos.enterprise.background.TaskManager;
-import com.mytlogos.enterprise.model.News;
-
-import org.joda.time.DateTime;
-
-import java.util.List;
-
-public class NewsViewModel extends RepoViewModel {
-
-    private final Handler handler;
-    private final int LOADING_COMPLETE = 0x1;
-    private final MutableLiveData<Boolean> loadingComplete = new MutableLiveData<>();
-    private LiveData<PagedList<News>> news;
-
-    public NewsViewModel(@NonNull Application application) {
-        super(application);
-        repository.getNews();
-        handler = new Handler(Looper.getMainLooper()) {
-            @Override
-            public void handleMessage(Message msg) {
-                loadingComplete.setValue(true);
+class NewsViewModel(application: Application) : RepoViewModel(application) {
+    private val handler: Handler
+    private val LOADING_COMPLETE = 0x1
+    private val loadingComplete = MutableLiveData<Boolean>()
+    var news: LiveData<PagedList<News>>? = null
+        get() {
+            if (field == null) {
+                field = repository.news
             }
-        };
-    }
-
-    public LiveData<PagedList<News>> getNews() {
-        if (this.news == null) {
-            this.news = repository.getNews();
+            return field
         }
-        return this.news;
+        private set
+
+    fun deleteOldNews() {
+        repository.removeOldNews()
     }
 
-    public void deleteOldNews() {
-        repository.removeOldNews();
-    }
-
-    public LiveData<Boolean> refresh(DateTime latest) {
-        TaskManager.runTask(() -> {
+    fun refresh(latest: DateTime?): LiveData<Boolean> {
+        runTask {
             try {
-                repository.refreshNews(latest);
-            } catch (Exception e) {
-                e.printStackTrace();
+                repository.refreshNews(latest)
+            } catch (e: Exception) {
+                e.printStackTrace()
             } finally {
-                Message message = this.handler.obtainMessage(this.LOADING_COMPLETE);
-                message.sendToTarget();
+                val message = handler.obtainMessage(LOADING_COMPLETE)
+                message.sendToTarget()
             }
-        });
-        return loadingComplete;
+        }
+        return loadingComplete
     }
 
-    public void markNewsRead(List<Integer> readNews) {
+    fun markNewsRead(readNews: List<Int?>) {
         // TODO: 22.07.2019 send this list to client readNews
-        System.out.println("read news: " + readNews);
+        println("read news: $readNews")
+    }
+
+    init {
+        repository.news
+        handler = object : Handler(Looper.getMainLooper()) {
+            override fun handleMessage(msg: Message) {
+                loadingComplete.value = true
+            }
+        }
     }
 }

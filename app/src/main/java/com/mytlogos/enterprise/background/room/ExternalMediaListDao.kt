@@ -42,7 +42,7 @@ interface ExternalMediaListDao : MultiBaseDao<RoomExternalMediaList?> {
     @get:Query("SELECT RoomExternalMediaList.*, " +
             "(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size " +
             "FROM RoomExternalMediaList")
-    val externalListViews: LiveData<List<RoomExternListView>>
+    val externalListViews: LiveData<MutableList<RoomExternListView>>
 
     @Query("SELECT RoomExternalMediaList.externalListId as listId,RoomExternalMediaList.uuid,url,medium,name,toDownload, " +
             "(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size " +
@@ -63,7 +63,7 @@ interface ExternalMediaListDao : MultiBaseDao<RoomExternalMediaList?> {
     fun getExternalListSettingNow(id: Int): ExternalMediaListSetting
 
     @Query("SELECT mediumId FROM ExternalListMediaJoin WHERE listId=:externalListId")
-    fun getLiveExternalListItems(externalListId: Int): LiveData<List<Int>>
+    fun getLiveExternalListItems(externalListId: Int): LiveData<MutableList<Int>>
 
     @get:Query("SELECT DISTINCT mediumId FROM ExternalListMediaJoin")
     val allLinkedMedia: List<Int>
