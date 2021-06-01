@@ -1,183 +1,171 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import com.mytlogos.enterprise.background.*
+import java.util.*
+import java.util.concurrent.*
+import java.util.function.Function
 
-import com.mytlogos.enterprise.background.ClientConsumer;
-import com.mytlogos.enterprise.background.ClientModelPersister;
-import com.mytlogos.enterprise.background.LoadData;
-import com.mytlogos.enterprise.background.Repository;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Future;
-
-public class LoadWorkerImpl extends LoadWorker {
-
-    private final Map<Object, DependantImpl> valueDependants = new ConcurrentHashMap<>();
-    private final Map<Class<?>, LoaderManagerImpl<?>> loaderMap = new ConcurrentHashMap<>();
-
-    public LoadWorkerImpl(LoadData loadedData, Repository repository, ClientModelPersister persister) {
-        super(repository, persister, loadedData, null);
-    }
-
-
-    private <T> void addLoaderDependant(LoaderManagerImpl<T> loader, T id, @Nullable Object dependantValue, Runnable runnable) {
-        if (id == null) {
-            throw new IllegalArgumentException("an id of null is not valid");
-        }
-        if (id == (Integer) 0) {
-            throw new IllegalArgumentException("an id of zero is not valid");
-        }
-        if (id instanceof String && ((String) id).isEmpty()) {
-            throw new IllegalArgumentException("an empty id string is not valid");
-        }
-        DependantImpl dependantImpl = null;
-
+class LoadWorkerImpl(
+    loadedData: LoadData,
+    repository: Repository,
+    persister: ClientModelPersister
+) : LoadWorker(repository, persister, loadedData, null) {
+    private val valueDependants: MutableMap<Any, DependantImpl> = ConcurrentHashMap()
+    private val loaderMap: Map<Class<*>, LoaderManagerImpl<*>> = ConcurrentHashMap()
+    private fun <T> addLoaderDependant(
+        loader: LoaderManagerImpl<T>,
+        id: T?,
+        dependantValue: Any?,
+        runnable: Runnable
+    ) {
+        requireNotNull(id) { "an id of null is not valid" }
+        require(!(id === 0)) { "an id of zero is not valid" }
+        require(!(id is String && (id as String).isEmpty())) { "an empty id string is not valid" }
+        var dependantImpl: DependantImpl? = null
         if (dependantValue != null) {
-            dependantImpl = valueDependants.computeIfAbsent(dependantValue, o -> new DependantImpl(o, runnable));
-        }
-        loader.addDependant(id, dependantImpl);
-    }
-
-    @Override
-    public void addIntegerIdTask(int id, @Nullable Object dependantValue, NetworkLoader<Integer> loader, Runnable runnable, boolean optional) {
-        if (id == 0) {
-            throw new IllegalArgumentException("an id of null is not valid");
-        }
-        DependantImpl dependantImpl = null;
-
-        if (dependantValue != null) {
-            dependantImpl = valueDependants.computeIfAbsent(dependantValue, o -> new DependantImpl(o, runnable));
-        }
-//        loader.addDependant(id, dependantImpl);
-    }
-
-    @Override
-    public void addStringIdTask(String id, @Nullable Object dependantValue, NetworkLoader<String> loader, Runnable runnable, boolean optional) {
-        if (id == null) {
-            throw new IllegalArgumentException("an id of null is not valid");
-        }
-        if (id.isEmpty()) {
-            throw new IllegalArgumentException("an empty id string is not valid");
-        }
-        DependantImpl dependantImpl = null;
-
-        if (dependantValue != null) {
-            dependantImpl = valueDependants.computeIfAbsent(dependantValue, o -> new DependantImpl(o, runnable));
-        }
-//        loader.addDependant(id, dependantImpl);
-    }
-
-    @Override
-    public boolean isEpisodeLoading(int id) {
-        return this.checkIsLoading(EpisodeLoader.class, id);
-    }
-
-    @Override
-    public boolean isPartLoading(int id) {
-        return this.checkIsLoading(PartLoader.class, id);
-    }
-
-    @Override
-    public boolean isMediumLoading(int id) {
-        return this.checkIsLoading(MediumLoader.class, id);
-    }
-
-    @Override
-    public boolean isMediaListLoading(int id) {
-        return this.checkIsLoading(MediaListLoader.class, id);
-    }
-
-    @Override
-    public boolean isExternalMediaListLoading(int id) {
-        return this.checkIsLoading(ExtMediaListLoader.class, id);
-    }
-
-    @Override
-    public boolean isExternalUserLoading(String uuid) {
-        return this.checkIsLoading(ExtUserLoader.class, uuid);
-    }
-
-    @Override
-    public boolean isNewsLoading(Integer id) {
-        return this.checkIsLoading(NewsLoader.class, id);
-    }
-
-    private <T> boolean checkIsLoading(Class<? extends NetworkLoader<T>> loaderClass, T value) {
-        for (LoaderManagerImpl<?> manager : this.loaderMap.values()) {
-            if (manager.loader.getClass().isAssignableFrom(loaderClass)) {
-                //noinspection unchecked
-                LoaderManagerImpl<T> loaderManager = (LoaderManagerImpl<T>) manager;
-                return loaderManager.isLoading(value);
+            dependantImpl = valueDependants.computeIfAbsent(dependantValue) { o: Any? ->
+                DependantImpl(
+                    o,
+                    runnable
+                )
             }
         }
-        return false;
+        loader.addDependant(id, dependantImpl)
     }
 
-    @Override
-    public void doWork() {
-        Map<LoaderManagerImpl<?>, CompletableFuture<Void>> loaderFutures = new HashMap<>();
-        Set<DependantImpl> currentDependantImpls = new HashSet<>();
+    override fun addIntegerIdTask(
+        id: Int,
+        dependantValue: Any?,
+        loader: NetworkLoader<Int>,
+        runnable: Runnable?,
+        optional: Boolean
+    ) {
+        require(id != 0) { "an id of null is not valid" }
+        var dependantImpl: DependantImpl? = null
+        if (dependantValue != null) {
+            dependantImpl = valueDependants.computeIfAbsent(dependantValue) { o: Any? ->
+                DependantImpl(
+                    o,
+                    runnable
+                )
+            }
+        }
+        //        loader.addDependant(id, dependantImpl);
+    }
 
-        for (Map.Entry<Class<?>, LoaderManagerImpl<?>> entry : this.loaderMap.entrySet()) {
-            LoaderManagerImpl<?> loader = entry.getValue();
-            currentDependantImpls.addAll(loader.getCurrentDependants());
-            loaderFutures.put(loader, loader.loadAsync());
+    override fun addStringIdTask(
+        id: String,
+        dependantValue: Any?,
+        loader: NetworkLoader<String>,
+        runnable: Runnable?,
+        optional: Boolean
+    ) {
+        requireNotNull(id) { "an id of null is not valid" }
+        require(!id.isEmpty()) { "an empty id string is not valid" }
+        var dependantImpl: DependantImpl? = null
+        if (dependantValue != null) {
+            dependantImpl = valueDependants.computeIfAbsent(dependantValue) { o: Any? ->
+                DependantImpl(
+                    o,
+                    runnable
+                )
+            }
+        }
+        //        loader.addDependant(id, dependantImpl);
+    }
+
+    override fun isEpisodeLoading(id: Int): Boolean {
+        return checkIsLoading(EpisodeLoader::class.java, id)
+    }
+
+    override fun isPartLoading(id: Int): Boolean {
+        return checkIsLoading(PartLoader::class.java, id)
+    }
+
+    override fun isMediumLoading(id: Int): Boolean {
+        return checkIsLoading(MediumLoader::class.java, id)
+    }
+
+    override fun isMediaListLoading(id: Int): Boolean {
+        return checkIsLoading(MediaListLoader::class.java, id)
+    }
+
+    override fun isExternalMediaListLoading(id: Int): Boolean {
+        return checkIsLoading(ExtMediaListLoader::class.java, id)
+    }
+
+    override fun isExternalUserLoading(uuid: String): Boolean {
+        return checkIsLoading(ExtUserLoader::class.java, uuid)
+    }
+
+    override fun isNewsLoading(id: Int): Boolean {
+        return checkIsLoading(NewsLoader::class.java, id)
+    }
+
+    private fun <T> checkIsLoading(loaderClass: Class<out NetworkLoader<T>?>, value: T): Boolean {
+        for (manager in loaderMap.values) {
+            if (manager.loader.javaClass.isAssignableFrom(loaderClass)) {
+                val loaderManager = manager as LoaderManagerImpl<T>
+                return loaderManager.isLoading(value)
+            }
+        }
+        return false
+    }
+
+    public override fun doWork() {
+        val loaderFutures: MutableMap<LoaderManagerImpl<*>, CompletableFuture<Void?>?> = HashMap()
+        val currentDependantImpls: MutableSet<DependantImpl> = HashSet()
+        for ((_, loader) in loaderMap) {
+            currentDependantImpls.addAll(loader.currentDependants as Collection<DependantImpl>)
+            loaderFutures[loader] = loader.loadAsync()
         }
 
         // this should be a partition of the values of valueDependants
-        Map<Set<LoaderManagerImpl<?>>, Set<DependantImpl>> loaderCombinations = new HashMap<>();
-
-        for (DependantImpl dependantImpl : currentDependantImpls) {
-            Set<LoaderManagerImpl<?>> keySet = dependantImpl.dependencies.keySet();
-
+        val loaderCombinations: MutableMap<Set<LoaderManagerImpl<*>>, MutableSet<DependantImpl>?> =
+            HashMap()
+        for (dependantImpl in currentDependantImpls) {
+            val keySet: Set<LoaderManagerImpl<*>> = dependantImpl.getDependencies().keys
             if (keySet.isEmpty()) {
-                continue;
+                continue
             }
-            Set<DependantImpl> dependantImpls = loaderCombinations.get(keySet);
-
+            var dependantImpls = loaderCombinations[keySet]
             if (dependantImpls == null) {
-                dependantImpls = Collections.synchronizedSet(new HashSet<>());
-                Set<LoaderManagerImpl<?>> key = Collections.unmodifiableSet(keySet);
-                loaderCombinations.put(key, dependantImpls);
+                dependantImpls = Collections.synchronizedSet(HashSet())
+                val key = Collections.unmodifiableSet(keySet)
+                loaderCombinations[key] = dependantImpls
             }
-            dependantImpls.add(dependantImpl);
+            dependantImpls!!.add(dependantImpl)
         }
-
-        Map<CompletableFuture<Void>, Set<DependantImpl>> futureCombinations = new HashMap<>();
-
-        loaderCombinations.forEach((loaders, dependants) -> {
-            CompletableFuture<Void> combinedFuture = null;
-
-            for (LoaderManagerImpl<?> loader : loaders) {
-                CompletableFuture<Void> future = loaderFutures.get(loader);
-
-                if (future == null) {
-                    throw new IllegalStateException(String.format("loader '%s' has no future", loader.getClass().getSimpleName()));
-                }
-                if (combinedFuture == null) {
-                    combinedFuture = future;
+        val futureCombinations: MutableMap<CompletableFuture<Void?>, Set<DependantImpl>?> =
+            HashMap()
+        loaderCombinations.forEach { (loaders: Set<LoaderManagerImpl<*>>, dependants: Set<DependantImpl>?) ->
+            var combinedFuture: CompletableFuture<Void?>? = null
+            for (loader in loaders) {
+                val future = loaderFutures[loader]
+                    ?: throw IllegalStateException(
+                        String.format(
+                            "loader '%s' has no future",
+                            loader.javaClass.simpleName
+                        )
+                    )
+                combinedFuture = if (combinedFuture == null) {
+                    future
                 } else {
-                    combinedFuture = combinedFuture.thenCompose(a -> future);
+                    combinedFuture.thenCompose(Function<Void?, CompletionStage<Void?>> { a: Void? -> future })
                 }
             }
             if (combinedFuture != null) {
-                futureCombinations.put(combinedFuture, dependants);
+                futureCombinations[combinedFuture] = dependants
             }
-        });
-        List<Future<Void>> futures = new ArrayList<>();
-
-        futureCombinations.forEach((future, dependants) -> processFutures(futures, future, dependants));
+        }
+        val futures: MutableList<Future<Void>> = ArrayList()
+        futureCombinations.forEach { (future: CompletableFuture<Void?>, dependants: Set<DependantImpl>?) ->
+            processFutures(
+                futures,
+                future,
+                dependants
+            )
+        }
 
         // fixme async loading leads to deadlocks or sth. similar, debugger does not give thread dump
         //  for now it is loading synchronously
@@ -191,356 +179,308 @@ public class LoadWorkerImpl extends LoadWorker {
                 e.printStackTrace();
             }
         }*/
-
     }
 
-    @Override
-    public void work() {
-        this.doWork();
+    override fun work() {
+        doWork()
     }
 
-
-    private void processFutures(List<Future<Void>> futures, CompletableFuture<Void> future, Set<DependantImpl> dependantImpls) {
-        Map<ClientConsumer<?>, Set<DependantImpl>> consumerMap = mapDependantsToConsumer(dependantImpls);
-
-        for (ClientConsumer<?> consumer : consumerMap.keySet()) {
-            List<DependantImpl> withBeforeRun = new ArrayList<>();
-            List<DependantImpl> withoutBeforeRun = new ArrayList<>();
-
-            Set<DependantImpl> dependantImplSet = consumerMap.get(consumer);
-
+    private fun processFutures(
+        futures: MutableList<Future<Void>>,
+        future: CompletableFuture<Void?>,
+        dependantImpls: Set<DependantImpl>?
+    ) {
+        val consumerMap = mapDependantsToConsumer(dependantImpls)
+        for (consumer in consumerMap.keys) {
+            val withBeforeRun: MutableList<DependantImpl> = ArrayList()
+            val withoutBeforeRun: MutableList<DependantImpl> = ArrayList()
+            val dependantImplSet = consumerMap[consumer]
             if (dependantImplSet != null) {
-                for (DependantImpl dependantImpl : dependantImplSet) {
+                for (dependantImpl in dependantImplSet) {
                     if (dependantImpl.runBefore != null) {
-                        withBeforeRun.add(dependantImpl);
-                        continue;
+                        withBeforeRun.add(dependantImpl)
+                        continue
                     }
-                    withoutBeforeRun.add(dependantImpl);
+                    withoutBeforeRun.add(dependantImpl)
                 }
             }
             // fixme this cast could be a bug
-            //noinspection unchecked
-            ClientConsumer<Object> clientConsumer = (ClientConsumer<Object>) consumer;
+            val clientConsumer = consumer as ClientConsumer<Any>?
             futures.add(future
-                    .thenRun(() -> {
-                        System.out.println("running after loading in:" + Thread.currentThread());
-                        Collection<Object> dependantsValues = new HashSet<>();
-
-                        for (DependantImpl dependantImpl : withoutBeforeRun) {
-                            // skip dependantImpls which are not ready yet
-                            if (!dependantImpl.isReadyToBeConsumed()) {
-                                System.out.println("dependantImpl not yet ready!: " + dependantImpl);
-                                continue;
-                            }
-                            if (dependantImpl.value instanceof Collection) {
-                                dependantsValues.addAll((Collection<?>) dependantImpl.value);
-                                continue;
-                            }
-                            dependantsValues.add(dependantImpl.value);
+                .thenRun {
+                    println("running after loading in:" + Thread.currentThread())
+                    val dependantsValues: MutableCollection<Any> = HashSet()
+                    for (dependantImpl in withoutBeforeRun) {
+                        // skip dependantImpls which are not ready yet
+                        if (!dependantImpl.isReadyToBeConsumed) {
+                            println("dependantImpl not yet ready!: $dependantImpl")
+                            continue
                         }
-                        try {
-                            clientConsumer.consume(dependantsValues);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            return;
+                        if (dependantImpl.value is Collection<*>) {
+                            dependantsValues.addAll(dependantImpl.value as Collection<Any>)
+                            continue
                         }
-
-                        for (DependantImpl dependantImpl : withoutBeforeRun) {
-                            this.valueDependants.remove(dependantImpl.value);
-                        }
-                    }));
-
-            for (DependantImpl dependantImpl : withBeforeRun) {
+                        dependantsValues.add(dependantImpl.value)
+                    }
+                    try {
+                        clientConsumer!!.consume(dependantsValues)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        return@thenRun
+                    }
+                    for (dependantImpl in withoutBeforeRun) {
+                        valueDependants.remove(dependantImpl.value)
+                    }
+                })
+            for (dependantImpl in withBeforeRun) {
                 futures.add(future
-                        .thenRun(() -> {
-                            System.out.println("running with runnable after loading in:" + Thread.currentThread());
-
-                            dependantImpl.runBefore.run();
-
-                            if (dependantImpl.isReadyToBeConsumed()) {
-                                try {
-                                    if (dependantImpl.value instanceof Collection) {
-                                        //noinspection unchecked
-                                        clientConsumer.consume((Collection<Object>) dependantImpl.value);
-                                    } else {
-                                        clientConsumer.consume(Collections.singletonList(dependantImpl.value));
-                                    }
-                                    this.valueDependants.remove(dependantImpl.value);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
+                    .thenRun {
+                        println("running with runnable after loading in:" + Thread.currentThread())
+                        dependantImpl.runBefore!!.run()
+                        if (dependantImpl.isReadyToBeConsumed) {
+                            try {
+                                if (dependantImpl.value is Collection<*>) {
+                                    clientConsumer!!.consume(dependantImpl.value as Collection<Any>)
+                                } else {
+                                    clientConsumer!!.consume(listOf(dependantImpl.value))
                                 }
-                            } else {
-                                // todo what todo if it is still not ready?
-                                System.out.println("dependantImpl is still not ready!: " + dependantImpl);
+                                valueDependants.remove(dependantImpl.value)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                             }
-                        }));
+                        } else {
+                            // todo what todo if it is still not ready?
+                            println("dependantImpl is still not ready!: $dependantImpl")
+                        }
+                    })
             }
         }
     }
 
-    private Map<ClientConsumer<?>, Set<DependantImpl>> mapDependantsToConsumer(Set<DependantImpl> dependantImpls) {
-        Map<Class<?>, Set<DependantImpl>> classValuesMap = new HashMap<>();
-
-        for (DependantImpl dependantImpl : dependantImpls) {
-            Class<?> clazz = null;
-
-            if (dependantImpl.value instanceof Collection) {
-                Collection<?> collection = (Collection<?>) dependantImpl.value;
-
+    private fun mapDependantsToConsumer(dependantImpls: Set<DependantImpl>?): Map<ClientConsumer<*>?, Set<DependantImpl>> {
+        val classValuesMap: MutableMap<Class<*>?, MutableSet<DependantImpl>> = HashMap()
+        for (dependantImpl in dependantImpls!!) {
+            var clazz: Class<*>? = null
+            if (dependantImpl.value is Collection<*>) {
+                val collection = dependantImpl.value
                 if (collection.isEmpty()) {
-                    System.out.println("dependantImpl list value is empty");
-                    continue;
+                    println("dependantImpl list value is empty")
+                    continue
                 }
                 // check only the first value,
                 // on the assumption that every value after it has the same class
-                //noinspection LoopStatementThatDoesntLoop
-                for (Object o : collection) {
-                    clazz = o.getClass();
-                    break;
+                for (o in collection) {
+                    if (o != null) {
+                        clazz = o.javaClass
+                        break
+                    }
                 }
             } else {
-                clazz = dependantImpl.value.getClass();
+                clazz = dependantImpl.value.javaClass
             }
-            classValuesMap.computeIfAbsent(clazz, c -> new HashSet<>()).add(dependantImpl);
+            classValuesMap.computeIfAbsent(clazz) { c: Class<*>? -> HashSet() }
+                .add(dependantImpl)
         }
-
-        Map<ClientConsumer<?>, Set<DependantImpl>> consumerDependantsMap = new HashMap<>();
-        Collection<ClientConsumer<?>> consumer = this.persister.getConsumer();
-
-        for (ClientConsumer<?> clientConsumer : consumer) {
-            Set<DependantImpl> dependantImplSet = classValuesMap.get(clientConsumer.getType());
-
+        val consumerDependantsMap: MutableMap<ClientConsumer<*>?, Set<DependantImpl>> = HashMap()
+        val consumer = persister.getConsumer()
+        for (clientConsumer in consumer) {
+            val dependantImplSet: Set<DependantImpl>? = classValuesMap[clientConsumer.type]
             if (dependantImplSet != null) {
-                consumerDependantsMap.put(clientConsumer, dependantImplSet);
+                consumerDependantsMap[clientConsumer] = dependantImplSet
             }
         }
-
-        return consumerDependantsMap;
+        return consumerDependantsMap
     }
 
-    public static class DependantImpl implements Dependant {
-        private final Map<LoaderManagerImpl<?>, Set<?>> dependencies = new ConcurrentHashMap<>();
-        private final Object value;
-        private final Runnable runBefore;
-
-        DependantImpl(Object value, Runnable runBefore) {
-            if (value == null) {
-                throw new NullPointerException();
-            }
-            this.runBefore = runBefore;
-            this.value = value;
+    class DependantImpl internal constructor(value: Any?, runBefore: Runnable?) : Dependant {
+        private val dependencies: MutableMap<LoaderManagerImpl<*>, MutableSet<*>> =
+            ConcurrentHashMap()
+        override val value: Any
+        override val runBefore: Runnable?
+        fun getDependencies(): Map<LoaderManagerImpl<*>, MutableSet<*>> {
+            return dependencies
         }
 
-        public Map<LoaderManagerImpl<?>, Set<?>> getDependencies() {
-            return dependencies;
+        override fun equals(o: Any?): Boolean {
+            if (this === o) return true
+            if (o == null || javaClass != o.javaClass) return false
+            val dependantImpl = o as DependantImpl
+            return value == dependantImpl.value
         }
 
-        @Override
-        public Object getValue() {
-            return value;
+        override fun hashCode(): Int {
+            return value.hashCode()
         }
 
-        @Override
-        public Runnable getRunBefore() {
-            return runBefore;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            DependantImpl dependantImpl = (DependantImpl) o;
-
-            return value.equals(dependantImpl.value);
-        }
-
-        @Override
-        public int hashCode() {
-            return value.hashCode();
-        }
-
-        <T> void addDependency(LoaderManagerImpl<T> loader, T value) {
-            synchronized (this.dependencies) {
-                //noinspection unchecked
-                Set<T> set = (Set<T>) dependencies
-                        .computeIfAbsent(loader, l -> Collections.synchronizedSet(new HashSet<>()));
-                set.add(value);
+        fun <T> addDependency(loader: LoaderManagerImpl<T>, value: T?) {
+            synchronized(dependencies) {
+                val set = dependencies
+                    .computeIfAbsent(loader) { l: LoaderManagerImpl<*>? ->
+                        Collections.synchronizedSet(
+                            HashSet<Any>()
+                        )
+                    } as MutableSet<T?>
+                set.add(value)
             }
         }
 
-        boolean isReadyToBeConsumed() {
-            for (Set<?> dependencies : this.dependencies.values()) {
-                if (dependencies != null && !dependencies.isEmpty()) {
-                    return false;
+        val isReadyToBeConsumed: Boolean
+            get() {
+                for (dependencies in dependencies.values) {
+                    if (dependencies != null && !dependencies.isEmpty()) {
+                        return false
+                    }
                 }
+                return true
             }
-            return true;
-        }
 
-        @NonNull
-        @Override
-        public String toString() {
+        override fun toString(): String {
             return "DependantImpl{" +
                     "dependencies=" + dependencies +
                     ", value=" + value +
                     ", runBefore=" + runBefore +
-                    '}';
+                    '}'
+        }
+
+        init {
+            if (value == null) {
+                throw NullPointerException()
+            }
+            this.runBefore = runBefore
+            this.value = value
         }
     }
 
-    private static class LoaderManagerImpl<T> implements LoaderManager<T> {
-        private final Set<T> toLoad = Collections.synchronizedSet(new HashSet<>());
-        private final Set<T> loading = Collections.synchronizedSet(new HashSet<>());
-        private final ConcurrentMap<T, Set<DependantImpl>> dependantMap = new ConcurrentHashMap<>();
-        private final ConcurrentMap<T, CompletableFuture<Void>> loadingFutureMap = new ConcurrentHashMap<>();
-        private final NetworkLoader<T> loader;
+    class LoaderManagerImpl<T> private constructor(val loader: NetworkLoader<T>): LoaderManager<T> {
+        private val toLoad = Collections.synchronizedSet(HashSet<T>())
+        private val loading = Collections.synchronizedSet(HashSet<T>())
+        private val dependantMap: ConcurrentMap<T, MutableSet<DependantImpl>> = ConcurrentHashMap()
+        private val loadingFutureMap: ConcurrentMap<T, CompletableFuture<Void?>> =
+            ConcurrentHashMap()
 
-        private LoaderManagerImpl(@NonNull NetworkLoader<T> loader) {
-            this.loader = loader;
-        }
-
-        private NetworkLoader<T> getLoader() {
-            return this.loader;
-        }
-
-        @Override
-        public CompletableFuture<Void> loadAsync() {
-            Set<T> toLoad;
-            Set<T> alreadyLoading;
-
-            synchronized (this.toLoad) {
-                alreadyLoading = new HashSet<>(this.toLoad);
-                alreadyLoading.retainAll(this.loading);
-                this.toLoad.removeAll(this.loading);
-                this.toLoad.removeAll(this.loader.getLoadedSet());
-                toLoad = new HashSet<>(this.toLoad);
-                this.loading.addAll(toLoad);
-                this.toLoad.clear();
+        override fun loadAsync(): CompletableFuture<Void?> {
+            var toLoad: Set<T>
+            var alreadyLoading: MutableSet<T>
+            synchronized(this.toLoad) {
+                alreadyLoading = HashSet(this.toLoad)
+                alreadyLoading.retainAll(loading)
+                this.toLoad.removeAll(loading)
+                this.toLoad.removeAll(loader.loadedSet)
+                toLoad = HashSet(this.toLoad)
+                loading.addAll(toLoad)
+                this.toLoad.clear()
             }
-            CompletableFuture<Void> alreadyLoadingFuture = null;
-            Set<CompletableFuture<Void>> loadingFutures = new HashSet<>();
-
-            for (T t : alreadyLoading) {
-                CompletableFuture<Void> loadingFuture = loadingFutureMap.get(t);
-
+            var alreadyLoadingFuture: CompletableFuture<Void?>? = null
+            val loadingFutures: MutableSet<CompletableFuture<Void?>> = HashSet()
+            for (t in alreadyLoading) {
+                val loadingFuture = loadingFutureMap[t]
                 if (loadingFuture == null) {
-                    System.err.println("missed future");
+                    System.err.println("missed future")
                 } else {
                     if (loadingFutures.add(loadingFuture)) {
-                        if (alreadyLoadingFuture == null) {
-                            alreadyLoadingFuture = loadingFuture;
+                        alreadyLoadingFuture = if (alreadyLoadingFuture == null) {
+                            loadingFuture
                         } else {
-                            alreadyLoadingFuture = alreadyLoadingFuture.thenCompose(a -> loadingFuture);
+                            alreadyLoadingFuture.thenCompose(
+                                Function<Void?, CompletionStage<Void?>> { a: Void? -> loadingFuture })
                         }
                     }
                 }
             }
-
             if (toLoad.isEmpty()) {
-                return alreadyLoadingFuture != null ? alreadyLoadingFuture : CompletableFuture.completedFuture(null);
+                return alreadyLoadingFuture
+                    ?: CompletableFuture.completedFuture(null)
             }
-
-            CompletableFuture<Void> future = this.loader.loadItemsAsync(toLoad);
-
-            for (T loading : toLoad) {
-                if (this.loadingFutureMap.put(loading, future) != null) {
-                    throw new IllegalStateException("loading an already loading item");
-                }
+            var future = loader.loadItemsAsync(toLoad)
+            for (loading in toLoad) {
+                check(
+                    loadingFutureMap.put(
+                        loading,
+                        future as CompletableFuture<Void?>
+                    ) == null
+                ) { "loading an already loading item" }
             }
-
             if (alreadyLoadingFuture != null) {
-                final CompletableFuture<Void> finalAlreadyLoadingFuture = alreadyLoadingFuture;
-                future = future.thenCompose(a -> finalAlreadyLoadingFuture);
+                val finalAlreadyLoadingFuture: CompletableFuture<Void?> = alreadyLoadingFuture
+                future = future.thenCompose { a: Void? -> finalAlreadyLoadingFuture }
             }
-
-            future = future.thenRun(() -> {
-                for (T loaded : toLoad) {
-                    if (!this.loader.getLoadedSet().contains(loaded)) {
-                        System.out.println("could not load id: " + loaded + " of " + this.getClass().getSimpleName());
+            future = future.thenRun {
+                for (loaded in toLoad) {
+                    if (!loader.loadedSet.contains(loaded)) {
+                        println("could not load id: " + loaded + " of " + this.javaClass.simpleName)
                     }
                     // what should happen if it could not be loaded for whatever non-exceptional reason?
                     // can there even be a non exceptional reason that it cannot be loaded?
-                    this.loadingFutureMap.remove(loaded);
-                    this.loading.remove(loaded);
-                    Set<DependantImpl> dependantImpls = this.dependantMap.remove(loaded);
-
+                    loadingFutureMap.remove(loaded)
+                    loading.remove(loaded)
+                    val dependantImpls: Set<DependantImpl>? = dependantMap.remove(loaded)
                     if (dependantImpls == null) {
-                        System.out.println(
-                                "Id '" + loaded + "' loaded with '" +
-                                        this.getClass().getSimpleName() +
-                                        "' even though there are no dependantImpls?"
-                        );
+                        println(
+                            "Id '" + loaded + "' loaded with '" +
+                                    this.javaClass.simpleName +
+                                    "' even though there are no dependantImpls?"
+                        )
                     } else {
-                        for (DependantImpl dependantImpl : dependantImpls) {
+                        for (dependantImpl in dependantImpls) {
                             // the dependencies of dependantImpl of this loader
-                            //noinspection unchecked
-                            Set<T> dependencies = (Set<T>) dependantImpl.dependencies.get(this);
-
-                            if (dependencies == null) {
-                                throw new IllegalStateException(String.format("DependantImpl listed as DependantImpl even though it does not depend on any value of %s", this.getClass().getSimpleName()));
-                            }
-                            dependencies.remove(loaded);
+                            val dependencies = dependantImpl.getDependencies()[this] as MutableSet<T>?
+                                ?: throw IllegalStateException(
+                                    String.format(
+                                        "DependantImpl listed as DependantImpl even though it does not depend on any value of %s",
+                                        this.javaClass.simpleName
+                                    )
+                                )
+                            dependencies.remove(loaded)
                         }
                     }
                 }
-            });
-            return future;
-        }
-
-        @Override
-        public void load() {
-
-        }
-
-        @Override
-        public void addDependant(T value, @Nullable Dependant dependant) {
-            if (dependant != null && !(dependant instanceof DependantImpl)) {
-                return;
             }
-            Set<DependantImpl> dependantImpls = this
-                    .dependantMap
-                    .computeIfAbsent(value, t -> Collections.synchronizedSet(new HashSet<>()));
+            return future
+        }
 
+        override fun load() {}
+        override fun addDependant(value: T, dependant: Dependant?) {
+            if (dependant != null && dependant !is DependantImpl) {
+                return
+            }
+            val dependantImpls = dependantMap
+                .computeIfAbsent(value, { Collections.synchronizedSet(HashSet()) })
             if (dependant != null) {
-                DependantImpl d = (DependantImpl) dependant;
+                val d = dependant as DependantImpl
                 if (dependantImpls.add(d)) {
-                    this.toLoad.add(value);
-                    d.addDependency(this, value);
+                    toLoad.add(value)
+                    d.addDependency(this, value)
                 }
             } else {
-                this.toLoad.add(value);
+                toLoad.add(value)
             }
         }
 
-        @Override
-        public boolean isLoaded(Set<T> set) {
-            return this.loader.getLoadedSet().containsAll(set);
+        override fun isLoaded(set: Set<T>?): Boolean {
+            if (set == null) {
+                return false
+            }
+            return loader.loadedSet.containsAll(set)
         }
 
-        @Override
-        public void removeLoaded(Set<T> set) {
-            set.removeAll(this.loader.getLoadedSet());
+        override fun removeLoaded(set: MutableSet<T>) {
+            set.removeAll(loader.loadedSet)
         }
 
-        @Override
-        public Collection<DependantImpl> getCurrentDependants() {
-            Set<DependantImpl> set = new HashSet<>();
-
-            for (T t : this.toLoad) {
-                Set<DependantImpl> dependantImpls = this.dependantMap.get(t);
-
-                if (dependantImpls != null) {
-                    set.addAll(dependantImpls);
+        override val currentDependants: Collection<Dependant>
+            get() {
+                val set: MutableSet<DependantImpl> = HashSet()
+                for (t in toLoad) {
+                    val dependantImpls: Set<DependantImpl>? = dependantMap[t]
+                    if (dependantImpls != null) {
+                        set.addAll(dependantImpls)
+                    }
                 }
+                return set
             }
-            return set;
-        }
 
-        @Override
-        public boolean isLoading(T value) {
-            return this.loading.contains(value);
+        override fun isLoading(value: T): Boolean {
+            return loading.contains(value)
         }
     }
-
 }

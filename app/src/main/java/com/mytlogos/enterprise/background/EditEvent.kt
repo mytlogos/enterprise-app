@@ -1,20 +1,12 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import androidx.annotation.NonNull;
+import org.joda.time.DateTime
 
-import org.joda.time.DateTime;
-
-public interface EditEvent {
-    int getId();
-
-    int getObjectType();
-
-    int getEventType();
-
-    @NonNull
-    DateTime getDateTime();
-
-    String getFirstValue();
-
-    String getSecondValue();
+interface EditEvent {
+    val id: Int
+    val objectType: Int
+    val eventType: Int
+    val dateTime: DateTime
+    val firstValue: String
+    val secondValue: String
 }

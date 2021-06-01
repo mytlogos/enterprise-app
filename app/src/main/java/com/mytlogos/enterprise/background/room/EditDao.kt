@@ -7,7 +7,7 @@ import com.mytlogos.enterprise.background.room.model.RoomEditEvent
 @Dao
 interface EditDao : MultiBaseDao<RoomEditEvent?> {
     @get:Query("SELECT * FROM RoomEditEvent")
-    val all: List<RoomEditEvent>
+    val all: MutableList<RoomEditEvent>
 
     @Query("SELECT * FROM RoomEditEvent " +
             "WHERE (:id <= 0 OR id=:id) " +

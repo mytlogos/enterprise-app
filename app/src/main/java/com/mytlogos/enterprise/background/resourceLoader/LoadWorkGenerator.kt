@@ -1,376 +1,345 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import com.mytlogos.enterprise.background.LoadData;
-import com.mytlogos.enterprise.background.api.model.ClientEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
-import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientMedium;
-import com.mytlogos.enterprise.background.api.model.ClientPart;
-import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
-import com.mytlogos.enterprise.model.SimpleMedium;
+import com.mytlogos.enterprise.background.LoadData
+import com.mytlogos.enterprise.background.api.model.*
+import java.util.*
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-public class LoadWorkGenerator {
-    private final LoadData loadedData;
-
-    public LoadWorkGenerator(LoadData loadedData) {
-        this.loadedData = loadedData;
-    }
-
-    public FilteredReadEpisodes filterReadEpisodes(Collection<ClientReadEpisode> readEpisodes) {
-        FilteredReadEpisodes container = new FilteredReadEpisodes();
-
-        for (ClientReadEpisode readEpisode : readEpisodes) {
-            int episodeId = readEpisode.getEpisodeId();
-
-            if (this.isEpisodeLoaded(episodeId)) {
-                container.episodeList.add(readEpisode);
+class LoadWorkGenerator(private val loadedData: LoadData) {
+    fun filterReadEpisodes(readEpisodes: Collection<ClientReadEpisode>): FilteredReadEpisodes {
+        val container = FilteredReadEpisodes()
+        for (readEpisode in readEpisodes) {
+            val episodeId = readEpisode.episodeId
+            if (isEpisodeLoaded(episodeId)) {
+                container.episodeList.add(readEpisode)
             } else {
-                container.dependencies.add(new IntDependency<>(episodeId, readEpisode));
+                container.dependencies.add(IntDependency(episodeId, readEpisode))
             }
         }
-
-        return container;
+        return container
     }
 
-    public FilteredParts filterParts(Collection<ClientPart> parts) {
-        List<ClientEpisode> episodes = new ArrayList<>();
-        FilteredParts filteredParts = new FilteredParts();
-
-        for (ClientPart part : parts) {
-            if (this.isMediumLoaded(part.getMediumId())) {
-                if (this.isPartLoaded(part.getId())) {
-                    filteredParts.updateParts.add(part);
+    fun filterParts(parts: Collection<ClientPart>): FilteredParts {
+        val episodes: MutableList<ClientEpisode> = ArrayList()
+        val filteredParts = FilteredParts()
+        for (part in parts) {
+            if (isMediumLoaded(part.mediumId)) {
+                if (isPartLoaded(part.id)) {
+                    filteredParts.updateParts.add(part)
                 } else {
-                    filteredParts.newParts.add(part);
+                    filteredParts.newParts.add(part)
                 }
-                if (part.getEpisodes() != null) {
-                    Collections.addAll(episodes, part.getEpisodes());
+                if (part.episodes != null) {
+                    Collections.addAll(episodes, *part.episodes)
                 }
             } else {
-                filteredParts.mediumDependencies.add(new IntDependency<>(part.getMediumId(), part));
+                filteredParts.mediumDependencies.add(IntDependency(part.mediumId, part))
             }
         }
-        filteredParts.episodes.addAll(episodes);
-        return filteredParts;
+        filteredParts.episodes.addAll(episodes)
+        return filteredParts
     }
 
-    public FilteredEpisodes filterEpisodes(Collection<ClientEpisode> episodes) {
-        FilteredEpisodes filteredEpisodes = new FilteredEpisodes();
-
-        for (ClientEpisode episode : episodes) {
-            int partId = episode.getPartId();
-
-            if (!this.isPartLoaded(partId)) {
-                filteredEpisodes.partDependencies.add(new IntDependency<>(partId, episode));
-                continue;
+    fun filterEpisodes(episodes: Collection<ClientEpisode>): FilteredEpisodes {
+        val filteredEpisodes = FilteredEpisodes()
+        for (episode in episodes) {
+            val partId = episode.partId
+            if (!isPartLoaded(partId)) {
+                filteredEpisodes.partDependencies.add(IntDependency(partId, episode))
+                continue
             }
-
-            if (this.isEpisodeLoaded(episode.getId())) {
-                filteredEpisodes.updateEpisodes.add(episode);
+            if (isEpisodeLoaded(episode.id)) {
+                filteredEpisodes.updateEpisodes.add(episode)
             } else {
-                filteredEpisodes.newEpisodes.add(episode);
+                filteredEpisodes.newEpisodes.add(episode)
             }
-            if (episode.getReleases() != null) {
-                Collections.addAll(filteredEpisodes.releases, episode.getReleases());
+            if (episode.releases != null) {
+                Collections.addAll(filteredEpisodes.releases, *episode.releases)
             }
         }
-
-        return filteredEpisodes;
+        return filteredEpisodes
     }
 
-    public FilteredMedia filterMedia(Collection<ClientMedium> media) {
-        FilteredMedia filteredMedia = new FilteredMedia();
-
-        for (ClientMedium medium : media) {
-            int currentRead = medium.getCurrentRead();
+    fun filterMedia(media: Collection<ClientMedium?>): FilteredMedia {
+        val filteredMedia = FilteredMedia()
+        for (medium in media) {
+            val currentRead = medium!!.currentRead
 
             // id can never be zero
-            if (!this.isEpisodeLoaded(currentRead) && currentRead > 0) {
-                filteredMedia.episodeDependencies.add(new IntDependency<>(currentRead, medium));
+            if (!isEpisodeLoaded(currentRead) && currentRead > 0) {
+                filteredMedia.episodeDependencies.add(IntDependency(currentRead, medium))
             }
-            if (this.isMediumLoaded(medium.getId())) {
-                filteredMedia.updateMedia.add(new ClientSimpleMedium(medium));
+            if (isMediumLoaded(medium.id)) {
+                filteredMedia.updateMedia.add(ClientSimpleMedium(medium))
             } else {
-                filteredMedia.newMedia.add(new ClientSimpleMedium(medium));
+                filteredMedia.newMedia.add(ClientSimpleMedium(medium))
             }
-            if (medium.getParts() != null) {
-                for (int part : medium.getParts()) {
+            if (medium.parts != null) {
+                for (part in medium.parts!!) {
                     // todo check if it should be checked that medium is loaded
-                    if (!this.isPartLoaded(part)) {
-                        filteredMedia.unloadedParts.add(part);
+                    if (!isPartLoaded(part)) {
+                        filteredMedia.unloadedParts.add(part)
                     }
                 }
             }
         }
-        return filteredMedia;
+        return filteredMedia
     }
 
-    public FilteredMedia filterSimpleMedia(Collection<ClientSimpleMedium> media) {
-        FilteredMedia filteredMedia = new FilteredMedia();
-
-        for (ClientSimpleMedium medium : media) {
-            if (this.isMediumLoaded(medium.getId())) {
-                filteredMedia.updateMedia.add(medium);
+    fun filterSimpleMedia(media: Collection<ClientSimpleMedium>): FilteredMedia {
+        val filteredMedia = FilteredMedia()
+        for (medium in media) {
+            if (isMediumLoaded(medium.id)) {
+                filteredMedia.updateMedia.add(medium)
             } else {
-                filteredMedia.newMedia.add(medium);
+                filteredMedia.newMedia.add(medium)
             }
         }
-        return filteredMedia;
+        return filteredMedia
     }
 
-    public FilteredMediaList filterMediaLists(Collection<ClientMediaList> mediaLists) {
-        FilteredMediaList filteredMediaList = new FilteredMediaList();
-
-        for (ClientMediaList mediaList : mediaLists) {
-            if (this.isMediaListLoaded(mediaList.getId())) {
-                filteredMediaList.updateList.add(mediaList);
+    fun filterMediaLists(mediaLists: Collection<ClientMediaList>): FilteredMediaList {
+        val filteredMediaList = FilteredMediaList()
+        for (mediaList in mediaLists) {
+            if (isMediaListLoaded(mediaList.id)) {
+                filteredMediaList.updateList.add(mediaList)
             } else {
-                filteredMediaList.newList.add(mediaList);
+                filteredMediaList.newList.add(mediaList)
             }
-
-            Set<Integer> missingMedia = new HashSet<>();
-            List<ListJoin> currentJoins = new ArrayList<>();
-
-            if (mediaList.getItems() != null) {
-                for (int item : mediaList.getItems()) {
-                    ListJoin join = new ListJoin(mediaList.getId(), item);
-
-                    if (!this.isMediumLoaded(item)) {
-                        missingMedia.add(item);
+            val missingMedia: MutableSet<Int> = HashSet()
+            val currentJoins: MutableList<ListJoin> = ArrayList()
+            if (mediaList.items != null) {
+                for (item in mediaList.items) {
+                    val join = ListJoin(mediaList.id, item)
+                    if (!isMediumLoaded(item)) {
+                        missingMedia.add(item)
                     }
-                    currentJoins.add(join);
+                    currentJoins.add(join)
                 }
             }
 
             // if none medium is missing, just clear and add like normal
             if (missingMedia.isEmpty()) {
-                filteredMediaList.joins.addAll(currentJoins);
-                filteredMediaList.clearJoins.add(mediaList.getId());
+                filteredMediaList.joins.addAll(currentJoins)
+                filteredMediaList.clearJoins.add(mediaList.id)
             } else {
                 // else load missing media with worker and clear and add afterwards
-                for (Integer mediumId : missingMedia) {
-                    filteredMediaList.mediumDependencies.add(new IntDependency<>(mediumId, currentJoins));
+                for (mediumId in missingMedia) {
+                    filteredMediaList.mediumDependencies.add(IntDependency(mediumId, currentJoins))
                 }
             }
         }
-
-        return filteredMediaList;
+        return filteredMediaList
     }
 
-    public FilteredExtMediaList filterExternalMediaLists(Collection<ClientExternalMediaList> externalMediaLists) {
-        FilteredExtMediaList filteredExtMediaList = new FilteredExtMediaList();
-
-        for (ClientExternalMediaList externalMediaList : externalMediaLists) {
-            String externalUuid = externalMediaList.getUuid();
-
-            if (!this.isExternalUserLoaded(externalUuid)) {
-                filteredExtMediaList.userDependencies.add(new Dependency<>(externalUuid, externalMediaList));
-                continue;
+    fun filterExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList?>): FilteredExtMediaList {
+        val filteredExtMediaList = FilteredExtMediaList()
+        for (externalMediaList in externalMediaLists) {
+            val externalUuid = externalMediaList!!.uuid
+            if (!isExternalUserLoaded(externalUuid)) {
+                filteredExtMediaList.userDependencies.add(
+                    Dependency(
+                        externalUuid,
+                        externalMediaList
+                    )
+                )
+                continue
             }
-            if (this.isExternalMediaListLoaded(externalMediaList.getId())) {
-                filteredExtMediaList.updateList.add(externalMediaList);
+            if (isExternalMediaListLoaded(externalMediaList.id)) {
+                filteredExtMediaList.updateList.add(externalMediaList)
             } else {
-                filteredExtMediaList.newList.add(externalMediaList);
+                filteredExtMediaList.newList.add(externalMediaList)
             }
-
-
-            Set<Integer> missingMedia = new HashSet<>();
-            List<ListJoin> currentJoins = new ArrayList<>();
-
-            if (externalMediaList.getItems() != null) {
-                for (int item : externalMediaList.getItems()) {
-                    ListJoin join = new ListJoin(externalMediaList.getId(), item);
-
-                    if (!this.isMediumLoaded(item)) {
-                        missingMedia.add(item);
+            val missingMedia: MutableSet<Int> = HashSet()
+            val currentJoins: MutableList<ListJoin> = ArrayList()
+            if (externalMediaList.items != null) {
+                for (item in externalMediaList.items) {
+                    val join = ListJoin(externalMediaList.id, item)
+                    if (!isMediumLoaded(item)) {
+                        missingMedia.add(item)
                     }
-                    currentJoins.add(join);
+                    currentJoins.add(join)
                 }
             }
 
             // if none medium is missing, just clear and add like normal
             if (missingMedia.isEmpty()) {
-                filteredExtMediaList.joins.addAll(currentJoins);
-                filteredExtMediaList.clearJoins.add(externalMediaList.getId());
+                filteredExtMediaList.joins.addAll(currentJoins)
+                filteredExtMediaList.clearJoins.add(externalMediaList.id)
             } else {
                 // else load missing media with worker and clear and add afterwards
-                for (Integer mediumId : missingMedia) {
-                    filteredExtMediaList.mediumDependencies.add(new IntDependency<>(mediumId, currentJoins));
+                for (mediumId in missingMedia) {
+                    filteredExtMediaList.mediumDependencies.add(
+                        IntDependency(
+                            mediumId,
+                            currentJoins
+                        )
+                    )
                 }
             }
-
         }
-
-        return filteredExtMediaList;
+        return filteredExtMediaList
     }
 
-
-    public FilteredExternalUser filterExternalUsers(Collection<ClientExternalUser> externalUsers) {
-        FilteredExternalUser filteredExternalUser = new FilteredExternalUser();
-
-        for (ClientExternalUser externalUser : externalUsers) {
-            if (this.isExternalUserLoaded(externalUser.getUuid())) {
-                filteredExternalUser.updateUser.add(externalUser);
+    fun filterExternalUsers(externalUsers: Collection<ClientExternalUser?>): FilteredExternalUser {
+        val filteredExternalUser = FilteredExternalUser()
+        for (externalUser in externalUsers) {
+            if (isExternalUserLoaded(externalUser!!.getUuid())) {
+                filteredExternalUser.updateUser.add(externalUser)
             } else {
-                filteredExternalUser.newUser.add(externalUser);
+                filteredExternalUser.newUser.add(externalUser)
             }
-
-            if (externalUser.getLists() == null) {
-                continue;
+            if (externalUser.lists == null) {
+                continue
             }
-            for (ClientExternalMediaList userList : externalUser.getLists()) {
-                if (this.isExternalMediaListLoaded(userList.getId())) {
-                    filteredExternalUser.updateList.add(userList);
+            for (userList in externalUser.lists) {
+                if (isExternalMediaListLoaded(userList.id)) {
+                    filteredExternalUser.updateList.add(userList)
                 } else {
-                    filteredExternalUser.newList.add(userList);
+                    filteredExternalUser.newList.add(userList)
                 }
-
-                Set<Integer> missingMedia = new HashSet<>();
-                List<ListJoin> currentJoins = new ArrayList<>();
-
-                for (int item : userList.getItems()) {
-                    ListJoin join = new ListJoin(userList.getId(), item);
-
-                    if (!this.isMediumLoaded(item)) {
-                        missingMedia.add(item);
+                val missingMedia: MutableSet<Int> = HashSet()
+                val currentJoins: MutableList<ListJoin> = ArrayList()
+                for (item in userList.items) {
+                    val join = ListJoin(userList.id, item)
+                    if (!isMediumLoaded(item)) {
+                        missingMedia.add(item)
                     }
-                    currentJoins.add(join);
+                    currentJoins.add(join)
                 }
                 // if none medium is missing, just clear and add like normal
                 if (missingMedia.isEmpty()) {
-                    filteredExternalUser.joins.addAll(currentJoins);
-                    filteredExternalUser.clearJoins.add(userList.getId());
+                    filteredExternalUser.joins.addAll(currentJoins)
+                    filteredExternalUser.clearJoins.add(userList.id)
                 } else {
-                    for (Integer mediumId : missingMedia) {
-                        filteredExternalUser.mediumDependencies.add(new IntDependency<>(mediumId, currentJoins));
+                    for (mediumId in missingMedia) {
+                        filteredExternalUser.mediumDependencies.add(
+                            IntDependency(
+                                mediumId,
+                                currentJoins
+                            )
+                        )
                     }
                 }
             }
         }
-        return filteredExternalUser;
+        return filteredExternalUser
     }
 
-    public boolean isEpisodeLoaded(int id) {
-        return this.loadedData.getEpisodes().contains(id);
+    fun isEpisodeLoaded(id: Int): Boolean {
+        return loadedData.episodes.contains(id)
     }
 
-    public boolean isPartLoaded(int id) {
-        return this.loadedData.getPart().contains(id);
+    fun isPartLoaded(id: Int): Boolean {
+        return loadedData.part.contains(id)
     }
 
-    public boolean isMediumLoaded(int id) {
-        return this.loadedData.getMedia().contains(id);
+    fun isMediumLoaded(id: Int): Boolean {
+        return loadedData.media.contains(id)
     }
 
-    public boolean isMediaListLoaded(int id) {
-        return this.loadedData.getMediaList().contains(id);
+    fun isMediaListLoaded(id: Int): Boolean {
+        return loadedData.mediaList.contains(id)
     }
 
-    public boolean isExternalMediaListLoaded(int id) {
-        return this.loadedData.getExternalMediaList().contains(id);
+    fun isExternalMediaListLoaded(id: Int): Boolean {
+        return loadedData.externalMediaList.contains(id)
     }
 
-    public boolean isExternalUserLoaded(String uuid) {
-        return this.loadedData.getExternalUser().contains(uuid);
+    fun isExternalUserLoaded(uuid: String?): Boolean {
+        return loadedData.externalUser.contains(uuid)
     }
 
-    public boolean isNewsLoaded(int id) {
-        return this.loadedData.getNews().contains(id);
+    fun isNewsLoaded(id: Int): Boolean {
+        return loadedData.news.contains(id)
     }
 
-    public static class FilteredExternalUser {
-        public final List<ClientExternalUser> newUser = new ArrayList<>();
-        public final List<ClientExternalUser> updateUser = new ArrayList<>();
-        public final List<ClientExternalMediaList> newList = new ArrayList<>();
-        public final List<ClientExternalMediaList> updateList = new ArrayList<>();
-        public final List<ListJoin> joins = new ArrayList<>();
-        public final List<Integer> clearJoins = new ArrayList<>();
-        public final List<IntDependency<List<LoadWorkGenerator.ListJoin>>> mediumDependencies = new ArrayList<>();
+    class FilteredExternalUser {
+        @kotlin.jvm.JvmField
+        val newUser: MutableList<ClientExternalUser> = ArrayList()
+        @kotlin.jvm.JvmField
+        val updateUser: MutableList<ClientExternalUser> = ArrayList()
+        @kotlin.jvm.JvmField
+        val newList: MutableList<ClientExternalMediaList> = ArrayList()
+        @kotlin.jvm.JvmField
+        val updateList: MutableList<ClientExternalMediaList> = ArrayList()
+        @kotlin.jvm.JvmField
+        val joins: MutableList<ListJoin> = ArrayList()
+        @kotlin.jvm.JvmField
+        val clearJoins: MutableList<Int> = ArrayList()
+        @kotlin.jvm.JvmField
+        val mediumDependencies: MutableList<IntDependency<List<ListJoin>>> = ArrayList()
     }
 
-    public static class FilteredExtMediaList {
-        public final List<ClientExternalMediaList> newList = new ArrayList<>();
-        public final List<ClientExternalMediaList> updateList = new ArrayList<>();
-        public final List<ListJoin> joins = new ArrayList<>();
-        public final List<Integer> clearJoins = new ArrayList<>();
-        public final List<IntDependency<List<LoadWorkGenerator.ListJoin>>> mediumDependencies = new ArrayList<>();
-        public final List<Dependency<String, ClientExternalMediaList>> userDependencies = new ArrayList<>();
+    class FilteredExtMediaList {
+        @kotlin.jvm.JvmField
+        val newList: MutableList<ClientExternalMediaList> = ArrayList()
+        @kotlin.jvm.JvmField
+        val updateList: MutableList<ClientExternalMediaList> = ArrayList()
+        @kotlin.jvm.JvmField
+        val joins: MutableList<ListJoin> = ArrayList()
+        @kotlin.jvm.JvmField
+        val clearJoins: MutableList<Int> = ArrayList()
+        @kotlin.jvm.JvmField
+        val mediumDependencies: MutableList<IntDependency<List<ListJoin>>> = ArrayList()
+        @kotlin.jvm.JvmField
+        val userDependencies: MutableList<Dependency<String, ClientExternalMediaList>> =
+            ArrayList()
     }
 
-    public static class FilteredMediaList {
-        public final List<ClientMediaList> newList = new ArrayList<>();
-        public final List<ClientMediaList> updateList = new ArrayList<>();
-        public final List<ListJoin> joins = new ArrayList<>();
-        public final List<Integer> clearJoins = new ArrayList<>();
-        public final List<IntDependency<List<LoadWorkGenerator.ListJoin>>> mediumDependencies = new ArrayList<>();
+    class FilteredMediaList {
+        @kotlin.jvm.JvmField
+        val newList: MutableList<ClientMediaList> = ArrayList()
+        @kotlin.jvm.JvmField
+        val updateList: MutableList<ClientMediaList> = ArrayList()
+        @kotlin.jvm.JvmField
+        val joins: MutableList<ListJoin> = ArrayList()
+        @kotlin.jvm.JvmField
+        val clearJoins: MutableList<Int> = ArrayList()
+        @kotlin.jvm.JvmField
+        val mediumDependencies: MutableList<IntDependency<List<ListJoin>>> = ArrayList()
     }
 
-    public static class ListJoin {
-        public final int listId;
-        public final int mediumId;
-
-        ListJoin(int listId, int mediumId) {
-            this.listId = listId;
-            this.mediumId = mediumId;
-        }
+    class ListJoin internal constructor(val listId: Int, val mediumId: Int)
+    class FilteredMedia {
+        @kotlin.jvm.JvmField
+        val newMedia: MutableList<ClientSimpleMedium> = ArrayList()
+        @kotlin.jvm.JvmField
+        val updateMedia: MutableList<ClientSimpleMedium> = ArrayList()
+        @kotlin.jvm.JvmField
+        val unloadedParts: MutableList<Int> = ArrayList()
+        @kotlin.jvm.JvmField
+        val episodeDependencies: MutableList<IntDependency<ClientMedium>> = ArrayList()
     }
 
-    public static class FilteredMedia {
-        public final List<ClientSimpleMedium> newMedia = new ArrayList<>();
-        public final List<ClientSimpleMedium> updateMedia = new ArrayList<>();
-        public final List<Integer> unloadedParts = new ArrayList<>();
-        public final List<IntDependency<ClientMedium>> episodeDependencies = new ArrayList<>();
+    class FilteredParts {
+        @kotlin.jvm.JvmField
+        val newParts: MutableList<ClientPart> = ArrayList()
+        @kotlin.jvm.JvmField
+        val updateParts: MutableList<ClientPart> = ArrayList()
+        @kotlin.jvm.JvmField
+        val mediumDependencies: MutableList<IntDependency<ClientPart>> = ArrayList()
+        @kotlin.jvm.JvmField
+        val episodes: MutableList<ClientEpisode> = ArrayList()
     }
 
-    public static class FilteredParts {
-        public final List<ClientPart> newParts = new ArrayList<>();
-        public final List<ClientPart> updateParts = new ArrayList<>();
-        public final List<IntDependency<ClientPart>> mediumDependencies = new ArrayList<>();
-        public final List<ClientEpisode> episodes = new ArrayList<>();
+    class FilteredEpisodes {
+        @kotlin.jvm.JvmField
+        val newEpisodes: MutableList<ClientEpisode> = ArrayList()
+        @kotlin.jvm.JvmField
+        val updateEpisodes: MutableList<ClientEpisode> = ArrayList()
+        @kotlin.jvm.JvmField
+        val partDependencies: MutableList<IntDependency<ClientEpisode>> = ArrayList()
+        @kotlin.jvm.JvmField
+        val releases: MutableList<ClientEpisodeRelease> = ArrayList()
     }
 
-    public static class FilteredEpisodes {
-        public final List<ClientEpisode> newEpisodes = new ArrayList<>();
-        public final List<ClientEpisode> updateEpisodes = new ArrayList<>();
-        public final List<IntDependency<ClientEpisode>> partDependencies = new ArrayList<>();
-        public final List<ClientEpisodeRelease> releases = new ArrayList<>();
+    class FilteredReadEpisodes {
+        @kotlin.jvm.JvmField
+        val episodeList: MutableList<ClientReadEpisode> = ArrayList()
+        @kotlin.jvm.JvmField
+        val dependencies: MutableList<IntDependency<ClientReadEpisode>> = ArrayList()
     }
 
-    public static class FilteredReadEpisodes {
-        public final List<ClientReadEpisode> episodeList = new ArrayList<>();
-        public final List<IntDependency<ClientReadEpisode>> dependencies = new ArrayList<>();
-    }
-
-    public static class IntDependency<T> {
-        public final int id;
-        public final T dependency;
-
-        IntDependency(int id, T dependency) {
-            this.id = id;
-            this.dependency = dependency;
-        }
-    }
-
-    public static class Dependency<V, T> {
-        public final V id;
-        public final T dependency;
-
-        Dependency(V id, T dependency) {
-            this.id = id;
-            this.dependency = dependency;
-        }
-    }
-
-
+    class IntDependency<T> internal constructor(val id: Int, val dependency: T)
+    class Dependency<V, T> internal constructor(val id: V, val dependency: T)
 }
-

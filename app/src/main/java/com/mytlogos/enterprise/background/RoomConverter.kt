@@ -1,420 +1,391 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import com.mytlogos.enterprise.background.api.model.ClientEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
-import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientMedium;
-import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
-import com.mytlogos.enterprise.background.api.model.ClientNews;
-import com.mytlogos.enterprise.background.api.model.ClientPart;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
-import com.mytlogos.enterprise.background.api.model.ClientUser;
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
-import com.mytlogos.enterprise.background.room.model.ClientRoomEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomDanglingMedium;
-import com.mytlogos.enterprise.background.room.model.RoomDisplayEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomEditEvent;
-import com.mytlogos.enterprise.background.room.model.RoomEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
-import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
-import com.mytlogos.enterprise.background.room.model.RoomMediaList;
-import com.mytlogos.enterprise.background.room.model.RoomMedium;
-import com.mytlogos.enterprise.background.room.model.RoomMediumInWait;
-import com.mytlogos.enterprise.background.room.model.RoomNews;
-import com.mytlogos.enterprise.background.room.model.RoomPart;
-import com.mytlogos.enterprise.background.room.model.RoomReadEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomRelease;
-import com.mytlogos.enterprise.background.room.model.RoomToDownload;
-import com.mytlogos.enterprise.background.room.model.RoomToc;
-import com.mytlogos.enterprise.background.room.model.RoomTocEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomUser;
-import com.mytlogos.enterprise.model.DisplayEpisode;
-import com.mytlogos.enterprise.model.Episode;
-import com.mytlogos.enterprise.model.HomeStats;
-import com.mytlogos.enterprise.model.MediumInWait;
-import com.mytlogos.enterprise.model.ReadEpisode;
-import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.Toc;
-import com.mytlogos.enterprise.model.TocEpisode;
-import com.mytlogos.enterprise.model.User;
+import com.mytlogos.enterprise.background.api.model.*
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator.ListJoin
+import com.mytlogos.enterprise.background.room.model.*
+import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.ExternalListMediaJoin
+import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
+import com.mytlogos.enterprise.model.*
+import java.util.*
+import java.util.function.Function
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.function.Function;
-
-public class RoomConverter {
-
-    private final LoadData loadedData;
-
-    public RoomConverter(LoadData loadedData) {
-        this.loadedData = loadedData;
-    }
-
-    public RoomConverter() {
-        this(new LoadData());
-    }
-
-    public List<RoomExternalMediaList> convertExternalMediaList(Collection<ClientExternalMediaList> mediaLists) {
-        return this.convert(mediaLists, this::convert);
-    }
-
-    public List<RoomMediaList> convertMediaList(Collection<ClientMediaList> mediaLists) {
-        return this.convert(mediaLists, this::convert);
-    }
-
-    public List<RoomExternalUser> convertExternalUser(Collection<ClientExternalUser> mediaLists) {
-        return this.convert(mediaLists, this::convert);
-    }
-
-    public List<RoomExternalMediaList.ExternalListMediaJoin> convertExListJoin(Collection<LoadWorkGenerator.ListJoin> mediaLists) {
-        return this.convert(mediaLists, this::convertToExtListJoin);
-    }
-
-    public List<RoomMediaList.MediaListMediaJoin> convertListJoin(Collection<LoadWorkGenerator.ListJoin> joins) {
-        return this.convert(joins, this::convertToListJoin);
-    }
-
-    public List<RoomEpisode> convertEpisodes(Collection<ClientEpisode> episodes) {
-        return this.convert(episodes, this::convert);
-    }
-
-    public List<ClientRoomEpisode> convertEpisodesClient(Collection<ClientEpisode> episodes) {
-        return this.convert(episodes, this::convertClient);
-    }
-
-    public List<RoomRelease> convertEpisodeReleases(Collection<ClientEpisodeRelease> releases) {
-        return this.convert(releases, this::convert);
-    }
-
-    public List<RoomRelease> convertReleases(Collection<ClientRelease> releases) {
-        return this.convert(releases, this::convert);
-    }
-
-    public List<RoomMedium> convertMedia(Collection<ClientMedium> media) {
-        List<RoomMedium> mediumList = new ArrayList<>(media.size());
-        for (ClientMedium medium : media) {
-            int currentRead = medium.getCurrentRead();
-            Integer curredRead = this.loadedData.getEpisodes().contains(currentRead) ? currentRead : null;
-            mediumList.add(this.convert(medium, curredRead));
+class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData = LoadData()) {
+    fun convertExternalMediaList(mediaLists: Collection<ClientExternalMediaList>?): List<RoomExternalMediaList> {
+        return this.convert(mediaLists) { mediaList: ClientExternalMediaList ->
+            this.convert(
+                mediaList
+            )
         }
-        return mediumList;
     }
 
-    public List<RoomMedium> convertSimpleMedia(Collection<ClientSimpleMedium> media) {
-        List<RoomMedium> mediumList = new ArrayList<>(media.size());
+    fun convertMediaList(mediaLists: Collection<ClientMediaList>?): List<RoomMediaList> {
+        return this.convert(mediaLists) { mediaList: ClientMediaList -> this.convert(mediaList) }
+    }
 
-        for (ClientSimpleMedium medium : media) {
-            mediumList.add(this.convert(medium));
+    fun convertExternalUser(mediaLists: Collection<ClientExternalUser>?): List<RoomExternalUser> {
+        return this.convert(mediaLists) { user: ClientExternalUser -> this.convert(user) }
+    }
+
+    fun convertExListJoin(mediaLists: Collection<ListJoin>?): List<ExternalListMediaJoin> {
+        return this.convert(mediaLists) { join: ListJoin -> convertToExtListJoin(join) }
+    }
+
+    fun convertListJoin(joins: Collection<ListJoin>?): List<MediaListMediaJoin> {
+        return this.convert(joins) { mediaList: ListJoin -> convertToListJoin(mediaList) }
+    }
+
+    fun convertEpisodes(episodes: Collection<ClientEpisode>?): List<RoomEpisode> {
+        return this.convert(episodes) { episode: ClientEpisode -> this.convert(episode) }
+    }
+
+    fun convertEpisodesClient(episodes: Collection<ClientEpisode>?): List<ClientRoomEpisode> {
+        return this.convert(episodes) { episode: ClientEpisode -> convertClient(episode) }
+    }
+
+    fun convertEpisodeReleases(releases: Collection<ClientEpisodeRelease>?): List<RoomRelease> {
+        return this.convert(releases) { release: ClientEpisodeRelease -> this.convert(release) }
+    }
+
+    fun convertReleases(releases: Collection<ClientRelease>?): List<RoomRelease> {
+        return this.convert(releases) { release: ClientRelease -> this.convert(release) }
+    }
+
+    fun convertMedia(media: Collection<ClientMedium>): List<RoomMedium> {
+        val mediumList: MutableList<RoomMedium> = ArrayList(media.size)
+        for (medium in media) {
+            val currentRead = medium.currentRead
+            val curredRead = if (loadedData.episodes.contains(currentRead)) currentRead else null
+            mediumList.add(this.convert(medium, curredRead))
         }
-        return mediumList;
+        return mediumList
     }
 
-    public List<RoomPart> convertParts(Collection<ClientPart> parts) {
-        return this.convert(parts, this::convert);
+    fun convertSimpleMedia(media: Collection<ClientSimpleMedium>): List<RoomMedium> {
+        val mediumList: MutableList<RoomMedium> = ArrayList(media.size)
+        for (medium in media) {
+            mediumList.add(this.convert(medium))
+        }
+        return mediumList
     }
 
-    public List<RoomToDownload> convertToDownload(Collection<ToDownload> toDownloads) {
-        return this.convert(toDownloads, this::convert);
+    fun convertParts(parts: Collection<ClientPart>?): List<RoomPart> {
+        return this.convert(parts) { part: ClientPart -> this.convert(part) }
     }
 
-    public List<ToDownload> convertRoomToDownload(Collection<RoomToDownload> roomToDownloads) {
-        return this.convert(roomToDownloads, this::convert);
+    fun convertToDownload(toDownloads: Collection<ToDownload>?): List<RoomToDownload> {
+        return this.convert(toDownloads) { toDownload: ToDownload -> this.convert(toDownload) }
     }
 
-    public Collection<RoomMediumInWait> convertClientMediaInWait(Collection<ClientMediumInWait> medium) {
-        return this.convert(medium, this::convert);
+    fun convertRoomToDownload(roomToDownloads: Collection<RoomToDownload>?): List<ToDownload> {
+        return this.convert(roomToDownloads) { roomToDownload: RoomToDownload ->
+            this.convert(
+                roomToDownload
+            )
+        }
     }
 
-    public Collection<RoomDanglingMedium> convertToDangling(Collection<Integer> mediaIds) {
-        return this.convert(mediaIds, RoomDanglingMedium::new);
+    fun convertClientMediaInWait(medium: Collection<ClientMediumInWait>?): Collection<RoomMediumInWait> {
+        return this.convert(medium) { medium: ClientMediumInWait -> this.convert(medium) }
     }
 
-    public Collection<RoomMediumInWait> convertMediaInWait(Collection<MediumInWait> medium) {
-        return this.convert(medium, this::convert);
+    fun convertToDangling(mediaIds: Collection<Int>?): Collection<RoomDanglingMedium> {
+        return this.convert(mediaIds) { mediumId: Int? ->
+            RoomDanglingMedium(
+                mediumId!!
+            )
+        }
     }
 
-    public Collection<RoomEditEvent> convertEditEvents(Collection<EditEvent> events) {
-        return this.convert(events, this::convert);
+    fun convertMediaInWait(medium: Collection<MediumInWait>): Collection<RoomMediumInWait> {
+        return this.convert(medium) { inWait: MediumInWait -> this.convert(inWait) }
     }
 
-    public List<RoomToc> convertToc(Collection<Toc> tocs) {
-        return this.convert(tocs, this::convert);
+    fun convertEditEvents(events: Collection<EditEvent>?): Collection<RoomEditEvent?> {
+        return this.convert(events) { event: EditEvent? -> this.convert(event) }
     }
 
-    private <R, T> List<R> convert(Collection<T> values, Function<T, R> converter) {
-        List<R> list = new ArrayList<>();
+    fun convertToc(tocs: Collection<Toc>): List<RoomToc> {
+        return this.convert(tocs) { toc: Toc -> this.convert(toc) }
+    }
 
+    private fun <R, T> convert(values: Collection<T>?, converter: Function<T, R>): List<R> {
+        val list: MutableList<R> = ArrayList()
         if (values == null) {
-            return list;
+            return list
         }
-        for (T t : values) {
-            list.add(converter.apply(t));
+        for (t in values) {
+            list.add(converter.apply(t))
         }
-        return list;
+        return list
     }
 
-    private RoomToc convert(Toc toc) {
-        return toc == null ? null : toc instanceof RoomToc ? (RoomToc) toc : new RoomToc(
-                toc.getMediumId(),
-                toc.getLink()
-        );
+    private fun convert(toc: Toc): RoomToc {
+        return if (toc is RoomToc) toc else RoomToc(
+            toc.mediumId,
+            toc.link
+        )
     }
 
-    public RoomMediumInWait convert(MediumInWait inWait) {
-        return inWait == null ? null : new RoomMediumInWait(
-                inWait.getTitle(),
-                inWait.getMedium(),
-                inWait.getLink()
-        );
+    fun convert(inWait: MediumInWait): RoomMediumInWait {
+        return RoomMediumInWait(
+            inWait.title,
+            inWait.medium,
+            inWait.link
+        )
     }
 
-    public DisplayEpisode convertRoomEpisode(RoomDisplayEpisode episode) {
-        return episode == null ? null : new DisplayEpisode(
-                episode.getEpisodeId(),
-                episode.getMediumId(),
-                episode.getMediumTitle(),
-                episode.getTotalIndex(),
-                episode.getPartialIndex(),
-                episode.getSaved(),
-                episode.getRead(),
-                new ArrayList<>(episode.getReleases())
-        );
+    fun convertRoomEpisode(episode: RoomDisplayEpisode?): DisplayEpisode? {
+        return if (episode == null) null else this.convertRoomEpisodeNonNull(episode)
     }
 
-    public RoomExternalMediaList.ExternalListMediaJoin convertToExtListJoin(LoadWorkGenerator.ListJoin join) {
-        return new RoomExternalMediaList.ExternalListMediaJoin(
-                join.listId, join.mediumId
-        );
+    fun convertRoomEpisodeNonNull(episode: RoomDisplayEpisode): DisplayEpisode {
+        return DisplayEpisode(
+            episode.episodeId,
+            episode.mediumId,
+            episode.mediumTitle,
+            episode.totalIndex,
+            episode.partialIndex,
+            episode.saved,
+            episode.read,
+            ArrayList<Release>(episode.releases)
+        )
     }
 
-    public RoomMediaList.MediaListMediaJoin convertToListJoin(LoadWorkGenerator.ListJoin mediaList) {
-        return new RoomMediaList.MediaListMediaJoin(
-                mediaList.listId, mediaList.mediumId
-        );
+    fun convertToExtListJoin(join: ListJoin): ExternalListMediaJoin {
+        return ExternalListMediaJoin(
+            join.listId, join.mediumId
+        )
     }
 
-    public RoomEpisode convert(ClientEpisode episode) {
-        return new RoomEpisode(
-                episode.getId(), episode.getProgress(), episode.getReadDate(), episode.getPartId(),
-                episode.getTotalIndex(), episode.getPartialIndex(),
-                Double.parseDouble(String.format("%s.%s", episode.getTotalIndex(), episode.getPartialIndex())),
-                false
-        );
+    fun convertToListJoin(mediaList: ListJoin): MediaListMediaJoin {
+        return MediaListMediaJoin(
+            mediaList.listId, mediaList.mediumId
+        )
     }
 
-    public ClientRoomEpisode convertClient(ClientEpisode episode) {
-        return new ClientRoomEpisode(
-                episode.getId(),
-                episode.getProgress(),
-                episode.getPartId(),
-                episode.getTotalIndex(),
-                episode.getPartialIndex(),
-                episode.getCombiIndex() != 0
-                        ? episode.getCombiIndex()
-                        : Double.parseDouble(String.format(
-                        "%s.%s",
-                        episode.getTotalIndex(),
-                        episode.getPartialIndex()
-                )),
-                episode.getReadDate()
-        );
+    fun convert(episode: ClientEpisode): RoomEpisode {
+        return RoomEpisode(
+            episode.id,
+            episode.progress,
+            episode.readDate,
+            episode.partId,
+            episode.totalIndex,
+            episode.partialIndex,
+            String.format("%s.%s", episode.totalIndex, episode.partialIndex).toDouble(),
+            false
+        )
     }
 
-    public RoomRelease convert(ClientRelease release) {
-        return new RoomRelease(
-                release.getEpisodeId(),
-                release.getTitle(),
-                release.getUrl(),
-                release.getReleaseDate(),
-                release.isLocked()
-        );
+    fun convertClient(episode: ClientEpisode): ClientRoomEpisode {
+        return ClientRoomEpisode(
+            episode.id,
+            episode.progress,
+            episode.partId,
+            episode.totalIndex,
+            episode.partialIndex,
+            if (episode.combiIndex != 0.0) episode.combiIndex else String.format(
+                "%s.%s",
+                episode.totalIndex,
+                episode.partialIndex
+            ).toDouble(),
+            episode.readDate
+        )
     }
 
-    public RoomRelease convert(ClientEpisodeRelease release) {
-        return new RoomRelease(
-                release.getEpisodeId(),
-                release.getTitle(),
-                release.getUrl(),
-                release.getReleaseDate(),
-                release.isLocked()
-        );
+    fun convert(release: ClientRelease): RoomRelease {
+        return RoomRelease(
+            release.episodeId,
+            release.getTitle(),
+            release.getUrl(),
+            release.getReleaseDate(),
+            release.isLocked
+        )
     }
 
-    public RoomExternalUser convert(ClientExternalUser user) {
-        return new RoomExternalUser(
-                user.getUuid(), user.getLocalUuid(), user.getIdentifier(),
-                user.getType()
-        );
+    fun convert(release: ClientEpisodeRelease): RoomRelease {
+        return RoomRelease(
+            release.episodeId,
+            release.title,
+            release.url,
+            release.releaseDate,
+            release.isLocked
+        )
     }
 
-    public RoomMediaList convert(ClientMediaList mediaList) {
-        return new RoomMediaList(
-                mediaList.getId(), mediaList.getUserUuid(), mediaList.getName(),
-                mediaList.getMedium()
-        );
+    fun convert(user: ClientExternalUser): RoomExternalUser {
+        return RoomExternalUser(
+            user.getUuid(), user.localUuid, user.identifier,
+            user.type
+        )
     }
 
-    public RoomExternalMediaList convert(ClientExternalMediaList mediaList) {
-        return new RoomExternalMediaList(
-                mediaList.getUuid(), mediaList.getId(), mediaList.getName(),
-                mediaList.getMedium(), mediaList.getUrl()
-        );
+    fun convert(mediaList: ClientMediaList): RoomMediaList {
+        return RoomMediaList(
+            mediaList.id, mediaList.userUuid, mediaList.name,
+            mediaList.medium
+        )
     }
 
-    public RoomMedium convert(ClientMedium medium, Integer curredRead) {
-        return new RoomMedium(
-                curredRead, medium.getId(), medium.getCountryOfOrigin(),
-                medium.getLanguageOfOrigin(), medium.getAuthor(), medium.getTitle(),
-                medium.getMedium(), medium.getArtist(), medium.getLang(),
-                medium.getStateOrigin(), medium.getStateTL(), medium.getSeries(),
-                medium.getUniverse()
-        );
+    fun convert(mediaList: ClientExternalMediaList): RoomExternalMediaList {
+        return RoomExternalMediaList(
+            mediaList.uuid, mediaList.id, mediaList.name,
+            mediaList.medium, mediaList.url
+        )
     }
 
-    public RoomMedium convert(ClientSimpleMedium medium) {
-        return new RoomMedium(
-                null, medium.getId(), medium.getCountryOfOrigin(),
-                medium.getLanguageOfOrigin(), medium.getAuthor(), medium.getTitle(),
-                medium.getMedium(), medium.getArtist(), medium.getLang(),
-                medium.getStateOrigin(), medium.getStateTL(), medium.getSeries(),
-                medium.getUniverse()
-        );
+    fun convert(medium: ClientMedium, curredRead: Int?): RoomMedium {
+        return RoomMedium(
+            curredRead, medium.id, medium.countryOfOrigin,
+            medium.languageOfOrigin, medium.author, medium.title,
+            medium.medium, medium.artist, medium.lang,
+            medium.stateOrigin, medium.stateTL, medium.series,
+            medium.universe
+        )
     }
 
-    public RoomNews convert(ClientNews news) {
-        return new RoomNews(
-                news.getId(), news.isRead(),
-                news.getTitle(), news.getDate(),
-                news.getLink()
-        );
+    fun convert(medium: ClientSimpleMedium): RoomMedium {
+        return RoomMedium(
+            null, medium.id, medium.countryOfOrigin,
+            medium.languageOfOrigin, medium.author, medium.title,
+            medium.medium, medium.artist, medium.lang,
+            medium.stateOrigin, medium.stateTL, medium.series,
+            medium.universe
+        )
     }
 
-    public RoomPart convert(ClientPart part) {
-        return new RoomPart(
-                part.getId(),
-                part.getMediumId(),
-                part.getTitle(),
-                part.getTotalIndex(),
-                part.getPartialIndex(),
-                Double.parseDouble(String.format("%s.%s", part.getTotalIndex(), part.getPartialIndex()))
-        );
+    fun convert(news: ClientNews): RoomNews {
+        return RoomNews(
+            news.id, news.isRead,
+            news.title, news.date,
+            news.link
+        )
     }
 
-    public RoomToDownload convert(ToDownload toDownload) {
-        return new RoomToDownload(
-                0, toDownload.isProhibited(),
-                toDownload.getMediumId(),
-                toDownload.getListId(),
-                toDownload.getExternalListId()
-        );
+    fun convert(part: ClientPart): RoomPart {
+        return RoomPart(
+            part.id,
+            part.mediumId,
+            part.title,
+            part.totalIndex,
+            part.partialIndex, String.format("%s.%s", part.totalIndex, part.partialIndex).toDouble()
+        )
     }
 
-    public ToDownload convert(RoomToDownload roomToDownload) {
-        return new ToDownload(
-                roomToDownload.getProhibited(),
-                roomToDownload.getMediumId(),
-                roomToDownload.getListId(),
-                roomToDownload.getExternalListId()
-        );
+    fun convert(toDownload: ToDownload): RoomToDownload {
+        return RoomToDownload(
+            0, toDownload.isProhibited,
+            toDownload.mediumId,
+            toDownload.listId,
+            toDownload.externalListId
+        )
     }
 
-    public RoomUser convert(ClientUser user) {
-        return new RoomUser(
-                user.getName(),
-                user.getUuid(),
-                user.getSession()
-        );
+    fun convert(roomToDownload: RoomToDownload): ToDownload {
+        return ToDownload(
+            roomToDownload.prohibited,
+            roomToDownload.mediumId,
+            roomToDownload.listId,
+            roomToDownload.externalListId
+        )
     }
 
-    public RoomMediumInWait convert(ClientMediumInWait medium) {
-        return new RoomMediumInWait(
-                medium.getTitle(),
-                medium.getMedium(),
-                medium.getLink()
-        );
+    fun convert(user: ClientUser): RoomUser {
+        return RoomUser(
+            user.name,
+            user.uuid,
+            user.session
+        )
     }
 
-    public Episode convert(RoomEpisode roomEpisode) {
-        return roomEpisode == null ? null : new Episode(
-                roomEpisode.getEpisodeId(),
-                roomEpisode.getProgress(),
-                roomEpisode.getPartId(),
-                roomEpisode.getPartialIndex(),
-                roomEpisode.getTotalIndex(),
-                roomEpisode.getReadDate(),
-                roomEpisode.getSaved()
-        );
+    fun convert(medium: ClientMediumInWait): RoomMediumInWait {
+        return RoomMediumInWait(
+            medium.title,
+            medium.medium,
+            medium.link
+        )
     }
 
-    public HomeStats toUser(RoomUser user, Integer countReadToday, Integer countUnreadChapter, Integer countUnreadNews) {
-        return null;
+    fun convert(roomEpisode: RoomEpisode): Episode {
+        return Episode(
+            roomEpisode.episodeId,
+            roomEpisode.progress,
+            roomEpisode.partId,
+            roomEpisode.partialIndex,
+            roomEpisode.totalIndex,
+            roomEpisode.readDate,
+            roomEpisode.saved
+        )
     }
 
-    public MediumInWait convert(RoomMediumInWait input) {
-        return input == null ? null : new MediumInWait(
-                input.getTitle(),
-                input.getMedium(),
-                input.getLink()
-        );
+    fun toUser(
+        user: RoomUser?,
+        countReadToday: Int?,
+        countUnreadChapter: Int?,
+        countUnreadNews: Int?
+    ): HomeStats? {
+        return null
     }
 
-    public TocEpisode convertTocEpisode(RoomTocEpisode roomTocEpisode) {
-        return roomTocEpisode == null ? null : new TocEpisode(
-                roomTocEpisode.getEpisodeId(),
-                roomTocEpisode.getProgress(),
-                roomTocEpisode.getPartId(),
-                roomTocEpisode.getPartialIndex(),
-                roomTocEpisode.getTotalIndex(),
-                roomTocEpisode.getReadDate(),
-                roomTocEpisode.getSaved(),
-                new ArrayList<>(roomTocEpisode.getReleases())
-        );
+    fun convert(input: RoomMediumInWait): MediumInWait {
+        return MediumInWait(
+            input.title,
+            input.medium,
+            input.link
+        )
     }
 
-    public RoomUser convert(ClientSimpleUser user) {
-        return user == null ? null : new RoomUser(
-                user.getName(),
-                user.getUuid(),
-                user.getSession()
-        );
+    fun convertTocEpisode(roomTocEpisode: RoomTocEpisode): TocEpisode {
+        return TocEpisode(
+            roomTocEpisode.episodeId,
+            roomTocEpisode.progress,
+            roomTocEpisode.partId,
+            roomTocEpisode.partialIndex,
+            roomTocEpisode.totalIndex,
+            roomTocEpisode.readDate,
+            roomTocEpisode.saved,
+            ArrayList<Release>(roomTocEpisode.releases)
+        )
     }
 
-    public ReadEpisode convert(RoomReadEpisode input) {
-        return input == null ? null : new ReadEpisode(
-                input.getEpisodeId(),
-                input.getMediumId(),
-                input.getMediumTitle(),
-                input.getTotalIndex(),
-                input.getPartialIndex(),
-                new ArrayList<>(input.getReleases())
-        );
+    fun convert(user: ClientSimpleUser): RoomUser {
+        return RoomUser(
+            user.getName(),
+            user.getUuid(),
+            user.getSession()
+        )
     }
 
-    public RoomEditEvent convert(EditEvent event) {
-        return event == null
-                ? null
-                : event instanceof RoomEditEvent
-                ? (RoomEditEvent) event
-                : new RoomEditEvent(
-                event.getId(),
-                event.getObjectType(),
-                event.getEventType(),
-                event.getDateTime(),
-                event.getFirstValue(),
-                event.getSecondValue()
-        );
+    fun convert(input: RoomReadEpisode): ReadEpisode {
+        return ReadEpisode(
+            input.episodeId,
+            input.mediumId,
+            input.mediumTitle,
+            input.totalIndex,
+            input.partialIndex,
+            ArrayList<Release>(input.releases)
+        )
     }
 
-    public User convert(RoomUser user) {
-        return user == null ? null : new User(
-                user.getUuid(),
-                user.getSession(),
-                user.getName()
-        );
+    fun convert(event: EditEvent?): RoomEditEvent? {
+        return when (event) {
+            null -> null
+            is RoomEditEvent -> event
+            else -> RoomEditEvent(
+                event.id,
+                event.objectType,
+                event.eventType,
+                event.dateTime,
+                event.firstValue,
+                event.secondValue
+            )
+        }
+    }
+
+    fun convert(user: RoomUser?): User? {
+        return if (user == null) null else User(
+            user.uuid,
+            user.session,
+            user.name
+        )
     }
 }

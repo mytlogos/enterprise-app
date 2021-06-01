@@ -1,157 +1,140 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*
 
-class DependantNode {
-    private boolean root;
-    private final DependantValue value;
-    private final Set<DependantNode> children = new HashSet<>();
-    private final Set<DependantNode> optionalChildren = new HashSet<>();
-    private final Set<DependantNode> parents = new HashSet<>();
+internal class DependantNode {
+    private var root: Boolean
+    val value: DependantValue
+    private val children: MutableSet<DependantNode> = HashSet()
+    private val optionalChildren: MutableSet<DependantNode> = HashSet()
+    private val parents: MutableSet<DependantNode> = HashSet()
 
-    DependantNode(DependantValue value) {
-        Objects.requireNonNull(value);
-        Objects.requireNonNull(value.getValue());
-        this.root = false;
-        this.value = value;
+    constructor(value: DependantValue) {
+        Objects.requireNonNull(value)
+        Objects.requireNonNull(value.value)
+        this.root = false
+        this.value = value
     }
 
-    DependantNode(Integer intId) {
-        Objects.requireNonNull(intId);
-        if (intId <= 0) {
-            throw new IllegalArgumentException("invalid int id: not greater than zero");
-        }
-        this.root = true;
-        this.value = new DependantValue(intId.intValue());
+    constructor(intId: Int) {
+        Objects.requireNonNull(intId)
+        require(intId > 0) { "invalid int id: not greater than zero" }
+        this.root = true
+        value = DependantValue(intId)
     }
 
-    DependantNode(String stringId) {
-        if (stringId == null || stringId.isEmpty()) {
-            throw new IllegalArgumentException("invalid string id: empty");
-        }
-        this.root = true;
-        this.value = new DependantValue(stringId);
+    constructor(stringId: String?) {
+        require(!(stringId == null || stringId.isEmpty())) { "invalid string id: empty" }
+        this.root = true
+        value = DependantValue(stringId)
     }
 
-    Set<DependantNode> getChildren() {
-        return Collections.unmodifiableSet(this.children);
+    fun getChildren(): Set<DependantNode> {
+        return Collections.unmodifiableSet(children)
     }
 
-    Set<DependantNode> getOptionalChildren() {
-        return Collections.unmodifiableSet(this.optionalChildren);
+    fun getOptionalChildren(): Set<DependantNode> {
+        return Collections.unmodifiableSet(optionalChildren)
     }
 
-    boolean addChild(DependantNode node, boolean optional) {
-        Objects.requireNonNull(node);
-        Set<DependantNode> nodes = optional ? this.optionalChildren : this.children;
-
+    fun addChild(node: DependantNode, optional: Boolean): Boolean {
+        Objects.requireNonNull(node)
+        val nodes = if (optional) optionalChildren else children
         if (nodes.add(node)) {
-            node.parents.add(this);
-            return true;
+            node.parents.add(this)
+            return true
         }
-        return false;
+        return false
     }
 
-    DependantNode createNewNode(DependantValue value) {
-        DependantNode node = new DependantNode(value);
-
-        for (DependantNode child : this.children) {
-            child.removeParent(this);
-            node.addChild(child, false);
+    fun createNewNode(value: DependantValue): DependantNode {
+        val node = DependantNode(value)
+        for (child in children) {
+            child.removeParent(this)
+            node.addChild(child, false)
         }
-        for (DependantNode child : this.optionalChildren) {
-            child.removeParent(this);
-            node.addChild(child, true);
+        for (child in optionalChildren) {
+            child.removeParent(this)
+            node.addChild(child, true)
         }
-        return node;
+        return node
     }
 
-    Collection<DependantNode> removeAsParent() {
-        for (DependantNode child : this.children) {
+    fun removeAsParent(): Collection<DependantNode> {
+        for (child in children) {
             if (!child.parents.remove(this)) {
-                System.out.println("children does not have this as parent");
+                println("children does not have this as parent")
             }
         }
-        for (DependantNode child : this.optionalChildren) {
+        for (child in optionalChildren) {
             if (!child.parents.remove(this)) {
-                System.out.println("children does not have this as parent");
+                println("children does not have this as parent")
             }
         }
-
-        Collection<DependantNode> nodes = new ArrayList<>(this.children.size() + this.optionalChildren.size());
-        nodes.addAll(this.children);
-        nodes.addAll(this.optionalChildren);
-        return nodes;
+        val nodes: MutableCollection<DependantNode> = ArrayList(
+            children.size + optionalChildren.size
+        )
+        nodes.addAll(children)
+        nodes.addAll(optionalChildren)
+        return nodes
     }
 
-    void rejectNode() {
-        for (Iterator<DependantNode> iterator = this.parents.iterator(); iterator.hasNext(); ) {
-            DependantNode parent = iterator.next();
-            parent.children.remove(this);
-            parent.optionalChildren.remove(this);
-            iterator.remove();
+    fun rejectNode() {
+        val iterator = parents.iterator()
+        while (iterator.hasNext()) {
+            val parent = iterator.next()
+            parent.children.remove(this)
+            parent.optionalChildren.remove(this)
+            iterator.remove()
         }
-        for (DependantNode optionalChild : this.optionalChildren) {
-            optionalChild.rejectNode();
+        for (optionalChild in optionalChildren) {
+            optionalChild.rejectNode()
         }
-        for (DependantNode child : this.children) {
-            child.rejectNode();
+        for (child in children) {
+            child.rejectNode()
         }
     }
 
-    boolean removeChild(DependantNode node, boolean optional) {
-        Objects.requireNonNull(node);
-        return optional ? this.optionalChildren.remove(node) : this.children.remove(node);
+    fun removeChild(node: DependantNode, optional: Boolean): Boolean {
+        Objects.requireNonNull(node)
+        return if (optional) optionalChildren.remove(node) else children.remove(node)
     }
 
-    boolean addParent(DependantNode node) {
-        Objects.requireNonNull(node);
-        return this.parents.add(node);
+    fun addParent(node: DependantNode): Boolean {
+        Objects.requireNonNull(node)
+        return parents.add(node)
     }
 
-    boolean removeParent(DependantNode node) {
-        Objects.requireNonNull(node);
-        return this.parents.remove(node);
+    fun removeParent(node: DependantNode): Boolean {
+        Objects.requireNonNull(node)
+        return parents.remove(node)
     }
 
-    DependantValue getValue() {
-        return value;
+    fun isRoot(): Boolean {
+        return root && parents.isEmpty()
     }
 
-    boolean isRoot() {
-        return root && this.parents.isEmpty();
-    }
-
-    boolean isFree() {
-        if (this.parents.isEmpty()) {
-            return true;
-        }
-        for (DependantNode parent : this.parents) {
-            if (parent.children.contains(this)) {
-                return false;
+    val isFree: Boolean
+        get() {
+            if (parents.isEmpty()) {
+                return true
             }
+            for (parent in parents) {
+                if (parent.children.contains(this)) {
+                    return false
+                }
+            }
+            return true
         }
-        return true;
+
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as DependantNode
+        return value == that.value
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        DependantNode that = (DependantNode) o;
-
-        return value.equals(that.value);
-    }
-
-    @Override
-    public int hashCode() {
-        return value.hashCode();
+    override fun hashCode(): Int {
+        return value.hashCode()
     }
 }

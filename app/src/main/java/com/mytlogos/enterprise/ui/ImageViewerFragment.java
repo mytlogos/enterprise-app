@@ -324,7 +324,7 @@ public class ImageViewerFragment extends ViewerFragment<ImageViewerFragment.Read
                 if (chapterPages == null || chapterPages.isEmpty()) {
                     return null;
                 }
-                Repository repository = RepositoryImpl.getInstance(getMainActivity().getApplication());
+                Repository repository = RepositoryImpl.Companion.getInstance(getMainActivity().getApplication());
 
                 List<SimpleEpisode> episodes = repository.getSimpleEpisodes(chapterPages.keySet());
 

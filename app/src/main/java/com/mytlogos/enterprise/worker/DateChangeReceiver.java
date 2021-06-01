@@ -15,7 +15,7 @@ public class DateChangeReceiver extends BroadcastReceiver {
                 System.out.println("Context not instance of Application");
                 return;
             }
-            RepositoryImpl.getInstance((Application) context).removeOldNews();
+            RepositoryImpl.Companion.getInstance((Application) context).removeOldNews();
         }
     }
 }

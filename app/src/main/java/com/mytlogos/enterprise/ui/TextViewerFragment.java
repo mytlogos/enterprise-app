@@ -235,7 +235,7 @@ public class TextViewerFragment extends ViewerFragment<TextViewerFragment.Readab
                 if (episodeFileMap == null || episodeFileMap.isEmpty()) {
                     return "";
                 }
-                Repository repository = RepositoryImpl.getInstance(getMainActivity().getApplication());
+                Repository repository = RepositoryImpl.Companion.getInstance(getMainActivity().getApplication());
                 List<SimpleEpisode> episodes = repository.getSimpleEpisodes(episodeFileMap.keySet());
 
                 for (SimpleEpisode simpleEpisode : episodes) {

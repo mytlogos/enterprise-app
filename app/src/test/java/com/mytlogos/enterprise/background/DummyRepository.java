@@ -43,6 +43,7 @@ import com.mytlogos.enterprise.model.User;
 import com.mytlogos.enterprise.tools.Sortings;
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel;
 
+import org.jetbrains.annotations.NotNull;
 import org.joda.time.DateTime;
 
 import java.io.IOException;
@@ -246,17 +247,17 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public void removeToDownloads(Collection<ToDownload> toDownloads) {
+    public void removeToDownloads(@NotNull Collection<? extends ToDownload> toDownloads) {
 
     }
 
     @Override
-    public Collection<Integer> getExternalListItems(Integer externalListId) {
+    public Collection<Integer> getExternalListItems(int externalListId) {
         return null;
     }
 
     @Override
-    public Collection<Integer> getListItems(Integer listId) {
+    public Collection<Integer> getListItems(int listId) {
         return null;
     }
 
@@ -266,7 +267,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public List<Integer> getDownloadableEpisodes(Integer mediumId, int limit) {
+    public List<Integer> getDownloadableEpisodes(int mediumId, int limit) {
         return null;
     }
 
@@ -346,7 +347,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public int countSavedUnreadEpisodes(Integer mediumId) {
+    public int countSavedUnreadEpisodes(int mediumId) {
         return 0;
     }
 
@@ -401,12 +402,12 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public CompletableFuture<Boolean> consumeMediumInWait(SimpleMedium selectedMedium, List<MediumInWait> mediumInWaits) {
+    public CompletableFuture<Boolean> consumeMediumInWait(@NotNull SimpleMedium selectedMedium, @NotNull List<? extends MediumInWait> mediumInWaits) {
         return null;
     }
 
     @Override
-    public CompletableFuture<Boolean> createMedium(MediumInWait mediumInWait, List<MediumInWait> mediumInWaits, MediaList list) {
+    public CompletableFuture<Boolean> createMedium(@NotNull MediumInWait mediumInWait, @NotNull List<? extends MediumInWait> mediumInWaits, @NotNull MediaList list) {
         return null;
     }
 
@@ -461,7 +462,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public int getMediumType(Integer mediumId) {
+    public int getMediumType(int mediumId) {
         return 0;
     }
 
@@ -510,7 +511,7 @@ public final class DummyRepository implements Repository {
     }
 
     @Override
-    public SimpleMedium getSimpleMedium(Integer mediumId) {
+    public SimpleMedium getSimpleMedium(int mediumId) {
         return null;
     }
 

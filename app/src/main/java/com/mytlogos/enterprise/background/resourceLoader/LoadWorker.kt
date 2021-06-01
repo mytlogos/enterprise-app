@@ -1,221 +1,255 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import com.mytlogos.enterprise.background.ClientModelPersister
+import com.mytlogos.enterprise.background.DependantGenerator
+import com.mytlogos.enterprise.background.LoadData
+import com.mytlogos.enterprise.background.Repository
+import java.util.*
+import java.util.function.Consumer
 
-import com.mytlogos.enterprise.background.ClientModelPersister;
-import com.mytlogos.enterprise.background.DependantGenerator;
-import com.mytlogos.enterprise.background.LoadData;
-import com.mytlogos.enterprise.background.Repository;
+abstract class LoadWorker {
+    val NEWS_LOADER: NewsLoader
+    @kotlin.jvm.JvmField
+    val EPISODE_LOADER: EpisodeLoader
+    @kotlin.jvm.JvmField
+    val PART_LOADER: PartLoader
+    @kotlin.jvm.JvmField
+    val MEDIUM_LOADER: MediumLoader
+    val MEDIALIST_LOADER: MediaListLoader
+    @kotlin.jvm.JvmField
+    val EXTERNAL_MEDIALIST_LOADER: ExtMediaListLoader
+    @kotlin.jvm.JvmField
+    val EXTERNAL_USER_LOADER: ExtUserLoader
+    val repository: Repository
+    @kotlin.jvm.JvmField
+    val persister: ClientModelPersister
+    @kotlin.jvm.JvmField
+    val loadedData: LoadData
+    @kotlin.jvm.JvmField
+    val generator: DependantGenerator?
+    private val progressListener = Collections.synchronizedSet(HashSet<Consumer<Int>>())
+    private val totalWorkListener = Collections.synchronizedSet(HashSet<Consumer<Int>>())
+    var progress = 0
+        private set
+    var totalWork = -1
+        private set
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Consumer;
-
-public abstract class LoadWorker {
-    public final NewsLoader NEWS_LOADER;
-    public final EpisodeLoader EPISODE_LOADER;
-    public final PartLoader PART_LOADER;
-    public final MediumLoader MEDIUM_LOADER;
-    public final MediaListLoader MEDIALIST_LOADER;
-    public final ExtMediaListLoader EXTERNAL_MEDIALIST_LOADER;
-    public final ExtUserLoader EXTERNAL_USER_LOADER;
-    private static LoadWorker worker;
-    final Repository repository;
-    final ClientModelPersister persister;
-    final LoadData loadedData;
-    final DependantGenerator generator;
-    private final Set<Consumer<Integer>> progressListener = Collections.synchronizedSet(new HashSet<>());
-    private final Set<Consumer<Integer>> totalWorkListener = Collections.synchronizedSet(new HashSet<>());
-    private int progress;
-    private int totalWork = -1;
-
-    public LoadWorker(Repository repository, ClientModelPersister persister, LoadData loadedData, DependantGenerator generator) {
-        this.repository = repository;
-        this.persister = persister;
-        this.loadedData = loadedData;
-        this.generator = generator;
-        this.EXTERNAL_USER_LOADER = new ExtUserLoader(this);
-        this.EXTERNAL_MEDIALIST_LOADER = new ExtMediaListLoader(this);
-        this.MEDIALIST_LOADER = new MediaListLoader(this);
-        this.MEDIUM_LOADER = new MediumLoader(this);
-        this.PART_LOADER = new PartLoader(this);
-        this.EPISODE_LOADER = new EpisodeLoader(this);
-        this.NEWS_LOADER = new NewsLoader(this);
-        LoadWorker.worker = this;
+    constructor(
+        repository: Repository,
+        persister: ClientModelPersister,
+        loadedData: LoadData,
+        generator: DependantGenerator?
+    ) {
+        this.repository = repository
+        this.persister = persister
+        this.loadedData = loadedData
+        this.generator = generator
+        EXTERNAL_USER_LOADER = ExtUserLoader(this)
+        EXTERNAL_MEDIALIST_LOADER = ExtMediaListLoader(this)
+        MEDIALIST_LOADER = MediaListLoader(this)
+        MEDIUM_LOADER = MediumLoader(this)
+        PART_LOADER = PartLoader(this)
+        EPISODE_LOADER = EpisodeLoader(this)
+        NEWS_LOADER = NewsLoader(this)
+        worker = this
     }
 
-    LoadWorker(Repository repository, ClientModelPersister persister, LoadData loadedData, ExtUserLoader extUserLoader, ExtMediaListLoader external_medialist_loader, MediaListLoader medialist_loader, MediumLoader medium_loader, PartLoader part_loader, EpisodeLoader episode_loader, NewsLoader news_loader, DependantGenerator generator) {
-        this.repository = repository;
-        this.persister = persister;
-        this.loadedData = loadedData;
-        this.EXTERNAL_USER_LOADER = extUserLoader;
-        this.EXTERNAL_MEDIALIST_LOADER = external_medialist_loader;
-        this.MEDIALIST_LOADER = medialist_loader;
-        this.MEDIUM_LOADER = medium_loader;
-        this.PART_LOADER = part_loader;
-        this.EPISODE_LOADER = episode_loader;
-        this.NEWS_LOADER = news_loader;
-        this.generator = generator;
-        LoadWorker.worker = this;
+    internal constructor(
+        repository: Repository,
+        persister: ClientModelPersister,
+        loadedData: LoadData,
+        extUserLoader: ExtUserLoader,
+        external_medialist_loader: ExtMediaListLoader,
+        medialist_loader: MediaListLoader,
+        medium_loader: MediumLoader,
+        part_loader: PartLoader,
+        episode_loader: EpisodeLoader,
+        news_loader: NewsLoader,
+        generator: DependantGenerator?
+    ) {
+        this.repository = repository
+        this.persister = persister
+        this.loadedData = loadedData
+        EXTERNAL_USER_LOADER = extUserLoader
+        EXTERNAL_MEDIALIST_LOADER = external_medialist_loader
+        MEDIALIST_LOADER = medialist_loader
+        MEDIUM_LOADER = medium_loader
+        PART_LOADER = part_loader
+        EPISODE_LOADER = episode_loader
+        NEWS_LOADER = news_loader
+        this.generator = generator
+        worker = this
     }
 
-    public static LoadWorker getWorker() {
-        return worker;
+    fun addIntegerIdTask(id: Int, value: DependantValue?, loader: NetworkLoader<Int>) {
+        this.addIntegerIdTask(id, value, loader, false)
     }
 
-    public void addIntegerIdTask(int id, @Nullable DependantValue value, NetworkLoader<Integer> loader) {
-        this.addIntegerIdTask(id, value, loader, false);
+    open fun addIntegerIdTask(
+        id: Int,
+        value: DependantValue?,
+        loader: NetworkLoader<Int>,
+        optional: Boolean
+    ) {
     }
 
-    public void addIntegerIdTask(int id, @Nullable DependantValue value, NetworkLoader<Integer> loader, boolean optional) {
+    fun addStringIdTask(id: String, value: DependantValue?, loader: NetworkLoader<String>) {
+        this.addStringIdTask(id, value, loader, false)
     }
 
-    public void addStringIdTask(String id, @Nullable DependantValue value, NetworkLoader<String> loader) {
-        this.addStringIdTask(id, value, loader, false);
+    open fun addStringIdTask(
+        id: String,
+        value: DependantValue?,
+        loader: NetworkLoader<String>,
+        optional: Boolean
+    ) {
     }
 
-    public void addStringIdTask(String id, @Nullable DependantValue value, NetworkLoader<String> loader, boolean optional) {
+    @Deprecated("")
+    abstract fun addIntegerIdTask(
+        id: Int,
+        dependantValue: Any?,
+        loader: NetworkLoader<Int>,
+        runnable: Runnable?,
+        optional: Boolean
+    )
 
+    @Deprecated("")
+    fun addIntegerIdTask(
+        id: Int,
+        dependantValue: Any?,
+        loader: NetworkLoader<Int>,
+        runnable: Runnable?
+    ) {
+        checkIdLoader(id, loader)
+        this.addIntegerIdTask(id, dependantValue, loader, runnable, false)
     }
 
-    @Deprecated
-    public abstract void addIntegerIdTask(int id, @Nullable Object dependantValue, NetworkLoader<Integer> loader, Runnable runnable, boolean optional);
-
-    @Deprecated
-    public void addIntegerIdTask(int id, @Nullable Object dependantValue, NetworkLoader<Integer> loader, Runnable runnable) {
-        checkIdLoader(id, loader);
-        this.addIntegerIdTask(id, dependantValue, loader, runnable, false);
+    @Deprecated("")
+    fun addIntegerIdTask(
+        id: Int,
+        dependantValue: Any?,
+        loader: NetworkLoader<Int>,
+        optional: Boolean
+    ) {
+        checkIdLoader(id, loader)
+        this.addIntegerIdTask(id, dependantValue, loader, null, optional)
     }
 
-    @Deprecated
-    public void addIntegerIdTask(int id, @Nullable Object dependantValue, NetworkLoader<Integer> loader, boolean optional) {
-        checkIdLoader(id, loader);
-        this.addIntegerIdTask(id, dependantValue, loader, null, optional);
+    @Deprecated("")
+    fun addIntegerIdTask(id: Int, dependantValue: Any?, loader: NetworkLoader<Int>) {
+        Objects.requireNonNull(dependantValue)
+        checkIdLoader(id, loader)
+        this.addIntegerIdTask(id, dependantValue, loader, null, false)
     }
 
-    @Deprecated
-    public void addIntegerIdTask(int id, @NonNull Object dependantValue, NetworkLoader<Integer> loader) {
-        Objects.requireNonNull(dependantValue);
-        checkIdLoader(id, loader);
-        this.addIntegerIdTask(id, dependantValue, loader, null, false);
+    @Deprecated("")
+    fun addIntegerIdTask(id: Int, loader: NetworkLoader<Int>) {
+        this.addIntegerIdTask(id, null, loader, null, false)
     }
 
-    @Deprecated
-    public void addIntegerIdTask(int id, NetworkLoader<Integer> loader) {
-        this.addIntegerIdTask(id, null, loader, null, false);
+    @Deprecated("")
+    abstract fun addStringIdTask(
+        id: String,
+        dependantValue: Any?,
+        loader: NetworkLoader<String>,
+        runnable: Runnable?,
+        optional: Boolean
+    )
+
+    @Deprecated("")
+    fun addStringIdTask(
+        id: String,
+        dependantValue: Any?,
+        loader: NetworkLoader<String>,
+        runnable: Runnable?
+    ) {
+        checkIdLoader(id, loader)
+        this.addStringIdTask(id, dependantValue, loader, runnable, false)
     }
 
-    @Deprecated
-    public abstract void addStringIdTask(String id, @Nullable Object dependantValue, NetworkLoader<String> loader, Runnable runnable, boolean optional);
-
-    @Deprecated
-    public void addStringIdTask(String id, @Nullable Object dependantValue, NetworkLoader<String> loader, Runnable runnable) {
-        checkIdLoader(id, loader);
-        this.addStringIdTask(id, dependantValue, loader, runnable, false);
+    @Deprecated("")
+    fun addStringIdTask(
+        id: String,
+        dependantValue: Any?,
+        loader: NetworkLoader<String>,
+        optional: Boolean
+    ) {
+        checkIdLoader(id, loader)
+        this.addStringIdTask(id, dependantValue, loader, null, optional)
     }
 
-    @Deprecated
-    public void addStringIdTask(String id, @Nullable Object dependantValue, NetworkLoader<String> loader, boolean optional) {
-        checkIdLoader(id, loader);
-        this.addStringIdTask(id, dependantValue, loader, null, optional);
+    @Deprecated("")
+    fun addStringIdTask(id: String, dependantValue: Any?, loader: NetworkLoader<String>) {
+        Objects.requireNonNull(dependantValue)
+        checkIdLoader(id, loader)
+        this.addStringIdTask(id, dependantValue, loader, null, false)
     }
 
-    @Deprecated
-    public void addStringIdTask(String id, @NonNull Object dependantValue, NetworkLoader<String> loader) {
-        Objects.requireNonNull(dependantValue);
-        checkIdLoader(id, loader);
-        this.addStringIdTask(id, dependantValue, loader, null, false);
+    @Deprecated("")
+    fun addStringIdTask(id: String, loader: NetworkLoader<String>) {
+        checkIdLoader(id, loader)
+        this.addStringIdTask(id, null, loader, null, false)
     }
 
-    @Deprecated
-    public void addStringIdTask(String id, NetworkLoader<String> loader) {
-        checkIdLoader(id, loader);
-        this.addStringIdTask(id, null, loader, null, false);
+    private fun checkIdLoader(id: String, loader: NetworkLoader<String>) {
+        Objects.requireNonNull(loader)
+        Objects.requireNonNull(id)
+        require(!id.isEmpty()) { "empty id is invalid" }
     }
 
-    private void checkIdLoader(String id, NetworkLoader<String> loader) {
-        Objects.requireNonNull(loader);
-        Objects.requireNonNull(id);
+    private fun checkIdLoader(id: Int, loader: NetworkLoader<Int>) {
+        Objects.requireNonNull(loader)
+        require(id > 0) { "invalid id: $id" }
+    }
 
-        if (id.isEmpty()) {
-            throw new IllegalArgumentException("empty id is invalid");
+    abstract fun isEpisodeLoading(id: Int): Boolean
+    abstract fun isPartLoading(id: Int): Boolean
+    abstract fun isMediumLoading(id: Int): Boolean
+    abstract fun isMediaListLoading(id: Int): Boolean
+    abstract fun isExternalMediaListLoading(id: Int): Boolean
+    abstract fun isExternalUserLoading(uuid: String): Boolean
+    abstract fun isNewsLoading(id: Int): Boolean
+    abstract fun doWork()
+    abstract fun work()
+    fun addProgressListener(consumer: Consumer<Int>) {
+        progressListener.add(consumer)
+        consumer.accept(progress)
+    }
+
+    fun removeProgressListener(consumer: Consumer<Int>) {
+        progressListener.remove(consumer)
+    }
+
+    fun addTotalWorkListener(consumer: Consumer<Int>) {
+        progressListener.add(consumer)
+        consumer.accept(progress)
+    }
+
+    fun removeTotalWorkListener(consumer: Consumer<Int>) {
+        progressListener.remove(consumer)
+    }
+
+    protected fun updateProgress(progress: Int) {
+        this.progress = progress
+        for (consumer in progressListener) {
+            consumer.accept(progress)
         }
     }
 
-    private void checkIdLoader(int id, NetworkLoader<Integer> loader) {
-        Objects.requireNonNull(loader);
-
-        if (id <= 0) {
-            throw new IllegalArgumentException("invalid id: " + id);
+    protected fun updateTotalWork(total: Int) {
+        totalWork = total
+        for (consumer in totalWorkListener) {
+            consumer.accept(total)
         }
     }
 
-    public abstract boolean isEpisodeLoading(int id);
+    open fun enforceMediumStructure(id: Int) {}
+    open fun enforcePartStructure(id: Int) {}
 
-    public abstract boolean isPartLoading(int id);
-
-    public abstract boolean isMediumLoading(int id);
-
-    public abstract boolean isMediaListLoading(int id);
-
-    public abstract boolean isExternalMediaListLoading(int id);
-
-    public abstract boolean isExternalUserLoading(String uuid);
-
-    public abstract boolean isNewsLoading(Integer id);
-
-    abstract void doWork();
-
-    public abstract void work();
-
-    public void addProgressListener(Consumer<Integer> consumer) {
-        this.progressListener.add(consumer);
-        consumer.accept(progress);
-    }
-
-    public void removeProgressListener(Consumer<Integer> consumer) {
-        this.progressListener.remove(consumer);
-    }
-
-    public void addTotalWorkListener(Consumer<Integer> consumer) {
-        this.progressListener.add(consumer);
-        consumer.accept(progress);
-    }
-
-    public void removeTotalWorkListener(Consumer<Integer> consumer) {
-        this.progressListener.remove(consumer);
-    }
-
-    protected void updateProgress(int progress) {
-        this.progress = progress;
-        for (Consumer<Integer> consumer : this.progressListener) {
-            consumer.accept(progress);
-        }
-    }
-
-    protected void updateTotalWork(int total) {
-        this.totalWork = total;
-        for (Consumer<Integer> consumer : this.totalWorkListener) {
-            consumer.accept(total);
-        }
-    }
-
-    public int getProgress() {
-        return progress;
-    }
-
-    public int getTotalWork() {
-        return totalWork;
-    }
-
-    public void enforceMediumStructure(int id) {
-
-    }
-
-    public void enforcePartStructure(int id) {
-
+    companion object {
+        @kotlin.jvm.JvmStatic
+        var worker: LoadWorker? = null
+            private set
     }
 }

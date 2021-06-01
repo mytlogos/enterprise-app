@@ -1,158 +1,106 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import com.mytlogos.enterprise.background.api.model.ClientEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUserPure;
-import com.mytlogos.enterprise.background.api.model.ClientListQuery;
-import com.mytlogos.enterprise.background.api.model.ClientMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientMedium;
-import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
-import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
-import com.mytlogos.enterprise.background.api.model.ClientNews;
-import com.mytlogos.enterprise.background.api.model.ClientPart;
-import com.mytlogos.enterprise.background.api.model.ClientPartPure;
-import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
-import com.mytlogos.enterprise.background.api.model.ClientStat;
-import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
-import com.mytlogos.enterprise.background.api.model.ClientUser;
-import com.mytlogos.enterprise.background.api.model.ClientUserList;
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
-import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.Toc;
+import com.mytlogos.enterprise.background.api.model.*
+import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator.*
+import com.mytlogos.enterprise.model.ToDownload
+import com.mytlogos.enterprise.model.Toc
+import java.util.stream.Collectors
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-public interface ClientModelPersister {
-    Collection<ClientConsumer<?>> getConsumer();
-
-    default ClientModelPersister persist(ClientEpisode... episode) {
-        return this.persistEpisodes(Arrays.asList(episode));
+interface ClientModelPersister {
+    fun getConsumer(): Collection<ClientConsumer<*>>
+    fun persist(vararg episode: ClientEpisode): ClientModelPersister {
+        return persistEpisodes(listOf(*episode))
     }
 
-    ClientModelPersister persistEpisodes(Collection<ClientEpisode> episode);
-
-    ClientModelPersister persistReleases(Collection<ClientRelease> releases);
-
-    default ClientModelPersister persist(ClientMediaList... mediaLists) {
-        return this.persistMediaLists(Arrays.asList(mediaLists));
+    fun persistEpisodes(episode: Collection<ClientEpisode>): ClientModelPersister
+    fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister
+    fun persist(vararg mediaLists: ClientMediaList): ClientModelPersister {
+        return persistMediaLists(listOf(*mediaLists))
     }
 
-    ClientModelPersister persist(LoadWorkGenerator.FilteredEpisodes filteredEpisodes);
-
-    ClientModelPersister persistMediaLists(List<ClientMediaList> mediaLists);
-
-    ClientModelPersister persistUserLists(List<ClientUserList> mediaLists);
-
-    default ClientModelPersister persist(ClientExternalMediaList... externalMediaLists) {
-        return this.persistExternalMediaLists(Arrays.asList(externalMediaLists));
+    fun persist(filteredEpisodes: FilteredEpisodes): ClientModelPersister
+    fun persistMediaLists(mediaLists: List<ClientMediaList>): ClientModelPersister
+    fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister
+    fun persist(vararg externalMediaLists: ClientExternalMediaList): ClientModelPersister {
+        return persistExternalMediaLists(listOf(*externalMediaLists))
     }
 
-    ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList);
-
-    ClientModelPersister persistExternalMediaLists(Collection<ClientExternalMediaList> externalMediaLists);
-
-    default ClientModelPersister persist(ClientExternalUser... externalUsers) {
-        return this.persistExternalUsers(Arrays.asList(externalUsers));
+    fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister
+    fun persistExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList>): ClientModelPersister
+    fun persist(vararg externalUsers: ClientExternalUser): ClientModelPersister {
+        return persistExternalUsers(listOf(*externalUsers))
     }
 
-    ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList);
-
-    ClientModelPersister persistExternalUsers(List<ClientExternalUser> externalUsers);
-
-    default ClientModelPersister persistExternalUsersPure(List<ClientExternalUserPure> externalUsers) {
-        List<ClientExternalUser> unpure = externalUsers.stream().map(value -> new ClientExternalUser(
-                value.getLocalUuid(),
-                value.getUuid(),
-                value.getIdentifier(),
-                value.getType(),
-                new ClientExternalMediaList[0]
-        )).collect(Collectors.toList());
-        return this.persistExternalUsers(unpure);
+    fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister
+    fun persistExternalUsers(externalUsers: List<ClientExternalUser>): ClientModelPersister
+    fun persistExternalUsersPure(externalUsers: List<ClientExternalUserPure>): ClientModelPersister {
+        val unpure = externalUsers.stream().map { value: ClientExternalUserPure ->
+            ClientExternalUser(
+                value.localUuid,
+                value.getUuid()!!,
+                value.identifier,
+                value.type,
+                arrayOf()
+            )
+        }.collect(Collectors.toList())
+        return persistExternalUsers(unpure)
     }
 
-    default ClientModelPersister persist(ClientSimpleMedium... media) {
-        return this.persistMedia(Arrays.asList(media));
+    fun persist(vararg media: ClientSimpleMedium): ClientModelPersister {
+        return persistMedia(listOf(*media))
     }
 
-    ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser);
-
-    ClientModelPersister persistMedia(Collection<ClientSimpleMedium> media);
-
-    default ClientModelPersister persist(ClientNews... news) {
-        return this.persistNews(Arrays.asList(news));
+    fun persist(filteredExternalUser: FilteredExternalUser): ClientModelPersister
+    fun persistMedia(media: Collection<ClientSimpleMedium>): ClientModelPersister
+    fun persist(vararg news: ClientNews): ClientModelPersister {
+        return persistNews(listOf(*news))
     }
 
-    ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia);
-
-    ClientModelPersister persistNews(Collection<ClientNews> news);
-
-    default ClientModelPersister persist(ClientPart... parts) {
-        return this.persistParts(Arrays.asList(parts));
+    fun persist(filteredMedia: FilteredMedia): ClientModelPersister
+    fun persistNews(news: Collection<ClientNews>): ClientModelPersister
+    fun persist(vararg parts: ClientPart): ClientModelPersister {
+        return persistParts(listOf(*parts))
     }
 
-    ClientModelPersister persistParts(Collection<ClientPart> parts);
-
-    default ClientModelPersister persistPartsPure(Collection<ClientPartPure> parts) {
-        List<ClientPart> unPureParts = parts
-                .stream()
-                .map(part -> new ClientPart(
-                        part.getMediumId(),
-                        part.getId(),
-                        part.getTitle(),
-                        part.getTotalIndex(),
-                        part.getPartialIndex(),
-                        null
-                ))
-                .collect(Collectors.toList());
-        this.persistParts(unPureParts);
-        return this;
+    fun persistParts(parts: Collection<ClientPart>): ClientModelPersister
+    fun persistPartsPure(parts: Collection<ClientPartPure>): ClientModelPersister {
+        val unPureParts = parts
+            .stream()
+            .map { part: ClientPartPure ->
+                ClientPart(
+                    part.mediumId,
+                    part.id,
+                    part.title,
+                    part.totalIndex,
+                    part.partialIndex,
+                    null
+                )
+            }
+            .collect(Collectors.toList())
+        persistParts(unPureParts)
+        return this
     }
 
-    ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes);
-
-    ClientModelPersister persist(ClientListQuery query);
-
-    ClientModelPersister persist(ClientMultiListQuery query);
-
-    ClientModelPersister persist(ClientUser user);
-
-    ClientModelPersister persist(ClientUpdateUser user);
-
-    ClientModelPersister persistToDownloads(Collection<ToDownload> toDownloads);
-
-    default ClientModelPersister persist(ClientReadEpisode... readEpisodes) {
-        return this.persistReadEpisodes(Arrays.asList(readEpisodes));
+    fun persist(filteredReadEpisodes: FilteredReadEpisodes): ClientModelPersister
+    fun persist(query: ClientListQuery): ClientModelPersister
+    fun persist(query: ClientMultiListQuery): ClientModelPersister
+    fun persist(clientUser: ClientUser?): ClientModelPersister
+    fun persist(user: ClientUpdateUser): ClientModelPersister
+    fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister
+    fun persist(vararg readEpisodes: ClientReadEpisode): ClientModelPersister {
+        return persistReadEpisodes(listOf(*readEpisodes))
     }
 
-    ClientModelPersister persist(LoadWorkGenerator.FilteredParts filteredParts);
-
-    ClientModelPersister persistReadEpisodes(Collection<ClientReadEpisode> readMedia);
-
-    ClientModelPersister persist(ClientStat.ParsedStat stat);
-
-    void finish();
-
-    ClientModelPersister persist(ToDownload toDownload);
-
-    void persistMediaInWait(List<ClientMediumInWait> medium);
-
-    ClientModelPersister persist(ClientSimpleUser user);
-
-    void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes);
-
-    Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases);
-
-    void deleteLeftoverTocs(Map<Integer, List<String>> mediaTocs);
-
-    ClientModelPersister persistTocs(Collection<? extends Toc> tocs);
+    fun persist(filteredParts: FilteredParts): ClientModelPersister
+    fun persistReadEpisodes(readMedia: Collection<ClientReadEpisode>): ClientModelPersister
+    fun persist(stat: ParsedStat): ClientModelPersister
+    fun finish()
+    fun persist(toDownload: ToDownload): ClientModelPersister
+    fun persistMediaInWait(medium: List<ClientMediumInWait>)
+    fun persist(user: ClientSimpleUser?): ClientModelPersister
+    fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>)
+    fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int>
+    fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>)
+    fun persistTocs(tocs: Collection<Toc>): ClientModelPersister
 }

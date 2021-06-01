@@ -1,54 +1,35 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import com.mytlogos.enterprise.model.Toc;
-
-import java.util.Objects;
+import com.mytlogos.enterprise.model.Toc
 
 /**
  *
  */
-public class SimpleToc implements Toc {
-    public final int mediumId;
-    public final String link;
-
-    public SimpleToc(int mediumId, String link) {
-        this.mediumId = mediumId;
-        this.link = link;
+class SimpleToc(private val mediumId: Int, private val link: String) : Toc {
+    override fun getMediumId(): Int {
+        return mediumId
     }
 
-    @Override
-    public int getMediumId() {
-        return mediumId;
+    override fun getLink(): String {
+        return link
     }
 
-    @Override
-    public String getLink() {
-        return link;
+    override fun hashCode(): Int {
+        var result = mediumId
+        result = 31 * result + link.hashCode()
+        return result
     }
 
-    @Override
-    public int hashCode() {
-        int result = mediumId;
-        result = 31 * result + (link != null ? link.hashCode() : 0);
-        return result;
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is SimpleToc) return false
+        return if (mediumId != other.mediumId) false else link == other.link
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof SimpleToc)) return false;
-
-        SimpleToc simpleToc = (SimpleToc) o;
-
-        if (mediumId != simpleToc.mediumId) return false;
-        return Objects.equals(link, simpleToc.link);
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "SimpleToc{" +
                 "mediumId=" + mediumId +
                 ", link='" + link + '\'' +
-                '}';
+                '}'
     }
 }

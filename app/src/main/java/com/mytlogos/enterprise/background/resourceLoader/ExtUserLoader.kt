@@ -1,49 +1,31 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
+import com.mytlogos.enterprise.background.api.model.ClientExternalUser
+import java.util.concurrent.CompletableFuture
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-
-class ExtUserLoader implements NetworkLoader<String> {
-
-    private LoadWorker loadWorker;
-
-    ExtUserLoader(LoadWorker loadWorker) {
-        this.loadWorker = loadWorker;
+open class ExtUserLoader(private val loadWorker: LoadWorker) : NetworkLoader<String> {
+    override fun loadItemsAsync(toLoad: Set<String>): CompletableFuture<Void> {
+        return loadWorker.repository.loadExternalUserAsync(toLoad)
+            .thenAccept { externalUsers: List<ClientExternalUser>? -> process(externalUsers) }
     }
 
-    @Override
-    public CompletableFuture<Void> loadItemsAsync(Set<String> toLoad) {
-        return this.loadWorker.repository.loadExternalUserAsync(toLoad)
-                .thenAccept(this::process);
-    }
-
-    @Override
-    public Collection<DependencyTask<?>> loadItemsSync(Set<String> toLoad) {
-        List<ClientExternalUser> externalUsers = this.loadWorker.repository.loadExternalUserSync(toLoad);
-
+    override fun loadItemsSync(toLoad: Set<String>): Collection<DependencyTask<*>> {
+        val externalUsers = loadWorker.repository.loadExternalUserSync(toLoad)
         if (externalUsers != null) {
-            LoadWorkGenerator generator = new LoadWorkGenerator(this.loadWorker.loadedData);
-            LoadWorkGenerator.FilteredExternalUser user = generator.filterExternalUsers(externalUsers);
-            this.loadWorker.persister.persist(user);
-            return this.loadWorker.generator.generateExternalUsersDependant(user);
+            val generator = LoadWorkGenerator(loadWorker.loadedData)
+            val user = generator.filterExternalUsers(externalUsers)
+            loadWorker.persister.persist(user)
+            return loadWorker.generator!!.generateExternalUsersDependant(user)
         }
-        return Collections.emptyList();
+        return emptyList()
     }
 
-    private void process(List<ClientExternalUser> externalUsers) {
+    private fun process(externalUsers: List<ClientExternalUser>?) {
         if (externalUsers != null) {
-            loadWorker.persister.persistExternalUsers(externalUsers);
+            loadWorker.persister.persistExternalUsers(externalUsers)
         }
     }
 
-
-    @Override
-    public Set<String> getLoadedSet() {
-        return loadWorker.loadedData.getExternalUser();
-    }
+    override val loadedSet: Set<String>
+        get() = loadWorker.loadedData.externalUser
 }

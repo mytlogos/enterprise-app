@@ -1,41 +1,26 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import com.mytlogos.enterprise.background.api.model.ClientNews;
+import com.mytlogos.enterprise.background.api.model.ClientNews
+import java.util.concurrent.CompletableFuture
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-
-class NewsLoader implements NetworkLoader<Integer> {
-
-    private LoadWorker loadWorker;
-
-    NewsLoader(LoadWorker loadWorker) {
-        this.loadWorker = loadWorker;
+open class NewsLoader(private val loadWorker: LoadWorker) : NetworkLoader<Int> {
+    override fun loadItemsAsync(toLoad: Set<Int>): CompletableFuture<Void> {
+        return loadWorker.repository.loadNewsAsync(toLoad)
+            .thenAccept { news: List<ClientNews>? -> process(news) }
     }
 
-    @Override
-    public CompletableFuture<Void> loadItemsAsync(Set<Integer> toLoad) {
-        return loadWorker.repository.loadNewsAsync(toLoad).thenAccept(this::process);
-    }
-
-    private void process(List<ClientNews> news) {
+    private fun process(news: List<ClientNews>?) {
         if (news != null) {
-            loadWorker.persister.persistNews(news);
+            loadWorker.persister.persistNews(news)
         }
     }
 
-    @Override
-    public Collection<DependencyTask<?>> loadItemsSync(Set<Integer> toLoad) {
-        List<ClientNews> news = this.loadWorker.repository.loadNewsSync(toLoad);
-        this.process(news);
-        return Collections.emptyList();
+    override fun loadItemsSync(toLoad: Set<Int>): Collection<DependencyTask<*>> {
+        val news = loadWorker.repository.loadNewsSync(toLoad)
+        process(news)
+        return emptyList()
     }
 
-    @Override
-    public Set<Integer> getLoadedSet() {
-        return loadWorker.loadedData.getNews();
-    }
+    override val loadedSet: Set<Int>
+        get() = loadWorker.loadedData.news
 }

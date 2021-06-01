@@ -1,46 +1,16 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*
 
 /**
  * A container for synchronized Sets.
  */
-public class LoadData {
-    private Set<Integer> media = Collections.synchronizedSet(new HashSet<>());
-    private Set<Integer> part = Collections.synchronizedSet(new HashSet<>());
-    private Set<Integer> episode = Collections.synchronizedSet(new HashSet<>());
-    private Set<Integer> news = Collections.synchronizedSet(new HashSet<>());
-    private Set<String> externalUser = Collections.synchronizedSet(new HashSet<>());
-    private Set<Integer> externalMediaList = Collections.synchronizedSet(new HashSet<>());
-    private Set<Integer> mediaList = Collections.synchronizedSet(new HashSet<>());
-
-    public Set<Integer> getMedia() {
-        return media;
-    }
-
-    public Set<Integer> getPart() {
-        return part;
-    }
-
-    public Set<Integer> getEpisodes() {
-        return episode;
-    }
-
-    public Set<Integer> getNews() {
-        return news;
-    }
-
-    public Set<Integer> getExternalMediaList() {
-        return externalMediaList;
-    }
-
-    public Set<String> getExternalUser() {
-        return externalUser;
-    }
-
-    public Set<Integer> getMediaList() {
-        return mediaList;
-    }
+class LoadData {
+    val media: MutableSet<Int> = Collections.synchronizedSet(HashSet())
+    val part: MutableSet<Int> = Collections.synchronizedSet(HashSet())
+    val episodes: MutableSet<Int> = Collections.synchronizedSet(HashSet())
+    val news: MutableSet<Int> = Collections.synchronizedSet(HashSet())
+    val externalUser: MutableSet<String> = Collections.synchronizedSet(HashSet())
+    val externalMediaList: MutableSet<Int> = Collections.synchronizedSet(HashSet())
+    val mediaList: MutableSet<Int> = Collections.synchronizedSet(HashSet())
 }

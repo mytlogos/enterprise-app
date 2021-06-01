@@ -12,11 +12,8 @@ import com.mytlogos.enterprise.background.*
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
 import com.mytlogos.enterprise.background.api.model.ClientStat.Partstat
-import com.mytlogos.enterprise.background.resourceLoader.DependantValue
-import com.mytlogos.enterprise.background.resourceLoader.DependencyTask
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator
+import com.mytlogos.enterprise.background.resourceLoader.*
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator.*
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorker
 import com.mytlogos.enterprise.background.room.model.*
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.ExternalListMediaJoin
 import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
@@ -40,7 +37,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
     private val externalUserDao: ExternalUserDao
     private val notificationDao: NotificationDao
     private val failedEpisodesDao: FailedEpisodesDao
-    private val userLiveData: LiveData<User>
+    private val userLiveData: LiveData<User?>
     private val mediumInWaitDao: RoomMediumInWaitDao
     private val roomDanglingDao: RoomDanglingDao
     private val mediumProgressDao: MediumProgressDao
@@ -50,11 +47,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
     private var loading = false
     private val tocDao: TocDao
 
-    override fun getUser(): LiveData<User> {
+    override fun getUser(): LiveData<User?> {
         return userLiveData
     }
 
-    override fun getUserNow(): User {
+    override fun getUserNow(): User? {
         val converter = RoomConverter()
         return converter.convert(userDao.userNow)
     }
@@ -165,8 +162,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
     override fun getDisplayEpisodesGrouped(saved: Int, medium: Int): LiveData<PagedList<DisplayEpisode>> {
         val converter = RoomConverter()
         return LivePagedListBuilder(
-                episodeDao.getDisplayEpisodesGrouped(saved, medium).map(Function { episode: RoomDisplayEpisode? -> converter.convertRoomEpisode(episode) }),
-                50
+            episodeDao.getDisplayEpisodesGrouped(saved, medium).map { episode: RoomDisplayEpisode ->
+                converter.convertRoomEpisodeNonNull(
+                    episode
+                )
+            },
+            50
         ).build()
     }
 
@@ -247,7 +248,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
     }
 
-    override fun getAllMedia(sortings: Sortings, title: String, medium: Int, author: String, lastUpdate: DateTime, minCountEpisodes: Int, minCountReadEpisodes: Int): LiveData<PagedList<MediumItem>> {
+    override fun getAllMedia(sortings: Sortings, title: String?, medium: Int, author: String?, lastUpdate: DateTime?, minCountEpisodes: Int, minCountReadEpisodes: Int): LiveData<PagedList<MediumItem>> {
         var sortValue = sortings.sortValue
         return if (sortValue > 0) {
             LivePagedListBuilder(mediumDao.getAllAsc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build()
@@ -257,23 +258,26 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
     }
 
-    override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
+    override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting?> {
         return mediumDao.getMediumSettings(mediumId)
     }
 
-    override fun getMediumSettingsNow(mediumId: Int): MediumSetting {
+    override fun getMediumSettingsNow(mediumId: Int): MediumSetting? {
         return mediumDao.getMediumSettingsNow(mediumId)
     }
 
     override fun getToc(mediumId: Int, sortings: Sortings, read: Byte, saved: Byte): LiveData<PagedList<TocEpisode>> {
-        val episodes: DataSource.Factory<Int, RoomTocEpisode>
-        episodes = if (sortings.sortValue > 0) {
+        val episodes: DataSource.Factory<Int, RoomTocEpisode> = if (sortings.sortValue > 0) {
             episodeDao.getTocEpisodesAsc(mediumId, read, saved)
         } else {
             episodeDao.getTocEpisodesDesc(mediumId, read, saved)
         }
         val converter = RoomConverter()
-        return LivePagedListBuilder(episodes.map<TocEpisode>(Function { roomTocEpisode: RoomTocEpisode? -> converter.convertTocEpisode(roomTocEpisode) }), 50).build()
+        return LivePagedListBuilder(episodes.map { roomTocEpisode: RoomTocEpisode ->
+            converter.convertTocEpisode(
+                roomTocEpisode
+            )
+        }, 50).build()
     }
 
     override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<List<MediumItem>> {
@@ -320,8 +324,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             factory = mediumInWaitDao.getByAsc(sortValue, filter, mediumFilter, hostFilter)
         }
         val converter = RoomConverter()
-        return LivePagedListBuilder<Int, MediumInWait>(
-                factory.map<MediumInWait>(Function { input: RoomMediumInWait? -> converter.convert(input) }),
+        return LivePagedListBuilder(
+                factory.map { input: RoomMediumInWait -> converter.convert(input) },
                 50
         ).build()
     }
@@ -329,7 +333,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
     override fun getReadTodayEpisodes(): LiveData<PagedList<ReadEpisode>> {
         val converter = RoomConverter()
         return LivePagedListBuilder(
-                episodeDao.readTodayEpisodes.map(Function { input: RoomReadEpisode? -> converter.convert(input) }),
+                episodeDao.readTodayEpisodes.map(Function { input: RoomReadEpisode -> converter.convert(input) }),
                 50
         ).build()
     }
@@ -514,7 +518,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return episodeDao.getReadEpisodes(episodeIds, read)
     }
 
-    override fun getEditEvents(): List<EditEvent> {
+    override fun getEditEvents(): MutableList<out EditEvent> {
         return editDao.all
     }
 
@@ -527,7 +531,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         val roomStats = episodeDao.stat
         val partStats: MutableMap<Int, Partstat> = HashMap()
         for (value in parsedStat.media.values) {
-            partStats.putAll(value!!)
+            partStats.putAll(value)
         }
         val loadEpisode: MutableList<Int> = LinkedList()
         val loadRelease: MutableList<Int> = LinkedList()
@@ -551,7 +555,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
         }
         val loadPart: MutableSet<Int> = HashSet()
-        val loadData = this.loadData
+        val loadData = this.getLoadData()
         for ((partId, remotePartStat) in partStats) {
             val localPartStat = localStatMap[partId]
             if (localPartStat == null) {
@@ -685,7 +689,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
     private inner class RoomDependantGenerator(private val loadedData: LoadData) : DependantGenerator {
         override fun generateReadEpisodesDependant(readEpisodes: FilteredReadEpisodes): Collection<DependencyTask<*>> {
             val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.getWorker()
+            val worker = LoadWorker.worker!!
             for (dependency in readEpisodes.dependencies) {
                 tasks.add(DependencyTask(
                         dependency.id,
@@ -698,12 +702,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun generatePartsDependant(parts: FilteredParts): Collection<DependencyTask<*>> {
             val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.getWorker()
+            val worker = LoadWorker.worker!!
             for (dependency in parts.mediumDependencies) {
                 tasks.add(DependencyTask(
                         dependency.id,
                         DependantValue(
-                                dependency.dependency,
+                                dependency.dependency as Any,
                                 dependency.dependency.id,
                                 worker.PART_LOADER
                         ),
@@ -715,7 +719,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun generateEpisodesDependant(episodes: FilteredEpisodes): Collection<DependencyTask<*>> {
             val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.getWorker()
+            val worker = LoadWorker.worker!!
             for (dependency in episodes.partDependencies) {
                 tasks.add(DependencyTask(
                         dependency.id,
@@ -730,9 +734,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return tasks
         }
 
-        override fun generateMediaDependant(media: FilteredMedia): Collection<DependencyTask<*>> {
+        override fun generateMediaDependant(media: FilteredMedia): MutableCollection<DependencyTask<*>> {
             val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.getWorker()
+            val worker = LoadWorker.worker!!
             for (dependency in media.episodeDependencies) {
                 tasks.add(DependencyTask(
                         dependency.id,
@@ -752,19 +756,20 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun generateMediaListsDependant(mediaLists: FilteredMediaList): Collection<DependencyTask<*>> {
             val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.getWorker()
+            val worker = LoadWorker.worker!!
             val converter = RoomConverter(loadedData)
             for (dependency in mediaLists.mediumDependencies) {
                 var tmpListId = 0
-                if (!dependency.dependency.isEmpty()) {
+                if (dependency.dependency.isNotEmpty()) {
                     tmpListId = dependency.dependency[0].listId
                 }
                 val listId = tmpListId
                 tasks.add(DependencyTask(
                         dependency.id,
                         DependantValue(
-                                converter.convertListJoin(dependency.dependency)
-                        ) { mediaListDao.clearJoin(listId) },
+                                value=converter.convertListJoin(dependency.dependency),
+                                runnable={ mediaListDao.clearJoin(listId) }
+                        ),
                         worker.MEDIUM_LOADER
                 ))
             }
@@ -773,19 +778,20 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun generateExternalMediaListsDependant(externalMediaLists: FilteredExtMediaList): Collection<DependencyTask<*>> {
             val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.getWorker()
+            val worker = LoadWorker.worker!!
             val converter = RoomConverter(loadedData)
             for (dependency in externalMediaLists.mediumDependencies) {
                 var tmpListId = 0
-                if (!dependency.dependency.isEmpty()) {
+                if (dependency.dependency.isNotEmpty()) {
                     tmpListId = dependency.dependency[0].listId
                 }
                 val listId = tmpListId
                 tasks.add(DependencyTask(
                         dependency.id,
                         DependantValue(
-                                converter.convertExListJoin(dependency.dependency)
-                        ) { externalMediaListDao.clearJoin(listId) },
+                                value=converter.convertExListJoin(dependency.dependency),
+                                runnable={ externalMediaListDao.clearJoin(listId) }
+                        ),
                         worker.MEDIUM_LOADER
                 ))
             }
@@ -805,7 +811,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun generateExternalUsersDependant(externalUsers: FilteredExternalUser): Collection<DependencyTask<*>> {
             val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.getWorker()
+            val worker = LoadWorker.worker!!
             val converter = RoomConverter(loadedData)
             for (dependency in externalUsers.mediumDependencies) {
                 var tmpListId = 0
@@ -816,8 +822,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 tasks.add(DependencyTask(
                         dependency.id,
                         DependantValue(
-                                converter.convertExListJoin(dependency.dependency)
-                        ) { externalMediaListDao.clearJoin(listId) },
+                                value=converter.convertExListJoin(dependency.dependency),
+                                runnable = { externalMediaListDao.clearJoin(listId) }
+                        ),
                         worker.MEDIUM_LOADER
                 ))
             }
@@ -870,7 +877,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
 
         override fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister {
-            val uuid = userNow.uuid
+            val uuid = getUserNow()!!.uuid
             return persistMediaLists(mediaLists.stream().map { value: ClientUserList ->
                 ClientMediaList(
                         uuid,

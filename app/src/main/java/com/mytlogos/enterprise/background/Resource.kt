@@ -1,49 +1,25 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+class Resource<T> private constructor(
+    val status: Status, val data: T?,
+    val message: String?
+) {
 
-public class Resource<T> {
-    @NonNull
-    private final Status status;
-    @Nullable
-    private final T data;
-    @Nullable
-    private final String message;
-
-    private Resource(@NonNull Status status, @Nullable T data,
-                     @Nullable String message) {
-        this.status = status;
-        this.data = data;
-        this.message = message;
+    enum class Status {
+        SUCCESS, ERROR, LOADING
     }
 
-    public static <T> Resource<T> success(@NonNull T data) {
-        return new Resource<>(Status.SUCCESS, data, null);
-    }
+    companion object {
+        fun <T> success(data: T): Resource<T> {
+            return Resource(Status.SUCCESS, data, null)
+        }
 
-    public static <T> Resource<T> error(String msg, @Nullable T data) {
-        return new Resource<>(Status.ERROR, data, msg);
-    }
+        fun <T> error(msg: String?, data: T?): Resource<T?> {
+            return Resource(Status.ERROR, data, msg)
+        }
 
-    public static <T> Resource<T> loading(@Nullable T data) {
-        return new Resource<>(Status.LOADING, data, null);
+        fun <T> loading(data: T?): Resource<T?> {
+            return Resource(Status.LOADING, data, null)
+        }
     }
-
-    @Nullable
-    public String getMessage() {
-        return message;
-    }
-
-    @Nullable
-    public T getData() {
-        return data;
-    }
-
-    @NonNull
-    public Status getStatus() {
-        return status;
-    }
-
-    public enum Status {SUCCESS, ERROR, LOADING}
 }

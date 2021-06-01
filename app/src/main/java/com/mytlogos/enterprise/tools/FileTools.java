@@ -79,7 +79,7 @@ public class FileTools {
      * With access to internal app dirs
      */
     public static ImageContentTool getImageContentTool(Application application) {
-        return new ImageContentTool(getInternalImageDir(application), getExternalImageDir(application), RepositoryImpl.getInstance(application));
+        return new ImageContentTool(getInternalImageDir(application), getExternalImageDir(application), RepositoryImpl.Companion.getInstance(application));
     }
 
     /**

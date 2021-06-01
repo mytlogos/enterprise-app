@@ -1,48 +1,37 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
+import java.util.*
+import java.util.concurrent.CompletableFuture
 
-public interface NetworkLoader<T> {
-    CompletableFuture<Void> loadItemsAsync(Set<T> toLoad);
-
-    Collection<DependencyTask<?>> loadItemsSync(Set<T> toLoad);
-
-    Set<T> getLoadedSet();
-
-    default Collection<DependencyTask<?>> loadItemsSyncIncremental(Set<T> toLoad) {
-        int incrementalLimit = this.getIncrementalLimit();
-
-        if (toLoad.size() <= incrementalLimit) {
-            return this.loadItemsSync(toLoad);
+interface NetworkLoader<T> {
+    fun loadItemsAsync(toLoad: Set<T>): CompletableFuture<Void>
+    fun loadItemsSync(toLoad: Set<T>): Collection<DependencyTask<*>>
+    val loadedSet: Set<T>
+    fun loadItemsSyncIncremental(toLoad: Set<T>): Collection<DependencyTask<*>> {
+        val incrementalLimit = incrementalLimit
+        if (toLoad.size <= incrementalLimit) {
+            return loadItemsSync(toLoad)
         }
-        List<DependencyTask<?>> tasks = new ArrayList<>();
-        Set<T> ids = new HashSet<>();
-
-        int count = 0;
-
-        for (Iterator<T> iterator = toLoad.iterator(); iterator.hasNext(); count++) {
-            T episodeId = iterator.next();
-            ids.add(episodeId);
-
+        val tasks: MutableList<DependencyTask<*>> = ArrayList()
+        val ids: MutableSet<T> = HashSet()
+        var count = 0
+        val iterator = toLoad.iterator()
+        while (iterator.hasNext()) {
+            val episodeId = iterator.next()
+            ids.add(episodeId)
             if (count >= incrementalLimit) {
-                tasks.addAll(this.loadItemsSync(ids));
-                ids.clear();
-                count = 0;
+                tasks.addAll(loadItemsSync(ids))
+                ids.clear()
+                count = 0
             }
+            count++
         }
-        if (!ids.isEmpty()) {
-            tasks.addAll(this.loadItemsSync(ids));
+        if (ids.isNotEmpty()) {
+            tasks.addAll(loadItemsSync(ids))
         }
-        return tasks;
+        return tasks
     }
 
-    default int getIncrementalLimit() {
-        return 100;
-    }
+    val incrementalLimit: Int
+        get() = 100
 }

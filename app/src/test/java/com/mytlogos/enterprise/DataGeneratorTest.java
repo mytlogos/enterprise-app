@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise;
 
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
@@ -114,7 +115,7 @@ class DataGeneratorTest {
         Assertions.assertNotNull(part);
         Assertions.assertEquals(part.getMediumId(), mediumId);
 
-        for (ClientRelease release : clientEpisode.getReleases()) {
+        for (ClientEpisodeRelease release : clientEpisode.getReleases()) {
             Assertions.assertEquals(release.getEpisodeId(), episodeId);
         }
     }
@@ -144,7 +145,7 @@ class DataGeneratorTest {
             ClientPart part = Utils.getPart(this.generator.getParts(), episode.getPartId());
             Assertions.assertNotNull(part);
 
-            for (ClientRelease release : episode.getReleases()) {
+            for (ClientEpisodeRelease release : episode.getReleases()) {
                 Assertions.assertEquals(release.getEpisodeId(), episode.getId());
             }
         }

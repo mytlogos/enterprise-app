@@ -1,422 +1,448 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import androidx.annotation.Nullable;
+import com.mytlogos.enterprise.background.*
+import java.util.*
+import java.util.concurrent.*
+import java.util.function.BiFunction
+import java.util.function.Function
+import java.util.stream.Stream
 
-import com.mytlogos.enterprise.background.ClientConsumer;
-import com.mytlogos.enterprise.background.ClientModelPersister;
-import com.mytlogos.enterprise.background.DependantGenerator;
-import com.mytlogos.enterprise.background.LoadData;
-import com.mytlogos.enterprise.background.Repository;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.function.Function;
-import java.util.stream.Stream;
-
-public class BlockingLoadWorker extends LoadWorker {
+class BlockingLoadWorker : LoadWorker {
     // TODO: 11.06.2019 starting after a month with this new loader lead to many episodeNodes rejecting
     // FIXME: 11.06.2019 apparently the databaseValidator detected a null id value as parameter and threw an error
-    private final ConcurrentMap<DependantValue, DependantNode> valueNodes = new ConcurrentHashMap<>();
-    private final ExecutorService workService = Executors.newSingleThreadExecutor();
-    private final ExecutorService loadingService = Executors.newFixedThreadPool(5);
+    private val valueNodes: ConcurrentMap<DependantValue, DependantNode> = ConcurrentHashMap()
+    private val workService = Executors.newSingleThreadExecutor()
+    private val loadingService = Executors.newFixedThreadPool(5)
+    private val intLoaderManager: MutableMap<NetworkLoader<Int>, IntLoaderManager> = HashMap()
+    private val stringLoaderManager: MutableMap<NetworkLoader<String>, StringLoaderManager> =
+        HashMap()
+    private val enforceMedia: MutableList<Int> = ArrayList()
+    private val enforcePart: MutableList<Int> = ArrayList()
 
-    private Map<NetworkLoader<Integer>, IntLoaderManager> intLoaderManager = new HashMap<>();
-    private Map<NetworkLoader<String>, StringLoaderManager> stringLoaderManager = new HashMap<>();
-    private List<Integer> enforceMedia = new ArrayList<>();
-    private List<Integer> enforcePart = new ArrayList<>();
-
-    public BlockingLoadWorker(LoadData loadedData, Repository repository, ClientModelPersister persister, DependantGenerator generator) {
-        super(repository, persister, loadedData, generator);
+    constructor(
+        loadedData: LoadData,
+        repository: Repository,
+        persister: ClientModelPersister,
+        generator: DependantGenerator
+    ) : super(repository, persister, loadedData, generator) {
     }
 
-    BlockingLoadWorker(Repository repository, ClientModelPersister persister, LoadData loadedData, ExtUserLoader extUserLoader, ExtMediaListLoader external_medialist_loader, MediaListLoader medialist_loader, MediumLoader medium_loader, PartLoader part_loader, EpisodeLoader episode_loader, NewsLoader news_loader, Map<Class<?>, LoaderManagerImpl<?>> loaderManagerMap, DependantGenerator generator) {
-        super(repository, persister, loadedData, extUserLoader, external_medialist_loader, medialist_loader, medium_loader, part_loader, episode_loader, news_loader, generator);
+    internal constructor(
+        repository: Repository,
+        persister: ClientModelPersister,
+        loadedData: LoadData,
+        extUserLoader: ExtUserLoader,
+        external_medialist_loader: ExtMediaListLoader,
+        medialist_loader: MediaListLoader,
+        medium_loader: MediumLoader,
+        part_loader: PartLoader,
+        episode_loader: EpisodeLoader,
+        news_loader: NewsLoader,
+        generator: DependantGenerator?
+    ) : super(
+        repository,
+        persister,
+        loadedData,
+        extUserLoader,
+        external_medialist_loader,
+        medialist_loader,
+        medium_loader,
+        part_loader,
+        episode_loader,
+        news_loader,
+        generator
+    ) {
     }
 
-    BlockingLoadWorker(Repository repository, ClientModelPersister persister, LoadData loadedData, ExtUserLoader extUserLoader, ExtMediaListLoader external_medialist_loader, MediaListLoader medialist_loader, MediumLoader medium_loader, PartLoader part_loader, EpisodeLoader episode_loader, NewsLoader news_loader, DependantGenerator generator) {
-        super(repository, persister, loadedData, extUserLoader, external_medialist_loader, medialist_loader, medium_loader, part_loader, episode_loader, news_loader, generator);
+    override fun addIntegerIdTask(
+        id: Int,
+        value: DependantValue?,
+        loader: NetworkLoader<Int>,
+        optional: Boolean
+    ) {
+        addIdTask<Int>(id, value, optional, getIntLoaderManager(loader))
     }
 
-    public void addIntegerIdTask(int id, @Nullable DependantValue value, NetworkLoader<Integer> loader, boolean optional) {
-        this.addIdTask(id, value, optional, this.getIntLoaderManager(loader));
+    override fun addStringIdTask(
+        id: String,
+        value: DependantValue?,
+        loader: NetworkLoader<String>,
+        optional: Boolean
+    ) {
+        addIdTask(id, value, optional, getStringLoaderManager(loader))
     }
 
-    public void addStringIdTask(String id, @Nullable DependantValue value, NetworkLoader<String> loader, boolean optional) {
-        this.addIdTask(id, value, optional, this.getStringLoaderManager(loader));
+    private fun getIntLoaderManager(loader: NetworkLoader<Int>): IntLoaderManager {
+        return intLoaderManager.computeIfAbsent(loader) { loader1: NetworkLoader<Int> ->
+            IntLoaderManager(
+                loader1,
+                loader.loadedSet
+            )
+        }
     }
 
-    private IntLoaderManager getIntLoaderManager(NetworkLoader<Integer> loader) {
-        return this.intLoaderManager.computeIfAbsent(loader, loader1 -> new IntLoaderManager(loader1, loader.getLoadedSet()));
+    private fun getStringLoaderManager(loader: NetworkLoader<String>): StringLoaderManager {
+        return stringLoaderManager.computeIfAbsent(loader) { loader1: NetworkLoader<String> ->
+            StringLoaderManager(
+                loader1,
+                loader.loadedSet
+            )
+        }
     }
 
-    private StringLoaderManager getStringLoaderManager(NetworkLoader<String> loader) {
-        return this.stringLoaderManager.computeIfAbsent(loader, loader1 -> new StringLoaderManager(loader1, loader.getLoadedSet()));
-    }
-
-    private <T> void addIdTask(T id, @Nullable DependantValue value, boolean optional, LoaderManagerImpl<T> loaderManager) {
-        DependantNode node = null;
-
+    private fun <T> addIdTask(
+        id: T,
+        value: DependantValue?,
+        optional: Boolean,
+        loaderManager: LoaderManagerImpl<T>
+    ) {
+        var node: DependantNode? = null
         if (value != null) {
-            node = this.valueNodes.get(value);
-
-            if (value.getIntId() > 0) {
-                IntLoaderManager manager = this.getIntLoaderManager(value.getIntegerLoader());
-                node = manager
-                        .valueDependants
-                        .compute(value.getIntId(), (i, remapNode) -> remapNode(value, remapNode));
-            } else if (value.getStringId() != null) {
-                StringLoaderManager manager = this.getStringLoaderManager(value.getStringLoader());
-                node = manager
-                        .valueDependants
-                        .compute(value.getStringId(), (s, remapNode) -> remapNode(value, remapNode));
+            node = valueNodes[value]
+            if (value.intId > 0) {
+                val manager = getIntLoaderManager(value.integerLoader!!)
+                node = manager.valueDependants
+                    .compute(
+                        value.intId
+                    ) { _: Int?, remapNode: DependantNode? ->
+                        remapNode(
+                            value,
+                            remapNode
+                        )
+                    }
+            } else if (value.stringId != null) {
+                val manager = getStringLoaderManager(value.stringLoader!!)
+                node = manager.valueDependants
+                    .compute(
+                        value.stringId
+                    ) { _: String?, remapNode: DependantNode? ->
+                        remapNode(
+                            value,
+                            remapNode
+                        )
+                    }
             }
             if (node == null) {
-                node = new DependantNode(value);
-                this.valueNodes.put(value, node);
+                node = DependantNode(value)
+                valueNodes[value] = node
             }
         }
-        loaderManager.addDependant(id, node, optional);
+        loaderManager.addDependant(id, node, optional)
     }
 
-    private DependantNode remapNode(DependantValue value, DependantNode dependantNode) {
+    private fun remapNode(value: DependantValue, dependantNode: DependantNode?): DependantNode? {
         if (dependantNode == null || !dependantNode.isRoot()) {
-            return null;
+            return null
         }
-        DependantNode newNode = dependantNode.createNewNode(value);
-        this.valueNodes.put(value, newNode);
-        return newNode;
+        val newNode = dependantNode.createNewNode(value)
+        valueNodes[value] = newNode
+        return newNode
     }
 
-    @Deprecated
-    @Override
-    public void addIntegerIdTask(int id, @Nullable Object dependantValue, NetworkLoader<Integer> loader, Runnable runnable, boolean optional) {
-        throw new UnsupportedOperationException();
+    @Deprecated("")
+    override fun addIntegerIdTask(
+        id: Int,
+        dependantValue: Any?,
+        loader: NetworkLoader<Int>,
+        runnable: Runnable?,
+        optional: Boolean
+    ) {
+        throw UnsupportedOperationException()
     }
 
-    @Deprecated
-    @Override
-    public void addStringIdTask(String id, @Nullable Object dependantValue, NetworkLoader<String> loader, Runnable runnable, boolean optional) {
-        throw new UnsupportedOperationException();
+    @Deprecated("")
+    override fun addStringIdTask(
+        id: String,
+        dependantValue: Any?,
+        loader: NetworkLoader<String>,
+        runnable: Runnable?,
+        optional: Boolean
+    ) {
+        throw UnsupportedOperationException()
     }
 
-    @Override
-    public boolean isEpisodeLoading(int id) {
-        return isIntegerIdLoading(id, this.EPISODE_LOADER);
+    override fun isEpisodeLoading(id: Int): Boolean {
+        return isIntegerIdLoading(id, EPISODE_LOADER)
     }
 
-    @Override
-    public boolean isPartLoading(int id) {
-        return isIntegerIdLoading(id, this.PART_LOADER);
+    override fun isPartLoading(id: Int): Boolean {
+        return isIntegerIdLoading(id, PART_LOADER)
     }
 
-    @Override
-    public boolean isMediumLoading(int id) {
-        return isIntegerIdLoading(id, this.MEDIUM_LOADER);
+    override fun isMediumLoading(id: Int): Boolean {
+        return isIntegerIdLoading(id, MEDIUM_LOADER)
     }
 
-    @Override
-    public boolean isMediaListLoading(int id) {
-        return isIntegerIdLoading(id, this.MEDIALIST_LOADER);
+    override fun isMediaListLoading(id: Int): Boolean {
+        return isIntegerIdLoading(id, MEDIALIST_LOADER)
     }
 
-    @Override
-    public boolean isExternalMediaListLoading(int id) {
-        return isIntegerIdLoading(id, this.EXTERNAL_MEDIALIST_LOADER);
+    override fun isExternalMediaListLoading(id: Int): Boolean {
+        return isIntegerIdLoading(id, EXTERNAL_MEDIALIST_LOADER)
     }
 
-    @Override
-    public boolean isExternalUserLoading(String uuid) {
-        return isStringIdLoading(uuid, this.EXTERNAL_USER_LOADER);
+    override fun isExternalUserLoading(uuid: String): Boolean {
+        return isStringIdLoading(uuid, EXTERNAL_USER_LOADER)
     }
 
-    private boolean isStringIdLoading(String uuid, NetworkLoader<String> loader) {
-        StringLoaderManager manager = this.stringLoaderManager.get(loader);
-        if (manager == null) {
-            return false;
-        }
-        return manager.isLoading(uuid);
+    private fun isStringIdLoading(uuid: String, loader: NetworkLoader<String>): Boolean {
+        val manager = stringLoaderManager[loader] ?: return false
+        return manager.isLoading(uuid)
     }
 
-    @Override
-    public boolean isNewsLoading(Integer id) {
-        return isIntegerIdLoading(id, this.NEWS_LOADER);
+    override fun isNewsLoading(id: Int): Boolean {
+        return isIntegerIdLoading(id, NEWS_LOADER)
     }
 
-    private boolean isIntegerIdLoading(int id, NetworkLoader<Integer> loader) {
-        IntLoaderManager manager = this.intLoaderManager.get(loader);
-        if (manager == null) {
-            return false;
-        }
-        return manager.isLoading(id);
+    private fun isIntegerIdLoading(id: Int, loader: NetworkLoader<Int>): Boolean {
+        val manager = intLoaderManager[loader] ?: return false
+        return manager.isLoading(id)
     }
 
-    private <T> Collection<DependantNode> processTasks(LoaderManagerImpl<T> manager, Set<T> freeIds, Collection<DependencyTask<?>> tasks) {
-        for (DependencyTask<?> task : tasks) {
-            if (task.idValue instanceof Integer) {
-                //noinspection unchecked
+    private fun <T> processTasks(
+        manager: LoaderManagerImpl<T>,
+        freeIds: MutableSet<T>,
+        tasks: Collection<DependencyTask<*>>
+    ): Collection<DependantNode> {
+        for (task in tasks) {
+            if (task.idValue is Int) {
                 this.addIntegerIdTask(
-                        (Integer) task.idValue,
-                        task.dependantValue,
-                        (NetworkLoader<Integer>) task.loader,
-                        task.optional
-                );
-                removeUnresolvedIds(manager, freeIds, task);
-            } else if (task.idValue instanceof String) {
-                //noinspection unchecked
+                    task.idValue,
+                    task.dependantValue,
+                    task.loader as NetworkLoader<Int>,
+                    task.optional
+                )
+                removeUnresolvedIds(manager, freeIds, task)
+            } else if (task.idValue is String) {
                 this.addStringIdTask(
-                        (String) task.idValue,
-                        task.dependantValue,
-                        (NetworkLoader<String>) task.loader,
-                        task.optional
-                );
-                removeUnresolvedIds(manager, freeIds, task);
+                    task.idValue,
+                    task.dependantValue,
+                    task.loader as NetworkLoader<String>,
+                    task.optional
+                )
+                removeUnresolvedIds(manager, freeIds, task)
             } else {
-                throw new IllegalArgumentException("unknown id value type: neither Integer nor String");
+                throw IllegalArgumentException("unknown id value type: neither Integer nor String")
             }
         }
-
-        return getResolvedNodes(manager, freeIds);
+        return getResolvedNodes(manager, freeIds)
     }
 
-    private <T> void removeUnresolvedIds(LoaderManagerImpl<T> manager, Set<T> freeIds, DependencyTask<?> task) {
+    private fun <T> removeUnresolvedIds(
+        manager: LoaderManagerImpl<T>,
+        freeIds: MutableSet<T>,
+        task: DependencyTask<*>
+    ) {
         if (task.optional || task.dependantValue == null) {
-            return;
+            return
         }
-        if (task.dependantValue.getIntegerLoader() == manager.getLoader()) {
-            //noinspection SuspiciousMethodCalls
-            freeIds.remove(task.dependantValue.getIntId());
-        } else if (task.dependantValue.getStringLoader() == manager.getLoader()) {
-            //noinspection SuspiciousMethodCalls
-            freeIds.remove(task.dependantValue.getStringId());
+        if (task.dependantValue.integerLoader === manager.loader) {
+            freeIds.remove(task.dependantValue.intId as T)
+        } else if (task.dependantValue.stringLoader === manager.loader) {
+            freeIds.remove(task.dependantValue.stringId as T)
         }
     }
 
-    private <T> Collection<DependantNode> loadIds(LoaderManagerImpl<T> manager) {
-        Set<T> freeIds = manager.getFreeIds();
-        System.out.printf("Loader: %s got Ids: %s\n", manager.getLoader().getClass().getSimpleName(), freeIds);
-
+    private fun <T> loadIds(manager: LoaderManagerImpl<T>): Collection<DependantNode> {
+        val freeIds = manager.freeIds
+        System.out.printf(
+            "Loader: %s got Ids: %s\n",
+            manager.loader.javaClass.simpleName,
+            freeIds
+        )
         if (freeIds.isEmpty()) {
-            return Collections.emptyList();
+            return emptyList()
         }
-
         if (manager.loaded.containsAll(freeIds)) {
-            return getResolvedNodes(manager, freeIds);
+            return getResolvedNodes(manager, freeIds)
         }
-
-        Collection<DependencyTask<?>> tasks = manager.getLoader().loadItemsSyncIncremental(freeIds);
-
-        for (DependencyTask<?> task : tasks) {
-            if (task.idValue instanceof Integer) {
-                //noinspection unchecked
+        val tasks = manager.loader.loadItemsSyncIncremental(freeIds)
+        for (task in tasks) {
+            if (task.idValue is Int) {
                 this.addIntegerIdTask(
-                        (Integer) task.idValue,
-                        task.dependantValue,
-                        (NetworkLoader<Integer>) task.loader,
-                        task.optional
-                );
-                removeUnresolvedId(manager, freeIds, task);
-            } else if (task.idValue instanceof String) {
-                //noinspection unchecked
+                    (task.idValue as Int),
+                    task.dependantValue,
+                    task.loader as NetworkLoader<Int>,
+                    task.optional
+                )
+                removeUnresolvedId(manager, freeIds, task)
+            } else if (task.idValue is String) {
                 this.addStringIdTask(
-                        (String) task.idValue,
-                        task.dependantValue,
-                        (NetworkLoader<String>) task.loader,
-                        task.optional
-                );
-                removeUnresolvedId(manager, freeIds, task);
+                    task.idValue as String,
+                    task.dependantValue,
+                    task.loader as NetworkLoader<String>,
+                    task.optional
+                )
+                removeUnresolvedId(manager, freeIds, task)
             } else {
-                throw new IllegalArgumentException("unknown id value type: neither Integer nor String");
+                throw IllegalArgumentException("unknown id value type: neither Integer nor String")
             }
         }
-
-        return getResolvedNodes(manager, freeIds);
+        return getResolvedNodes(manager, freeIds)
     }
 
-    private <T> void removeUnresolvedId(LoaderManagerImpl<T> manager, Set<T> freeIds, DependencyTask<?> task) {
+    private fun <T> removeUnresolvedId(
+        manager: LoaderManagerImpl<T>,
+        freeIds: MutableSet<T>,
+        task: DependencyTask<*>
+    ) {
         if (!task.optional && task.dependantValue != null) {
-            if (task.dependantValue.getIntegerLoader() == manager.getLoader()) {
-                //noinspection SuspiciousMethodCalls
-                freeIds.remove(task.dependantValue.getIntId());
-            } else if (task.dependantValue.getStringLoader() == manager.getLoader()) {
-                //noinspection SuspiciousMethodCalls
-                freeIds.remove(task.dependantValue.getStringId());
+            if (task.dependantValue.integerLoader === manager.loader) {
+                freeIds.remove(task.dependantValue.intId as T)
+            } else if (task.dependantValue.stringLoader === manager.loader) {
+                freeIds.remove(task.dependantValue.stringId as T)
             }
         }
     }
 
-    private <T> Collection<DependantNode> getResolvedNodes(LoaderManagerImpl<T> manager, Set<T> freeIds) {
-        Collection<DependantNode> nodes = new ArrayList<>();
-
+    private fun <T> getResolvedNodes(
+        manager: LoaderManagerImpl<T>,
+        freeIds: Set<T>
+    ): Collection<DependantNode> {
+        val nodes: MutableCollection<DependantNode> = ArrayList()
         System.out
-                .printf("Consumed FreeIds %d for %s", freeIds.size(), manager.getLoader().getClass().getSimpleName())
-                .println();
-
-        for (T id : freeIds) {
-            DependantNode node = manager.getIdDependant(id);
-
+            .printf(
+                "Consumed FreeIds %d for %s",
+                freeIds.size,
+                manager.loader!!.javaClass.simpleName
+            )
+            .println()
+        for (id in freeIds) {
+            val node = manager.getIdDependant(id)
             if (node == null) {
-                System.err.println("Node is null even though it just loaded");
-                continue;
+                System.err.println("Node is null even though it just loaded")
+                continue
             }
-            manager.removeId(id);
-
+            manager.removeId(id)
             if (!manager.isLoaded(id)) {
                 System.out
-                        .printf("Rejecting Dependencies for Id '%s' with loader '%s'", id, manager.getLoader().getClass().getSimpleName())
-                        .println();
-                node.rejectNode();
-                continue;
+                    .printf(
+                        "Rejecting Dependencies for Id '%s' with loader '%s'",
+                        id,
+                        manager.loader.javaClass.simpleName
+                    )
+                    .println()
+                node.rejectNode()
+                continue
             }
-            nodes.addAll(node.removeAsParent());
+            nodes.addAll(node.removeAsParent())
         }
-        return nodes;
+        return nodes
     }
 
-    private void consumeDependantValue(Collection<DependantValue> values) {
-        Objects.requireNonNull(values);
-        Map<ClientConsumer<?>, Set<DependantValue>> consumerMap = this.mapDependantsToConsumer(values);
-
-        for (Map.Entry<ClientConsumer<?>, Set<DependantValue>> entry : consumerMap.entrySet()) {
-            Collection<Object> dependantsValues = new HashSet<>();
-
-            for (DependantValue value : entry.getValue()) {
-                if (value.getValue() instanceof Collection) {
-                    dependantsValues.addAll((Collection<?>) value.getValue());
-                    continue;
+    private fun consumeDependantValue(values: Collection<DependantValue>) {
+        Objects.requireNonNull(values)
+        val consumerMap = mapDependantsToConsumer(values)
+        for ((key, value1) in consumerMap) {
+            val dependantsValues: MutableCollection<Any> = HashSet()
+            for (value in value1) {
+                if (value.value is Collection<*>) {
+                    dependantsValues.addAll((value.value as Collection<Any>))
+                    continue
                 }
-                dependantsValues.add(value.getValue());
+                if (value.value != null) {
+                    dependantsValues.add(value.value)
+                }
             }
             try {
-                //noinspection unchecked
-                ClientConsumer<Object> clientConsumer = (ClientConsumer<Object>) entry.getKey();
-                clientConsumer.consume(dependantsValues);
-
-                for (DependantValue value : entry.getValue()) {
-                    DependantNode node = this.valueNodes.remove(value);
-
-                    if (node != null && !node.isFree()) {
-                        System.out.println("removed node is not free!");
+                val clientConsumer = key as ClientConsumer<Any>
+                clientConsumer.consume(dependantsValues)
+                for (value in value1) {
+                    val node = valueNodes.remove(value)
+                    if (node != null && !node.isFree) {
+                        println("removed node is not free!")
                     }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                return;
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return
             }
         }
     }
 
-    private Map<ClientConsumer<?>, Set<DependantValue>> mapDependantsToConsumer(Collection<DependantValue> values) {
-        Map<Class<?>, Set<DependantValue>> classValuesMap = new HashMap<>();
+    private fun mapDependantsToConsumer(values: Collection<DependantValue>): Map<ClientConsumer<*>, Set<DependantValue>> {
+        val classValuesMap: MutableMap<Class<*>, MutableSet<DependantValue>> = HashMap()
 
-        for (DependantValue dependantImpl : values) {
-            Class<?> clazz = null;
-
-            if (dependantImpl.getValue() instanceof Collection) {
-                Collection<?> collection = (Collection<?>) dependantImpl.getValue();
-
+        for (dependantImpl in values) {
+            var clazz: Class<*>? = null
+            if (dependantImpl.value is Collection<*>) {
+                val collection = dependantImpl.value
                 if (collection.isEmpty()) {
-                    System.err.println("collection is empty");
-                    continue;
+                    System.err.println("collection is empty")
+                    continue
                 }
                 // check only the first value,
                 // on the assumption that every value after it has the same class
-                //noinspection LoopStatementThatDoesntLoop
-                for (Object o : collection) {
-                    clazz = o.getClass();
-                    break;
+                for (o in collection) {
+                    if (o !== null) {
+                        clazz = o.javaClass
+                        break
+                    }
                 }
-            } else {
-                clazz = dependantImpl.getValue().getClass();
+            } else if (dependantImpl.value != null) {
+                clazz = dependantImpl.value.javaClass
             }
-            classValuesMap.computeIfAbsent(clazz, c -> new HashSet<>()).add(dependantImpl);
+            if (clazz != null) {
+                classValuesMap.computeIfAbsent(clazz) { HashSet() }
+                    .add(dependantImpl)
+            }
         }
 
-        Map<ClientConsumer<?>, Set<DependantValue>> consumerDependantsMap = new HashMap<>();
-        Collection<ClientConsumer<?>> consumer = this.persister.getConsumer();
-
-        for (ClientConsumer<?> clientConsumer : consumer) {
-            Set<DependantValue> dependantImplSet = classValuesMap.get(clientConsumer.getType());
-
+        val consumerDependantsMap: MutableMap<ClientConsumer<*>, Set<DependantValue>> = HashMap()
+        val consumer = persister.getConsumer()
+        for (clientConsumer in consumer) {
+            val dependantImplSet: Set<DependantValue>? = classValuesMap[clientConsumer.type]
             if (dependantImplSet != null) {
-                consumerDependantsMap.put(clientConsumer, dependantImplSet);
+                consumerDependantsMap[clientConsumer] = dependantImplSet
             }
         }
-
-        return consumerDependantsMap;
+        return consumerDependantsMap
     }
 
-    private boolean hasCircularDependencies() {
-        for (DependantNode root : this.valueNodes.values()) {
-            Set<DependantNode> visitedNodes = new HashSet<>();
-            Deque<DependantNode> nodeStack = new LinkedList<>();
-
-            nodeStack.push(root);
-
+    private fun hasCircularDependencies(): Boolean {
+        for (root in valueNodes.values) {
+            val visitedNodes: MutableSet<DependantNode> = HashSet()
+            val nodeStack: Deque<DependantNode> = LinkedList()
+            nodeStack.push(root)
             while (!nodeStack.isEmpty()) {
-                DependantNode current = nodeStack.pop();
-
+                val current = nodeStack.pop()
                 if (!visitedNodes.add(current)) {
-                    return true;
+                    return true
                 }
-
-                for (DependantNode child : current.getChildren()) {
-                    nodeStack.push(child);
+                for (child in current!!.getChildren()) {
+                    nodeStack.push(child)
                 }
             }
         }
-        return false;
+        return false
     }
 
-    private interface ProcessTasks extends Function<Collection<DependencyTask<?>>, Collection<DependantNode>> {
-
-    }
-
-    @Override
-    public void doWork() {
-        System.out.println("do work");
-        int totalWork = 0;
-
-        for (StringLoaderManager manager : new ArrayList<>(this.stringLoaderManager.values())) {
-            totalWork += manager.loading();
+    override fun doWork() {
+        println("do work")
+        var totalWork = 0
+        for (manager in ArrayList(stringLoaderManager.values)) {
+            totalWork += manager.loading()
         }
-        for (LoaderManagerImpl<Integer> manager : new ArrayList<>(this.intLoaderManager.values())) {
-            totalWork += manager.loading();
+        for (manager in ArrayList(intLoaderManager.values)) {
+            totalWork += manager.loading()
         }
-        this.updateTotalWork(totalWork);
-
-        Collection<DependantNode> nodes = new ArrayList<>();
-        Map<Future<Collection<DependencyTask<?>>>, ProcessTasks> futureProcessTasksMap = new HashMap<>();
-
-        for (StringLoaderManager manager : new ArrayList<>(this.stringLoaderManager.values())) {
-            processLoadingManager(nodes, futureProcessTasksMap, manager);
+        updateTotalWork(totalWork)
+        val nodes: MutableCollection<DependantNode> = ArrayList()
+        val futureProcessTasksMap: MutableMap<Future<Collection<DependencyTask<*>>>, ProcessTasks> =
+            HashMap()
+        for (manager in ArrayList(stringLoaderManager.values)) {
+            processLoadingManager(nodes, futureProcessTasksMap, manager)
         }
-        for (LoaderManagerImpl<Integer> manager : new ArrayList<>(this.intLoaderManager.values())) {
-            processLoadingManager(nodes, futureProcessTasksMap, manager);
+        for (manager in ArrayList(intLoaderManager.values)) {
+            processLoadingManager(nodes, futureProcessTasksMap, manager)
         }
-
-        for (Map.Entry<Future<Collection<DependencyTask<?>>>, ProcessTasks> entry : futureProcessTasksMap.entrySet()) {
+        for ((key, value) in futureProcessTasksMap) {
             try {
-                Collection<DependencyTask<?>> tasks = entry.getKey().get();
-//                Collection<DependencyTask<?>> tasks = entry.getKey().get(20, TimeUnit.SECONDS);
-                nodes.addAll(entry.getValue().apply(tasks));
-            } catch (Exception e) {
-                e.printStackTrace();
+                val tasks = key.get()
+                //                Collection<DependencyTask<?>> tasks = entry.getKey().get(20, TimeUnit.SECONDS);
+                nodes.addAll(value.apply(tasks))
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
@@ -429,272 +455,285 @@ public class BlockingLoadWorker extends LoadWorker {
             if (manager.hasFreeIds()) {
                 nodes.addAll(this.loadIds(manager));
             }
-        }*/
-
-        System.out.println("finish work");
-//        print();
+        }*/println("finish work")
+        //        print();
 
         // todo only exit condition, maybe do more
         if (!nodes.isEmpty()) {
-            Collection<DependantValue> values = new ArrayList<>();
-            for (DependantNode node : nodes) {
-                if (node.isFree()) {
-                    if (node.getValue().getRunnable() != null) {
+            val values: MutableCollection<DependantValue> = ArrayList()
+            for (node in nodes) {
+                if (node.isFree) {
+                    if (node.value.runnable != null) {
                         try {
-                            node.getValue().getRunnable().run();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            continue;
+                            node.value.runnable.run()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            continue
                         }
                     }
-                    values.add(node.getValue());
+                    values.add(node.value)
                 }
             }
-            this.consumeDependantValue(values);
-        } else if (!this.hasFreeIds()) {
-            System.out.println("empty nodes and no free ids");
-            return;
+            consumeDependantValue(values)
+        } else if (!hasFreeIds()) {
+            println("empty nodes and no free ids")
+            return
         }
-
-        this.doWork();
+        doWork()
     }
 
-    private void print() {
-        for (Map.Entry<NetworkLoader<Integer>, IntLoaderManager> entry : this.intLoaderManager.entrySet()) {
-            printManager(entry.getKey(), entry.getValue());
+    private fun print() {
+        for ((key, value) in intLoaderManager) {
+            printManager(key, value)
         }
-        for (Map.Entry<NetworkLoader<String>, StringLoaderManager> entry : this.stringLoaderManager.entrySet()) {
-            printManager(entry.getKey(), entry.getValue());
+        for ((key, value) in stringLoaderManager) {
+            printManager(key, value)
         }
-        String s = getFormattedLoaded("Media", this.loadedData.getMedia()) +
-                getFormattedLoaded("Parts", this.loadedData.getPart()) +
-                getFormattedLoaded("Episodes", this.loadedData.getEpisodes()) +
-                getFormattedLoaded("News", this.loadedData.getNews()) +
-                getFormattedLoaded("MediaLists", this.loadedData.getMediaList()) +
-                getFormattedLoaded("ExtMediaLists", this.loadedData.getExternalMediaList()) +
-                getFormattedLoaded("ExtUser", this.loadedData.getExternalUser());
-        System.err.println(s);
+        val s = getFormattedLoaded("Media", loadedData.media) +
+                getFormattedLoaded("Parts", loadedData.part) +
+                getFormattedLoaded("Episodes", loadedData.episodes) +
+                getFormattedLoaded("News", loadedData.news) +
+                getFormattedLoaded("MediaLists", loadedData.mediaList) +
+                getFormattedLoaded("ExtMediaLists", loadedData.externalMediaList) +
+                getFormattedLoaded("ExtUser", loadedData.externalUser)
+        System.err.println(s)
     }
 
-    private <T> String getFormattedLoaded(String s, Set<T> set) {
-        return String.format(Locale.getDefault(), "Loaded %s %d: %s\n", s, set.size(), set);
+    private fun <T> getFormattedLoaded(s: String, set: Set<T>?): String {
+        return String.format(Locale.getDefault(), "Loaded %s %d: %s\n", s, set!!.size, set)
     }
 
-    private <T> void printManager(NetworkLoader<T> loader, LoaderManagerImpl<T> manager) {
-        String name = loader.getClass().getSimpleName();
-        Set<T> loading = manager.loading;
-        Set<T> freeIds = manager.getFreeIds();
-
-        for (T loadingId : loading) {
+    private fun <T> printManager(loader: NetworkLoader<T>?, manager: LoaderManagerImpl<T>) {
+        val name = loader!!.javaClass.simpleName
+        val loading = manager.loading
+        val freeIds = manager.freeIds
+        for (loadingId in loading) {
             if (!manager.valueDependants.containsKey(loadingId)) {
-                System.out.printf("%s contains loading Id '%s' without a node\n", name, loadingId);
+                System.out.printf("%s contains loading Id '%s' without a node\n", name, loadingId)
             }
         }
-        Map<String, Integer> classFrequencyChildren = new HashMap<>();
-        Map<String, Integer> classFrequencyOptChildren = new HashMap<>();
-
-        for (DependantNode node : manager.valueDependants.values()) {
-            for (DependantNode child : node.getChildren()) {
-                String simpleName = child.getValue().getValue().getClass().getSimpleName();
-                classFrequencyChildren.merge(simpleName, 1, Integer::sum);
+        val classFrequencyChildren: MutableMap<String, Int> = HashMap()
+        val classFrequencyOptChildren: MutableMap<String, Int> = HashMap()
+        for (node in manager.valueDependants.values) {
+            for (child in node.getChildren()) {
+                val simpleName = child.value.value?.javaClass?.simpleName
+                if (simpleName != null) {
+                    classFrequencyChildren.merge(simpleName, 1) { a: Int?, b: Int? ->
+                        Integer.sum(
+                            a!!, b!!
+                        )
+                    }
+                }
             }
-            for (DependantNode child : node.getOptionalChildren()) {
-                String simpleName = child.getValue().getValue().getClass().getSimpleName();
-                classFrequencyOptChildren.merge(simpleName, 1, Integer::sum);
+            for (child in node.getOptionalChildren()) {
+                val simpleName = child.value.value?.javaClass?.simpleName
+                if (simpleName != null) {
+                    classFrequencyOptChildren.merge(simpleName, 1) { a: Int?, b: Int? ->
+                        Integer.sum(
+                            a!!, b!!
+                        )
+                    }
+                }
             }
         }
-        String format = "%s:\nLoading %d: %s\nFree %d: %s\n";
-        StringBuilder builder = new StringBuilder(format + "Children: ");
-
-        List<Object> parameterList = new ArrayList<>((classFrequencyChildren.size() * 2) + (classFrequencyOptChildren.size() * 2));
-
-        for (Map.Entry<String, Integer> stringIntegerEntry : classFrequencyChildren.entrySet()) {
-            builder.append("%s: %d, ");
-            parameterList.add(stringIntegerEntry.getKey());
-            parameterList.add(stringIntegerEntry.getValue());
+        val format = "%s:\nLoading %d: %s\nFree %d: %s\n"
+        val builder = StringBuilder(format + "Children: ")
+        val parameterList: MutableList<Any> = ArrayList(
+            classFrequencyChildren.size * 2 + classFrequencyOptChildren.size * 2
+        )
+        for ((key, value) in classFrequencyChildren) {
+            builder.append("%s: %d, ")
+            parameterList.add(key)
+            parameterList.add(value)
         }
-        builder.append("\nOptional Children: ");
-
-        for (Map.Entry<String, Integer> stringIntegerEntry : classFrequencyOptChildren.entrySet()) {
-            builder.append("%s: %d, ");
-            parameterList.add(stringIntegerEntry.getKey());
-            parameterList.add(stringIntegerEntry.getValue());
+        builder.append("\nOptional Children: ")
+        for ((key, value) in classFrequencyOptChildren) {
+            builder.append("%s: %d, ")
+            parameterList.add(key)
+            parameterList.add(value)
         }
-        builder.append("\n");
-
-        Object[] objects = {name, loading.size(), loading, freeIds.size(), freeIds};
-        Object[] parameter = Stream.concat(Arrays.stream(objects), parameterList.stream()).toArray();
-
-        System.err.println(String.format(
+        builder.append("\n")
+        val objects = arrayOf(name, loading.size, loading, freeIds.size, freeIds)
+        val parameter = Stream.concat(Arrays.stream(objects), parameterList.stream()).toArray()
+        System.err.println(
+            String.format(
                 Locale.getDefault(),
                 builder.toString(),
-                parameter
-        ));
+                *parameter
+            )
+        )
     }
 
-    private <T> void processLoadingManager(Collection<DependantNode> nodes, Map<Future<Collection<DependencyTask<?>>>, ProcessTasks> futureProcessTasksMap, LoaderManagerImpl<T> manager) {
+    private fun <T> processLoadingManager(
+        nodes: MutableCollection<DependantNode>,
+        futureProcessTasksMap: MutableMap<Future<Collection<DependencyTask<*>>>, ProcessTasks>,
+        manager: LoaderManagerImpl<T>
+    ) {
         if (manager.hasFreeIds()) {
-            Set<T> freeIds = manager.getFreeIds();
-            System.out.printf("Loader: %s got Ids: %s\n", manager.getLoader().getClass().getSimpleName(), freeIds);
-
+            val freeIds = manager.freeIds
+            System.out.printf(
+                "Loader: %s got Ids: %s\n",
+                manager.loader.javaClass.simpleName,
+                freeIds
+            )
             if (manager.loaded.containsAll(freeIds)) {
-                nodes.addAll(getResolvedNodes(manager, freeIds));
+                nodes.addAll(getResolvedNodes(manager, freeIds))
             }
-            Future<Collection<DependencyTask<?>>> future = this.loadingService.submit(() -> manager.getLoader().loadItemsSyncIncremental(freeIds));
-            ProcessTasks processTasks = tasks -> this.processTasks(manager, freeIds, tasks);
-            futureProcessTasksMap.put(future, processTasks);
+            val future: Future<Collection<DependencyTask<*>>> = loadingService.submit(
+                Callable {
+                    manager.loader.loadItemsSyncIncremental(
+                        freeIds
+                    )
+                })
+            val processTasks = ProcessTasks { tasks: Collection<DependencyTask<*>> ->
+                processTasks(
+                    manager,
+                    freeIds,
+                    tasks
+                )
+            }
+            futureProcessTasksMap[future] = processTasks
         }
     }
 
-    private boolean hasFreeIds() {
-        for (IntLoaderManager manager : this.intLoaderManager.values()) {
+    private fun hasFreeIds(): Boolean {
+        for (manager in intLoaderManager.values) {
             if (manager.hasFreeIds()) {
-                return true;
+                return true
             }
         }
-        for (StringLoaderManager manager : this.stringLoaderManager.values()) {
+        for (manager in stringLoaderManager.values) {
             if (manager.hasFreeIds()) {
-                return true;
+                return true
             }
         }
-        return false;
+        return false
     }
 
-    @Override
-    public void enforceMediumStructure(int id) {
-        this.enforceMedia.add(id);
+    override fun enforceMediumStructure(id: Int) {
+        enforceMedia.add(id)
     }
 
-    @Override
-    public void enforcePartStructure(int id) {
-        this.enforcePart.add(id);
+    override fun enforcePartStructure(id: Int) {
+        enforcePart.add(id)
     }
 
-    @Override
-    public void work() {
+    override fun work() {
         try {
-            workService.submit(this::doWork).get();
-            List<Integer> mediaIds = new ArrayList<>(this.enforceMedia);
-            List<Integer> partIds = new ArrayList<>(this.enforcePart);
-            this.enforcePart.clear();
-            this.enforceMedia.clear();
-            this.repository.updateDataStructure(mediaIds, partIds);
-        } catch (Exception e) {
-            e.printStackTrace();
+            workService.submit { doWork() }.get()
+            val mediaIds: List<Int> = ArrayList(enforceMedia)
+            val partIds: List<Int> = ArrayList(enforcePart)
+            enforcePart.clear()
+            enforceMedia.clear()
+            repository.updateDataStructure(mediaIds, partIds)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
-    private static abstract class LoaderManagerImpl<T> {
-        private final Set<T> loading = Collections.synchronizedSet(new HashSet<>());
-        private final Set<T> loaded;
-        final ConcurrentMap<T, DependantNode> valueDependants = new ConcurrentHashMap<>();
-        private final NetworkLoader<T> loader;
+    private abstract class LoaderManagerImpl<T>(
+        loader: NetworkLoader<T>,
+        loaded: Set<T>
+    ) {
+        val loading = Collections.synchronizedSet(HashSet<T>())
+        val loaded: Set<T>
+        val valueDependants: ConcurrentMap<T, DependantNode> = ConcurrentHashMap()
+        val loader: NetworkLoader<T>
 
-        LoaderManagerImpl(NetworkLoader<T> loader, Set<T> loaded) {
-            Objects.requireNonNull(loader);
-            Objects.requireNonNull(loaded);
-            this.loader = loader;
-            this.loaded = loaded;
+        fun addDependant(value: T, node: DependantNode?, optional: Boolean) {
+            loading.add(value)
+            addDependantNode(value, node, optional)
         }
 
-        NetworkLoader<T> getLoader() {
-            return loader;
+        abstract fun addDependantNode(value: T, node: DependantNode?, optional: Boolean)
+
+        fun isLoaded(set: Set<T>): Boolean {
+            return loaded.containsAll(set)
         }
 
-        void addDependant(T value, @Nullable DependantNode node, boolean optional) {
-            this.loading.add(value);
-            this.addDependantNode(value, node, optional);
+        fun isLoaded(value: T): Boolean {
+            return loaded.contains(value)
         }
 
-        abstract void addDependantNode(T value, @Nullable DependantNode node, boolean optional);
-
-        public boolean isLoaded(Set<T> set) {
-            return this.loaded.containsAll(set);
+        fun removeId(value: T) {
+            valueDependants.remove(value)
+            loading.remove(value)
         }
 
-        boolean isLoaded(T value) {
-            return this.loaded.contains(value);
-        }
+        val freeIds: MutableSet<T>
+            get() {
+                val set: MutableSet<T> = HashSet()
+                for ((key, value) in valueDependants) {
+                    if (value.isFree) {
+                        set.add(key)
+                    }
+                }
+                return set
+            }
 
-        void removeId(T value) {
-            this.valueDependants.remove(value);
-            this.loading.remove(value);
-        }
-
-        Set<T> getFreeIds() {
-            Set<T> set = new HashSet<>();
-            for (Map.Entry<T, DependantNode> entry : this.valueDependants.entrySet()) {
-                if (entry.getValue().isFree()) {
-                    set.add(entry.getKey());
+        fun hasFreeIds(): Boolean {
+            for ((_, value) in valueDependants) {
+                if (value.isFree) {
+                    return true
                 }
             }
-            return set;
+            return false
         }
 
-        boolean hasFreeIds() {
-            for (Map.Entry<T, DependantNode> entry : this.valueDependants.entrySet()) {
-                if (entry.getValue().isFree()) {
-                    return true;
-                }
-            }
-            return false;
+        fun getIdDependant(value: T): DependantNode? {
+            return valueDependants[value]
         }
 
-        DependantNode getIdDependant(T value) {
-            return this.valueDependants.get(value);
+        fun isLoading(value: T): Boolean {
+            return loading.contains(value)
         }
 
-        boolean isLoading(T value) {
-            return this.loading.contains(value);
+        fun loading(): Int {
+            return loading.size
         }
 
-        int loading() {
-            return this.loading.size();
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val that = other as LoaderManagerImpl<*>
+            return loader == that.loader
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            LoaderManagerImpl<?> that = (LoaderManagerImpl<?>) o;
-
-            return loader.equals(that.loader);
+        override fun hashCode(): Int {
+            return loader.hashCode()
         }
 
-        @Override
-        public int hashCode() {
-            return loader.hashCode();
+        init {
+            Objects.requireNonNull(loader)
+            Objects.requireNonNull(loaded)
+            this.loader = loader
+            this.loaded = loaded
         }
     }
 
-    private static class StringLoaderManager extends LoaderManagerImpl<String> {
-        private StringLoaderManager(NetworkLoader<String> loader, Set<String> loaded) {
-            super(loader, loaded);
-        }
-
-        @Override
-        public void addDependantNode(String value, @Nullable DependantNode node, boolean optional) {
-            DependantNode parentNode = this.valueDependants.computeIfAbsent(value, DependantNode::new);
-
+    private class StringLoaderManager(loader: NetworkLoader<String>, loaded: Set<String>) :
+        LoaderManagerImpl<String>(loader, loaded) {
+        override fun addDependantNode(value: String, node: DependantNode?, optional: Boolean) {
+            val parentNode = valueDependants.computeIfAbsent(
+                value
+            ) { stringId: String -> DependantNode(stringId) }
             if (node != null) {
-                parentNode.addChild(node, optional);
+                parentNode.addChild(node, optional)
             }
         }
     }
 
-    private static class IntLoaderManager extends LoaderManagerImpl<Integer> {
-        private IntLoaderManager(NetworkLoader<Integer> loader, Set<Integer> loaded) {
-            super(loader, loaded);
-        }
-
-        @Override
-        public void addDependantNode(Integer value, @Nullable DependantNode node, boolean optional) {
-            DependantNode parentNode = this.valueDependants.computeIfAbsent(value, DependantNode::new);
-
+    private class IntLoaderManager(loader: NetworkLoader<Int>, loaded: Set<Int>) :
+        LoaderManagerImpl<Int>(loader, loaded) {
+        override fun addDependantNode(value: Int, node: DependantNode?, optional: Boolean) {
+            val parentNode = valueDependants.computeIfAbsent(
+                value
+            ) { intId: Int -> DependantNode(intId) }
             if (node != null) {
-                parentNode.addChild(node, optional);
+                parentNode.addChild(node, optional)
             }
         }
     }
 }
+
+private typealias ProcessTasks = Function<Collection<DependencyTask<*>>, Collection<DependantNode>>

@@ -1,9 +1,6 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import java.util.Collection;
-
-public interface ClientConsumer<T> {
-    Class<T> getType();
-
-    void consume(Collection<T> data);
+interface ClientConsumer<T> {
+    val type: Class<T>?
+    fun consume(data: Collection<T>?)
 }

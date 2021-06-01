@@ -1,4 +1,3 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-public class NetworkBoundResource {
-}
+class NetworkBoundResource 

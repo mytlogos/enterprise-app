@@ -103,7 +103,7 @@ public class DownloadWorker extends Worker {
     }
 
     public static void watchDatabase(Application application, LifecycleOwner owner) {
-        Repository repository = RepositoryImpl.getInstance(application);
+        Repository repository = RepositoryImpl.Companion.getInstance(application);
 
         LiveData<Boolean> doDownload = repository.onDownloadable();
         doDownload.observe(owner, aBoolean -> {
@@ -168,7 +168,7 @@ public class DownloadWorker extends Worker {
 
         try {
             synchronized (UNIQUE) {
-                Repository repository = RepositoryImpl.getInstance(application);
+                Repository repository = RepositoryImpl.Companion.getInstance(application);
 
                 this.contentTools = FileTools.getSupportedContentTools(application);
 

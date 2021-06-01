@@ -12,6 +12,6 @@ class RepoViewModel extends AndroidViewModel {
 
     RepoViewModel(Application application) {
         super(application);
-        this.repository = RepositoryImpl.getInstance(application);
+        this.repository = RepositoryImpl.Companion.getInstance(application);
     }
 }

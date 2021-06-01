@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise;
 
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
@@ -202,7 +203,7 @@ public class DataGenerator {
                 0,
                 0,
                 null,
-                new ClientRelease[0]
+                new ClientEpisodeRelease[0]
         );
     }
 

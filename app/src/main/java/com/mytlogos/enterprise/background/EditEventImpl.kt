@@ -1,101 +1,79 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import androidx.annotation.NonNull;
+import org.joda.time.DateTime
 
-import org.joda.time.DateTime;
+class EditEventImpl : EditEvent {
+    override val id: Int
+    override val objectType: Int
+    override val eventType: Int
+    override val dateTime: DateTime
+    override val firstValue: String
+    override val secondValue: String
 
-public class EditEventImpl implements EditEvent {
-    private final int id;
-    private final int objectType;
-    private final int eventType;
-    @NonNull
-    private final DateTime dateTime;
-    private final String firstValue;
-    private final String secondValue;
-
-    EditEventImpl(int id, @EditService.EditObject int objectType, @EditService.Event int eventType, @NonNull DateTime dateTime, String firstValue, String secondValue) {
-        this.id = id;
-        this.objectType = objectType;
-        this.eventType = eventType;
-        this.dateTime = dateTime;
-        this.firstValue = firstValue;
-        this.secondValue = secondValue;
+    internal constructor(
+        id: Int,
+        @EditService.EditObject objectType: Int,
+        @EditService.Event eventType: Int,
+        dateTime: DateTime,
+        firstValue: String,
+        secondValue: String
+    ) {
+        this.id = id
+        this.objectType = objectType
+        this.eventType = eventType
+        this.dateTime = dateTime
+        this.firstValue = firstValue
+        this.secondValue = secondValue
     }
 
-    EditEventImpl(int id, @EditService.EditObject int objectType, @EditService.Event int eventType, @NonNull DateTime dateTime, Object firstValue, Object secondValue) {
-        this.id = id;
-        this.objectType = objectType;
-        this.eventType = eventType;
-        this.dateTime = dateTime;
-        this.firstValue = String.valueOf(firstValue);
-        this.secondValue = String.valueOf(secondValue);
+    internal constructor(
+        id: Int,
+        @EditService.EditObject objectType: Int,
+        @EditService.Event eventType: Int,
+        dateTime: DateTime,
+        firstValue: Any?,
+        secondValue: Any?
+    ) {
+        this.id = id
+        this.objectType = objectType
+        this.eventType = eventType
+        this.dateTime = dateTime
+        this.firstValue = firstValue.toString()
+        this.secondValue = secondValue.toString()
     }
 
-    public EditEventImpl(int id, int objectType, int eventType, Object firstValue, Object secondValue) {
-        this(id, objectType, eventType, DateTime.now(), firstValue, secondValue);
+    constructor(
+        id: Int,
+        objectType: Int,
+        eventType: Int,
+        firstValue: Any?,
+        secondValue: Any?
+    ) : this(id, objectType, eventType, DateTime.now(), firstValue, secondValue) {
     }
 
-    @Override
-    public int getId() {
-        return id;
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val editEvent = other as EditEvent
+        if (id != editEvent.id) return false
+        if (objectType != editEvent.objectType) return false
+        if (eventType != editEvent.eventType) return false
+        if (dateTime != editEvent.dateTime) return false
+        if (firstValue != editEvent.firstValue) return false
+        return secondValue == editEvent.secondValue
     }
 
-    @Override
-    public int getObjectType() {
-        return objectType;
+    override fun hashCode(): Int {
+        var result = id
+        result = 31 * result + objectType
+        result = 31 * result + eventType
+        result = 31 * result + dateTime.hashCode()
+        result = 31 * result + firstValue.hashCode()
+        result = 31 * result + secondValue.hashCode()
+        return result
     }
 
-    @Override
-    public int getEventType() {
-        return eventType;
-    }
-
-    @Override
-    @NonNull
-    public DateTime getDateTime() {
-        return dateTime;
-    }
-
-    @Override
-    public String getFirstValue() {
-        return firstValue;
-    }
-
-    @Override
-    public String getSecondValue() {
-        return secondValue;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        EditEvent editEvent = (EditEvent) o;
-
-        if (getId() != editEvent.getId()) return false;
-        if (getObjectType() != editEvent.getObjectType()) return false;
-        if (getEventType() != editEvent.getEventType()) return false;
-        if (!getDateTime().equals(editEvent.getDateTime())) return false;
-        if (getFirstValue() != null ? !getFirstValue().equals(editEvent.getFirstValue()) : editEvent.getFirstValue() != null)
-            return false;
-        return getSecondValue() != null ? getSecondValue().equals(editEvent.getSecondValue()) : editEvent.getSecondValue() == null;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = getId();
-        result = 31 * result + getObjectType();
-        result = 31 * result + getEventType();
-        result = 31 * result + getDateTime().hashCode();
-        result = 31 * result + (getFirstValue() != null ? getFirstValue().hashCode() : 0);
-        result = 31 * result + (getSecondValue() != null ? getSecondValue().hashCode() : 0);
-        return result;
-    }
-
-    @NonNull
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "EditEventImpl{" +
                 "id=" + id +
                 ", objectType=" + objectType +
@@ -103,6 +81,6 @@ public class EditEventImpl implements EditEvent {
                 ", dateTime=" + dateTime +
                 ", firstValue='" + firstValue + '\'' +
                 ", secondValue='" + secondValue + '\'' +
-                '}';
+                '}'
     }
 }

@@ -12,7 +12,14 @@ import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.Exter
 import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
 
 @Database(
-    entities = [RoomUser::class, RoomNews::class, RoomExternalUser::class, RoomMediaList::class, MediaListMediaJoin::class, RoomEpisode::class, RoomRelease::class, RoomPart::class, RoomMedium::class, RoomExternalMediaList::class, ExternalListMediaJoin::class, RoomToDownload::class, RoomMediumInWait::class, RoomDanglingMedium::class, RoomFailedEpisode::class, RoomNotification::class, RoomMediumProgress::class, RoomMediumPart::class, RoomPartEpisode::class, RoomEditEvent::class, RoomToc::class],
+    entities = [
+        RoomUser::class, RoomNews::class, RoomExternalUser::class, RoomMediaList::class,
+        MediaListMediaJoin::class, RoomEpisode::class, RoomRelease::class, RoomPart::class,
+        RoomMedium::class, RoomExternalMediaList::class, ExternalListMediaJoin::class,
+        RoomToDownload::class, RoomMediumInWait::class, RoomDanglingMedium::class,
+        RoomFailedEpisode::class, RoomNotification::class, RoomMediumProgress::class,
+        RoomMediumPart::class, RoomPartEpisode::class, RoomEditEvent::class, RoomToc::class
+   ],
     version = 16
 )
 @TypeConverters(Converters::class)
@@ -50,7 +57,6 @@ abstract class AbstractDatabase : RoomDatabase() {
                                         DB_Name)
                                 .addMigrations(*migrations())
                                 .fallbackToDestructiveMigrationOnDowngrade()
-                                .fallbackToDestructiveMigration()
                                 .build()
                     }
                 }

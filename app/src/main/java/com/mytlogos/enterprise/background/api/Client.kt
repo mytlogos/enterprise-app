@@ -82,7 +82,7 @@ class Client(private val identificator: NetworkIdentificator) {
         authentication = Authentication(uuid, session)
     }
 
-    val isAuthenticated: Boolean
+    val isClientAuthenticated: Boolean
         get() = authentication != null
 
     fun clearAuthentication() {
@@ -805,7 +805,7 @@ class Client(private val identificator: NetworkIdentificator) {
         return buildCall(apiImpl, path)
     }
 
-    val isOnline: Boolean
+    val isClientOnline: Boolean
         get() {
             try {
                 server = getServer()

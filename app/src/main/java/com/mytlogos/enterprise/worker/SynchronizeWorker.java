@@ -155,7 +155,7 @@ public class SynchronizeWorker extends Worker {
         UserPreferences.init(application);
 
         try {
-            Repository repository = RepositoryImpl.getInstance(application);
+            Repository repository = RepositoryImpl.Companion.getInstance(application);
 
             if (!repository.isClientAuthenticated()) {
                 cleanUp();
@@ -517,30 +517,30 @@ public class SynchronizeWorker extends Worker {
 
         ReloadStat reloadStat = repository.checkReload(parsedStat);
 
-        if (!reloadStat.loadMedium.isEmpty()) {
-            final List<ClientMedium> media = Utils.checkAndGetBody(client.getMedia(reloadStat.loadMedium));
+        if (!reloadStat.getLoadMedium().isEmpty()) {
+            final List<ClientMedium> media = Utils.checkAndGetBody(client.getMedia(reloadStat.getLoadMedium()));
             List<ClientSimpleMedium> simpleMedia = media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList());
             persister.persistMedia(simpleMedia);
 
             reloadStat = repository.checkReload(parsedStat);
         }
 
-        if (!reloadStat.loadExUser.isEmpty()) {
-            final List<ClientExternalUser> users = Utils.checkAndGetBody(client.getExternalUser(reloadStat.loadExUser));
+        if (!reloadStat.getLoadExUser().isEmpty()) {
+            final List<ClientExternalUser> users = Utils.checkAndGetBody(client.getExternalUser(reloadStat.getLoadExUser()));
             persister.persistExternalUsers(users);
 
             reloadStat = repository.checkReload(parsedStat);
         }
 
-        if (!reloadStat.loadLists.isEmpty()) {
-            final ClientMultiListQuery listQuery = Utils.checkAndGetBody(client.getLists(reloadStat.loadLists));
+        if (!reloadStat.getLoadLists().isEmpty()) {
+            final ClientMultiListQuery listQuery = Utils.checkAndGetBody(client.getLists(reloadStat.getLoadLists()));
             persister.persist(listQuery);
 
             reloadStat = repository.checkReload(parsedStat);
         }
 
-        if (!reloadStat.loadPart.isEmpty()) {
-            Utils.doPartitionedRethrow(reloadStat.loadPart, partIds -> {
+        if (!reloadStat.getLoadPart().isEmpty()) {
+            Utils.doPartitionedRethrow(reloadStat.getLoadPart(), partIds -> {
                 final List<ClientPart> parts = Utils.checkAndGetBody(client.getParts(partIds));
                 persister.persistParts(parts);
                 return false;
@@ -548,8 +548,8 @@ public class SynchronizeWorker extends Worker {
             reloadStat = repository.checkReload(parsedStat);
         }
 
-        if (!reloadStat.loadPartEpisodes.isEmpty()) {
-            Map<String, List<Integer>> partStringEpisodes = Utils.checkAndGetBody(client.getPartEpisodes(reloadStat.loadPartEpisodes));
+        if (!reloadStat.getLoadPartEpisodes().isEmpty()) {
+            Map<String, List<Integer>> partStringEpisodes = Utils.checkAndGetBody(client.getPartEpisodes(reloadStat.getLoadPartEpisodes()));
 
             Map<Integer, List<Integer>> partEpisodes = mapStringToInt(partStringEpisodes);
 
@@ -580,8 +580,8 @@ public class SynchronizeWorker extends Worker {
         }
 
 
-        if (!reloadStat.loadPartReleases.isEmpty()) {
-            Response<Map<String, List<ClientSimpleRelease>>> partReleasesResponse = client.getPartReleases(reloadStat.loadPartReleases);
+        if (!reloadStat.getLoadPartReleases().isEmpty()) {
+            Response<Map<String, List<ClientSimpleRelease>>> partReleasesResponse = client.getPartReleases(reloadStat.getLoadPartReleases());
 
             Map<String, List<ClientSimpleRelease>> partStringReleases = Utils.checkAndGetBody(partReleasesResponse);
 
@@ -613,8 +613,8 @@ public class SynchronizeWorker extends Worker {
             reloadStat = repository.checkReload(parsedStat);
         }
 
-        if (!reloadStat.loadMediumTocs.isEmpty()) {
-            final Response<List<ClientToc>> mediumTocsResponse = client.getMediumTocs(reloadStat.loadMediumTocs);
+        if (!reloadStat.getLoadMediumTocs().isEmpty()) {
+            final Response<List<ClientToc>> mediumTocsResponse = client.getMediumTocs(reloadStat.getLoadMediumTocs());
             final List<ClientToc> mediumTocs = Utils.checkAndGetBody(mediumTocsResponse);
             Map<Integer, List<String>> mediaTocs = new HashMap<>();
 
@@ -634,10 +634,10 @@ public class SynchronizeWorker extends Worker {
         }
 
         // as even now some errors crop up, just load all this shit and dump it in 100er steps
-        if (!reloadStat.loadPartEpisodes.isEmpty() || !reloadStat.loadPartReleases.isEmpty()) {
+        if (!reloadStat.getLoadPartEpisodes().isEmpty() || !reloadStat.getLoadPartReleases().isEmpty()) {
             Collection<Integer> partsToLoad = new HashSet<>();
-            partsToLoad.addAll(reloadStat.loadPartEpisodes);
-            partsToLoad.addAll(reloadStat.loadPartReleases);
+            partsToLoad.addAll(reloadStat.getLoadPartEpisodes());
+            partsToLoad.addAll(reloadStat.getLoadPartReleases());
 
             Utils.doPartitionedRethrow(partsToLoad, ids -> {
                 List<ClientPart> parts = Utils.checkAndGetBody(client.getParts(ids));
@@ -648,21 +648,21 @@ public class SynchronizeWorker extends Worker {
             reloadStat = repository.checkReload(parsedStat);
         }
 
-        if (!reloadStat.loadPartEpisodes.isEmpty()) {
+        if (!reloadStat.getLoadPartEpisodes().isEmpty()) {
             @SuppressLint("DefaultLocale")
             String msg = String.format(
                     "Episodes of %d Parts to load even after running once",
-                    reloadStat.loadPartEpisodes.size()
+                    reloadStat.getLoadPartEpisodes().size()
             );
             System.out.println(msg);
             Log.e("Repository", msg);
         }
 
-        if (!reloadStat.loadPartReleases.isEmpty()) {
+        if (!reloadStat.getLoadPartReleases().isEmpty()) {
             @SuppressLint("DefaultLocale")
             String msg = String.format(
                     "Releases of %d Parts to load even after running once",
-                    reloadStat.loadPartReleases.size()
+                    reloadStat.getLoadPartReleases().size()
             );
             System.out.println(msg);
             Log.e("Repository", msg);

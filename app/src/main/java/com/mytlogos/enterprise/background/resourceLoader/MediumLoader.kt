@@ -1,49 +1,37 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import com.mytlogos.enterprise.background.api.model.ClientMedium;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
+import com.mytlogos.enterprise.background.api.model.ClientMedium
+import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium
+import java.util.concurrent.CompletableFuture
+import java.util.stream.Collectors
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-
-class MediumLoader implements NetworkLoader<Integer> {
-    private LoadWorker loadWorker;
-
-    MediumLoader(LoadWorker loadWorker) {
-        this.loadWorker = loadWorker;
+open class MediumLoader(private val loadWorker: LoadWorker) : NetworkLoader<Int> {
+    override fun loadItemsAsync(toLoad: Set<Int>): CompletableFuture<Void> {
+        return loadWorker.repository.loadMediaAsync(toLoad)
+            .thenAccept { media: List<ClientMedium>? -> process(media) }
     }
 
-    @Override
-    public CompletableFuture<Void> loadItemsAsync(Set<Integer> toLoad) {
-        return loadWorker.repository.loadMediaAsync(toLoad).thenAccept(this::process);
-    }
-
-    @Override
-    public Collection<DependencyTask<?>> loadItemsSync(Set<Integer> toLoad) {
-        List<ClientMedium> media = this.loadWorker.repository.loadMediaSync(toLoad);
-
+    override fun loadItemsSync(toLoad: Set<Int>): Collection<DependencyTask<*>> {
+        val media = loadWorker.repository.loadMediaSync(toLoad)
         if (media != null) {
-            LoadWorkGenerator generator = new LoadWorkGenerator(this.loadWorker.loadedData);
-            LoadWorkGenerator.FilteredMedia filteredMedia = generator.filterMedia(media);
-
-            this.loadWorker.persister.persist(filteredMedia);
-            return this.loadWorker.generator.generateMediaDependant(filteredMedia);
+            val generator = LoadWorkGenerator(loadWorker.loadedData)
+            val filteredMedia = generator.filterMedia(media)
+            loadWorker.persister.persist(filteredMedia)
+            return loadWorker.generator!!.generateMediaDependant(filteredMedia)
         }
-        return Collections.emptyList();
+        return emptyList()
     }
 
-    private void process(List<ClientMedium> media) {
+    private fun process(media: List<ClientMedium>?) {
         if (media != null) {
-            loadWorker.persister.persistMedia(media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList()));
+            loadWorker.persister.persistMedia(media.stream().map { medium: ClientMedium ->
+                ClientSimpleMedium(
+                    medium
+                )
+            }.collect(Collectors.toList()))
         }
     }
 
-    @Override
-    public Set<Integer> getLoadedSet() {
-        return loadWorker.loadedData.getMedia();
-    }
+    override val loadedSet: Set<Int>
+        get() = loadWorker.loadedData.media
 }

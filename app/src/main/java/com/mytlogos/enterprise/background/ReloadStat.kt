@@ -1,60 +1,37 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import java.util.Collection;
-import java.util.Objects;
-
-public class ReloadStat {
-    public final Collection<Integer> loadPartEpisodes;
-    public final Collection<Integer> loadPartReleases;
-    public final Collection<Integer> loadMediumTocs;
-    public final Collection<Integer> loadMedium;
-    public final Collection<Integer> loadPart;
-    public final Collection<Integer> loadLists;
-    public final Collection<String> loadExUser;
-
-    public ReloadStat(Collection<Integer> loadPartEpisodes, Collection<Integer> loadPartReleases, Collection<Integer> loadMediumTocs, Collection<Integer> loadMedium, Collection<Integer> loadPart, Collection<Integer> loadLists, Collection<String> loadExUser) {
-        this.loadPartEpisodes = loadPartEpisodes;
-        this.loadPartReleases = loadPartReleases;
-        this.loadMediumTocs = loadMediumTocs;
-        this.loadMedium = loadMedium;
-        this.loadPart = loadPart;
-        this.loadLists = loadLists;
-        this.loadExUser = loadExUser;
+class ReloadStat(
+    val loadPartEpisodes: Collection<Int>,
+    val loadPartReleases: Collection<Int>,
+    val loadMediumTocs: Collection<Int>,
+    val loadMedium: Collection<Int>,
+    val loadPart: Collection<Int>,
+    val loadLists: Collection<Int>,
+    val loadExUser: Collection<String>
+) {
+    override fun hashCode(): Int {
+        var result = loadPartEpisodes.hashCode()
+        result = 31 * result + loadPartReleases.hashCode()
+        result = 31 * result + loadMediumTocs.hashCode()
+        result = 31 * result + loadMedium.hashCode()
+        result = 31 * result + loadPart.hashCode()
+        result = 31 * result + loadLists.hashCode()
+        result = 31 * result + loadExUser.hashCode()
+        return result
     }
 
-    @Override
-    public int hashCode() {
-        int result = loadPartEpisodes != null ? loadPartEpisodes.hashCode() : 0;
-        result = 31 * result + (loadPartReleases != null ? loadPartReleases.hashCode() : 0);
-        result = 31 * result + (loadMediumTocs != null ? loadMediumTocs.hashCode() : 0);
-        result = 31 * result + (loadMedium != null ? loadMedium.hashCode() : 0);
-        result = 31 * result + (loadPart != null ? loadPart.hashCode() : 0);
-        result = 31 * result + (loadLists != null ? loadLists.hashCode() : 0);
-        result = 31 * result + (loadExUser != null ? loadExUser.hashCode() : 0);
-        return result;
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ReloadStat) return false
+        if (loadPartEpisodes != other.loadPartEpisodes) return false
+        if (loadPartReleases != other.loadPartReleases) return false
+        if (loadMediumTocs != other.loadMediumTocs) return false
+        if (loadMedium != other.loadMedium) return false
+        if (loadPart != other.loadPart) return false
+        return if (loadLists != other.loadLists) false else loadExUser == other.loadExUser
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ReloadStat)) return false;
-
-        ReloadStat that = (ReloadStat) o;
-
-        if (!Objects.equals(loadPartEpisodes, that.loadPartEpisodes))
-            return false;
-        if (!Objects.equals(loadPartReleases, that.loadPartReleases))
-            return false;
-        if (!Objects.equals(loadMediumTocs, that.loadMediumTocs))
-            return false;
-        if (!Objects.equals(loadMedium, that.loadMedium)) return false;
-        if (!Objects.equals(loadPart, that.loadPart)) return false;
-        if (!Objects.equals(loadLists, that.loadLists)) return false;
-        return Objects.equals(loadExUser, that.loadExUser);
-    }
-
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "ReloadStat{" +
                 "loadPartEpisodes=" + loadPartEpisodes +
                 ", loadPartReleases=" + loadPartReleases +
@@ -63,6 +40,6 @@ public class ReloadStat {
                 ", loadPart=" + loadPart +
                 ", loadLists=" + loadLists +
                 ", loadExUser=" + loadExUser +
-                '}';
+                '}'
     }
 }

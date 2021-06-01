@@ -8,7 +8,7 @@ import com.mytlogos.enterprise.model.*
 @Dao
 interface UserDao : BaseDao<RoomUser> {
     @get:Query("SELECT * FROM RoomUser LIMIT 1")
-    val user: LiveData<User>
+    val user: LiveData<User?>
 
     @get:Query("SELECT name FROM RoomUser LIMIT 1")
     val userName: LiveData<String>

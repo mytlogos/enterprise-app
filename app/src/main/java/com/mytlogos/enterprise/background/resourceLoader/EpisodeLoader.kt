@@ -1,48 +1,31 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import com.mytlogos.enterprise.background.api.model.ClientEpisode;
+import com.mytlogos.enterprise.background.api.model.ClientEpisode
+import java.util.concurrent.CompletableFuture
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-
-class EpisodeLoader implements NetworkLoader<Integer> {
-
-    private LoadWorker loadWorker;
-
-    EpisodeLoader(LoadWorker loadWorker) {
-        this.loadWorker = loadWorker;
+open class EpisodeLoader(private val loadWorker: LoadWorker) : NetworkLoader<Int> {
+    override fun loadItemsAsync(toLoad: Set<Int>): CompletableFuture<Void> {
+        return loadWorker.repository.loadEpisodeAsync(toLoad)
+            .thenAccept { episodes: List<ClientEpisode>? -> process(episodes) }
     }
 
-    @Override
-    public CompletableFuture<Void> loadItemsAsync(Set<Integer> toLoad) {
-        return loadWorker.repository.loadEpisodeAsync(toLoad).thenAccept(this::process);
-    }
-
-    @Override
-    public Collection<DependencyTask<?>> loadItemsSync(Set<Integer> toLoad) {
-        List<ClientEpisode> episodes = this.loadWorker.repository.loadEpisodeSync(toLoad);
-
+    override fun loadItemsSync(toLoad: Set<Int>): Collection<DependencyTask<*>> {
+        val episodes = loadWorker.repository.loadEpisodeSync(toLoad)
         if (episodes != null) {
-            LoadWorkGenerator generator = new LoadWorkGenerator(this.loadWorker.loadedData);
-            LoadWorkGenerator.FilteredEpisodes filteredEpisodes = generator.filterEpisodes(episodes);
-            this.loadWorker.persister.persist(filteredEpisodes);
-            return this.loadWorker.generator.generateEpisodesDependant(filteredEpisodes);
+            val generator = LoadWorkGenerator(loadWorker.loadedData)
+            val filteredEpisodes = generator.filterEpisodes(episodes)
+            loadWorker.persister.persist(filteredEpisodes)
+            return loadWorker.generator!!.generateEpisodesDependant(filteredEpisodes)
         }
-        return Collections.emptyList();
+        return emptyList()
     }
 
-
-    private void process(List<ClientEpisode> episodes) {
+    private fun process(episodes: List<ClientEpisode>?) {
         if (episodes != null) {
-            loadWorker.persister.persistEpisodes(episodes);
+            loadWorker.persister.persistEpisodes(episodes)
         }
     }
 
-    @Override
-    public Set<Integer> getLoadedSet() {
-        return loadWorker.loadedData.getEpisodes();
-    }
+    override val loadedSet: Set<Int>
+        get() = loadWorker.loadedData.episodes
 }

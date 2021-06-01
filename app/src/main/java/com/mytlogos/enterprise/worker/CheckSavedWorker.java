@@ -81,7 +81,7 @@ public class CheckSavedWorker extends Worker {
         notificationManager.notify(checkLocalNotificationId, builder.build());
 
         Set<ContentTool> tools = FileTools.getSupportedContentTools(application);
-        Repository repository = RepositoryImpl.getInstance(application);
+        Repository repository = RepositoryImpl.Companion.getInstance(application);
 
         Map<Integer, Set<Integer>> mediumSavedEpisodes = new HashMap<>();
 

@@ -1,105 +1,90 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import java.util.Objects;
+import com.mytlogos.enterprise.background.api.model.ClientPart
 
-public class DependantValue {
-    private final Object value;
-    private final Runnable runnable;
-    private final int intId;
-    private final String stringId;
-    private final NetworkLoader<Integer> integerLoader;
-    private final NetworkLoader<String> stringLoader;
+class DependantValue private constructor(
+    val value: Any?,
+    val runnable: Runnable?,
+    val intId: Int,
+    val integerLoader: NetworkLoader<Int>?,
+    val stringId: String?,
+    val stringLoader: NetworkLoader<String>?
+) {
 
-    public DependantValue(Object value, Runnable runnable) {
-        this(value, runnable, 0, null);
+    constructor(value: Any?, intId: Int, integerLoader: NetworkLoader<Int>) : this(
+        value,
+        null,
+        intId,
+        integerLoader,
+        null,
+        null
+    ) {
     }
 
-    public DependantValue(Object value, int intId, NetworkLoader<Integer> integerLoader) {
-        this(value, null, intId, integerLoader, null, null);
+    constructor(value: Any?, stringId: String?, stringLoader: NetworkLoader<String>) : this(
+        value,
+        null,
+        0,
+        null,
+        stringId,
+        stringLoader
+    ) {
     }
 
-    public DependantValue(Object value, String stringId, NetworkLoader<String> stringLoader) {
-        this(value, null, 0, null, stringId, stringLoader);
+    constructor(value: Any?) : this(value, null, 0, null, null, null) {}
+
+    @JvmOverloads
+    constructor(
+        value: Any?,
+        runnable: Runnable?,
+        intId: Int = 0,
+        integerLoader: NetworkLoader<Int>? = null
+    ) : this(value, runnable, intId, integerLoader, null, null) {
     }
 
-    public DependantValue(Object value) {
-        this(value, null, 0, null, null, null);
+    constructor(
+        value: Any?,
+        runnable: Runnable?,
+        stringId: String?,
+        stringLoader: NetworkLoader<String>?
+    ) : this(value, runnable, 0, null, stringId, stringLoader) {
     }
 
-    public DependantValue(Object value, Runnable runnable, int intId, NetworkLoader<Integer> integerLoader) {
-        this(value, runnable, intId, integerLoader, null, null);
+    internal constructor(intId: Int, integerLoader: NetworkLoader<Int>?) : this(
+        null,
+        null,
+        intId,
+        integerLoader,
+        null,
+        null
+    ) {
     }
 
-    public DependantValue(Object value, Runnable runnable, String stringId, NetworkLoader<String> stringLoader) {
-        this(value, runnable, 0, null, stringId, stringLoader);
+    internal constructor(intId: Int) : this(null, null, intId, null, null, null) {}
+    internal constructor(stringId: String?, stringLoader: NetworkLoader<String>?) : this(
+        null,
+        null,
+        0,
+        null,
+        stringId,
+        stringLoader
+    ) {
     }
 
-    private DependantValue(Object value, Runnable runnable, int intId, NetworkLoader<Integer> integerLoader, String stringId, NetworkLoader<String> stringLoader) {
-        this.value = value;
-        this.runnable = runnable;
-        this.intId = intId;
-        this.integerLoader = integerLoader;
-        this.stringId = stringId;
-        this.stringLoader = stringLoader;
+    internal constructor(stringId: String?) : this(null, null, 0, null, stringId, null) {}
+
+    override fun equals(o: Any?): Boolean {
+        if (this === o) return true
+        if (o == null || javaClass != o.javaClass) return false
+        val that = o as DependantValue
+        if (intId != that.intId) return false
+        return if (value != that.value) false else stringId == that.stringId
     }
 
-    DependantValue(int intId, NetworkLoader<Integer> integerLoader) {
-        this(null, null, intId, integerLoader, null, null);
-    }
-
-    DependantValue(int intId) {
-        this(null, null, intId, null, null, null);
-    }
-
-    DependantValue(String stringId, NetworkLoader<String> stringLoader) {
-        this(null, null, 0, null, stringId, stringLoader);
-    }
-
-    DependantValue(String stringId) {
-        this(null, null, 0, null, stringId, null);
-    }
-
-    NetworkLoader<Integer> getIntegerLoader() {
-        return integerLoader;
-    }
-
-    NetworkLoader<String> getStringLoader() {
-        return stringLoader;
-    }
-
-    Object getValue() {
-        return value;
-    }
-
-    Runnable getRunnable() {
-        return runnable;
-    }
-
-    int getIntId() {
-        return intId;
-    }
-
-    String getStringId() {
-        return stringId;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        DependantValue that = (DependantValue) o;
-
-        if (intId != that.intId) return false;
-        if (!Objects.equals(value, that.value)) return false;
-        return Objects.equals(stringId, that.stringId);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = value != null ? value.hashCode() : 0;
-        result = 31 * result + intId;
-        result = 31 * result + (stringId != null ? stringId.hashCode() : 0);
-        return result;
+    override fun hashCode(): Int {
+        var result = value?.hashCode() ?: 0
+        result = 31 * result + intId
+        result = 31 * result + (stringId?.hashCode() ?: 0)
+        return result
     }
 }
