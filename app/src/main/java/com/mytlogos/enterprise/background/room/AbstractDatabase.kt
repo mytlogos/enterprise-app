@@ -186,7 +186,7 @@ abstract class AbstractDatabase : RoomDatabase() {
                             database.execSQL("CREATE INDEX index_RoomToc_mediumId ON RoomToc (mediumId);")
                             database.execSQL("CREATE INDEX index_RoomToc_link ON RoomToc (link);")
                         }
-                    }
+                    },
             )
         }
     }

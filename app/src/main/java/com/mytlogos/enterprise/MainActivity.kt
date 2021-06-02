@@ -35,6 +35,7 @@ import com.mytlogos.enterprise.preferences.UserPreferences.Companion.putLoggedUu
 import com.mytlogos.enterprise.ui.*
 import com.mytlogos.enterprise.viewmodel.UserViewModel
 import com.mytlogos.enterprise.worker.BootReceiver.Companion.startWorker
+import com.mytlogos.enterprise.worker.CheckSavedWorker.Companion.checkLocal
 import com.mytlogos.enterprise.worker.DownloadWorker.Companion.enqueueDownloadTask
 import com.mytlogos.enterprise.worker.DownloadWorker.Companion.stopWorker
 import com.mytlogos.enterprise.worker.DownloadWorker.Companion.watchDatabase
@@ -212,6 +213,10 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             }
             R.id.synch_now -> {
                 enqueueOneTime(this.application)
+                selected = true
+            }
+            R.id.check_saved_now -> {
+                checkLocal(this.application)
                 selected = true
             }
             R.id.clear_media -> {
