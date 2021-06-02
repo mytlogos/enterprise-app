@@ -14,6 +14,7 @@ import java.util.regex.Pattern
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
+import kotlin.collections.HashMap
 
 class TextContentTool internal constructor(internalContentDir: File?, externalContentDir: File?) :
     ContentTool(internalContentDir, externalContentDir) {
@@ -80,10 +81,28 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
     override val mediumContainerPatternGroup: Int
         get() = 1
 
+    /**
+     * Retrieves the EpisodeIds and their Paths via Resource Id
+     * of the Book.
+     */
+    private fun getEpisodePathViaBook(mediumPath: String): MutableMap<Int, String> {
+        val book = loadBook(File(mediumPath))
+
+        val episodePaths = HashMap<Int, String>()
+
+        for (tocReference in book.tableOfContents.tocReferences) {
+            val episodeId = tocReference.resourceId.toIntOrNull()
+
+            if (episodeId != null) {
+                episodePaths[episodeId] = tocReference.completeHref
+            }
+        }
+        return episodePaths
+    }
+
     override fun getEpisodePaths(mediumPath: String?): MutableMap<Int, String> {
         require(!(mediumPath == null || !mediumPath.endsWith(".epub"))) {
-            String.format("'%s' is not a epub",
-                mediumPath)
+            "'$mediumPath' is not a epub"
         }
         try {
             ZipFile(mediumPath).use { file ->
@@ -91,6 +110,7 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
                 val entries = file.entries()
                 val chapterFiles: MutableList<String> = ArrayList()
                 var folder: String? = null
+
                 while (entries.hasMoreElements()) {
                     val entry = entries.nextElement()
                     if (entry.name.endsWith(".xhtml")) {
@@ -101,19 +121,26 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
                         folder = entry.name.substring(0, index)
                     }
                 }
+
                 if (folder == null) {
                     return mutableMapOf()
                 }
-                @SuppressLint("UseSparseArrays") val episodeMap: MutableMap<Int, String> = HashMap()
+
+                @SuppressLint("UseSparseArrays")
+                val episodeMap: MutableMap<Int, String> = HashMap()
+
                 for (chapterFile in chapterFiles) {
                     if (!chapterFile.startsWith(folder)) {
                         continue
                     }
+                    // read chapter stream till it matches the opening tag of the body
+                    // with the episodeId as its id attribute
                     file.getInputStream(file.getEntry(chapterFile)).use { inputStream ->
                         val buffer = ByteArray(128)
                         var readInput = ""
                         val pattern = Pattern.compile("<body id=\"(\\d+)\">")
                         var read = inputStream.read(buffer)
+
                         while (read != -1) {
                             readInput += String(buffer)
                             val matcher = pattern.matcher(readInput)
@@ -179,7 +206,13 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
             return
         }
         for (episode in episodes) {
-            val resource = Resource(toXhtml(episode).toByteArray(), MediatypeService.XHTML)
+            // enable episode identification via Resource
+            val resource = Resource(
+                episode.episodeId.toString(),
+                toXhtml(episode).toByteArray(),
+                episode.episodeId.toString() + ".xhtml",
+                MediatypeService.XHTML
+            )
             book.addSection(episode.getTitle(), resource)
         }
         EpubWriter().write(book, FileOutputStream(file))

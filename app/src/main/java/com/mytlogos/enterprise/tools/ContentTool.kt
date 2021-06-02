@@ -40,18 +40,23 @@ abstract class ContentTool internal constructor(
 
     @SuppressLint("UseSparseArrays")
     fun getItemContainers(externalSpace: Boolean): MutableMap<Int, File> {
+        // return an empty hashmap if no content dir is available
         val file = (if (externalSpace) externalContentDir else internalContentDir)
             ?: return HashMap()
+
         val pattern = mediumContainerPattern
         val files =
             file.listFiles { _: File?, name: String? -> Pattern.matches(pattern.pattern(), name) }
+
         val mediumIdFileMap: MutableMap<Int, File> = HashMap()
+
         for (bookFile in files) {
             val matcher = pattern.matcher(bookFile.name)
             if (!matcher.matches()) {
                 continue
             }
             val mediumIdString = matcher.group(mediumContainerPatternGroup)
+
             val mediumId: Int = try {
                 mediumIdString.toInt()
             } catch (e: NumberFormatException) {
