@@ -19,6 +19,7 @@ import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
 import com.mytlogos.enterprise.background.TaskManager.Companion.runCompletableTask
 import com.mytlogos.enterprise.model.Release
 import com.mytlogos.enterprise.model.TocEpisode
+import com.mytlogos.enterprise.requireSupportActionBar
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.viewmodel.TocEpisodeViewModel
 import eu.davidea.flexibleadapter.FlexibleAdapter
@@ -49,7 +50,7 @@ class TocFragment
         private var navigationView: BottomNavigationView? = null
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
             mode.title = "ToC Actions"
-            Objects.requireNonNull(mainActivity.supportActionBar)!!.hide()
+            mainActivity.requireSupportActionBar().hide()
             navigationView = BottomNavigationView(requireContext())
             relativeLayout = view as RelativeLayout?
             if (relativeLayout == null) {
@@ -138,7 +139,7 @@ class TocFragment
         }
 
         override fun onDestroyActionMode(mode: ActionMode) {
-            Objects.requireNonNull(mainActivity.supportActionBar)!!.show()
+            mainActivity.requireSupportActionBar().show()
             relativeLayout!!.removeView(navigationView)
             actionType = null
             flexibleAdapter!!.mode = SelectableAdapter.Mode.IDLE

@@ -10,6 +10,7 @@ import androidx.paging.PagedList
 import androidx.recyclerview.widget.RecyclerView
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.requireSupportActionBar
 import com.mytlogos.enterprise.tools.Utils.transform
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
 import eu.davidea.flexibleadapter.FlexibleAdapter
@@ -35,7 +36,7 @@ class ListsFragment
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
             mode.title = "Delete Lists"
             mode.menuInflater.inflate(R.menu.list_medium_action_mode_menu, menu)
-            Objects.requireNonNull(mainActivity.supportActionBar)!!.hide()
+            mainActivity.requireSupportActionBar().hide()
             flexibleAdapter!!.mode = SelectableAdapter.Mode.MULTI
             return true
         }
@@ -73,7 +74,7 @@ class ListsFragment
         }
 
         override fun onDestroyActionMode(mode: ActionMode) {
-            Objects.requireNonNull(mainActivity.supportActionBar)!!.show()
+            mainActivity.requireSupportActionBar().show()
             flexibleAdapter!!.mode = SelectableAdapter.Mode.IDLE
             flexibleAdapter!!.clearSelection()
             println("destroyed action mode")

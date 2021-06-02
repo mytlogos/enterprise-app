@@ -14,6 +14,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.annotation.StringRes
+import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
@@ -41,6 +42,10 @@ import com.mytlogos.enterprise.worker.DownloadWorker.Companion.stopWorker
 import com.mytlogos.enterprise.worker.DownloadWorker.Companion.watchDatabase
 import com.mytlogos.enterprise.worker.SynchronizeWorker.Companion.enqueueOneTime
 import java.util.*
+
+fun AppCompatActivity.requireSupportActionBar(): ActionBar {
+    return supportActionBar!!
+}
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener,
     PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
@@ -78,11 +83,11 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         get() = baseLayout!!.activateTabs()
 
     fun setTitle(title: String?) {
-        Objects.requireNonNull(this.supportActionBar)!!.title = title
+        this.requireSupportActionBar().title = title
     }
 
     override fun setTitle(@StringRes title: Int) {
-        Objects.requireNonNull(this.supportActionBar)!!.setTitle(title)
+        this.requireSupportActionBar().setTitle(title)
     }
 
     /**

@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.TimeAgo
 import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.requireSupportActionBar
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
 import com.mytlogos.enterprise.viewmodel.MediumViewModel
@@ -34,7 +35,7 @@ class MediumListFragment : BaseListFragment<MediumItem, MediumViewModel>() {
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
             mode.title = "Add Medium To List"
             mode.menuInflater.inflate(R.menu.add_medium_to_list_menu, menu)
-            Objects.requireNonNull(mainActivity.supportActionBar)!!.hide()
+            mainActivity.requireSupportActionBar().hide()
             flexibleAdapter!!.mode = SelectableAdapter.Mode.MULTI
             return true
         }
@@ -89,7 +90,7 @@ class MediumListFragment : BaseListFragment<MediumItem, MediumViewModel>() {
         }
 
         override fun onDestroyActionMode(mode: ActionMode) {
-            Objects.requireNonNull(mainActivity.supportActionBar)!!.show()
+            mainActivity.requireSupportActionBar().show()
             flexibleAdapter!!.mode = SelectableAdapter.Mode.IDLE
             flexibleAdapter!!.clearSelection()
             println("destroyed action mode")
