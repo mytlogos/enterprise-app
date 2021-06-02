@@ -8,19 +8,16 @@ import androidx.work.Worker
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorker
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
 import org.joda.time.DateTime
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
-import java.util.function.Consumer
 
 interface Repository {
     val isClientOnline: Boolean
     val isClientAuthenticated: Boolean
-    val loadWorker: LoadWorker
     val homeStats: LiveData<HomeStats>
     val user: LiveData<User?>
     fun updateUser(updateUser: UpdateUser)
@@ -32,7 +29,6 @@ interface Repository {
     @Throws(IOException::class)
     fun register(email: String, password: String)
     fun logout()
-    fun loadAllMedia()
     fun loadEpisodeAsync(episodeIds: Collection<Int>): CompletableFuture<List<ClientEpisode>?>
     fun loadEpisodeSync(episodeIds: Collection<Int>): List<ClientEpisode>?
     fun loadMediaAsync(mediaIds: Collection<Int>): CompletableFuture<List<ClientMedium>?>
@@ -54,8 +50,6 @@ interface Repository {
     @Throws(IOException::class)
     fun refreshNews(latest: DateTime?)
 
-    @Throws(IOException::class)
-    fun loadInvalidated()
     val savedEpisodes: List<Int>
     fun updateSaved(episodeId: Int, saved: Boolean)
     fun updateSaved(episodeIds: Collection<Int>, saved: Boolean)
@@ -159,8 +153,6 @@ interface Repository {
     fun getMediumType(mediumId: Int): Int
     fun getReleaseLinks(episodeId: Int): List<String>
 
-    @Throws(IOException::class)
-    fun syncUser()
     fun clearLocalMediaData(context: Context)
     val notifications: LiveData<PagedList<NotificationItem>>
     fun updateFailedDownloads(episodeId: Int)
@@ -205,12 +197,6 @@ interface Repository {
 
     @Throws(IOException::class)
     fun deleteLocalEpisodes(episodeId: Set<Int>, mediumId: Int, application: Application)
-    fun addProgressListener(consumer: Consumer<Int>)
-    fun removeProgressListener(consumer: Consumer<Int>)
-    fun addTotalWorkListener(consumer: Consumer<Int>)
-    fun removeTotalWorkListener(consumer: Consumer<Int>)
-    val loadWorkerProgress: Int
-    val loadWorkerTotalWork: Int
     fun syncProgress()
     fun updateDataStructure(mediaIds: List<Int>, partIds: List<Int>)
 

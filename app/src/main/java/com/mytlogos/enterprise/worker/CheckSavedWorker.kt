@@ -26,6 +26,13 @@ class CheckSavedWorker(
     private var clearedLooseEpisodes = 0
     private var checkedCount = 0
     private var mediaToCheck = 0
+    // TODO: add preference for user
+    private var handleLoose: HandleLooseEpisode = HandleLooseEpisode.UPDATE_STATE
+
+    private enum class HandleLooseEpisode {
+        DELETE,
+        UPDATE_STATE
+    }
 
     /**
      * Initialize [notificationManager] and [builder] and notify
@@ -137,15 +144,20 @@ class CheckSavedWorker(
             }
 
             if (looseIds.isNotEmpty()) {
-                repository.updateSaved(looseIds, true)
-                correctedSaveState += looseIds.size
-
-//                try {
-//                    tool.removeMediaEpisodes(mediumId, looseIds)
-//                    clearedLooseEpisodes += looseIds.size
-//                } catch (e: Exception) {
-//                    e.printStackTrace()
-//                }
+                when (handleLoose) {
+                    HandleLooseEpisode.DELETE -> {
+                        try {
+                            tool.removeMediaEpisodes(mediumId, looseIds)
+                            clearedLooseEpisodes += looseIds.size
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                    HandleLooseEpisode.UPDATE_STATE -> {
+                        repository.updateSaved(looseIds, true)
+                        correctedSaveState += looseIds.size
+                    }
+                }
             }
             checkedCount++
             updateNotificationContentText()

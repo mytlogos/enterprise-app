@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.room
 
 import androidx.lifecycle.LiveData
 import androidx.paging.DataSource
+import androidx.paging.PagingSource
 import androidx.room.*
 import com.mytlogos.enterprise.background.room.model.*
 import com.mytlogos.enterprise.model.DisplayRelease
@@ -98,7 +99,15 @@ AND (:saved < 0 OR saved=:saved)
 AND (:minIndex < 0 OR RoomEpisode.combiIndex >= :minIndex)
 AND (:maxIndex < 0 OR RoomEpisode.combiIndex <= :maxIndex)
 ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC""")
-    fun getDisplayEpisodes(saved: Int, read: Int, medium: Int, minIndex: Int, maxIndex: Int, listIds: Collection<Int>, listEmpty: Boolean): DataSource.Factory<Int, DisplayRelease>
+    fun getDisplayEpisodes(
+        saved: Int,
+        read: Int,
+        medium: Int,
+        minIndex: Int,
+        maxIndex: Int,
+        listIds: Collection<Int>,
+        listEmpty: Boolean,
+    ): DataSource.Factory<Int, DisplayRelease>
 
     @Query("""SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,
 RoomMedium.mediumId,RoomMedium.title as mediumTitle, 
@@ -118,7 +127,15 @@ AND (:minIndex < 0 OR RoomEpisode.combiIndex >= :minIndex)
 AND (:maxIndex < 0 OR RoomEpisode.combiIndex <= :maxIndex)
 GROUP BY RoomEpisode.episodeId 
 ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC""")
-    fun getDisplayEpisodesLatestOnly(saved: Int, read: Int, medium: Int, minIndex: Int, maxIndex: Int, listIds: Collection<Int>, listEmpty: Boolean):DataSource.Factory<Int, DisplayRelease>
+    fun getDisplayEpisodesLatestOnly(
+        saved: Int,
+        read: Int,
+        medium: Int,
+        minIndex: Int,
+        maxIndex: Int,
+        listIds: Collection<Int>,
+        listEmpty: Boolean,
+    ): DataSource.Factory<Int, DisplayRelease>
 
     @Transaction
     @Query("""SELECT * FROM 

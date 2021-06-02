@@ -68,10 +68,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return RoomPersister(loadedData)
     }
 
-    override fun getDependantGenerator(loadedData: LoadData): DependantGenerator {
-        return RoomDependantGenerator(loadedData)
-    }
-
     override fun deleteOldNews() {
         TaskManager.runTask { newsDao.deleteOldNews() }
     }
@@ -155,7 +151,27 @@ class RoomStorage(application: Application) : DatabaseStorage {
     }
 
     override fun getDisplayEpisodes(filter: EpisodeViewModel.Filter): LiveData<PagedList<DisplayRelease>> {
-        val factory: DataSource.Factory<Int, DisplayRelease> = if (filter.latestOnly) episodeDao.getDisplayEpisodesLatestOnly(filter.saved, filter.read, filter.medium, filter.minIndex, filter.maxIndex, filter.filterListIds, filter.filterListIds.isEmpty()) else episodeDao.getDisplayEpisodes(filter.saved, filter.read, filter.medium, filter.minIndex, filter.maxIndex, filter.filterListIds, filter.filterListIds.isEmpty())
+        val factory: DataSource.Factory<Int, DisplayRelease> = if (filter.latestOnly) {
+            episodeDao.getDisplayEpisodesLatestOnly(
+                filter.saved,
+                filter.read,
+                filter.medium,
+                filter.minIndex,
+                filter.maxIndex,
+                filter.filterListIds,
+                filter.filterListIds.isEmpty()
+            )
+        } else {
+            episodeDao.getDisplayEpisodes(
+                filter.saved,
+                filter.read,
+                filter.medium,
+                filter.minIndex,
+                filter.maxIndex,
+                filter.filterListIds,
+                filter.filterListIds.isEmpty()
+            )
+        }
         return LivePagedListBuilder(factory, 50).build()
     }
 
@@ -691,154 +707,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return value ?: defaultValue
     }
 
-    private inner class RoomDependantGenerator(private val loadedData: LoadData) : DependantGenerator {
-        override fun generateReadEpisodesDependant(readEpisodes: FilteredReadEpisodes): Collection<DependencyTask<*>> {
-            val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.worker!!
-            for (dependency in readEpisodes.dependencies) {
-                tasks.add(DependencyTask(
-                        dependency.id,
-                        DependantValue(dependency.dependency),
-                        worker.EPISODE_LOADER
-                ))
-            }
-            return tasks
-        }
+    private inner class RoomPersister(private val loadedData: LoadData) : ClientModelPersister {
+        private val generator: LoadWorkGenerator = LoadWorkGenerator(loadedData)
 
-        override fun generatePartsDependant(parts: FilteredParts): Collection<DependencyTask<*>> {
-            val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.worker!!
-            for (dependency in parts.mediumDependencies) {
-                tasks.add(DependencyTask(
-                        dependency.id,
-                        DependantValue(
-                                dependency.dependency as Any,
-                                dependency.dependency.id,
-                                worker.PART_LOADER
-                        ),
-                        worker.MEDIUM_LOADER
-                ))
-            }
-            return tasks
-        }
-
-        override fun generateEpisodesDependant(episodes: FilteredEpisodes): Collection<DependencyTask<*>> {
-            val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.worker!!
-            for (dependency in episodes.partDependencies) {
-                tasks.add(DependencyTask(
-                        dependency.id,
-                        DependantValue(
-                                dependency.dependency,
-                                dependency.dependency.id,
-                                worker.EPISODE_LOADER
-                        ),
-                        worker.PART_LOADER
-                ))
-            }
-            return tasks
-        }
-
-        override fun generateMediaDependant(media: FilteredMedia): MutableCollection<DependencyTask<*>> {
-            val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.worker!!
-            for (dependency in media.episodeDependencies) {
-                tasks.add(DependencyTask(
-                        dependency.id,
-                        DependantValue(
-                                dependency.dependency,
-                                dependency.dependency.id,
-                                worker.MEDIUM_LOADER
-                        ),
-                        worker.EPISODE_LOADER
-                ))
-            }
-            for (unloadedPart in media.unloadedParts) {
-                tasks.add(DependencyTask(unloadedPart, null, worker.PART_LOADER))
-            }
-            return tasks
-        }
-
-        override fun generateMediaListsDependant(mediaLists: FilteredMediaList): Collection<DependencyTask<*>> {
-            val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.worker!!
-            val converter = RoomConverter(loadedData)
-            for (dependency in mediaLists.mediumDependencies) {
-                var tmpListId = 0
-                if (dependency.dependency.isNotEmpty()) {
-                    tmpListId = dependency.dependency[0].listId
-                }
-                val listId = tmpListId
-                tasks.add(DependencyTask(
-                        dependency.id,
-                        DependantValue(
-                                value=converter.convertListJoin(dependency.dependency),
-                                runnable={ mediaListDao.clearJoin(listId) }
-                        ),
-                        worker.MEDIUM_LOADER
-                ))
-            }
-            return tasks
-        }
-
-        override fun generateExternalMediaListsDependant(externalMediaLists: FilteredExtMediaList): Collection<DependencyTask<*>> {
-            val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.worker!!
-            val converter = RoomConverter(loadedData)
-            for (dependency in externalMediaLists.mediumDependencies) {
-                var tmpListId = 0
-                if (dependency.dependency.isNotEmpty()) {
-                    tmpListId = dependency.dependency[0].listId
-                }
-                val listId = tmpListId
-                tasks.add(DependencyTask(
-                        dependency.id,
-                        DependantValue(
-                                value=converter.convertExListJoin(dependency.dependency),
-                                runnable={ externalMediaListDao.clearJoin(listId) }
-                        ),
-                        worker.MEDIUM_LOADER
-                ))
-            }
-            for (dependency in externalMediaLists.userDependencies) {
-                tasks.add(DependencyTask(
-                        dependency.id,
-                        DependantValue(
-                                converter.convert(dependency.dependency),
-                                dependency.dependency.id,
-                                worker.EXTERNAL_MEDIALIST_LOADER
-                        ),
-                        worker.EXTERNAL_USER_LOADER
-                ))
-            }
-            return tasks
-        }
-
-        override fun generateExternalUsersDependant(externalUsers: FilteredExternalUser): Collection<DependencyTask<*>> {
-            val tasks: MutableSet<DependencyTask<*>> = HashSet()
-            val worker = LoadWorker.worker!!
-            val converter = RoomConverter(loadedData)
-            for (dependency in externalUsers.mediumDependencies) {
-                var tmpListId = 0
-                if (!dependency.dependency.isEmpty()) {
-                    tmpListId = dependency.dependency[0].listId
-                }
-                val listId = tmpListId
-                tasks.add(DependencyTask(
-                        dependency.id,
-                        DependantValue(
-                                value=converter.convertExListJoin(dependency.dependency),
-                                runnable = { externalMediaListDao.clearJoin(listId) }
-                        ),
-                        worker.MEDIUM_LOADER
-                ))
-            }
-            return tasks
-        }
-    }
-
-    private inner class RoomPersister internal constructor(private val loadedData: LoadData) : ClientModelPersister {
-        private val generator: LoadWorkGenerator
         override fun getConsumer(): Collection<ClientConsumer<*>> {
             return emptyList()
         }
@@ -1257,9 +1128,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun finish() {}
 
-        init {
-            generator = LoadWorkGenerator(loadedData)
-        }
     }
 
     init {

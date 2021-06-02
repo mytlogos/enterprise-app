@@ -140,7 +140,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         AlertDialog.Builder(this)
             .setTitle("Confirm Logout")
             .setMessage("Are you sure you want to log out?")
-            .setPositiveButton(android.R.string.yes) { dialog: DialogInterface?, which: Int -> viewModel!!.logout() }
+            .setPositiveButton(android.R.string.yes) { _: DialogInterface?, _: Int -> viewModel!!.logout() }
             .setNegativeButton(android.R.string.no, null)
             .show()
     }

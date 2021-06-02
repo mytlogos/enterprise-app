@@ -30,22 +30,6 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     private var notificationManager: NotificationManagerCompat? = null
     private var builder: NotificationCompat.Builder? = null
     private val syncNotificationId = 0x200
-    private val progressListener = Consumer { progress: Int ->
-        if (builder == null || notificationManager == null) {
-            return@Consumer
-        }
-        val totalWork = instance.loadWorkerTotalWork
-        builder!!.setProgress(totalWork, progress, totalWork < 0)
-        notificationManager!!.notify(syncNotificationId, builder!!.build())
-    }
-    private val totalWorkListener = Consumer { totalWork: Int ->
-        if (builder == null || notificationManager == null) {
-            return@Consumer
-        }
-        val progress = instance.loadWorkerProgress
-        builder!!.setProgress(totalWork, progress, totalWork < 0)
-        notificationManager!!.notify(syncNotificationId, builder!!.build())
-    }
     private var mediaAddedOrUpdated = 0
     private var partAddedOrUpdated = 0
     private var episodesAddedOrUpdated = 0
@@ -626,40 +610,8 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         persister.persistTocs(inserts)
     }
 
-    @Throws(IOException::class)
-    fun syncWithInvalidation(repository: Repository): Boolean {
-        repository.syncUser()
-        if (this.isStopped) {
-            return true
-        }
-        builder!!.setContentText("Updating Content data")
-        notificationManager!!.notify(syncNotificationId, builder!!.build())
-        repository.loadInvalidated()
-        if (this.isStopped) {
-            return true
-        }
-        builder!!.setContentText("Loading new Media")
-        notificationManager!!.notify(syncNotificationId, builder!!.build())
-        repository.loadAllMedia()
-        return false
-    }
-
-    private fun stopSynchronize(): Result {
-        notificationManager!!.notify(
-            syncNotificationId,
-            builder!!
-                .setContentTitle("Synchronization stopped")
-                .setContentText(null)
-                .build()
-        )
-        cleanUp()
-        return Result.failure()
-    }
-
     private fun cleanUp() {
         val repository = instance
-        repository.removeProgressListener(progressListener)
-        repository.removeTotalWorkListener(totalWorkListener)
         repository.syncProgress()
         try {
             Thread.sleep(10000)
@@ -692,13 +644,6 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             WorkManager.getInstance(context)
                 .beginUniqueWork(SYNCHRONIZE_WORKER, ExistingWorkPolicy.REPLACE, workRequest)
                 .enqueue()
-        }
-
-        fun stopWorker(application: Application) {
-            if (uuid == null) {
-                return
-            }
-            WorkManager.getInstance(application).cancelWorkById(uuid!!)
         }
 
         fun isRunning(application: Application): Boolean {

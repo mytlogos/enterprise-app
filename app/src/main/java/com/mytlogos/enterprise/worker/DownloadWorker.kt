@@ -149,7 +149,7 @@ class DownloadWorker(
         toDownloadMedia.removeAll(prohibitedMedia)
         val downloadPreference = UserPreferences.get().downloadPreference
         val executor: Executor = Executors.newFixedThreadPool(20)
-        val futures: MutableList<CompletableFuture<MediumDownload>> = LinkedList()
+        val futures: MutableList<CompletableFuture<MediumDownload?>> = LinkedList()
         for (mediumId in toDownloadMedia) {
             futures.add(CompletableFuture.supplyAsync({
                 val medium = repository.getSimpleMedium(mediumId)
@@ -180,7 +180,7 @@ class DownloadWorker(
                 download
             }, executor))
         }
-        val downloads: List<MediumDownload> = try {
+        val downloads: List<MediumDownload?> = try {
             Utils.finishAll(futures).get()
         } catch (e: ExecutionException) {
             throw RuntimeException(e)
@@ -190,6 +190,9 @@ class DownloadWorker(
         val mediumDownloads: MutableSet<MediumDownload> = HashSet()
         var downloadCount = 0
         for (download in downloads) {
+            if (download == null) {
+                continue
+            }
             if (mediumDownloads.add(download)) {
                 downloadCount += download.toDownloadEpisodes.size
             }

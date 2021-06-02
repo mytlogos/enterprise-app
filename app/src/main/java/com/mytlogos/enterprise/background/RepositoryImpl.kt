@@ -12,9 +12,7 @@ import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.NetworkIdentificator
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
-import com.mytlogos.enterprise.background.resourceLoader.BlockingLoadWorker
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorker
 import com.mytlogos.enterprise.background.room.RoomStorage
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.preferences.UserPreferences
@@ -25,7 +23,6 @@ import org.joda.time.DateTime
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import java.util.function.Consumer
 import kotlin.collections.ArrayList
 
 class RepositoryImpl private constructor(application: Application) : Repository {
@@ -34,7 +31,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
     private val client: Client
     private val storage: DatabaseStorage
     private val loadedData: LoadData
-    override val loadWorker: LoadWorker
     private val editService: EditService
 
     private fun loadLoadedData() {
@@ -116,22 +112,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
                 e.printStackTrace()
             }
             storage.deleteAllUser()
-        }
-    }
-
-    override fun loadAllMedia() {
-        try {
-            val mediaIds = Utils.checkAndGetBody(client.allMedia)
-                ?: return
-            for (mediumId in mediaIds) {
-                if (loadedData.media.contains(mediumId) || loadWorker.isMediumLoading(mediumId)) {
-                    continue
-                }
-                loadWorker.addIntegerIdTask(mediumId, null, loadWorker.MEDIUM_LOADER)
-            }
-            loadWorker.work()
-        } catch (e: IOException) {
-            e.printStackTrace()
         }
     }
 
@@ -252,50 +232,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         if (news != null) {
             persister.persistNews(news)
         }
-    }
-
-    @Throws(IOException::class)
-    override fun loadInvalidated() {
-        val invalidatedData = client.invalidated.body()
-        if (invalidatedData == null || invalidatedData.isEmpty()) {
-            return
-        }
-        var userUpdated = false
-        val loadWorker = loadWorker
-        for (datum in invalidatedData) {
-            if (datum.isUserUuid) {
-                userUpdated = true
-            } else if (datum.episodeId > 0) {
-                loadWorker.addIntegerIdTask(datum.episodeId, null, loadWorker.EPISODE_LOADER)
-            } else if (datum.partId > 0) {
-                loadWorker.addIntegerIdTask(datum.partId, null, loadWorker.PART_LOADER)
-            } else if (datum.mediumId > 0) {
-                loadWorker.addIntegerIdTask(datum.mediumId, null, loadWorker.MEDIUM_LOADER)
-            } else if (datum.listId > 0) {
-                loadWorker.addIntegerIdTask(datum.listId, null, loadWorker.MEDIALIST_LOADER)
-            } else if (datum.externalListId > 0) {
-                loadWorker.addIntegerIdTask(
-                    datum.externalListId,
-                    null,
-                    loadWorker.EXTERNAL_MEDIALIST_LOADER
-                )
-            } else if (datum.externalUuid != null && !datum.externalUuid.isEmpty()) {
-                loadWorker.addStringIdTask(
-                    datum.externalUuid,
-                    null,
-                    loadWorker.EXTERNAL_USER_LOADER
-                )
-            } else if (datum.newsId > 0) {
-                loadWorker.addIntegerIdTask(datum.newsId, null, loadWorker.NEWS_LOADER)
-            } else {
-                println("unknown invalid data: $datum")
-            }
-        }
-        if (userUpdated) {
-            val user = client.checkLogin().body()
-            persister.persist(user)
-        }
-        loadWorker.work()
     }
 
     override val savedEpisodes: List<Int>
@@ -476,27 +412,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
     override fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
         return storage.getSimpleEpisodes(ids)
     }
-
-    override fun addProgressListener(consumer: Consumer<Int>) {
-        loadWorker.addProgressListener(consumer)
-    }
-
-    override fun removeProgressListener(consumer: Consumer<Int>) {
-        loadWorker.removeProgressListener(consumer)
-    }
-
-    override fun addTotalWorkListener(consumer: Consumer<Int>) {
-        loadWorker.addTotalWorkListener(consumer)
-    }
-
-    override fun removeTotalWorkListener(consumer: Consumer<Int>) {
-        loadWorker.removeTotalWorkListener(consumer)
-    }
-
-    override val loadWorkerProgress: Int
-        get() = loadWorker.progress
-    override val loadWorkerTotalWork: Int
-        get() = loadWorker.totalWork
 
     override fun syncProgress() {
         storage.syncProgress()
@@ -838,24 +753,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getReleaseLinks(episodeId)
     }
 
-    @Throws(IOException::class)
-    override fun syncUser() {
-        val user = client.user
-        val body = user.body()
-        if (!user.isSuccessful) {
-            try {
-                user.errorBody().use { responseBody ->
-                    if (responseBody != null) {
-                        println(responseBody.string())
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-        persister.persist(body)
-    }
-
     @Throws(Exception::class)
     override fun updateReadWithLowerIndex(combiIndex: Double, read: Boolean, mediumId: Int) {
         val episodeIds = storage.getEpisodeIdsWithLowerIndex(combiIndex, mediumId, read)
@@ -984,13 +881,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         val identificator: NetworkIdentificator =
             AndroidNetworkIdentificator(application.applicationContext)
         client = Client(identificator)
-        val dependantGenerator = storage.getDependantGenerator(loadedData)
-        loadWorker = BlockingLoadWorker(
-            loadedData,
-            this,
-            persister,
-            dependantGenerator
-        )
         editService = EditService(client, storage, persister)
     }
 }

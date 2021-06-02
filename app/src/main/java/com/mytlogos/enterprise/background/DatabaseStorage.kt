@@ -23,7 +23,6 @@ interface DatabaseStorage {
     fun getHomeStats(): LiveData<HomeStats>
     fun deleteAllUser()
     fun getPersister(repository: Repository, loadedData: LoadData): ClientModelPersister
-    fun getDependantGenerator(loadedData: LoadData): DependantGenerator
     fun deleteOldNews()
     fun isLoading(): Boolean
     fun setLoading(loading: Boolean)
