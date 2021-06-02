@@ -137,12 +137,15 @@ class CheckSavedWorker(
             }
 
             if (looseIds.isNotEmpty()) {
-                try {
-                    tool.removeMediaEpisodes(key, looseIds)
-                    clearedLooseEpisodes += looseIds.size
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                repository.updateSaved(looseIds, true)
+                correctedSaveState += looseIds.size
+
+//                try {
+//                    tool.removeMediaEpisodes(mediumId, looseIds)
+//                    clearedLooseEpisodes += looseIds.size
+//                } catch (e: Exception) {
+//                    e.printStackTrace()
+//                }
             }
             checkedCount++
             updateNotificationContentText()
