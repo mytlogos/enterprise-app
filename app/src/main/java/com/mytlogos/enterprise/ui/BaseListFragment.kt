@@ -24,7 +24,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.`is`
+import com.mytlogos.enterprise.model.MediumType.isType
 import com.mytlogos.enterprise.model.MediumType.addMediumType
 import com.mytlogos.enterprise.model.MediumType.removeMediumType
 import com.mytlogos.enterprise.tools.Sortings
@@ -572,7 +572,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
                 MediumFilterableViewModel::class.java.canonicalName,
                 boxId
             ))
-        box.isChecked = `is`(medium, type)
+        box.isChecked = isType(medium, type)
         box.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
             val filter = filterableViewModel.mediumFilter
             val newMediumFilter: Int = if (isChecked) {

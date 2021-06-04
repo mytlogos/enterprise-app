@@ -3,6 +3,8 @@ package com.mytlogos.enterprise.background.api
 import com.google.gson.GsonBuilder
 import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
 import com.mytlogos.enterprise.background.api.model.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.joda.time.DateTime
 import retrofit2.Call
@@ -12,6 +14,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.TimeUnit
+
+typealias BuildCall<T, R> = (apiImpl: T, url: String) -> R
+typealias QuerySuspend<T, R> = suspend (apiImpl: T, url: String) -> Response<R>
 
 class Client(private val identificator: NetworkIdentificator) {
     companion object {
@@ -249,11 +254,14 @@ class Client(private val identificator: NetworkIdentificator) {
      * Download Episodes.
      * API: GET /api/user/download
      */
-    @Throws(IOException::class)
-    fun downloadEpisodes(episodeIds: Collection<Int?>?): Response<List<ClientDownloadedEpisode>> {
-        val body = userAuthenticationMap()
-        body["episode"] = episodeIds
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.downloadEpisodes(url, body) }
+    suspend fun downloadEpisodes(episodeIds: Collection<Int?>?): Response<List<ClientDownloadedEpisode>> {
+        return withContext(Dispatchers.IO) {
+            val body = userAuthenticationMap()
+            body["episode"] = episodeIds
+            return@withContext querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String ->
+                apiImpl.downloadEpisodes(url, body)
+            }
+        }
     }
 
     /**
@@ -771,6 +779,49 @@ class Client(private val identificator: NetworkIdentificator) {
         }
     }
 
+    private suspend fun <T, R> querySuspend(api: Class<T>, buildCall: QuerySuspend<T, R>): Response<R> {
+        return try {
+            this.buildSuspend(api, buildCall).also { setConnected() }
+        } catch (e: NotConnectedException) {
+            setDisconnected()
+            throw NotConnectedException(e)
+        }
+    }
+
+    private suspend fun <T, R> buildSuspend(api: Class<T>, buildCall: QuerySuspend<T, R>): Response<R> {
+        var retrofit = retrofitMap[api]
+        val path = fullClassPathMap[api]
+            ?: throw IllegalArgumentException("Unknown api class: " + api.canonicalName)
+        val localServer = getServer()
+        server = localServer
+
+        // FIXME: 29.07.2019 sometimes does not find server even though it is online
+        if (localServer == null) {
+            throw NotConnectedException("No Server in reach")
+        }
+        if (retrofit == null) {
+            val gson = GsonBuilder()
+                .registerTypeHierarchyAdapter(DateTime::class.java, DateTimeAdapter())
+                .create()
+            val client = OkHttpClient.Builder()
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build()
+            retrofit = Retrofit.Builder()
+                .baseUrl(localServer.address)
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .build()
+            retrofitMap[api] = retrofit
+        }
+        if (retrofit == null) {
+            throw NullPointerException()
+        }
+
+        val apiImpl = retrofit.create(api)
+
+        return buildCall(apiImpl, path)
+    }
+
     @Throws(IOException::class)
     private fun <T, R> build(api: Class<T>, buildCall: BuildCall<T, Call<R>?>): Call<R>? {
         var retrofit = retrofitMap[api]
@@ -840,5 +891,3 @@ class Client(private val identificator: NetworkIdentificator) {
     }
 
 }
-
-typealias BuildCall<T, R> = (apiImpl: T, url: String) -> R

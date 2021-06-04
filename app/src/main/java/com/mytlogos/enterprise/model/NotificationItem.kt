@@ -17,7 +17,7 @@ class NotificationItem(val title: String, val description: String, val dateTime:
     }
 
     companion object {
-        fun createNow(title: String, description: String): NotificationItem {
+        fun createNow(title: String, description: String = ""): NotificationItem {
             return NotificationItem(title, description, DateTime.now())
         }
     }

@@ -15,81 +15,121 @@ import com.mytlogos.enterprise.model.NotificationItem
 import com.mytlogos.enterprise.preferences.DownloadPreference
 import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import java.io.IOException
 import java.util.*
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
-import java.util.concurrent.Executor
-import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 class DownloadWorker(
     context: Context,
     workerParams: WorkerParameters
-): Worker(context, workerParams) {
+): CoroutineWorker(context, workerParams) {
     private val downloadNotificationId = 0x100
     private val notificationManager: NotificationManagerCompat
     private val builder: NotificationCompat.Builder
-    private var contentTools: Set<ContentTool>? = null
+    private lateinit var contentTools: Map<Int, ContentTool>
+    private lateinit var repository: Repository
+    private var downloadCount = 0
+    private var successFull = 0
+    private var notSuccessFull = 0
 
-    override fun doWork(): Result {
+    init {
+        uuids.add(this.id)
+        notificationManager = NotificationManagerCompat.from(this.applicationContext)
+        builder = NotificationCompat.Builder(this.applicationContext, CHANNEL_ID)
+        builder
+            .setContentTitle("Download in Progress...")
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .priority = NotificationCompat.PRIORITY_DEFAULT
+    }
+
+    override suspend fun doWork(): Result {
+        // check if a DownloadWorker is already running
+        // if yes, do not try to run too and just fail
+        if (!running.compareAndSet(false, true)) {
+            return Result.failure()
+        }
+        CoroutineExceptionHandler { _, throwable ->
+            run {
+                if (throwable is CancellationException) {
+                    this.stopDownload()
+                }
+            }
+        }
+        currentCoroutineContext()[Job]?.invokeOnCompletion {
+            if (it != null && it is CancellationException) {
+                this.stopDownload()
+            }
+        }
+        return try {
+            this.download()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            builder.setContentTitle("Download failed").setContentText(null).notify()
+            Result.failure()
+        } finally {
+            if (!running.compareAndSet(true, false)) {
+                println("Expected to be the only running DownloadWorker in this process, but found none")
+            }
+            this.cleanUp()
+        }
+    }
+
+    /**
+     * Shortcut Function to display a Notification.
+     * Does not modify the Builder.
+     */
+    private fun NotificationCompat.Builder.notify() {
+        notificationManager.notify(
+            downloadNotificationId,
+            this.build()
+        )
+    }
+
+    suspend fun download(): Result {
         if (this.applicationContext !is Application) {
             println("Context not instance of Application")
             return Result.failure()
         }
         val application = this.applicationContext as Application
+
         if (SynchronizeWorker.isRunning(application)) {
             return Result.retry()
         }
         UserPreferences.init(application)
-        try {
-            synchronized(UNIQUE) {
-                val repository = getInstance(application)
-                contentTools = FileTools.getSupportedContentTools(application)
-                for (tool in contentTools as MutableSet<ContentTool>) {
-                    tool.mergeIfNecessary()
-                }
-                if (!repository.isClientAuthenticated) {
-                    return Result.retry()
-                }
-                if (!repository.isClientOnline) {
-                    notificationManager.notify(
-                        downloadNotificationId,
-                        builder.setContentTitle("Server not in reach").build()
-                    )
-                    cleanUp()
-                    return Result.failure()
-                }
-                if (!FileTools.writable(application)) {
-                    notificationManager.notify(
-                        downloadNotificationId,
-                        builder.setContentTitle("Not enough free space").build()
-                    )
-                    cleanUp()
-                    return Result.failure()
-                }
-                notificationManager.notify(
-                    downloadNotificationId,
-                    builder
-                        .setContentTitle("Getting Data for Download")
-                        .setProgress(0, 0, true)
-                        .build()
-                )
-                if (this.inputData == Data.EMPTY) {
-                    download(repository)
-                } else {
-                    downloadData(repository)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            notificationManager.notify(
-                downloadNotificationId,
-                builder.setContentTitle("Download failed").setContentText(null).build()
-            )
-            cleanUp()
+        // init lateinit fields
+        repository = getInstance(application)
+        contentTools = FileTools.getSupportedContentTools(application).associateBy { it.medium }
+
+        for (tool in contentTools.values) {
+            tool.mergeIfNecessary()
+        }
+
+        if (!repository.isClientAuthenticated) {
+            return Result.retry()
+        }
+        if (!repository.isClientOnline) {
+            builder.setContentTitle("Server not in reach").notify()
             return Result.failure()
         }
-        cleanUp()
+        if (!FileTools.writable(application)) {
+            builder.setContentTitle("Not enough free space").notify()
+            return Result.failure()
+        }
+        builder
+            .setContentTitle("Getting Data for Download")
+            .setProgress(successFull, successFull, true)
+            .notify()
+
+        if (this.inputData == Data.EMPTY) {
+            // download all possible episodes
+            downloadAll()
+        } else {
+            // download only specific possible episodes
+            downloadData()
+        }
         return Result.success()
     }
 
@@ -98,16 +138,16 @@ class DownloadWorker(
         val type = mediumDownload.mediumType
         val id = mediumDownload.id
 
-        var sizeLimitMB = downloadPreference.getDownloadLimitSize(type)
-        sizeLimitMB = sizeLimitMB.coerceAtMost(downloadPreference.getMediumDownloadLimitSize(id))
+        val mediumDownloadSizeLimit = downloadPreference.getMediumDownloadLimitSize(id)
+        val sizeLimitMB = downloadPreference.getDownloadLimitSize(type).coerceAtMost(mediumDownloadSizeLimit)
 
-        if (sizeLimitMB < 0) {
+        if (sizeLimitMB < successFull) {
             return
         }
         val maxSize = sizeLimitMB * 1024.0 * 1024.0
 
-        for (tool in contentTools!!) {
-            if (MediumType.`is`(type, tool.medium)) {
+        for (tool in contentTools.values) {
+            if (MediumType.isType(type, tool.medium)) {
                 val averageEpisodeSize = tool.getAverageEpisodeSize(id)
                 val path = tool.getItemPath(id)
                 if (path == null || path.isEmpty()) {
@@ -127,39 +167,70 @@ class DownloadWorker(
         }
     }
 
-    private fun download(repository: Repository) {
+    private suspend fun downloadAll() {
+        val toDownloadMediaIds: MutableSet<Int> = getToDownloadMedia()
+        val downloads = getMediumDownloads(toDownloadMediaIds)
+        val mediumDownloads: MutableSet<MediumDownload> = downloads.toMutableSet()
+        // calculate the total number of episodes to be downloaded
+        downloadCount = mediumDownloads.fold(successFull) {
+            count, download ->
+                count + download.toDownloadEpisodes.size
+        }
+
+        if (mediumDownloads.isNotEmpty()) {
+            downloadEpisodes(mediumDownloads)
+        } else {
+            builder
+                .setContentTitle("Nothing to Download")
+                .setContentText(null)
+                .setProgress(successFull, successFull, false)
+                .notify()
+        }
+    }
+
+    private fun getToDownloadMedia(): MutableSet<Int> {
         val toDownloadList = repository.toDownload
         val prohibitedMedia: MutableList<Int> = ArrayList()
         val toDownloadMedia: MutableSet<Int> = HashSet()
+
         for (toDownload in toDownloadList) {
+            val affectedMedia = mutableSetOf<Int>()
+
             if (toDownload.mediumId != null) {
-                if (toDownload.isProhibited) {
-                    prohibitedMedia.add(toDownload.mediumId)
-                } else {
-                    toDownloadMedia.add(toDownload.mediumId)
-                }
+                affectedMedia.add(toDownload.mediumId)
             }
             if (toDownload.externalListId != null) {
-                toDownloadMedia.addAll(repository.getExternalListItems(toDownload.externalListId))
+                affectedMedia.addAll(repository.getExternalListItems(toDownload.externalListId))
             }
             if (toDownload.listId != null) {
-                toDownloadMedia.addAll(repository.getListItems(toDownload.listId))
+                affectedMedia.addAll(repository.getListItems(toDownload.listId))
+            }
+            if (toDownload.isProhibited) {
+                prohibitedMedia.addAll(affectedMedia)
+            } else {
+                toDownloadMedia.addAll(affectedMedia)
             }
         }
         toDownloadMedia.removeAll(prohibitedMedia)
+        return toDownloadMedia
+    }
+
+    private suspend fun getMediumDownloads(toDownloadMedia: MutableSet<Int>) = coroutineScope {
         val downloadPreference = UserPreferences.get().downloadPreference
-        val executor: Executor = Executors.newFixedThreadPool(20)
-        val futures: MutableList<CompletableFuture<MediumDownload?>> = LinkedList()
-        for (mediumId in toDownloadMedia) {
-            futures.add(CompletableFuture.supplyAsync({
+
+        val jobs = toDownloadMedia.map { mediumId ->
+            async {
                 val medium = repository.getSimpleMedium(mediumId)
                 val count = downloadPreference.getDownloadLimitCount(medium.medium)
                 val episodeIds = repository.getDownloadableEpisodes(mediumId, count)
                 val uniqueEpisodes: MutableSet<Int> = LinkedHashSet(episodeIds)
+
                 if (uniqueEpisodes.isEmpty()) {
-                    return@supplyAsync null
+                    return@async null
                 }
+
                 val failedEpisodes = repository.getFailedEpisodes(uniqueEpisodes)
+
                 for (failedEpisode in failedEpisodes) {
                     // if it failed 3 times or more, don't try anymore for now
                     if (failedEpisode.failCount < 3) {
@@ -167,181 +238,146 @@ class DownloadWorker(
                     }
                     uniqueEpisodes.remove(failedEpisode.episodeId)
                 }
+
                 val download = MediumDownload(
                     uniqueEpisodes,
                     mediumId,
                     medium.medium,
                     medium.title
                 )
+
                 filterMediumConstraints(download)
+
                 if (download.toDownloadEpisodes.isEmpty()) {
-                    return@supplyAsync null
+                    return@async null
                 }
                 download
-            }, executor))
-        }
-        val downloads: List<MediumDownload?> = try {
-            Utils.finishAll(futures).get()
-        } catch (e: ExecutionException) {
-            throw RuntimeException(e)
-        } catch (e: InterruptedException) {
-            throw RuntimeException(e)
-        }
-        val mediumDownloads: MutableSet<MediumDownload> = HashSet()
-        var downloadCount = 0
-        for (download in downloads) {
-            if (download == null) {
-                continue
-            }
-            if (mediumDownloads.add(download)) {
-                downloadCount += download.toDownloadEpisodes.size
             }
         }
-        if (mediumDownloads.isNotEmpty()) {
-            downloadEpisodes(mediumDownloads, repository, downloadCount)
-        } else {
-            notificationManager.notify(
-                downloadNotificationId,
-                builder
-                    .setContentTitle("Nothing to Download")
-                    .setContentText(null)
-                    .setProgress(0, 0, false)
-                    .build()
-            )
-        }
+        return@coroutineScope jobs.awaitAll().filterNotNull()
     }
 
-    private fun downloadData(repository: Repository) {
+    /**
+     * Download Episodes of a single Medium defined by [getInputData].
+     */
+    private suspend fun downloadData() {
         val data = this.inputData
-        val mediumId = data.getInt(mediumId, 0)
+        val mediumId = data.getInt(mediumId, successFull)
         val episodeIds = data.getIntArray(episodeIds)
-        if (mediumId == 0 || episodeIds == null || episodeIds.isEmpty()) {
+
+        if (mediumId == successFull || episodeIds == null || episodeIds.isEmpty()) {
             return
         }
-        val episodes = HashSet<Int>()
-        for (episodeId in episodeIds) {
-            episodes.add(episodeId)
-        }
+
+        val episodes = episodeIds.toMutableSet()
         val medium = repository.getSimpleMedium(mediumId)
         val download = MediumDownload(episodes, mediumId, medium.medium, medium.title)
-        downloadEpisodes(setOf(download), repository, episodeIds.size)
+        downloadCount = episodeIds.size
+
+        downloadEpisodes(setOf(download))
     }
 
     /**
      * Download episodes for each medium id,
      * up to an episode limit defined in [DownloadPreference].
      */
-    private fun downloadEpisodes(
-        episodeIds: Set<MediumDownload>,
-        repository: Repository,
-        downloadCount: Int
-    ) {
+    private suspend fun downloadEpisodes(episodeIds: Set<MediumDownload>) {
         builder
             .setContentTitle("Download in Progress [0/$downloadCount]")
-            .setProgress(downloadCount, 0, true)
-        notificationManager.notify(downloadNotificationId, builder.build())
-        val episodePackages = getDownloadPackages(episodeIds, repository)
-        var successFull = 0
-        var notSuccessFull = 0
-        for (episodePackage in episodePackages) {
-            if (this.isStopped) {
-                stopDownload()
-                return
-            }
-            var contentTool: ContentTool? = null
-            for (tool in contentTools!!) {
-                if (MediumType.`is`(tool.medium, episodePackage.mediumType) && tool.isSupported) {
-                    contentTool = tool
-                    break
-                }
-            }
-            if (contentTool == null) {
-                notSuccessFull += episodePackage.episodeIds.size
-                updateProgress(downloadCount, successFull, notSuccessFull)
-                continue
-            }
-            try {
-                val downloadedEpisodes = repository.downloadEpisodes(episodePackage.episodeIds)
-                val currentlySavedEpisodes: MutableList<Int> = ArrayList()
-                if (downloadedEpisodes == null) {
-                    notSuccessFull = onFailed(
-                        downloadCount,
-                        successFull,
-                        notSuccessFull,
-                        repository,
-                        episodePackage,
-                        false
-                    )
-                    continue
-                }
-                val contentEpisodes: MutableList<ClientDownloadedEpisode> = ArrayList()
-                for (downloadedEpisode in downloadedEpisodes) {
-                    val episodeId = downloadedEpisode.episodeId
-                    val episode = repository.getSimpleEpisode(episodeId)
+            .setProgress(downloadCount, successFull, true)
+            .notify()
 
-                    if (downloadedEpisode.getContent().isNotEmpty()) {
-                        successFull++
-                        currentlySavedEpisodes.add(episodeId)
-                        contentEpisodes.add(downloadedEpisode)
-                        repository.addNotification(
-                            NotificationItem.createNow(
-                                String.format(
-                                    "Episode %s of %s saved",
-                                    episode.formattedTitle,
-                                    episodePackage.mediumTitle
-                                ),
-                                ""
-                            )
-                        )
-                    } else {
-                        notSuccessFull++
-                        repository.updateFailedDownloads(episodeId)
-                        repository.addNotification(
-                            NotificationItem.createNow(
-                                String.format(
-                                    "Could not save Episode %s of %s",
-                                    episode.formattedTitle,
-                                    episodePackage.mediumTitle
-                                ),
-                                ""
-                            )
-                        )
-                    }
-                }
-                contentTool.saveContent(contentEpisodes, episodePackage.mediumId)
-                repository.updateSaved(currentlySavedEpisodes, true)
-                updateProgress(downloadCount, successFull, notSuccessFull)
+        createDownloadPackagesFlow(episodeIds).mapNotNull {
+            return@mapNotNull try {
+                downloadPackage(it)
+            } catch (e: IOException) {
+                e.printStackTrace()
+                onFailed(it.episodeIds, it.mediumTitle)
+                null
+            }
+        }.collect { savePackage ->
+            try {
+                saveEpisodes(savePackage)
             } catch (e: NotEnoughSpaceException) {
-                notSuccessFull = onFailed(
-                    downloadCount,
-                    successFull,
-                    notSuccessFull,
-                    repository,
-                    episodePackage,
+                onFailed(
+                    savePackage.toSave.map { it.episodeId },
+                    savePackage.mediumTitle,
                     true
                 )
             } catch (e: IOException) {
                 e.printStackTrace()
-                notSuccessFull = onFailed(
-                    downloadCount,
-                    successFull,
-                    notSuccessFull,
-                    repository,
-                    episodePackage,
-                    false
-                )
+                onFailed(savePackage.toSave.map { it.episodeId }, savePackage.mediumTitle)
             }
         }
     }
 
-    private fun stopDownload() {
-        notificationManager.notify(
-            downloadNotificationId,
-            builder
-                .setContentTitle("Download stopped")
-                .setContentText(null)
-                .build()
+    private suspend fun downloadPackage(episodePackage: DownloadPackage): SavePackage? {
+        val contentTool = contentTools[episodePackage.mediumType]
+
+        if (contentTool == null) {
+            notSuccessFull += episodePackage.episodeIds.size
+            updateProgress()
+            return null
+        }
+
+        val downloadedEpisodes = repository.downloadEpisodes(episodePackage.episodeIds)
+
+        if (downloadedEpisodes == null) {
+            onFailed(episodePackage.episodeIds, episodePackage.mediumTitle)
+            return null
+        }
+        val contentEpisodes = mutableListOf<ClientDownloadedEpisode>()
+
+        for (downloadedEpisode in downloadedEpisodes) {
+            val episodeId = downloadedEpisode.episodeId
+
+            if (downloadedEpisode.getContent().isNotEmpty()) {
+                contentEpisodes.add(downloadedEpisode)
+            } else {
+                notSuccessFull++
+                updateProgress()
+                val episode = repository.getSimpleEpisode(episodeId)
+                repository.updateFailedDownloads(episodeId)
+                repository.addNotification(
+                    NotificationItem.createNow(
+                        "Could not save Episode ${episode.formattedTitle} of ${episodePackage.mediumTitle}",
+                    )
+                )
+            }
+        }
+        return SavePackage(
+            episodePackage.mediumId,
+            episodePackage.mediumTitle,
+            contentEpisodes,
+            contentTool
         )
+    }
+
+    private suspend fun saveEpisodes(data: SavePackage) = withContext(Dispatchers.IO) {
+        @Suppress("BlockingMethodInNonBlockingContext")
+        data.contentTool.saveContent(data.toSave, data.mediumId)
+        val currentlySavedEpisodes = data.toSave.map { it.episodeId }
+
+        repository.updateSaved(currentlySavedEpisodes, true)
+
+        val episodes = repository.getSimpleEpisodes(currentlySavedEpisodes)
+
+        for (episode in episodes) {
+            successFull++
+            updateProgress()
+            repository.addNotification(
+                NotificationItem.createNow(
+                    "Episode ${episode.formattedTitle} of ${data.mediumTitle} saved",
+                )
+            )
+        }
+    }
+
+    private fun stopDownload() {
+        builder
+            .setContentTitle("Download stopped")
+            .setContentText(null)
+            .notify()
     }
 
     private fun cleanUp() {
@@ -355,45 +391,45 @@ class DownloadWorker(
     }
 
     private fun onFailed(
-        downloadCount: Int,
-        successFull: Int,
-        notSuccessFull: Int,
-        repository: Repository,
-        downloadPackage: DownloadPackage,
-        notEnoughSpace: Boolean
-    ): Int {
-        for (episodeId in downloadPackage.episodeIds) {
+        episodeIds: Collection<Int>,
+        mediumTitle: String,
+        notEnoughSpace: Boolean = false
+    ) {
+        for (episodeId in episodeIds) {
             repository.updateFailedDownloads(episodeId)
             val episode = repository.getSimpleEpisode(episodeId)
-            val format =
-                if (notEnoughSpace) "Not enough Space for Episode %s of %s" else "Could not save Episode %s of %s"
+            val format = if (notEnoughSpace) {
+                "Not enough Space for Episode %s of %s"
+            } else {
+                "Could not save Episode %s of %s"
+            }
             repository.addNotification(
                 NotificationItem.createNow(
-                    String.format(format, episode.formattedTitle, downloadPackage.mediumTitle),
-                    ""
+                    String.format(format, episode.formattedTitle, mediumTitle),
                 )
             )
         }
-        val unsuccessFull = notSuccessFull + downloadPackage.episodeIds.size
-        updateProgress(downloadCount, successFull, unsuccessFull)
-        return unsuccessFull
+        notSuccessFull += episodeIds.size
+        updateProgress()
     }
 
-    private fun updateProgress(downloadCount: Int, successFull: Int, notSuccessFull: Int) {
+    /**
+     * Update the Progress Notification.
+     */
+    private fun updateProgress() {
         val progress = successFull + notSuccessFull
         builder.setContentTitle(
-            String.format(
-                "Download in Progress [%s/%s]",
-                progress,
-                downloadCount
-            )
+            "Download in Progress [$progress/$downloadCount]",
         )
-        builder.setContentText(String.format("Failed: %s", notSuccessFull))
+        builder.setContentText("Failed: $notSuccessFull")
         builder.setProgress(downloadCount, progress, false)
-        notificationManager.notify(downloadNotificationId, builder.build())
+        builder.notify()
     }
 
-    private class MediumDownload(
+    /**
+     * Represents the Episodes of an Medium which are to be downloaded.
+     */
+    private data class MediumDownload(
         val toDownloadEpisodes: MutableSet<Int>,
         val id: Int,
         val mediumType: Int,
@@ -411,46 +447,64 @@ class DownloadWorker(
         }
     }
 
-    private class DownloadPackage(val mediumId: Int, val mediumType: Int, val mediumTitle: String) {
-        val episodeIds: MutableSet<Int> = HashSet()
-    }
+    /**
+     * Container for downloaded Episodes which need to be saved locally.
+     */
+    private data class SavePackage(
+        val mediumId: Int,
+        val mediumTitle: String,
+        val toSave: Collection<ClientDownloadedEpisode>,
+        val contentTool: ContentTool,
+    )
 
-    private fun getDownloadPackages(
-        episodeIds: Set<MediumDownload>,
-        repository: Repository
-    ): Collection<DownloadPackage> {
-        val savedEpisodes = repository.savedEpisodes
-        val savedIds: Set<Int> = HashSet(savedEpisodes)
-        val episodePackages: MutableCollection<DownloadPackage> = ArrayList()
-        for (mediumDownload in episodeIds) {
-            var downloadPackage = DownloadPackage(
-                mediumDownload.id,
-                mediumDownload.mediumType,
-                mediumDownload.title
-            )
-            for (episodeId in mediumDownload.toDownloadEpisodes) {
-                if (savedIds.contains(episodeId)) {
-                    continue
+    /**
+     * Represents a Package for a single Download Request.
+     */
+    private data class DownloadPackage(
+        val mediumId: Int,
+        val mediumType: Int,
+        val mediumTitle: String,
+        val episodeIds: MutableSet<Int> = HashSet(),
+    )
+
+    /**
+     * Create a Flow of DownloadPackages.
+     * Each Package contains at most [maxPackageSize] Episode Ids.
+     * Ignores Episodes which are already marked as saved.
+     */
+    private suspend fun createDownloadPackagesFlow(episodeIds: Set<MediumDownload>): Flow<DownloadPackage> = flow {
+            val savedEpisodes = repository.savedEpisodes
+            val savedIds = savedEpisodes.toSet()
+
+            for (mediumDownload in episodeIds) {
+                var downloadPackage = DownloadPackage(
+                    mediumDownload.id,
+                    mediumDownload.mediumType,
+                    mediumDownload.title
+                )
+                for (episodeId in mediumDownload.toDownloadEpisodes) {
+                    if (savedIds.contains(episodeId)) {
+                        continue
+                    }
+                    if (downloadPackage.episodeIds.size == maxPackageSize) {
+                        emit(downloadPackage)
+                        downloadPackage = DownloadPackage(
+                            mediumDownload.id,
+                            mediumDownload.mediumType,
+                            mediumDownload.title
+                        )
+                    }
+                    downloadPackage.episodeIds.add(episodeId)
                 }
-                if (downloadPackage.episodeIds.size == maxPackageSize) {
-                    episodePackages.add(downloadPackage)
-                    downloadPackage = DownloadPackage(
-                        mediumDownload.id,
-                        mediumDownload.mediumType,
-                        mediumDownload.title
-                    )
+                if (downloadPackage.episodeIds.isNotEmpty()) {
+                    emit(downloadPackage)
                 }
-                downloadPackage.episodeIds.add(episodeId)
-            }
-            if (downloadPackage.episodeIds.isNotEmpty()) {
-                episodePackages.add(downloadPackage)
             }
         }
-        return episodePackages
-    }
 
     companion object {
         private const val UNIQUE = "DOWNLOAD_WORKER"
+        private val running = AtomicBoolean()
 
         // TODO: 08.08.2019 use this for sdk >= 28
         private const val CHANNEL_ID = "DOWNLOAD_CHANNEL"
@@ -528,15 +582,5 @@ class DownloadWorker(
                 .then(CheckSavedWorker.workRequest)
                 .enqueue()
         }
-    }
-
-    init {
-        uuids.add(this.id)
-        notificationManager = NotificationManagerCompat.from(this.applicationContext)
-        builder = NotificationCompat.Builder(this.applicationContext, CHANNEL_ID)
-        builder
-            .setContentTitle("Download in Progress...")
-            .setSmallIcon(R.mipmap.ic_launcher).priority =
-            NotificationCompat.PRIORITY_DEFAULT
     }
 }

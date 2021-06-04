@@ -2,7 +2,7 @@ package com.mytlogos.enterprise.preferences
 
 import android.content.SharedPreferences
 import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.`is`
+import com.mytlogos.enterprise.model.MediumType.isType
 import java.util.*
 import java.util.function.BiConsumer
 import kotlin.math.min
@@ -15,16 +15,16 @@ class DownloadPreference internal constructor(preferences: SharedPreferences) :
 
     private fun getDefaultMediumCountLimit(medium: Int): Int {
         var limit = Int.MAX_VALUE
-        if (`is`(medium, MediumType.TEXT)) {
+        if (isType(medium, MediumType.TEXT)) {
             limit = min(limit, 100)
         }
-        if (`is`(medium, MediumType.IMAGE)) {
+        if (isType(medium, MediumType.IMAGE)) {
             limit = min(limit, 10)
         }
-        if (`is`(medium, MediumType.VIDEO)) {
+        if (isType(medium, MediumType.VIDEO)) {
             limit = min(limit, 5)
         }
-        if (`is`(medium, MediumType.IMAGE)) {
+        if (isType(medium, MediumType.IMAGE)) {
             limit = min(limit, 20)
         }
         require(limit != Int.MAX_VALUE) { "unknown mediumType: $medium" }

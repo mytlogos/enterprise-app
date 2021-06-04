@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.api
 
 import com.mytlogos.enterprise.background.api.model.*
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.*
 
 internal interface UserApi {
@@ -24,7 +25,7 @@ internal interface UserApi {
     fun getInvalidated(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<InvalidatedData>>
 
     @GET("{start}/download")
-    fun downloadEpisodes(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientDownloadedEpisode>>
+    suspend fun downloadEpisodes(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Response<List<ClientDownloadedEpisode>>
 
     @GET("{start}/stats")
     fun getStats(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientStat>

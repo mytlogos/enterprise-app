@@ -29,7 +29,7 @@ object MediumType {
     }
 
     @kotlin.jvm.JvmStatic
-    fun `is`(type: Int, toCheck: Int): Boolean {
+    fun isType(type: Int, toCheck: Int): Boolean {
         return type and toCheck == toCheck
     }
 

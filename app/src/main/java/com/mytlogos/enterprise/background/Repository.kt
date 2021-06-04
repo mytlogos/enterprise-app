@@ -55,8 +55,7 @@ interface Repository {
     fun updateSaved(episodeIds: Collection<Int>, saved: Boolean)
     val toDeleteEpisodes: List<Int>
 
-    @Throws(IOException::class)
-    fun downloadEpisodes(episodeIds: Collection<Int>): List<ClientDownloadedEpisode>?
+    suspend fun downloadEpisodes(episodeIds: Collection<Int>): List<ClientDownloadedEpisode>?
     val toDownload: List<ToDownload>
     fun addToDownload(toDownload: ToDownload)
     fun removeToDownloads(toDownloads: Collection<ToDownload>)

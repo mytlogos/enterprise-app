@@ -13,7 +13,7 @@ import com.mytlogos.enterprise.TimeAgo
 import com.mytlogos.enterprise.model.MediumSetting
 import com.mytlogos.enterprise.model.MediumSetting.MediumSettingBuilder
 import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.`is`
+import com.mytlogos.enterprise.model.MediumType.isType
 import com.mytlogos.enterprise.model.ToDownload
 import com.mytlogos.enterprise.tools.FileTools.isAudioContentSupported
 import com.mytlogos.enterprise.tools.FileTools.isImageContentSupported
@@ -170,10 +170,10 @@ class MediumSettingFragment : BaseFragment() {
             this.setTitle("Settings - " + mediumSetting.getTitle())
             editName!!.setText(mediumSetting.getTitle())
             editName!!.inputType = InputType.TYPE_CLASS_TEXT
-            textMedium!!.isChecked = `is`(mediumSetting.medium, MediumType.TEXT)
-            imageMedium!!.isChecked = `is`(mediumSetting.medium, MediumType.IMAGE)
-            videoMedium!!.isChecked = `is`(mediumSetting.medium, MediumType.VIDEO)
-            audioMedium!!.isChecked = `is`(mediumSetting.medium, MediumType.AUDIO)
+            textMedium!!.isChecked = isType(mediumSetting.medium, MediumType.TEXT)
+            imageMedium!!.isChecked = isType(mediumSetting.medium, MediumType.IMAGE)
+            videoMedium!!.isChecked = isType(mediumSetting.medium, MediumType.VIDEO)
+            audioMedium!!.isChecked = isType(mediumSetting.medium, MediumType.AUDIO)
             autoDownload!!.isChecked = mediumSetting.toDownload
             autoDownload!!.isEnabled = true
             textMedium!!.isEnabled = true

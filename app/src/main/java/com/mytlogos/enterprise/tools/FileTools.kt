@@ -6,7 +6,6 @@ import android.os.Environment
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
 import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.`is`
 import java.io.File
 import java.util.*
 import kotlin.math.ln

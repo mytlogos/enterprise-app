@@ -5,14 +5,13 @@ import android.text.InputType
 import android.view.*
 import android.view.inputmethod.EditorInfo
 import android.widget.*
-import android.widget.TextView.OnEditorActionListener
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModelProvider
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.ExternalMediaListSetting
 import com.mytlogos.enterprise.model.MediaListSetting
 import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.`is`
+import com.mytlogos.enterprise.model.MediumType.isType
 import com.mytlogos.enterprise.model.MediumType.addMediumType
 import com.mytlogos.enterprise.model.MediumType.removeMediumType
 import com.mytlogos.enterprise.model.ToDownload
@@ -116,10 +115,10 @@ class ListSettings : BaseFragment() {
             autoDownload!!.isEnabled = false
         } else {
             editName!!.setText(listSetting.name)
-            textMedium!!.isChecked = `is`(listSetting.medium, MediumType.TEXT)
-            imageMedium!!.isChecked = `is`(listSetting.medium, MediumType.IMAGE)
-            videoMedium!!.isChecked = `is`(listSetting.medium, MediumType.VIDEO)
-            audioMedium!!.isChecked = `is`(listSetting.medium, MediumType.AUDIO)
+            textMedium!!.isChecked = isType(listSetting.medium, MediumType.TEXT)
+            imageMedium!!.isChecked = isType(listSetting.medium, MediumType.IMAGE)
+            videoMedium!!.isChecked = isType(listSetting.medium, MediumType.VIDEO)
+            audioMedium!!.isChecked = isType(listSetting.medium, MediumType.AUDIO)
             autoDownload!!.isChecked = listSetting.toDownload
             if (listSetting.isNameMutable) {
                 editName!!.inputType = InputType.TYPE_CLASS_TEXT

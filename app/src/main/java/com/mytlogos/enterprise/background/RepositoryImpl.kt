@@ -255,8 +255,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
     override val toDeleteEpisodes: List<Int>
         get() = storage.getToDeleteEpisodes()
 
-    @Throws(IOException::class)
-    override fun downloadEpisodes(episodeIds: Collection<Int>): List<ClientDownloadedEpisode>? {
+    override suspend fun downloadEpisodes(episodeIds: Collection<Int>): List<ClientDownloadedEpisode>? {
         return client.downloadEpisodes(episodeIds).body()
     }
 
