@@ -37,6 +37,7 @@ class UserPreferences private constructor(context: Context) {
                 editor.putString(EPISODES_FILTER, filter)
                 editor.apply()
             }
+
         var lastSync: DateTime
             get() {
                 val lastSyncString = get().sharedPreferences.getString(LAST_SYNC, null)
@@ -48,9 +49,11 @@ class UserPreferences private constructor(context: Context) {
                 editor.putString(LAST_SYNC, lastSyncDatetime.toString())
                 editor.apply()
             }
+
         @JvmStatic
         val loggedStatus: Boolean
             get() = get().sharedPreferences.getBoolean(LOGGED_STATUS, false)
+
         val loggedUuid: String?
             get() = get().sharedPreferences.getString(LOGGED_USER, null)
 

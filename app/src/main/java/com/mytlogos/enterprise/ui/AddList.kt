@@ -101,8 +101,10 @@ class AddList : BaseFragment() {
 
         override fun onPostExecute(aVoid: Void?) {
             super.onPostExecute(aVoid)
-            if (errorMessage != null) {
-                addList.showToast(errorMessage)
+            val error = errorMessage
+
+            if (error != null) {
+                addList.showToast(error)
             }
             addList.mainActivity.showLoading(false)
             addList.mainActivity.onBackPressed()

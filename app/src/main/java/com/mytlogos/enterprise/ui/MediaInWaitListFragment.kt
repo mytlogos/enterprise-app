@@ -119,8 +119,9 @@ class MediaInWaitListFragment : BaseSwipeListFragment<MediumInWait, MediaInWaitL
         }
 
         override fun onPostExecute(aVoid: Void?) {
-            if (errorMsg != null) {
-                showToast(errorMsg)
+            val error = errorMsg
+            if (error != null) {
+                showToast(error)
             }
             (listContainer!! as SwipeRefreshLayout).isRefreshing = false
         }

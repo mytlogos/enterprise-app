@@ -114,6 +114,7 @@ interface Repository {
     ): LiveData<PagedList<MediumInWait>>
 
     val internLists: LiveData<MutableList<MediaList>>
+
     fun moveMediaToList(
         oldListId: Int,
         listId: Int,

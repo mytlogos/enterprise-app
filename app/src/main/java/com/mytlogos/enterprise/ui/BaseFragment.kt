@@ -80,7 +80,7 @@ open class BaseFragment : Fragment() {
     }
 
     @JvmOverloads
-    fun showToast(msg: CharSequence?, duration: Int = Toast.LENGTH_SHORT) {
+    fun showToast(msg: CharSequence, duration: Int = Toast.LENGTH_SHORT) {
         Toast.makeText(requireContext(), msg, duration).show()
     }
 
