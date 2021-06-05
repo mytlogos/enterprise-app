@@ -3,6 +3,7 @@ package com.mytlogos.enterprise.viewmodel
 import android.app.Application
 import androidx.lifecycle.LiveData
 import com.mytlogos.enterprise.background.TaskManager.Companion.runTask
+import com.mytlogos.enterprise.background.repository.MediaListRepository
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.model.MediaListSetting
 import com.mytlogos.enterprise.model.MediumSetting
@@ -58,7 +59,7 @@ class ListsViewModel(application: Application) : RepoViewModel(application) {
         return repository.moveMediaToList(oldListId, newListId, ids)
     }
 
-    fun addMediumToList(listId: Int, ids: MutableCollection<Int>): CompletableFuture<Boolean> {
-        return repository.addMediumToList(listId, ids)
+    suspend fun addMediumToList(listId: Int, ids: MutableCollection<Int>): Boolean {
+        return MediaListRepository.getInstance(getApplication()).addMediumToList(listId, ids)
     }
 }

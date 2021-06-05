@@ -65,7 +65,7 @@ object TimeAgo {
         }
     }
 
-    fun toRelative(start: DateTime?, end: DateTime?): String? {
+    fun toRelative(start: DateTime?, end: DateTime? = DateTime.now()): String? {
         return if (start == null || end == null) {
             null
         } else toRelative(end.millis - start.millis)

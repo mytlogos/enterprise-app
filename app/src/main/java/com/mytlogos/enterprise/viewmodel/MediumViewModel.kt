@@ -1,108 +1,116 @@
 package com.mytlogos.enterprise.viewmodel
 
 import android.app.Application
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations
-import androidx.paging.PagedList
+import androidx.lifecycle.asFlow
+import androidx.paging.PagingData
+import com.mytlogos.enterprise.background.repository.MediumRepository
 import com.mytlogos.enterprise.model.MediumItem
 import com.mytlogos.enterprise.tools.Sortings
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import org.joda.time.DateTime
 
 class MediumViewModel(application: Application) : FilterableViewModel(application),
     SortableViewModel, MediumFilterableViewModel {
-    var allMedia: LiveData<PagedList<MediumItem>>? = null
-        get() {
-            if (field == null) {
-                field = Transformations.switchMap(sortFilterLiveData) { input: SortFilter ->
-                    repository.getAllMedia(
-                        input.sortings!!,
-                        input.title,
-                        input.medium,
-                        input.author,
-                        input.lastUpdate,
-                        input.minCountEpisodes,
-                        input.minCountReadEpisodes
-                    )
-                }
-            }
-            return field
-        }
-        private set
+
     private val sortFilterLiveData = MutableLiveData<SortFilter>()
+    private val mediumRepository = MediumRepository.getInstance(application)
+
+    init {
+        sortFilterLiveData.value = SortFilterBuilder(null).createSortFilter()
+    }
+
+    @ExperimentalCoroutinesApi
+    val allMedia: Flow<PagingData<MediumItem>> by lazy {
+        sortFilterLiveData.asFlow().flatMapLatest { input: SortFilter ->
+            mediumRepository.getAllMedia(
+                input.sortings!!,
+                input.title,
+                input.medium,
+                input.author,
+                input.lastUpdate,
+                input.minCountEpisodes,
+                input.minCountReadEpisodes
+            )
+        }
+    }
+
+    private fun getSortFilter() = sortFilterLiveData.value!!
+
     override fun resetFilter() {
         sortFilterLiveData.value = SortFilterBuilder(null).createSortFilter()
     }
 
     override fun setSort(sort: Sortings) {
-        val value = sortFilterLiveData.value
+        val value = getSortFilter()
         sortFilterLiveData.value = SortFilterBuilder(value).setSortings(sort).createSortFilter()
     }
 
     override var mediumFilter: Int
         get() {
-            val value = sortFilterLiveData.value
-            return if (value == null) 0 else if (value.medium < 0) 0 else value.medium
+            val value = getSortFilter()
+            return if (value.medium < 0) 0 else value.medium
         }
         set(medium) {
-            val value = sortFilterLiveData.value
+            val value = getSortFilter()
             sortFilterLiveData.value = SortFilterBuilder(value).setMedium(medium).createSortFilter()
         }
+
     var minReadEpisodeFilter: Int
         get() {
-            val value = sortFilterLiveData.value
-            return value?.minCountReadEpisodes ?: -1
+            val value = getSortFilter()
+            return value.minCountReadEpisodes
         }
         set(minReadEpisodeFilter) {
-            val value = sortFilterLiveData.value
+            val value = getSortFilter()
             sortFilterLiveData.value =
                 SortFilterBuilder(value).setMinReadEpisodes(minReadEpisodeFilter).createSortFilter()
         }
     var minEpisodeFilter: Int
         get() {
-            val value = sortFilterLiveData.value
-            return value?.minCountEpisodes ?: -1
+            val value = getSortFilter()
+            return value.minCountEpisodes
         }
         set(minEpisodeFilter) {
-            val value = sortFilterLiveData.value
+            val value = getSortFilter()
             sortFilterLiveData.value =
                 SortFilterBuilder(value).setMinCountEpisodes(minEpisodeFilter).createSortFilter()
         }
     var titleFilter: String
         get() {
-            val value = sortFilterLiveData.value
-            return if (value?.title == null) "" else value.title
+            val value = getSortFilter()
+            return value.title ?: ""
         }
         set(titleFilter) {
-            var titleFilter = titleFilter
-            val value = sortFilterLiveData.value
-            titleFilter = processStringFilter(titleFilter)
+            val value = getSortFilter()
             sortFilterLiveData.value =
-                SortFilterBuilder(value).setTitle(titleFilter).createSortFilter()
+                SortFilterBuilder(value).setTitle(processStringFilter(titleFilter))
+                    .createSortFilter()
         }
     var authorFilter: String
         get() {
-            val value = sortFilterLiveData.value
-            return if (value?.author == null) "" else value.author
+            val value = getSortFilter()
+            return value.author ?: ""
         }
-        set(titleFilter) {
-            var titleFilter = titleFilter
-            val value = sortFilterLiveData.value
-            titleFilter = processStringFilter(titleFilter)
+        set(authorFilter) {
+            val value = getSortFilter()
             sortFilterLiveData.value =
-                SortFilterBuilder(value).setAuthor(titleFilter).createSortFilter()
+                SortFilterBuilder(value).setAuthor(processStringFilter(authorFilter))
+                    .createSortFilter()
         }
 
     fun setLastUpdateFilter(lastUpdateFilter: DateTime) {
-        val value = sortFilterLiveData.value
+        val value = getSortFilter()
         sortFilterLiveData.value =
             SortFilterBuilder(value).setLastUpdate(lastUpdateFilter).createSortFilter()
     }
 
     val lastUpdateFilter: DateTime?
         get() {
-            val value = sortFilterLiveData.value
-            return value?.lastUpdate
+            val value = getSortFilter()
+            return value.lastUpdate
         }
 
     private class SortFilterBuilder(filter: SortFilter?) {
@@ -182,10 +190,6 @@ class MediumViewModel(application: Application) : FilterableViewModel(applicatio
         val author: String?,
         val minCountReadEpisodes: Int,
         val minCountEpisodes: Int,
-        val lastUpdate: DateTime?
+        val lastUpdate: DateTime?,
     )
-
-    init {
-        sortFilterLiveData.value = SortFilterBuilder(null).createSortFilter()
-    }
 }

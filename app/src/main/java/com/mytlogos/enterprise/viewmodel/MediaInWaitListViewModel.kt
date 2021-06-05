@@ -9,7 +9,7 @@ import com.mytlogos.enterprise.model.MediumInWait
 import com.mytlogos.enterprise.tools.Sortings
 import java.io.IOException
 
-class MediaInWaitListViewModel(application: Application?) : FilterableViewModel(application),
+class MediaInWaitListViewModel(application: Application) : FilterableViewModel(application),
     SortableViewModel, MediumFilterableViewModel {
     var mediaInWait: LiveData<PagedList<MediumInWait>>? = null
         get() {

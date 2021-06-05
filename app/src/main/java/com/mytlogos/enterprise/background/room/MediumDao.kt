@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.room
 
 import androidx.lifecycle.LiveData
 import androidx.paging.DataSource
+import androidx.paging.PagingSource
 import androidx.room.*
 import com.mytlogos.enterprise.background.room.model.RoomMedium
 import com.mytlogos.enterprise.model.*
@@ -57,7 +58,7 @@ interface MediumDao : MultiBaseDao<RoomMedium> {
             WHEN 9 THEN lastUpdated 
             ELSE title END ASC
     """)
-    fun getAllAsc(sortValue: Int, title: String?, medium: Int, author: String?, lastUpdate: DateTime?, minCountEpisodes: Int, minCountReadEpisodes: Int): DataSource.Factory<Int, MediumItem>
+    fun getAllAsc(sortValue: Int, title: String?, medium: Int, author: String?, lastUpdate: DateTime?, minCountEpisodes: Int, minCountReadEpisodes: Int): PagingSource<Int, MediumItem>
 
     @Query("""
         SELECT
@@ -104,7 +105,7 @@ interface MediumDao : MultiBaseDao<RoomMedium> {
             WHEN 9 THEN lastUpdated 
             ELSE title END DESC
     """)
-    fun getAllDesc(sortValue: Int, title: String?, medium: Int, author: String?, lastUpdate: DateTime?, minCountEpisodes: Int, minCountReadEpisodes: Int): DataSource.Factory<Int, MediumItem>
+    fun getAllDesc(sortValue: Int, title: String?, medium: Int, author: String?, lastUpdate: DateTime?, minCountEpisodes: Int, minCountReadEpisodes: Int): PagingSource<Int, MediumItem>
 
     @Query("""SELECT title, RoomMedium.mediumId, author, artist, medium, stateTL, stateOrigin, countryOfOrigin, languageOfOrigin, lang, series, universe, (   SELECT episodeId FROM RoomEpisode    INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId    WHERE mediumId=RoomMedium.mediumId    ORDER BY RoomEpisode.combiIndex DESC    LIMIT 1) as currentRead,(    SELECT RoomEpisode.combiIndex 
     FROM RoomEpisode

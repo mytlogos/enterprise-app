@@ -16,6 +16,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.PagingData
 import androidx.paging.PagingDataAdapter
+import androidx.recyclerview.selection.SelectionTracker
 import androidx.recyclerview.widget.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mytlogos.enterprise.R
@@ -38,6 +39,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     lateinit var viewModel: ViewModel
     lateinit var listView: RecyclerView
     private lateinit var fragmentRoot: ViewGroup
+    private lateinit var adapter: BaseAdapter<Value, *>
     private var filterable: Filterable? = null
 
     override fun onCreateView(
@@ -58,7 +60,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         listView.addItemDecoration(decoration)
 
         // Set the adapter
-        val adapter = getAdapter()
+        adapter = createAdapter()
         listView.adapter = adapter
 
         viewModel = createViewModel()
@@ -96,7 +98,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     }
 
 
-    protected abstract class BaseAdapter<Value : Any, ViewHolder : RecyclerView.ViewHolder>(
+    abstract class BaseAdapter<Value : Any, ViewHolder : RecyclerView.ViewHolder>(
         diff: DiffUtil.ItemCallback<Value>,
     ) : PagingDataAdapter<Value, ViewHolder>(diff) {
 
@@ -107,6 +109,11 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         var holderInit: ViewInit<ViewHolder>? = null
 
         fun getItemAt(position: Int) = super.getItem(position)
+
+        fun getItemFrom(holder: ViewHolder): Value? {
+            val position = holder.bindingAdapterPosition
+            return if (position == RecyclerView.NO_POSITION) null else getItem(position)
+        }
 
         abstract val layoutId: Int
 
@@ -124,7 +131,11 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         }
     }
 
-    protected abstract fun getAdapter(): BaseAdapter<Value, *>
+    protected fun getAdapter(): BaseAdapter<Value, *> {
+        return this.adapter
+    }
+
+    protected abstract fun createAdapter(): BaseAdapter<Value, *>
 
     private fun setSpinner(spinner: Spinner, property: PositionProperty) {
         val value = property.get()
@@ -280,7 +291,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     }
 
     @SuppressLint("SetTextI18n")
-    fun setNumberTextField(view: View, @IdRes id: Int, value: Int, minValue: Int) {
+    fun setNumberTextField(view: View, @IdRes id: Int, value: Int, minValue: Int = 0) {
         val minEpisodeRead = view.findViewById<EditText>(id)
         if (value < minValue) {
             minEpisodeRead.text = null
@@ -314,6 +325,13 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
 
     protected interface TextProperty : Property<String>
 
+    protected class SimpleTextProperty(
+        viewId: Int,
+        property: KMutableProperty0<String>,
+        showToast: (v: String, duration: Int) -> Unit,
+        clearViewId: Int = View.NO_ID,
+    ) : SimpleProperty<String>(viewId, property, showToast, clearViewId)
+
     protected class IntTextProperty(
         override val viewId: Int,
         val property: KMutableProperty0<Int>,
@@ -329,16 +347,15 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         }
     }
 
-    protected class SimpleProperty<E>(
+    protected open class SimpleProperty<E>(
         override val viewId: Int,
         val property: KMutableProperty0<E>,
-        val showToast: (v: String, duration: Int) -> Unit
+        val showToast: (v: String, duration: Int) -> Unit,
+        override val clearViewId: Int = View.NO_ID,
     ) : Property<E> {
         override fun get(): E = property.get()
         override fun set(newFilter: E) = property.set(newFilter)
     }
-
-    protected interface BooleanProperty : Property<Boolean>
 
     protected interface PositionProperty : Property<Int> {
         fun positionalMapping(): IntArray
@@ -349,12 +366,10 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     }
 
     @get:LayoutRes
-    open val layoutId: Int
-        get() = R.layout.normal_list
+    open val layoutId: Int = R.layout.normal_list
 
     @get:IdRes
-    open val listContainerId: Int
-        get() = R.id.list
+    open val listContainerId: Int = R.id.list
 
     protected fun <E> setStringSpinner(
         view: View,
@@ -456,7 +471,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     /**
      * Find and initialize the FAB Button for fast up and down navigation.
      */
-    protected fun initFabButton(
+    private fun initFabButton(
         root: View,
         listView: RecyclerView,
         layoutManager: LinearLayoutManager,

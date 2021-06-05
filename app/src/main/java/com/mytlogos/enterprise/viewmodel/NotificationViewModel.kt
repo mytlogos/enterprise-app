@@ -6,7 +6,7 @@ import androidx.paging.PagedList
 import com.mytlogos.enterprise.background.TaskManager.Companion.runTask
 import com.mytlogos.enterprise.model.NotificationItem
 
-class NotificationViewModel(application: Application?) : RepoViewModel(application) {
+class NotificationViewModel(application: Application) : RepoViewModel(application) {
     val notifications: LiveData<PagedList<NotificationItem>>
         get() = repository.notifications
 

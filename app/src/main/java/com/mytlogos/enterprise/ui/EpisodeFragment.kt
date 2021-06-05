@@ -55,22 +55,14 @@ class EpisodeFragment
     @ExperimentalCoroutinesApi
     override fun createPaged(model: EpisodeViewModel) = model.displayEpisodes
 
-    override fun getAdapter(): BaseAdapter<DisplayRelease, ViewHolder> {
+    override fun createAdapter(): BaseAdapter<DisplayRelease, ViewHolder> {
         val releaseAdapter = ReleaseAdapter()
         releaseAdapter.holderInit = BaseAdapter.ViewInit { holder: ViewHolder ->
             holder.itemView.setOnClickListener {
-                val position = holder.bindingAdapterPosition
-                if (position == RecyclerView.NO_POSITION) {
-                    return@setOnClickListener
-                }
-                releaseAdapter.getItemAt(position)?.let(this::onItemClick)
+                releaseAdapter.getItemFrom(holder)?.let(this::onItemClick)
             }
             holder.optionsButtonView.setOnClickListener {
-                val position = holder.bindingAdapterPosition
-                if (position == RecyclerView.NO_POSITION) {
-                    return@setOnClickListener
-                }
-                releaseAdapter.getItemAt(position)?.let { this.openPopup(holder, it) }
+                releaseAdapter.getItemFrom(holder)?.let { this.openPopup(holder, it) }
             }
         }
         return releaseAdapter

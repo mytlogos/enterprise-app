@@ -48,15 +48,6 @@ interface DatabaseStorage {
     fun getListSetting(id: Int, isExternal: Boolean): LiveData<out MediaListSetting?>
     fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting?
     fun updateToDownload(add: Boolean, toDownload: ToDownload)
-    fun getAllMedia(
-        sortings: Sortings,
-        title: String?,
-        medium: Int,
-        author: String?,
-        lastUpdate: DateTime?,
-        minCountEpisodes: Int,
-        minCountReadEpisodes: Int
-    ): LiveData<PagedList<MediumItem>>
 
     fun getMediumSettings(mediumId: Int): LiveData<MediumSetting>
     fun getMediumSettingsNow(mediumId: Int): MediumSetting

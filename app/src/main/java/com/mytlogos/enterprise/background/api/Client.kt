@@ -3,6 +3,7 @@ package com.mytlogos.enterprise.background.api
 import com.google.gson.GsonBuilder
 import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
 import com.mytlogos.enterprise.background.api.model.*
+import com.mytlogos.enterprise.tools.SingletonHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -19,55 +20,56 @@ typealias BuildCall<T, R> = (apiImpl: T, url: String) -> R
 typealias QuerySuspend<T, R> = suspend (apiImpl: T, url: String) -> Response<R>
 
 class Client(private val identificator: NetworkIdentificator) {
-    companion object {
-        private val retrofitMap: MutableMap<Class<*>, Retrofit?> = HashMap()
-        private val fullClassPathMap: MutableMap<Class<*>?, String> = HashMap()
-        private fun buildPathMap() {
-            val parentClassMap: MutableMap<Class<*>, Class<*>> = HashMap()
-            val classPathMap: MutableMap<Class<*>, String> = HashMap()
+    companion object: SingletonHolder<Client, NetworkIdentificator>(::Client)
 
-            // set up the path pieces between each api
-            classPathMap[BasicApi::class.java] = "api"
-            classPathMap[UserApi::class.java] = "user"
-            classPathMap[ExternalUserApi::class.java] = "externalUser"
-            classPathMap[ListApi::class.java] = "list"
-            classPathMap[ListMediaApi::class.java] = "medium"
-            classPathMap[MediumApi::class.java] = "medium"
-            classPathMap[PartApi::class.java] = "part"
-            classPathMap[EpisodeApi::class.java] = "episode"
-            classPathMap[ProgressApi::class.java] = "progress"
-            parentClassMap[UserApi::class.java] = BasicApi::class.java
-            parentClassMap[ExternalUserApi::class.java] = UserApi::class.java
-            parentClassMap[ListApi::class.java] = UserApi::class.java
-            parentClassMap[ListMediaApi::class.java] = ListApi::class.java
-            parentClassMap[MediumApi::class.java] = UserApi::class.java
-            parentClassMap[PartApi::class.java] = MediumApi::class.java
-            parentClassMap[EpisodeApi::class.java] = PartApi::class.java
-            parentClassMap[ProgressApi::class.java] = MediumApi::class.java
+    private val retrofitMap: MutableMap<Class<*>, Retrofit?> = HashMap()
+    private val fullClassPathMap: MutableMap<Class<*>?, String> = HashMap()
 
-            for (apiClass in classPathMap.keys) {
-                val builder = StringBuilder()
-                var parent: Class<*>? = apiClass
+    private fun buildPathMap() {
+        val parentClassMap: MutableMap<Class<*>, Class<*>> = HashMap()
+        val classPathMap: MutableMap<Class<*>, String> = HashMap()
 
-                while (parent != null) {
-                    val pathPiece = classPathMap[parent]
-                    if (parent != apiClass) {
-                        builder.insert(0, "/")
-                    }
-                    if (pathPiece == null) {
-                        val canonicalName = apiClass.canonicalName
-                        throw IllegalStateException("Api has no path piece: $canonicalName")
-                    }
-                    builder.insert(0, pathPiece)
-                    parent = parentClassMap[parent]
+        // set up the path pieces between each api
+        classPathMap[BasicApi::class.java] = "api"
+        classPathMap[UserApi::class.java] = "user"
+        classPathMap[ExternalUserApi::class.java] = "externalUser"
+        classPathMap[ListApi::class.java] = "list"
+        classPathMap[ListMediaApi::class.java] = "medium"
+        classPathMap[MediumApi::class.java] = "medium"
+        classPathMap[PartApi::class.java] = "part"
+        classPathMap[EpisodeApi::class.java] = "episode"
+        classPathMap[ProgressApi::class.java] = "progress"
+        parentClassMap[UserApi::class.java] = BasicApi::class.java
+        parentClassMap[ExternalUserApi::class.java] = UserApi::class.java
+        parentClassMap[ListApi::class.java] = UserApi::class.java
+        parentClassMap[ListMediaApi::class.java] = ListApi::class.java
+        parentClassMap[MediumApi::class.java] = UserApi::class.java
+        parentClassMap[PartApi::class.java] = MediumApi::class.java
+        parentClassMap[EpisodeApi::class.java] = PartApi::class.java
+        parentClassMap[ProgressApi::class.java] = MediumApi::class.java
+
+        for (apiClass in classPathMap.keys) {
+            val builder = StringBuilder()
+            var parent: Class<*>? = apiClass
+
+            while (parent != null) {
+                val pathPiece = classPathMap[parent]
+                if (parent != apiClass) {
+                    builder.insert(0, "/")
                 }
-                fullClassPathMap[apiClass] = builder.toString()
+                if (pathPiece == null) {
+                    val canonicalName = apiClass.canonicalName
+                    throw IllegalStateException("Api has no path piece: $canonicalName")
+                }
+                builder.insert(0, pathPiece)
+                parent = parentClassMap[parent]
             }
+            fullClassPathMap[apiClass] = builder.toString()
         }
+    }
 
-        init {
-            buildPathMap()
-        }
+    init {
+        buildPathMap()
     }
 
     private var authentication: Authentication? = null

@@ -74,15 +74,6 @@ interface Repository {
     ): CompletableFuture<String>
 
     fun updateToDownload(add: Boolean, toDownload: ToDownload)
-    fun getAllMedia(
-        sortings: Sortings,
-        title: String?,
-        medium: Int,
-        author: String?,
-        lastUpdate: DateTime?,
-        minCountEpisodes: Int,
-        minCountReadEpisodes: Int
-    ): LiveData<PagedList<MediumItem>>
 
     fun getMediumSettings(mediumId: Int): LiveData<MediumSetting>
     fun updateMedium(mediumSettings: MediumSetting): CompletableFuture<String>

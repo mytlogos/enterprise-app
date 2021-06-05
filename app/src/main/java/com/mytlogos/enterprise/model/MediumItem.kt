@@ -1,8 +1,9 @@
 package com.mytlogos.enterprise.model
 
+import com.mytlogos.enterprise.tools.Selectable
 import org.joda.time.DateTime
 
-class MediumItem(
+data class MediumItem(
     override val title: String,
     override val mediumId: Int,
     override val author: String,
@@ -19,4 +20,9 @@ class MediumItem(
     val currentReadEpisode: Int,
     val lastEpisode: Int,
     val lastUpdated: DateTime?
-) : Medium
+) : Medium, Selectable {
+
+    override fun getSelectionKey(): Long {
+        return mediumId.toLong()
+    }
+}

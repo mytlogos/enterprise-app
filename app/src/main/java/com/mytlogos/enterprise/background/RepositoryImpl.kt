@@ -322,26 +322,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         storage.updateToDownload(add, toDownload)
     }
 
-    override fun getAllMedia(
-        sortings: Sortings,
-        title: String?,
-        medium: Int,
-        author: String?,
-        lastUpdate: DateTime?,
-        minCountEpisodes: Int,
-        minCountReadEpisodes: Int
-    ): LiveData<PagedList<MediumItem>> {
-        return storage.getAllMedia(
-            sortings,
-            title,
-            medium,
-            author,
-            lastUpdate,
-            minCountEpisodes,
-            minCountReadEpisodes
-        )
-    }
-
     override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
         return storage.getMediumSettings(mediumId)
     }

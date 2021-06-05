@@ -10,7 +10,7 @@ import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.ui.ActionCount
 import java.io.IOException
 
-class TocEpisodeViewModel(application: Application?) : FilterableViewModel(application),
+class TocEpisodeViewModel(application: Application) : FilterableViewModel(application),
     SortableViewModel {
     private val sortFilterLiveData = MutableLiveData<SortFilter>()
     private var repositoryToc: LiveData<PagedList<TocEpisode>>? = null

@@ -264,16 +264,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
     }
 
-    override fun getAllMedia(sortings: Sortings, title: String?, medium: Int, author: String?, lastUpdate: DateTime?, minCountEpisodes: Int, minCountReadEpisodes: Int): LiveData<PagedList<MediumItem>> {
-        var sortValue = sortings.sortValue
-        return if (sortValue > 0) {
-            LivePagedListBuilder(mediumDao.getAllAsc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build()
-        } else {
-            sortValue = -sortValue
-            LivePagedListBuilder(mediumDao.getAllDesc(sortValue, title, medium, author, lastUpdate, minCountEpisodes, minCountReadEpisodes), 50).build()
-        }
-    }
-
     override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
         return mediumDao.getMediumSettings(mediumId)
     }

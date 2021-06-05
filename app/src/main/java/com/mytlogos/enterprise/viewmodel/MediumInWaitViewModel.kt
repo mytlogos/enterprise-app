@@ -9,7 +9,7 @@ import com.mytlogos.enterprise.model.MediumInWait
 import com.mytlogos.enterprise.model.SimpleMedium
 import java.util.concurrent.CompletableFuture
 
-class MediumInWaitViewModel(application: Application?) : FilterableViewModel(application) {
+class MediumInWaitViewModel(application: Application) : FilterableViewModel(application) {
     private val mediumTitleFilterLiveData = MutableLiveData<String?>()
     private val mediumInWaitTitleFilterLiveData = MutableLiveData<String?>()
     private val listNameFilterLiveData = MutableLiveData<String?>()
