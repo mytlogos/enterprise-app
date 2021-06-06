@@ -18,17 +18,20 @@ import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.model.Toc
 import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.ExecutionException
-import java.util.function.Consumer
 import java.util.stream.Collectors
 
+@Suppress("BlockingMethodInNonBlockingContext")
 class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
-    Worker(context, workerParams) {
-    private var notificationManager: NotificationManagerCompat? = null
-    private var builder: NotificationCompat.Builder? = null
+    CoroutineWorker(context, workerParams) {
+    private lateinit var notificationManager: NotificationManagerCompat
+    private lateinit var builder: NotificationCompat.Builder
     private val syncNotificationId = 0x200
     private var mediaAddedOrUpdated = 0
     private var partAddedOrUpdated = 0
@@ -41,38 +44,32 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     private var mediaInWaitAddedOrUpdated = 0
     private var totalAddedOrUpdated = 0
 
-    override fun doWork(): Result {
+    override suspend fun doWork(): Result {
         if (this.applicationContext !is Application) {
             println("Context not instance of Application")
             return Result.failure()
         }
         val application = this.applicationContext as Application
         UserPreferences.init(application)
+
         try {
             val repository = getInstance(application)
+
             if (!repository.isClientAuthenticated) {
                 cleanUp()
                 return Result.retry()
             }
             notificationManager = NotificationManagerCompat.from(this.applicationContext)
             builder = NotificationCompat.Builder(this.applicationContext, CHANNEL_ID)
-            builder!!
+            builder
                 .setContentTitle("Start Synchronizing")
                 .setSmallIcon(R.mipmap.ic_launcher).priority = NotificationCompat.PRIORITY_DEFAULT
-            notificationManager!!.notify(syncNotificationId, builder!!.build())
-            //            if (syncWithInvalidation(repository)) return this.stopSynchronize();
+            notificationManager.notify(syncNotificationId, builder.build())
+
             syncWithTime(repository)
-            val builder = StringBuilder("Added or Updated:\n")
-            append(builder, "Media: ", mediaAddedOrUpdated)
-            append(builder, "Parts: ", partAddedOrUpdated)
-            append(builder, "Episodes: ", episodesAddedOrUpdated)
-            append(builder, "Releases: ", releasesAddedOrUpdated)
-            append(builder, "MediaLists: ", listsAddedOrUpdated)
-            append(builder, "ExternalUser: ", externalUserAddedOrUpdated)
-            append(builder, "ExternalLists: ", externalListAddedOrUpdated)
-            append(builder, "News: ", newsAddedOrUpdated)
-            append(builder, "MediaInWait: ", mediaInWaitAddedOrUpdated)
-            notify("Synchronization complete", builder.toString(), totalAddedOrUpdated, true)
+
+            notifyFinish("Synchronization complete", totalAddedOrUpdated)
+
         } catch (e: Exception) {
             val contentText: String = when (e) {
                 is IOException -> {
@@ -93,17 +90,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                 }
             }
             e.printStackTrace()
-            val builder = StringBuilder("Added or Updated:\n")
-            append(builder, "Media: ", mediaAddedOrUpdated)
-            append(builder, "Parts: ", partAddedOrUpdated)
-            append(builder, "Episodes: ", episodesAddedOrUpdated)
-            append(builder, "Releases: ", releasesAddedOrUpdated)
-            append(builder, "MediaLists: ", listsAddedOrUpdated)
-            append(builder, "ExternalUser: ", externalUserAddedOrUpdated)
-            append(builder, "ExternalLists: ", externalListAddedOrUpdated)
-            append(builder, "News: ", newsAddedOrUpdated)
-            append(builder, "MediaInWait: ", mediaInWaitAddedOrUpdated)
-            notify(contentText, builder.toString(), 0, true)
+            notifyFinish(contentText, 0)
             cleanUp()
             return Result.failure()
         }
@@ -111,45 +98,60 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         return Result.success()
     }
 
-    private fun notify(title: String, contentText: String, finished: Int, changeContent: Boolean) {
-        this.notify(title, contentText, changeContent, finished, finished)
+    private fun notifyFinish(contentText: String, finished: Int) {
+        val builder = StringBuilder("Added or Updated:\n")
+        append(builder, "Media: ", mediaAddedOrUpdated)
+        append(builder, "Parts: ", partAddedOrUpdated)
+        append(builder, "Episodes: ", episodesAddedOrUpdated)
+        append(builder, "Releases: ", releasesAddedOrUpdated)
+        append(builder, "MediaLists: ", listsAddedOrUpdated)
+        append(builder, "ExternalUser: ", externalUserAddedOrUpdated)
+        append(builder, "ExternalLists: ", externalListAddedOrUpdated)
+        append(builder, "News: ", newsAddedOrUpdated)
+        append(builder, "MediaInWait: ", mediaInWaitAddedOrUpdated)
+        notify(contentText, builder.toString(), finished)
     }
 
     private fun notify(
+        title: String,
+        contentText: String,
+        finished: Int,
+        changeContent: Boolean = true,
+    ) {
+        this.notifyProgress(title, contentText, changeContent, finished, finished)
+    }
+
+    private fun notifyProgress(
         title: String,
         contentText: String?,
         changeContent: Boolean,
         current: Int,
-        total: Int
+        total: Int,
     ) {
-        builder!!
+        builder
             .setContentTitle(title)
             .setProgress(total, current, false)
         if (changeContent) {
-            builder!!.setContentText(contentText)
+            builder.setContentText(contentText)
         }
-        notificationManager!!.notify(syncNotificationId, builder!!.build())
+        notificationManager.notify(syncNotificationId, builder.build())
     }
 
-    private fun notify(
-        title: String,
-        contentText: String?,
-        indeterminate: Boolean,
-        changeContent: Boolean
-    ) {
-        builder!!
+    private fun notifyIndeterminate(title: String, removeContent: Boolean) {
+        builder
             .setContentTitle(title)
-            .setProgress(0, 0, indeterminate)
-        if (changeContent) {
-            builder!!.setContentText(contentText)
+            .setProgress(0, 0, true)
+
+        if (removeContent) {
+            builder.setContentText(null)
         }
-        notificationManager!!.notify(syncNotificationId, builder!!.build())
+        notificationManager.notify(syncNotificationId, builder.build())
     }
 
     @Throws(IOException::class)
-    private fun syncWithTime(repository: Repository): Boolean {
-        val client = repository.getClient(this)
-        val persister = repository.getPersister(this)
+    private suspend fun syncWithTime(repository: Repository): Boolean {
+        val client = repository.getClient()
+        val persister = repository.getPersister()
         val lastSync = UserPreferences.lastSync
         syncChanged(lastSync, client, persister, repository)
         UserPreferences.lastSync = DateTime.now()
@@ -158,7 +160,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     }
 
     private fun <T> mapStringToInt(map: Map<String, T>): MutableMap<Int, T> {
-        @SuppressLint("UseSparseArrays") val result: MutableMap<Int, T> = HashMap()
+        val result: MutableMap<Int, T> = HashMap()
         for ((key, value) in map) {
             result[key.toInt()] = value
         }
@@ -166,13 +168,13 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     }
 
     @Throws(IOException::class)
-    private fun syncChanged(
+    private suspend fun syncChanged(
         lastSync: DateTime,
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
-        this.notify("Requesting New Data", null, indeterminate = true, changeContent = true)
+        this.notifyIndeterminate("Requesting New Data", removeContent = true)
         val changedEntitiesResponse = client.getNew(lastSync)
         val changedEntities = Utils.checkAndGetBody(changedEntitiesResponse)
         mediaAddedOrUpdated = changedEntities.media.size
@@ -207,45 +209,45 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         append(builder, "News: ", newsSize)
         append(builder, "MediaInWait: ", mediaInWaitSize)
         var current = 0
-        this.notify("Received New Data", builder.toString(), true, current, total)
-        this.notify("Persisting Media", null, false, current, total)
+        this.notifyProgress("Received New Data", builder.toString(), true, current, total)
+        this.notifyProgress("Persisting Media", null, false, current, total)
         // persist all new or updated entities, media to releases needs to be in this order
         persister.persistMedia(changedEntities.media)
         current += mediaSize
         changedEntities.media.clear()
-        this.notify("Persisting Parts", null, false, current, total)
+        this.notifyProgress("Persisting Parts", null, false, current, total)
         persistPartsPure(changedEntities.parts, client, persister, repository)
         current += partsSize
         changedEntities.parts.clear()
-        this.notify("Persisting Episodes", null, false, current, total)
+        this.notifyProgress("Persisting Episodes", null, false, current, total)
         persistEpisodesPure(changedEntities.episodes, client, persister, repository)
         current += episodesSize
         changedEntities.episodes.clear()
-        this.notify("Persisting Releases", null, false, current, total)
+        this.notifyProgress("Persisting Releases", null, false, current, total)
         persistReleases(changedEntities.releases, client, persister, repository)
         current += releasesSize
         changedEntities.releases.clear()
-        this.notify("Persisting Lists", null, false, current, total)
+        this.notifyProgress("Persisting Lists", null, false, current, total)
         persister.persistUserLists(changedEntities.lists)
         current += listsSize
         changedEntities.lists.clear()
-        this.notify("Persisting ExternalUser", null, false, current, total)
+        this.notifyProgress("Persisting ExternalUser", null, false, current, total)
         persister.persistExternalUsersPure(changedEntities.extUser)
         current += extUserSize
         changedEntities.extUser.clear()
-        this.notify("Persisting External Lists", null, false, current, total)
+        this.notifyProgress("Persisting External Lists", null, false, current, total)
         persistExternalListsPure(changedEntities.extLists, client, persister, repository)
         current += extListSize
         changedEntities.extLists.clear()
-        this.notify("Persisting unused Media", null, false, current, total)
+        this.notifyProgress("Persisting unused Media", null, false, current, total)
         persister.persistMediaInWait(changedEntities.mediaInWait)
         current += mediaInWaitSize
         changedEntities.media.clear()
-        this.notify("Persisting News", null, false, current, total)
+        this.notifyProgress("Persisting News", null, false, current, total)
         persister.persistNews(changedEntities.news)
         current += newsSize
         changedEntities.news.clear()
-        this.notify("Saved all Changes", null, false, current, total)
+        this.notifyProgress("Saved all Changes", null, false, current, total)
     }
 
     private fun append(builder: StringBuilder, prefix: String, i: Int) {
@@ -255,11 +257,11 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     }
 
     @Throws(IOException::class)
-    private fun persistParts(
+    private suspend fun persistParts(
         parts: MutableList<ClientPart>,
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
         val missingIds: MutableCollection<Int> = HashSet()
         val loadingParts: MutableCollection<ClientPart> = HashSet()
@@ -275,26 +277,27 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         if (missingIds.isEmpty()) {
             return
         }
-        Utils.doPartitionedRethrow(missingIds) { ids: List<Int> ->
-            val parents = Utils.checkAndGetBody(client.getMedia(ids))
-                ?: throw NullPointerException("missing Media")
-            val simpleMedia = parents.stream().map { medium: ClientMedium? ->
-                ClientSimpleMedium(
-                    medium!!
-                )
-            }.collect(Collectors.toList())
-            persister.persistMedia(simpleMedia)
-            false
+        coroutineScope {
+            Utils.doPartitionedRethrowSuspend(missingIds) { ids: List<Int> ->
+                async {
+                    val parents = Utils.checkAndGetBody(client.getMedia(ids))
+                    val simpleMedia = parents.map { medium: ClientMedium ->
+                        ClientSimpleMedium(medium)
+                    }
+                    persister.persistMedia(simpleMedia)
+                    false
+                }
+            }
         }
         persister.persistParts(loadingParts)
     }
 
     @Throws(IOException::class)
-    private fun persistPartsPure(
+    private suspend fun persistPartsPure(
         parts: List<ClientPartPure>,
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
         val unPureParts = parts
             .stream()
@@ -313,11 +316,11 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     }
 
     @Throws(IOException::class)
-    private fun persistEpisodes(
+    private suspend fun persistEpisodes(
         episodes: MutableList<ClientEpisode>,
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
         val missingIds: MutableCollection<Int> = HashSet()
         val loading: MutableCollection<ClientEpisode> = HashSet()
@@ -333,21 +336,24 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         if (missingIds.isEmpty()) {
             return
         }
-        Utils.doPartitionedRethrow(missingIds) { ids: List<Int> ->
-            val parents = Utils.checkAndGetBody(client.getParts(ids))
-                ?: throw NullPointerException("missing Parts")
-            persistParts(parents, client, persister, repository)
-            false
+        coroutineScope {
+            Utils.doPartitionedRethrowSuspend(missingIds) { ids: List<Int> ->
+                async {
+                    val parents = Utils.checkAndGetBody(client.getParts(ids))
+                    persistParts(parents, client, persister, repository)
+                    false
+                }
+            }
         }
         persister.persistEpisodes(loading)
     }
 
     @Throws(IOException::class)
-    private fun persistEpisodesPure(
+    private suspend fun persistEpisodesPure(
         episodes: List<ClientEpisodePure>,
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
         val unPure = episodes
             .stream()
@@ -368,11 +374,11 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     }
 
     @Throws(IOException::class)
-    private fun persistReleases(
+    private suspend fun persistReleases(
         releases: MutableCollection<ClientRelease>,
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
         val missingIds: MutableCollection<Int> = HashSet()
         val loading: MutableCollection<ClientRelease> = HashSet()
@@ -388,11 +394,14 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         if (missingIds.isEmpty()) {
             return
         }
-        Utils.doPartitionedRethrow(missingIds) { ids: List<Int> ->
-            val parents = Utils.checkAndGetBody(client.getEpisodes(ids))
-                ?: throw NullPointerException("missing Episodes")
-            persistEpisodes(parents, client, persister, repository)
-            false
+        coroutineScope {
+            Utils.doPartitionedRethrowSuspend(missingIds) { ids: List<Int> ->
+                async {
+                    val parents = Utils.checkAndGetBody(client.getEpisodes(ids))
+                    persistEpisodes(parents, client, persister, repository)
+                    false
+                }
+            }
         }
         persister.persistReleases(loading)
     }
@@ -402,7 +411,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         externalMediaLists: MutableList<ClientExternalMediaList>,
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
         val missingIds: MutableCollection<String> = HashSet()
         val loading: MutableCollection<ClientExternalMediaList> = HashSet()
@@ -420,7 +429,6 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         }
         Utils.doPartitionedRethrow(missingIds) { ids: List<String> ->
             val parents = Utils.checkAndGetBody(client.getExternalUser(ids))
-                ?: throw NullPointerException("missing ExternalUser")
             persister.persistExternalUsers(parents)
             false
         }
@@ -432,7 +440,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         externalMediaLists: List<ClientExternalMediaListPure>,
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
         val unPure = externalMediaLists
             .stream()
@@ -450,44 +458,50 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     }
 
     @Throws(IOException::class)
-    private fun syncDeleted(
+    private suspend fun syncDeleted(
         client: Client,
         persister: ClientModelPersister,
-        repository: Repository
+        repository: Repository,
     ) {
-        notify("Synchronize Deleted Items", null, indeterminate = true, changeContent = false)
+        notifyIndeterminate("Synchronize Deleted Items", removeContent = false)
+
         val statBody = Utils.checkAndGetBody(client.stats)
         val parsedStat = statBody.parse()
         persister.persist(parsedStat)
         var reloadStat = repository.checkReload(parsedStat)
+
         if (!reloadStat.loadMedium.isEmpty()) {
             val media = Utils.checkAndGetBody(client.getMedia(reloadStat.loadMedium))
-            val simpleMedia = media.stream().map { medium: ClientMedium? ->
-                ClientSimpleMedium(
-                    medium!!
-                )
-            }.collect(Collectors.toList())
+            val simpleMedia = media.map { medium: ClientMedium ->
+                ClientSimpleMedium(medium)
+            }
             persister.persistMedia(simpleMedia)
             reloadStat = repository.checkReload(parsedStat)
         }
+
         if (!reloadStat.loadExUser.isEmpty()) {
             val users = Utils.checkAndGetBody(client.getExternalUser(reloadStat.loadExUser))
             persister.persistExternalUsers(users)
             reloadStat = repository.checkReload(parsedStat)
         }
+
         if (!reloadStat.loadLists.isEmpty()) {
             val listQuery = Utils.checkAndGetBody(client.getLists(reloadStat.loadLists))
             persister.persist(listQuery)
             reloadStat = repository.checkReload(parsedStat)
         }
+
         if (!reloadStat.loadPart.isEmpty()) {
             Utils.doPartitionedRethrow(reloadStat.loadPart) { partIds: List<Int> ->
-                val parts = Utils.checkAndGetBody(client.getParts(partIds))
-                persister.persistParts(parts)
+                runBlocking {
+                    val parts = Utils.checkAndGetBody(client.getParts(partIds))
+                    persister.persistParts(parts)
+                }
                 false
             }
             reloadStat = repository.checkReload(parsedStat)
         }
+
         if (!reloadStat.loadPartEpisodes.isEmpty()) {
             val partStringEpisodes =
                 Utils.checkAndGetBody(client.getPartEpisodes(reloadStat.loadPartEpisodes))
@@ -512,7 +526,8 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             Utils.doPartitionedRethrow(partEpisodes.keys) { ids: List<Int> ->
                 val currentEpisodes: MutableMap<Int, List<Int>> = HashMap()
                 for (id in ids) {
-                    currentEpisodes[id] = partEpisodes[id] ?: throw IllegalStateException("Expected List not found")
+                    currentEpisodes[id] =
+                        partEpisodes[id] ?: throw IllegalStateException("Expected List not found")
                 }
                 persister.deleteLeftoverEpisodes(currentEpisodes)
                 false
@@ -540,11 +555,15 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             }
             val episodesToLoad: Collection<Int> = persister.deleteLeftoverReleases(partReleases)
             if (!episodesToLoad.isEmpty()) {
-                Utils.doPartitionedRethrow(episodesToLoad) { ids: List<Int> ->
-                    val episodes =
-                        Utils.checkAndGetBody(client.getEpisodes(ids))
-                    persistEpisodes(episodes, client, persister, repository)
-                    false
+                coroutineScope {
+                    Utils.doPartitionedRethrowSuspend(episodesToLoad) { ids: List<Int> ->
+                        async {
+                            val episodes =
+                                Utils.checkAndGetBody(client.getEpisodes(ids))
+                            persistEpisodes(episodes, client, persister, repository)
+                            false
+                        }
+                    }
                 }
             }
             reloadStat = repository.checkReload(parsedStat)
@@ -575,13 +594,18 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             val partsToLoad: MutableCollection<Int> = HashSet()
             partsToLoad.addAll(reloadStat.loadPartEpisodes)
             partsToLoad.addAll(reloadStat.loadPartReleases)
-            Utils.doPartitionedRethrow(partsToLoad) { ids: List<Int> ->
-                val parts = Utils.checkAndGetBody(client.getParts(ids))
-                persistParts(parts, client, persister, repository)
-                false
+            coroutineScope {
+                Utils.doPartitionedRethrowSuspend(partsToLoad) { ids: List<Int> ->
+                    async {
+                        val parts = Utils.checkAndGetBody(client.getParts(ids))
+                        persistParts(parts, client, persister, repository)
+                        false
+                    }
+                }
             }
             reloadStat = repository.checkReload(parsedStat)
         }
+
         if (!reloadStat.loadPartEpisodes.isEmpty()) {
             @SuppressLint("DefaultLocale") val msg = String.format(
                 "Episodes of %d Parts to load even after running once",
@@ -590,6 +614,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             println(msg)
             Log.e("Repository", msg)
         }
+
         if (!reloadStat.loadPartReleases.isEmpty()) {
             @SuppressLint("DefaultLocale") val msg = String.format(
                 "Releases of %d Parts to load even after running once",
@@ -618,9 +643,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         } catch (e: InterruptedException) {
             e.printStackTrace()
         }
-        if (notificationManager != null) {
-            notificationManager!!.cancel(syncNotificationId)
-        }
+        notificationManager.cancel(syncNotificationId)
         uuid = null
     }
 
@@ -647,12 +670,12 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         }
 
         fun isRunning(application: Application): Boolean {
-            if (uuid == null) {
-                return false
-            }
+            val uuid = this.uuid ?: return false
+
             val infoFuture = WorkManager.getInstance(
                 application
-            ).getWorkInfoById(uuid!!)
+            ).getWorkInfoById(uuid)
+
             try {
                 return infoFuture.get()?.state == WorkInfo.State.RUNNING
             } catch (e: ExecutionException) {

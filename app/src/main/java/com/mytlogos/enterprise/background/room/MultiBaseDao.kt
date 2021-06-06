@@ -7,11 +7,11 @@ import androidx.room.Update
 
 interface MultiBaseDao<T> : BaseDao<T> {
     @Update
-    fun updateBulk(collection: Collection<T>)
+    suspend fun updateBulk(collection: Collection<T>)
 
     @Delete
-    fun deleteBulk(collection: Collection<T>)
+    suspend fun deleteBulk(collection: Collection<T>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertBulk(collection: Collection<T>)
+    suspend fun insertBulk(collection: Collection<T>)
 }

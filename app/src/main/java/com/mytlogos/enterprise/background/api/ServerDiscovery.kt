@@ -2,6 +2,8 @@ package com.mytlogos.enterprise.background.api
 
 import com.google.gson.GsonBuilder
 import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.joda.time.DateTime
 import retrofit2.Retrofit
@@ -17,7 +19,8 @@ import java.util.concurrent.*
 internal class ServerDiscovery {
     private val maxAddress = 50
     private val executor = Executors.newFixedThreadPool(maxAddress)
-    fun discover(broadcastAddress: InetAddress?): Server? {
+
+    suspend fun discover(broadcastAddress: InetAddress?): Server? = withContext(Dispatchers.IO) {
         val discoveredServer = Collections.synchronizedSet(HashSet<Server>())
         val futures: MutableList<CompletableFuture<Server?>> = ArrayList()
         for (i in 1 until maxAddress) {
@@ -25,7 +28,9 @@ internal class ServerDiscovery {
             // as localhost udp server cannot seem to receive upd packets send from emulator
             futures.add(CompletableFuture.supplyAsync({ discoverLocalNetworkServerPerTcp(i) }, executor))
         }
+
         var server: Server? = null
+
         try {
             val future = CompletableFuture.runAsync { discoverLocalNetworkServerPerUdp(broadcastAddress, discoveredServer) }
             try {
@@ -57,7 +62,7 @@ internal class ServerDiscovery {
             e.printStackTrace()
         }
         executor.shutdownNow()
-        return server
+        return@withContext server
     }
 
     private fun discoverLocalNetworkServerPerTcp(local: Int): Server? {

@@ -67,7 +67,7 @@ open class BaseFragment : Fragment() {
     }
 
     fun checkEmptyList(list: List<*>?, root: View, listView: View?): Boolean {
-        val textView = root.findViewById<TextView>(R.id.empty_view)
+        val textView: TextView = root.findViewById(R.id.empty_view)
 
         // TODO: 22.07.2019 this one not seem to work
         //  it doesn't throw an error, but also does not display any text if empty

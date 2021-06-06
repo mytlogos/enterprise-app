@@ -10,26 +10,26 @@ import com.mytlogos.enterprise.background.room.model.RoomPartEpisode
 @Dao
 interface DataStructureDao {
     @Query("SELECT partId FROM RoomMediumPart WHERE mediumId=:mediumId")
-    fun getPartJoin(mediumId: Int): List<Int>
+    suspend fun getPartJoin(mediumId: Int): List<Int>
 
     @Insert
-    fun addPartJoin(mediumParts: Collection<RoomMediumPart>)
+    suspend fun addPartJoin(mediumParts: Collection<RoomMediumPart>)
 
     @Delete
-    fun deletePartJoin(mediumParts: Collection<RoomMediumPart>)
+    suspend fun deletePartJoin(mediumParts: Collection<RoomMediumPart>)
 
     @Query("DELETE FROM RoomMediumPart WHERE mediumId=:mediumId")
-    fun clearPartJoin(mediumId: Int)
+    suspend fun clearPartJoin(mediumId: Int)
 
     @Query("SELECT episodeId FROM RoomPartEpisode WHERE partId=:partId")
-    fun getEpisodeJoin(partId: Int): List<Int>
+    suspend fun getEpisodeJoin(partId: Int): List<Int>
 
     @Query("DELETE FROM RoomPartEpisode WHERE partId=:partId")
-    fun clearEpisodeJoin(partId: Int)
+    suspend fun clearEpisodeJoin(partId: Int)
 
     @Insert
-    fun addEpisodeJoin(partEpisodes: Collection<RoomPartEpisode>)
+    suspend fun addEpisodeJoin(partEpisodes: Collection<RoomPartEpisode>)
 
     @Delete
-    fun deleteEpisodeJoin(partEpisodes: Collection<RoomPartEpisode>)
+    suspend fun deleteEpisodeJoin(partEpisodes: Collection<RoomPartEpisode>)
 }

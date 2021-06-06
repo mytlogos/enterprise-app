@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -39,18 +40,18 @@ class Home : BaseFragment() {
                 }
             })
         val viewModel = ViewModelProvider(this).get(UserViewModel::class.java)
-        val unreadChapter = view.findViewById<TextView>(R.id.unread_chapter)
-        val unreadNews = view.findViewById<TextView>(R.id.unread_news)
-        val readToday = view.findViewById<TextView>(R.id.read_today)
-        val readTotal = view.findViewById<TextView>(R.id.read_total)
-        val internalLists = view.findViewById<TextView>(R.id.internal_lists)
-        val externalLists = view.findViewById<TextView>(R.id.external_lists)
-        val audioMedia = view.findViewById<TextView>(R.id.audio_medium)
-        val videoMedia = view.findViewById<TextView>(R.id.video_medium)
-        val textMedia = view.findViewById<TextView>(R.id.text_medium)
-        val imageMedia = view.findViewById<TextView>(R.id.image_medium)
-        val unusedMedia = view.findViewById<TextView>(R.id.unused_media)
-        val externalUser = view.findViewById<TextView>(R.id.external_user_count)
+        val unreadChapter = view.findViewById(R.id.unread_chapter) as TextView
+        val unreadNews = view.findViewById(R.id.unread_news) as TextView
+        val readToday = view.findViewById(R.id.read_today) as TextView
+        val readTotal = view.findViewById(R.id.read_total) as TextView
+        val internalLists = view.findViewById(R.id.internal_lists) as TextView
+        val externalLists = view.findViewById(R.id.external_lists) as TextView
+        val audioMedia = view.findViewById(R.id.audio_medium) as TextView
+        val videoMedia = view.findViewById(R.id.video_medium) as TextView
+        val textMedia = view.findViewById(R.id.text_medium) as TextView
+        val imageMedia = view.findViewById(R.id.image_medium) as TextView
+        val unusedMedia = view.findViewById(R.id.unused_media) as TextView
+        val externalUser = view.findViewById(R.id.external_user_count) as TextView
         viewModel.homeStatsLiveData.observe(viewLifecycleOwner, { user: HomeStats? ->
             if (user != null && user.name.isNotEmpty()) {
                 val name = user.name
@@ -77,7 +78,7 @@ class Home : BaseFragment() {
     }
 
     private fun addClickListener(view: View, viewId: Int, activityClass: Class<*>) {
-        val group = view.findViewById<View>(viewId)
+        val group: View = view.findViewById(viewId)
         group.setOnClickListener { v: View? ->
             val activity = mainActivity
             val intent = Intent(activity, activityClass)
@@ -86,7 +87,7 @@ class Home : BaseFragment() {
     }
 
     private fun addClickListener(view: View, viewId: Int, listener: ClickListener) {
-        val group = view.findViewById<View>(viewId)
+        val group: View = view.findViewById(viewId)
         group.setOnClickListener {
             val activity = mainActivity
             listener.onClick(activity)
@@ -94,7 +95,7 @@ class Home : BaseFragment() {
     }
 
     private fun addClickListener(view: View, viewId: Int, fragment: Fragment) {
-        val group = view.findViewById<View>(viewId)
+        val group: View = view.findViewById(viewId)
         group.setOnClickListener {
             val activity = mainActivity
             activity.switchWindow(fragment, true)

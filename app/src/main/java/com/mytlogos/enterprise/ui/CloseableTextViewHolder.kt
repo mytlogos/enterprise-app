@@ -11,8 +11,8 @@ internal class CloseableTextViewHolder(view: View, adapter: FlexibleAdapter<*>) 
     var textView: TextView
 
     init {
-        textView = view.findViewById(R.id.text)
-        val closeButton = view.findViewById<View>(R.id.close)
+        textView = view.findViewById(R.id.text) as TextView
+        val closeButton: View = view.findViewById(R.id.close)
         closeButton.setOnClickListener { v: View? -> adapter.removeItem(this.flexibleAdapterPosition) }
     }
 }

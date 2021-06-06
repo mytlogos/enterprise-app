@@ -9,19 +9,13 @@ import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.selection.SelectionPredicates
-import androidx.recyclerview.selection.SelectionTracker
-import androidx.recyclerview.selection.StorageStrategy
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.TimeAgo
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.requireSupportActionBar
-import com.mytlogos.enterprise.tools.DetailsLookup
-import com.mytlogos.enterprise.tools.SimpleItemKeyProvider
 import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.createSelectNothing
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
 import com.mytlogos.enterprise.viewmodel.MediumViewModel
 import eu.davidea.flexibleadapter.FlexibleAdapter
@@ -36,8 +30,6 @@ import kotlin.math.max
 
 class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
     private var inMoveMediumMode = false
-    private lateinit var selectionTracker: SelectionTracker<Long>
-    private var selectionMode: SelectionMode = SelectionMode.IDLE
 
     private val callback: ActionMode.Callback = object : ActionMode.Callback {
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
@@ -110,46 +102,7 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
         this.setTitle("Media")
-        this.changeSelectionMode(SelectionMode.IDLE)
         return view
-    }
-
-    private enum class SelectionMode {
-        // do not allow any select
-        IDLE,
-
-        // allow only a single select
-        SINGLE,
-
-        // allow multiple selects
-        MULTI
-    }
-
-    private fun changeSelectionMode(mode: SelectionMode) {
-        val predicate = when (mode) {
-            SelectionMode.SINGLE -> SelectionPredicates.createSelectSingleAnything<Long>()
-            SelectionMode.MULTI -> SelectionPredicates.createSelectAnything()
-            SelectionMode.IDLE -> createSelectNothing()
-        }
-        val newTracker = SelectionTracker.Builder(
-            "MediumSelection",
-            listView,
-            SimpleItemKeyProvider(listView),
-            DetailsLookup(listView),
-            StorageStrategy.createLongStorage(),
-        ).withSelectionPredicate(predicate).build()
-
-        // this ensures that only a initialized [selectionTracker] is used
-        if (mode != SelectionMode.IDLE) {
-            newTracker.setItemsSelected(selectionTracker.selection, true)
-        }
-        // update or initialize [selectionTracker]
-        selectionTracker = newTracker
-        selectionMode = mode
-
-        val adapter = getAdapter()
-        (adapter as MediumAdapter).selectionTracker = selectionTracker
-        adapter.notifyDataSetChanged()
     }
 
     private fun onItemLongClick(position: Int) {
@@ -220,8 +173,6 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
 
     private class MediumAdapter :
         BaseAdapter<MediumItem, NewMetaViewHolder>(MediumItemCallback()) {
-
-        lateinit var selectionTracker: SelectionTracker<Long>
 
         @SuppressLint("SetTextI18n")
         override fun onBindViewHolder(holder: NewMetaViewHolder, position: Int) {

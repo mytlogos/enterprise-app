@@ -9,7 +9,7 @@ import com.mytlogos.enterprise.model.ExternalUser
 @Dao
 interface ExternalUserDao : MultiBaseDao<RoomExternalUser> {
     @Query("SELECT uuid FROM RoomExternalUser;")
-    fun loaded(): List<String>
+    suspend fun loaded(): List<String>
 
     @get:Query("SELECT RoomExternalUser.uuid,RoomExternalUser.identifier, RoomExternalUser.type FROM RoomExternalUser")
     val all: DataSource.Factory<Int, ExternalUser>
@@ -18,5 +18,5 @@ interface ExternalUserDao : MultiBaseDao<RoomExternalUser> {
     fun countUser(): LiveData<Int>
 
     @Query("DELETE FROM RoomExternalUser WHERE uuid IN (:uuids)")
-    fun delete(uuids: Collection<String>)
+    suspend fun delete(uuids: Collection<String>)
 }

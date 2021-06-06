@@ -8,6 +8,7 @@ import androidx.paging.PageKeyedDataSource
 import androidx.paging.PagedList
 import com.mytlogos.enterprise.background.api.NotConnectedException
 import com.mytlogos.enterprise.background.api.ServerException
+import kotlinx.coroutines.Deferred
 import retrofit2.Response
 import java.io.IOException
 import java.net.URI
@@ -55,6 +56,32 @@ object Utils {
                 }, 1000
             ).build()
         }
+    }
+
+    @Throws(Exception::class)
+    suspend fun <E : Any> doPartitionedExSuspend(collection: Collection<E>, consumer: (List<E>) -> Deferred<Boolean?>) {
+        val list: List<E> = ArrayList(collection)
+        val steps = 100
+        var minItem = 0
+        var maxItem = minItem + steps
+        do {
+            if (maxItem > list.size) {
+                maxItem = list.size
+            }
+            val subList = list.subList(minItem, maxItem)
+            val retry = consumer(subList).await()
+
+            if (retry == true) {
+                continue
+            } else if (retry == null) {
+                break
+            }
+            minItem += steps
+            maxItem = minItem + steps
+            if (maxItem > list.size) {
+                maxItem = list.size
+            }
+        } while (minItem < list.size && maxItem <= list.size)
     }
 
     @Throws(Exception::class)
@@ -118,6 +145,24 @@ object Utils {
     ) {
         try {
             doPartitionedEx(collection, functionEx)
+        } catch (e: NotConnectedException) {
+            throw NotConnectedException(e)
+        } catch (e: ServerException) {
+            throw ServerException(e)
+        } catch (e: IOException) {
+            throw IOException(e)
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
+    }
+
+    @Throws(IOException::class)
+    suspend fun <T : Any> doPartitionedRethrowSuspend(
+        collection: Collection<T>,
+        functionEx: (List<T>) -> Deferred<Boolean?>,
+    ) {
+        try {
+            doPartitionedExSuspend(collection, functionEx)
         } catch (e: NotConnectedException) {
             throw NotConnectedException(e)
         } catch (e: ServerException) {

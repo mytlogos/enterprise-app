@@ -60,29 +60,29 @@ class MediumSettingFragment : BaseFragment() {
         liveMediumSettings = mediumViewModel!!.getMediumSettings(mediumId)
         liveMediumSettings!!.observe(viewLifecycleOwner,
             { mediumSetting: MediumSetting? -> handleNewMediumSetting(mediumSetting) })
-        openTocButton = view.findViewById(R.id.open_items_button)
-        editName = view.findViewById(R.id.editName)
-        textMedium = view.findViewById(R.id.text_medium)
-        imageMedium = view.findViewById(R.id.image_medium)
-        videoMedium = view.findViewById(R.id.video_medium)
-        audioMedium = view.findViewById(R.id.audio_medium)
-        autoDownload = view.findViewById(R.id.auto_download)
-        series = view.findViewById(R.id.series)
-        universe = view.findViewById(R.id.universe)
-        currentRead = view.findViewById(R.id.currentRead)
-        lastEpisode = view.findViewById(R.id.lastEpisode)
-        lastUpdated = view.findViewById(R.id.lastUpdated)
-        average_release = view.findViewById(R.id.average_release)
-        author = view.findViewById(R.id.author)
-        artist = view.findViewById(R.id.artist)
-        stateTl = view.findViewById(R.id.stateTl)
-        stateOrigin = view.findViewById(R.id.stateOrigin)
-        countryOfOrigin = view.findViewById(R.id.countryOfOrigin)
-        languageOfOrigin = view.findViewById(R.id.languageOfOrigin)
-        lang = view.findViewById(R.id.lang)
-        additionalInfoBox = view.findViewById(R.id.additional_info_box)
+        openTocButton = view.findViewById(R.id.open_items_button) as Button?
+        editName = view.findViewById(R.id.editName) as EditText?
+        textMedium = view.findViewById(R.id.text_medium) as RadioButton?
+        imageMedium = view.findViewById(R.id.image_medium) as RadioButton?
+        videoMedium = view.findViewById(R.id.video_medium) as RadioButton?
+        audioMedium = view.findViewById(R.id.audio_medium) as RadioButton?
+        autoDownload = view.findViewById(R.id.auto_download) as Switch?
+        series = view.findViewById(R.id.series) as TextView?
+        universe = view.findViewById(R.id.universe) as TextView?
+        currentRead = view.findViewById(R.id.currentRead) as TextView?
+        lastEpisode = view.findViewById(R.id.lastEpisode) as TextView?
+        lastUpdated = view.findViewById(R.id.lastUpdated) as TextView?
+        average_release = view.findViewById(R.id.average_release) as TextView?
+        author = view.findViewById(R.id.author) as TextView?
+        artist = view.findViewById(R.id.artist) as TextView?
+        stateTl = view.findViewById(R.id.stateTl) as TextView?
+        stateOrigin = view.findViewById(R.id.stateOrigin) as TextView?
+        countryOfOrigin = view.findViewById(R.id.countryOfOrigin) as TextView?
+        languageOfOrigin = view.findViewById(R.id.languageOfOrigin) as TextView?
+        lang = view.findViewById(R.id.lang) as TextView?
+        additionalInfoBox = view.findViewById(R.id.additional_info_box) as TextView?
         additionalInfoContainer = view.findViewById(R.id.additional_info_container)
-        releaseRateBox = view.findViewById(R.id.release_rate_box)
+        releaseRateBox = view.findViewById(R.id.release_rate_box) as TextView
         checkSupportedMedia()
         openTocButton!!.setOnClickListener {
             if (mediumSettings() == null) {

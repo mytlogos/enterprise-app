@@ -53,11 +53,11 @@ class SpaceViewFragment : BaseFragment() {
     ): View? {
         view =
             inflater.inflate(R.layout.space_view_fragment, container, false) as SwipeRefreshLayout
-        chart = view!!.findViewById(R.id.chart)
-        selectedTitle = view!!.findViewById(R.id.selected_title)
-        title = view!!.findViewById(R.id.title)
-        view!!.findViewById<View>(R.id.container).setOnClickListener { deselectNode() }
-        val previousViewed = view!!.findViewById<Button>(R.id.previous_view)
+        chart = view!!.findViewById(R.id.chart) as PieChartView?
+        selectedTitle = view!!.findViewById(R.id.selected_title) as TextView?
+        title = view!!.findViewById(R.id.title) as TextView?
+        (view!!.findViewById(R.id.container) as View).setOnClickListener { deselectNode() }
+        val previousViewed = view!!.findViewById(R.id.previous_view) as TextView
         previousViewed.setOnClickListener {
             if (viewedNode == null || viewedNode!!.parent == null) {
                 return@setOnClickListener
@@ -71,7 +71,7 @@ class SpaceViewFragment : BaseFragment() {
             previousViewed.text =
                 if (currentNode!!.parent == null) null else currentNode!!.parent!!.name
         }
-        viewSelected = view!!.findViewById(R.id.view_selected)
+        viewSelected = view!!.findViewById(R.id.view_selected) as Button?
         viewSelected!!.setOnClickListener {
             if (selectedNode == null) {
                 return@setOnClickListener
@@ -82,7 +82,7 @@ class SpaceViewFragment : BaseFragment() {
             previousViewed.visibility = View.VISIBLE
             previousViewed.text = currentNode!!.parent!!.name
         }
-        clearBtn = view!!.findViewById(R.id.clear_all_local_btn)
+        clearBtn = view!!.findViewById(R.id.clear_all_local_btn) as Button?
         clearBtn!!.setOnClickListener {
             val node = (if (selectedNode == null) currentNode else selectedNode)
                 ?: return@setOnClickListener

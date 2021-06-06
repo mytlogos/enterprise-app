@@ -10,9 +10,9 @@ internal class MetaViewHolder(
     mView: View,
     adapter: FlexibleAdapter<*>?,
 ) : FlexibleViewHolder(mView, adapter) {
-    val mainText: TextView = mView.findViewById(R.id.content)
-    val topLeftText: TextView = mView.findViewById(R.id.item_top_left)
-    val topRightText: TextView = mView.findViewById(R.id.item_top_right)
+    val mainText: TextView = mView.findViewById(R.id.content) as TextView
+    val topLeftText: TextView = mView.findViewById(R.id.item_top_left) as TextView
+    val topRightText: TextView = mView.findViewById(R.id.item_top_right) as TextView
 
     override fun toString(): String {
         return super.toString() + " '" + mainText.text + "'"

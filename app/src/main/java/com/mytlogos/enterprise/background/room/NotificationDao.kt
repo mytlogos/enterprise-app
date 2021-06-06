@@ -11,5 +11,5 @@ interface NotificationDao : MultiBaseDao<RoomNotification> {
     val notifications: DataSource.Factory<Int, NotificationItem>
 
     @Query("DELETE FROM RoomNotification")
-    fun deleteAll()
+    suspend fun deleteAll()
 }

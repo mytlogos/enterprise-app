@@ -22,10 +22,10 @@ class RegisterFragment : LoginFragment() {
     ): View? {
         val fragment = inflater.inflate(R.layout.register, container, false)
         // Set up the login form.
-        emailUserNameView = fragment.findViewById(R.id.email)
+        emailUserNameView = fragment.findViewById(R.id.email) as AutoCompleteTextView?
         populateAutoComplete()
-        passwordView = fragment.findViewById(R.id.password)
-        passwordRepeatView = fragment.findViewById(R.id.repeat_password)
+        passwordView = fragment.findViewById(R.id.password) as EditText?
+        passwordRepeatView = fragment.findViewById(R.id.repeat_password) as EditText?
         passwordRepeatView!!.setOnEditorActionListener { _: TextView?, id: Int, _: KeyEvent? ->
             if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
                 attemptLogin()
@@ -33,7 +33,7 @@ class RegisterFragment : LoginFragment() {
             }
             false
         }
-        val mEmailSignInButton = fragment.findViewById<Button>(R.id.email_sign_in_button)
+        val mEmailSignInButton: View = fragment.findViewById(R.id.email_sign_in_button)
         mEmailSignInButton.setOnClickListener { attemptLogin() }
         loginFormView = fragment.findViewById(R.id.login_form)
         progressView = fragment.findViewById(R.id.login_progress)

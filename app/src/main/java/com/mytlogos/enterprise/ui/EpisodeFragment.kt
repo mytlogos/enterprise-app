@@ -152,7 +152,7 @@ class EpisodeFragment
             )
 
             override fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {
-                val recycler: RecyclerView = view.findViewById(R.id.listsFilter)
+                val recycler: RecyclerView = view.findViewById(R.id.listsFilter) as RecyclerView
                 val lists = viewModel.internLists
                 val layoutManager = LinearLayoutManager(requireContext())
                 recycler.layoutManager = layoutManager
@@ -334,10 +334,10 @@ class EpisodeFragment
     }
 
     class ViewHolder(mView: View) : RecyclerView.ViewHolder(mView) {
-        val contentView: TextView = mView.findViewById(R.id.content)
-        val metaView: TextView = mView.findViewById(R.id.item_top_left)
-        val novelView: TextView = mView.findViewById(R.id.item_top_right)
-        val optionsButtonView: ImageButton = mView.findViewById(R.id.item_options_button)
+        val contentView: TextView = mView.findViewById(R.id.content) as TextView
+        val metaView: TextView = mView.findViewById(R.id.item_top_left) as TextView
+        val novelView: TextView = mView.findViewById(R.id.item_top_right) as TextView
+        val optionsButtonView: ImageButton = mView.findViewById(R.id.item_options_button) as ImageButton
 
         override fun toString(): String {
             return "${super.toString()} '${contentView.text}'"

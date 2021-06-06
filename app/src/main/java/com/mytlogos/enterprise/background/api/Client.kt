@@ -5,6 +5,7 @@ import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.tools.SingletonHolder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.joda.time.DateTime
@@ -19,7 +20,7 @@ import java.util.concurrent.TimeUnit
 typealias BuildCall<T, R> = (apiImpl: T, url: String) -> R
 typealias QuerySuspend<T, R> = suspend (apiImpl: T, url: String) -> Response<R>
 
-class Client(private val identificator: NetworkIdentificator) {
+class Client private constructor(private val identificator: NetworkIdentificator) {
     companion object: SingletonHolder<Client, NetworkIdentificator>(::Client)
 
     private val retrofitMap: MutableMap<Class<*>, Retrofit?> = HashMap()
@@ -529,10 +530,10 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: GET /api/user/medium
      */
     @Throws(IOException::class)
-    fun getMedia(mediumIds: Collection<Int?>?): Response<List<ClientMedium>> {
+    suspend fun getMedia(mediumIds: Collection<Int?>?): Response<List<ClientMedium>> {
         val body = userAuthenticationMap()
         body["mediumId"] = mediumIds
-        return query(MediumApi::class.java) { apiImpl: MediumApi, url: String -> apiImpl.getMedia(url, body) }
+        return querySuspend(MediumApi::class.java) { apiImpl: MediumApi, url: String -> apiImpl.getMedia(url, body) }
     }
 
     /**
@@ -540,10 +541,10 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: GET /api/user/medium
      */
     @Throws(IOException::class)
-    fun getMedium(mediumId: Int): Response<ClientMedium> {
+    suspend fun getMedium(mediumId: Int): Response<ClientMedium> {
         val body = userAuthenticationMap()
         body["mediumId"] = mediumId
-        return query(MediumApi::class.java) { apiImpl: MediumApi, url: String -> apiImpl.getMedium(url, body) }
+        return querySuspend(MediumApi::class.java) { apiImpl: MediumApi, url: String -> apiImpl.getMedium(url, body) }
     }
 
     /**
@@ -585,11 +586,11 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: POST /api/user/medium/progress
      */
     @Throws(IOException::class)
-    fun addProgress(episodeId: Collection<Int?>?, progress: Float): Response<Boolean> {
+    suspend fun addProgress(episodeId: Collection<Int?>?, progress: Float): Response<Boolean> {
         val body = userAuthenticationMap()
         body["episodeId"] = episodeId
         body["progress"] = progress
-        return query(ProgressApi::class.java) { apiImpl: ProgressApi, url: String -> apiImpl.addProgress(url, body) }
+        return querySuspend(ProgressApi::class.java) { apiImpl: ProgressApi, url: String -> apiImpl.addProgress(url, body) }
     }
 
     /**
@@ -620,10 +621,10 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: GET /api/user/medium/part
      */
     @Throws(IOException::class)
-    fun getParts(mediumId: Int): Response<MutableList<ClientPart>> {
+    suspend fun getParts(mediumId: Int): Response<MutableList<ClientPart>> {
         val body = userAuthenticationMap()
         body["mediumId"] = mediumId
-        return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPart(url, body) }
+        return querySuspend(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPart(url, body) }
     }
 
     /**
@@ -631,10 +632,10 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: GET /api/user/medium/part
      */
     @Throws(IOException::class)
-    fun getParts(partIds: Collection<Int>): Response<MutableList<ClientPart>> {
+    suspend fun getParts(partIds: Collection<Int>): Response<MutableList<ClientPart>> {
         val body = userAuthenticationMap()
         body["partId"] = partIds
-        return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPart(url, body) }
+        return querySuspend(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPart(url, body) }
     }
 
     /**
@@ -710,10 +711,10 @@ class Client(private val identificator: NetworkIdentificator) {
      * API: GET /api/user/medium/part/episode
      */
     @Throws(IOException::class)
-    fun getEpisodes(episodeIds: Collection<Int>): Response<MutableList<ClientEpisode>> {
+    suspend fun getEpisodes(episodeIds: Collection<Int>): Response<MutableList<ClientEpisode>> {
         val body = userAuthenticationMap()
         body["episodeId"] = episodeIds
-        return query(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.getEpisodes(url, body) }
+        return querySuspend(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.getEpisodes(url, body) }
     }
 
     /**
@@ -829,7 +830,10 @@ class Client(private val identificator: NetworkIdentificator) {
         var retrofit = retrofitMap[api]
         val path = fullClassPathMap[api]
                 ?: throw IllegalArgumentException("Unknown api class: " + api.canonicalName)
-        server = getServer()
+
+        runBlocking {
+            server = getServer()
+        }
 
         // FIXME: 29.07.2019 sometimes does not find server even though it is online
         if (server == null) {
@@ -861,7 +865,9 @@ class Client(private val identificator: NetworkIdentificator) {
     val isClientOnline: Boolean
         get() {
             try {
-                server = getServer()
+                runBlocking {
+                    server = getServer()
+                }
                 if (server != null) {
                     setConnected()
                     return true
@@ -874,22 +880,24 @@ class Client(private val identificator: NetworkIdentificator) {
 
     @Synchronized
     @Throws(NotConnectedException::class)
-    private fun getServer(): Server? {
+    private suspend fun getServer(): Server? = withContext(Dispatchers.IO) {
         val ssid = identificator.sSID
+
         if (ssid.isEmpty()) {
             throw NotConnectedException("Not connected to any network")
         }
         val discovery = ServerDiscovery()
+
         if (ssid == lastNetworkSSID) {
             if (server == null) {
-                return discovery.discover(identificator.broadcastAddress)
+                return@withContext discovery.discover(identificator.broadcastAddress)
             } else if (server!!.isReachable) {
-                return server
+                return@withContext server
             }
         } else {
             lastNetworkSSID = ssid
         }
-        return discovery.discover(identificator.broadcastAddress)
+        return@withContext discovery.discover(identificator.broadcastAddress)
     }
 
 }

@@ -13,11 +13,11 @@ interface UserDao : BaseDao<RoomUser> {
     @get:Query("SELECT name FROM RoomUser LIMIT 1")
     val userName: LiveData<String>
 
-    @get:Query("SELECT * FROM RoomUser LIMIT 1")
-    val userNow: RoomUser?
+    @Query("SELECT * FROM RoomUser LIMIT 1")
+    suspend fun getUserNow(): RoomUser?
 
     @Query("DELETE FROM RoomUser")
-    fun deleteAllUser()
+    suspend fun deleteAllUser()
 
     @get:Query("SELECT name, " +
             "(SELECT COUNT(mediumId) FROM RoomMedium WHERE medium = 1) as textMedia," +

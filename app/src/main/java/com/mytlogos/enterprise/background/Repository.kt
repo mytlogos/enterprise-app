@@ -1,10 +1,8 @@
 package com.mytlogos.enterprise.background
 
-import android.app.Application
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.paging.PagedList
-import androidx.work.Worker
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
@@ -29,20 +27,6 @@ interface Repository {
     @Throws(IOException::class)
     fun register(email: String, password: String)
     fun logout()
-    fun loadEpisodeAsync(episodeIds: Collection<Int>): CompletableFuture<List<ClientEpisode>?>
-    fun loadEpisodeSync(episodeIds: Collection<Int>): List<ClientEpisode>?
-    fun loadMediaAsync(mediaIds: Collection<Int>): CompletableFuture<List<ClientMedium>?>
-    fun loadMediaSync(mediaIds: Collection<Int>): List<ClientMedium>?
-    fun loadPartAsync(partIds: Collection<Int>): CompletableFuture<List<ClientPart>?>
-    fun loadPartSync(partIds: Collection<Int>): List<ClientPart>?
-    fun loadMediaListAsync(listIds: Collection<Int>): CompletableFuture<ClientMultiListQuery?>
-    fun loadMediaListSync(listIds: Collection<Int>): ClientMultiListQuery?
-    fun loadExternalMediaListAsync(externalListIds: Collection<Int>): CompletableFuture<List<ClientExternalMediaList>?>
-    fun loadExternalMediaListSync(externalListIds: Collection<Int>): List<ClientExternalMediaList>?
-    fun loadExternalUserAsync(externalUuids: Collection<String>): CompletableFuture<List<ClientExternalUser>?>
-    fun loadExternalUserSync(externalUuids: Collection<String>): List<ClientExternalUser>?
-    fun loadNewsAsync(newsIds: Collection<Int>): CompletableFuture<List<ClientNews>?>
-    fun loadNewsSync(newsIds: Collection<Int>): List<ClientNews>?
     val news: LiveData<PagedList<News>>
     fun removeOldNews()
     val isLoading: Boolean
@@ -51,7 +35,6 @@ interface Repository {
     fun refreshNews(latest: DateTime?)
 
     val savedEpisodes: List<Int>
-    fun updateSaved(episodeId: Int, saved: Boolean)
     fun updateSaved(episodeIds: Collection<Int>, saved: Boolean)
     val toDeleteEpisodes: List<Int>
 
@@ -70,19 +53,13 @@ interface Repository {
     fun updateListName(listSetting: MediaListSetting, newName: String): CompletableFuture<String>
     fun updateListMedium(
         listSetting: MediaListSetting,
-        newMediumType: Int
+        newMediumType: Int,
     ): CompletableFuture<String>
 
     fun updateToDownload(add: Boolean, toDownload: ToDownload)
 
     fun getMediumSettings(mediumId: Int): LiveData<MediumSetting>
     fun updateMedium(mediumSettings: MediumSetting): CompletableFuture<String>
-    fun getToc(
-        mediumId: Int,
-        sortings: Sortings,
-        read: Byte,
-        saved: Byte
-    ): LiveData<PagedList<TocEpisode>>
 
     fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>>
 
@@ -101,7 +78,7 @@ interface Repository {
         filter: String?,
         mediumFilter: Int,
         hostFilter: String?,
-        sortings: Sortings
+        sortings: Sortings,
     ): LiveData<PagedList<MediumInWait>>
 
     val internLists: LiveData<MutableList<MediaList>>
@@ -109,7 +86,7 @@ interface Repository {
     fun moveMediaToList(
         oldListId: Int,
         listId: Int,
-        ids: MutableCollection<Int>
+        ids: MutableCollection<Int>,
     ): CompletableFuture<Boolean>
 
     fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<MutableList<MediumInWait>>
@@ -117,21 +94,25 @@ interface Repository {
     fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<MutableList<MediumInWait>>
     fun consumeMediumInWait(
         selectedMedium: SimpleMedium,
-        mediumInWaits: List<MediumInWait>
+        mediumInWaits: List<MediumInWait>,
     ): CompletableFuture<Boolean>
 
     fun createMedium(
         mediumInWait: MediumInWait,
         mediumInWaits: List<MediumInWait>,
-        list: MediaList
+        list: MediaList,
     ): CompletableFuture<Boolean>
 
     fun removeItemFromList(listId: Int, mediumId: Int): CompletableFuture<Boolean>
-    fun removeItemFromList(listId: Int, mediumId: MutableCollection<Int>): CompletableFuture<Boolean>
+    fun removeItemFromList(
+        listId: Int,
+        mediumId: MutableCollection<Int>,
+    ): CompletableFuture<Boolean>
+
     fun moveItemFromList(
         oldListId: Int,
         newListId: Int,
-        mediumId: Int
+        mediumId: Int,
     ): CompletableFuture<Boolean>
 
     fun getListSuggestion(name: String): LiveData<MutableList<MediaList>>
@@ -154,61 +135,12 @@ interface Repository {
     fun clearNotifications()
     fun clearFailEpisodes()
 
-    @Throws(Exception::class)
-    fun updateRead(episodeId: Int, read: Boolean)
-
-    @Throws(Exception::class)
-    fun updateRead(episodeIds: Collection<Int>, read: Boolean)
-
-    @Throws(Exception::class)
-    fun updateAllRead(episodeId: Int, read: Boolean)
-
-    @Throws(Exception::class)
-    fun updateReadWithHigherIndex(combiIndex: Double, read: Boolean, mediumId: Int)
-
-    @Throws(Exception::class)
-    fun updateReadWithLowerIndex(combiIndex: Double, read: Boolean, mediumId: Int)
-
-    @Throws(IOException::class)
-    fun deleteAllLocalEpisodes(mediumId: Int, application: Application)
-
-    @Throws(IOException::class)
-    fun deleteLocalEpisodesWithLowerIndex(
-        episodeId: Double,
-        mediumId: Int,
-        application: Application
-    )
-
-    @Throws(IOException::class)
-    fun deleteLocalEpisodesWithHigherIndex(
-        combiIndex: Double,
-        mediumId: Int,
-        application: Application
-    )
-
-    @Throws(IOException::class)
-    fun deleteLocalEpisodes(episodeId: Set<Int>, mediumId: Int, application: Application)
     fun syncProgress()
     fun updateDataStructure(mediaIds: List<Int>, partIds: List<Int>)
 
-    @Throws(Exception::class)
-    fun reloadLowerIndex(combiIndex: Double, mediumId: Int)
-
-    @Throws(Exception::class)
-    fun reloadHigherIndex(combiIndex: Double, mediumId: Int)
-
-    @Throws(Exception::class)
-    fun reload(episodeIds: Set<Int>)
-
-    @Throws(IOException::class)
-    fun reloadAll(mediumId: Int)
-    fun downloadLowerIndex(combiIndex: Double, mediumId: Int, context: Context)
-    fun downloadHigherIndex(combiIndex: Double, mediumId: Int, context: Context)
-    fun download(episodeId: Set<Int>, mediumId: Int, context: Context)
-    fun downloadAll(mediumId: Int, context: Context)
     fun updateProgress(episodeId: Int, progress: Float)
-    fun getClient(worker: Worker): Client
-    fun getPersister(worker: Worker): ClientModelPersister
+    fun getClient(): Client
+    fun getPersister(): ClientModelPersister
     fun isMediumLoaded(mediumId: Int): Boolean
     fun isPartLoaded(partId: Int): Boolean
     fun isEpisodeLoaded(episodeId: Int): Boolean

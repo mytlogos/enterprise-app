@@ -31,8 +31,8 @@ open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisod
     ): View {
         // Inflate the layout for this fragment
         val view = super.onCreateView(inflater, container, savedInstanceState)
-        textDisplay = view.findViewById(R.id.display)
-        this.scrollView = view.findViewById(R.id.scroller)
+        textDisplay = view.findViewById(R.id.display) as TextView?
+        this.scrollView = view.findViewById(R.id.scroller) as ScrollView?
         textDisplay!!.movementMethod = ScrollingMovementMethod()
         setHasOptionsMenu(true)
         /*this.scrollView.setOnScrollChangeListener(
@@ -101,9 +101,9 @@ open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisod
         val context: Activity = requireActivity()
         @SuppressLint("InflateParams") val view =
             context.layoutInflater.inflate(R.layout.change_font, null)
-        val fontTextView = view.findViewById<EditText>(R.id.font_size)
+        val fontTextView = view.findViewById(R.id.font_size) as EditText
         fontTextView.setText(textDisplay!!.textSize.toString() + "")
-        view.findViewById<View>(R.id.increment_font).setOnClickListener { v: View? ->
+        (view.findViewById(R.id.increment_font) as View).setOnClickListener { v: View? ->
             try {
                 var currentFont = fontTextView.text.toString().toInt()
                 currentFont++
@@ -116,7 +116,7 @@ open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisod
                 fontTextView.setText("0")
             }
         }
-        view.findViewById<View>(R.id.decrement_font).setOnClickListener { v: View? ->
+        (view.findViewById(R.id.decrement_font) as View).setOnClickListener { v: View? ->
             try {
                 var currentFont = fontTextView.text.toString().toInt()
                 currentFont--

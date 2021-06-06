@@ -12,37 +12,37 @@ import org.joda.time.DateTime
 @Dao
 interface EpisodeDao : MultiBaseDao<RoomEpisode> {
     @Update(entity = RoomEpisode::class)
-    fun updateBulkClient(episodes: Collection<ClientRoomEpisode>)
+    suspend fun updateBulkClient(episodes: Collection<ClientRoomEpisode>)
 
     @Query("UPDATE RoomEpisode SET progress=:progress, readDate=:readDate WHERE episodeId=:episodeId")
-    fun updateProgress(episodeId: Int, progress: Float, readDate: DateTime)
+    suspend fun updateProgress(episodeId: Int, progress: Float, readDate: DateTime)
 
     @Query("UPDATE RoomEpisode SET progress=:progress, readDate=:readDate WHERE episodeId IN (:episodeIds)")
-    fun updateProgress(episodeIds: Collection<Int>, progress: Float, readDate: DateTime)
+    suspend fun updateProgress(episodeIds: Collection<Int>, progress: Float, readDate: DateTime)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertBulkRelease(collection: Collection<RoomRelease>)
+    suspend fun insertBulkRelease(collection: Collection<RoomRelease>)
 
     @Update
-    fun updateBulkRelease(collection: Collection<RoomRelease>)
+    suspend fun updateBulkRelease(collection: Collection<RoomRelease>)
 
     @Delete
-    fun deleteBulkRelease(collection: Collection<RoomRelease>)
+    suspend fun deleteBulkRelease(collection: Collection<RoomRelease>)
 
     @Query("SELECT episodeId FROM RoomEpisode;")
-    fun loaded(): List<Int>
+    suspend fun loaded(): List<Int>
 
-    @get:Query("SELECT episodeId FROM RoomEpisode WHERE saved=1;")
-    val allSavedEpisodes: List<Int>
+    @Query("SELECT episodeId FROM RoomEpisode WHERE saved=1;")
+    suspend fun getAllSavedEpisodes(): List<Int>
 
-    @get:Query("SELECT episodeId FROM RoomEpisode WHERE progress = 1 AND saved = 1")
-    val allToDeleteLocalEpisodes: List<Int>
+    @Query("SELECT episodeId FROM RoomEpisode WHERE progress = 1 AND saved = 1")
+    suspend fun getAllToDeleteLocalEpisodes(): List<Int>
 
     @Query("UPDATE RoomEpisode SET saved=:saved WHERE episodeId=:episodeId")
-    fun updateSaved(episodeId: Int, saved: Boolean)
+    suspend fun updateSaved(episodeId: Int, saved: Boolean)
 
     @Query("UPDATE RoomEpisode SET saved=:saved WHERE episodeId IN (:episodeIds)")
-    fun updateSaved(episodeIds: Collection<Int>, saved: Boolean)
+    suspend fun updateSaved(episodeIds: Collection<Int>, saved: Boolean)
 
     @Query("SELECT episodeId FROM (SELECT RoomEpisode.episodeId, RoomEpisode.saved FROM RoomEpisode " +
             "LEFT JOIN RoomFailedEpisode ON RoomFailedEpisode.episodeId=RoomEpisode.episodeId " +
@@ -63,24 +63,24 @@ interface EpisodeDao : MultiBaseDao<RoomEpisode> {
             "RoomEpisode.combiIndex LIMIT CASE WHEN :limit < 0 THEN 0 ELSE :limit END) " +
             "as RoomEpisode " +
             "WHERE saved = 0")
-    fun getDownloadableEpisodes(mediumId: Int, limit: Int): List<Int>
+    suspend fun getDownloadableEpisodes(mediumId: Int, limit: Int): List<Int>
 
     @Query("SELECT RoomEpisode.episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
             "WHERE progress < 1 AND saved = 0 AND RoomPart.mediumId IN (:mediaIds) " +
             "ORDER BY mediumId, RoomEpisode.combiIndex")
-    fun getDownloadableEpisodes(mediaIds: Collection<Int>): List<Int>
+    suspend fun getDownloadableEpisodes(mediaIds: Collection<Int>): List<Int>
 
     @Query("SELECT COUNT(RoomEpisode.episodeId) FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
             "WHERE saved = 1 AND RoomPart.mediumId =:mediumId")
-    fun countSavedEpisodes(mediumId: Int): Int
+    suspend fun countSavedEpisodes(mediumId: Int): Int
 
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId " +
             "WHERE saved = 1 AND RoomPart.mediumId =:mediumId " +
             "ORDER BY RoomEpisode.combiIndex")
-    fun getSavedEpisodes(mediumId: Int): List<Int>
+    suspend fun getSavedEpisodes(mediumId: Int): List<Int>
 
     @Query("""SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,
 RoomMedium.mediumId,RoomMedium.title as mediumTitle, 
@@ -214,15 +214,15 @@ ORDER BY (
     fun getDisplayEpisodesGrouped(saved: Int, medium: Int):DataSource.Factory<Int, RoomDisplayEpisode>
 
     @Query("SELECT * FROM RoomEpisode WHERE episodeId=:episodeId")
-    fun getEpisode(episodeId: Int): RoomEpisode
+    suspend fun getEpisode(episodeId: Int): RoomEpisode
 
     @Query("SELECT episodeId, partialIndex, totalIndex, progress FROM RoomEpisode " +
             "WHERE episodeId IN (:ids) " +
             "ORDER BY combiIndex")
-    fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
+    suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
 
     @Query("SELECT episodeId, partialIndex, totalIndex, progress FROM RoomEpisode WHERE episodeId =:episodeId")
-    fun getSimpleEpisode(episodeId: Int): SimpleEpisode
+    suspend fun getSimpleEpisode(episodeId: Int): SimpleEpisode
 
     @get:Query("SELECT RoomEpisode.episodeId, RoomEpisode.partialIndex, RoomEpisode.totalIndex," +
             "RoomMedium.mediumId,RoomMedium.title as mediumTitle " +
@@ -259,7 +259,7 @@ ORDER BY (
             "AND (:read < 0 OR (:read == 0 AND progress < 1) OR :read = progress)" +
             "AND (:saved < 0 OR :saved=saved)" +
             "ORDER BY RoomEpisode.combiIndex ASC")
-    fun getTocEpisodesAsc(mediumId: Int, read: Byte, saved: Byte):DataSource.Factory<Int, RoomTocEpisode>
+    fun getTocEpisodesAsc(mediumId: Int, read: Byte, saved: Byte): PagingSource<Int, RoomTocEpisode>
 
     @Transaction
     @Query("SELECT RoomEpisode.* FROM RoomEpisode " +
@@ -269,10 +269,10 @@ ORDER BY (
             "AND (:read < 0 OR (:read == 0 AND progress < 1) OR :read = progress)" +
             "AND (:saved < 0 OR :saved=saved)" +
             "ORDER BY RoomEpisode.combiIndex DESC")
-    fun getTocEpisodesDesc(mediumId: Int, read: Byte, saved: Byte):DataSource.Factory<Int, RoomTocEpisode>
+    fun getTocEpisodesDesc(mediumId: Int, read: Byte, saved: Byte): PagingSource<Int, RoomTocEpisode>
 
     @Query("SELECT url FROM RoomRelease WHERE episodeId=:episodeId")
-    fun getReleaseLinks(episodeId: Int): List<String>
+    suspend fun getReleaseLinks(episodeId: Int): List<String>
 
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
@@ -282,7 +282,7 @@ ORDER BY (
             "ELSE progress = 1 " +
             "END " +
             "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
-    fun getEpisodeIdsWithLowerIndex(mediumId: Int, episodeCombiIndex: Double, toRead: Boolean): List<Int>
+    suspend fun getEpisodeIdsWithLowerIndex(mediumId: Int, episodeCombiIndex: Double, toRead: Boolean): List<Int>
 
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
@@ -292,67 +292,67 @@ ORDER BY (
             "ELSE progress = 1 " +
             "END " +
             "AND RoomEpisode.combiIndex >= :episodeCombiIndex")
-    fun getEpisodeIdsWithHigherIndex(mediumId: Int, episodeCombiIndex: Double, toRead: Boolean): List<Int>
+    suspend fun getEpisodeIdsWithHigherIndex(mediumId: Int, episodeCombiIndex: Double, toRead: Boolean): List<Int>
 
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
             "WHERE mediumId = :mediumId " +
             "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
-    fun getEpisodeIdsWithLowerIndex(mediumId: Int, episodeCombiIndex: Double): List<Int>
+    suspend fun getEpisodeIdsWithLowerIndex(mediumId: Int, episodeCombiIndex: Double): List<Int>
 
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
             "WHERE mediumId = :mediumId " +
             "AND RoomEpisode.combiIndex >= :episodeCombiIndex")
-    fun getEpisodeIdsWithHigherIndex(mediumId: Int, episodeCombiIndex: Double): List<Int>
+    suspend fun getEpisodeIdsWithHigherIndex(mediumId: Int, episodeCombiIndex: Double): List<Int>
 
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
             "WHERE mediumId = :mediumId " +
             "AND saved = 1 " +
             "AND RoomEpisode.combiIndex <= :episodeCombiIndex")
-    fun getSavedEpisodeIdsWithLowerIndex(mediumId: Int, episodeCombiIndex: Double): List<Int>
+    suspend fun getSavedEpisodeIdsWithLowerIndex(mediumId: Int, episodeCombiIndex: Double): List<Int>
 
     @Query("SELECT episodeId FROM RoomEpisode " +
             "INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId " +
             "WHERE mediumId = :mediumId " +
             "AND saved = 1 " +
             "AND RoomEpisode.combiIndex >= :episodeCombiIndex")
-    fun getSavedEpisodeIdsWithHigherIndex(mediumId: Int, episodeCombiIndex: Double): List<Int>
+    suspend fun getSavedEpisodeIdsWithHigherIndex(mediumId: Int, episodeCombiIndex: Double): List<Int>
 
     @Query("DELETE FROM RoomRelease")
-    fun clearAllReleases()
+    suspend fun clearAllReleases()
 
     @Query("DELETE FROM RoomEpisode")
-    fun clearAll()
+    suspend fun clearAll()
 
     @Query("SELECT episodeId FROM RoomPart " +
             "INNER JOIN RoomEpisode ON RoomPart.partId=RoomEpisode.partId " +
             "WHERE RoomPart.mediumId=:mediumId")
-    fun getAllEpisodes(mediumId: Int): List<Int>
+    suspend fun getAllEpisodes(mediumId: Int): List<Int>
 
     @Query("SELECT episodeId FROM RoomEpisode WHERE partId=:partId")
-    fun getEpisodeIds(partId: Int): MutableList<Int>
+    suspend fun getEpisodeIds(partId: Int): MutableList<Int>
 
     @Query("DELETE FROM RoomEpisode WHERE episodeId IN (:ids)")
-    fun deletePerId(ids: List<Int>)
+    suspend fun deletePerId(ids: List<Int>)
 
     @Query("SELECT episodeId FROM RoomEpisode WHERE " +
             "CASE WHEN :read = 0 THEN progress < 1 ELSE progress = 1 END " +
             "AND episodeId IN (:episodeIds)")
-    fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int>
+    suspend fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int>
 
-    @get:Query("SELECT partId, count(DISTINCT RoomEpisode.episodeId) as episodeCount, " +
+    @Query("SELECT partId, count(DISTINCT RoomEpisode.episodeId) as episodeCount, " +
             "sum(DISTINCT RoomEpisode.episodeId) as episodeSum, count(url) as releaseCount " +
             "FROM RoomEpisode LEFT JOIN RoomRelease ON RoomEpisode.episodeId=RoomRelease.episodeId " +
             "GROUP BY partId")
-    val stat: List<RoomPartStat>
+    suspend fun getStat(): List<RoomPartStat>
 
     @Query("SELECT partId, episodeId FROM RoomEpisode WHERE partId IN (:partIds)")
-    fun getEpisodes(partIds: Collection<Int>): List<RoomPartEpisode>
+    suspend fun getEpisodes(partIds: Collection<Int>): List<RoomPartEpisode>
 
     @Query("SELECT partId, RoomEpisode.episodeId, RoomRelease.url " +
             "FROM RoomEpisode INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId " +
             "WHERE partId IN (:partIds)")
-    fun getReleases(partIds: Collection<Int>): List<RoomSimpleRelease>
+    suspend fun getReleases(partIds: Collection<Int>): List<RoomSimpleRelease>
 }

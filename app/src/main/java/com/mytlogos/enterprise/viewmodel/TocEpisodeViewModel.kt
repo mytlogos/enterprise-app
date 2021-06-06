@@ -1,34 +1,60 @@
 package com.mytlogos.enterprise.viewmodel
 
 import android.app.Application
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations
-import androidx.paging.PagedList
+import androidx.lifecycle.asFlow
+import androidx.paging.PagingData
+import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.TocEpisode
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.ui.ActionCount
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import java.io.IOException
+import kotlin.math.max
+import kotlin.math.min
 
-class TocEpisodeViewModel(application: Application) : FilterableViewModel(application),
+@Suppress("BlockingMethodInNonBlockingContext")
+class TocEpisodeViewModel(application: Application) :
+    FilterableViewModel(application),
     SortableViewModel {
-    private val sortFilterLiveData = MutableLiveData<SortFilter>()
-    private var repositoryToc: LiveData<PagedList<TocEpisode>>? = null
-    override fun resetFilter() {
-        sortFilterLiveData.value =
-            Builder(null).createSortFilter()
+    private val sortFilterLiveData = MutableLiveData(SortFilter())
+    private val mediumId: MutableStateFlow<Int> = MutableStateFlow(-1)
+    private val episodeRepository: EpisodeRepository by lazy {
+        EpisodeRepository.getInstance(application)
     }
 
-    override fun setSort(sort: Sortings) {
-        val value = sortFilterLiveData.value
-        sortFilterLiveData.value =
-            Builder(value).setSortings(sort)
-                .createSortFilter()
+    @ExperimentalCoroutinesApi
+    val toc: Flow<PagingData<TocEpisode>> by lazy {
+        mediumId.combine(sortFilterLiveData.asFlow()) { id: Int, filter: SortFilter ->
+            episodeRepository.getToc(
+                id,
+                filter.sortings,
+                filter.read,
+                filter.saved
+            )
+        }.flatMapLatest { it }
+    }
+
+    fun setMediumId(mediumId: Int) {
+        this.mediumId.value = mediumId
+    }
+
+    override fun resetFilter() {
+        sortFilterLiveData.value = SortFilter()
     }
 
     fun getSort(): Sortings {
         val value = sortFilterLiveData.value
-        return if (value == null) Sortings.INDEX_DESC else value.sortings!!
+        return value?.sortings ?: Sortings.INDEX_DESC
+    }
+
+    override fun setSort(sort: Sortings) {
+        val value = sortFilterLiveData.value
+        sortFilterLiveData.value = value!!.copy(sortings = sort)
     }
 
     var savedFilter: Byte
@@ -38,9 +64,7 @@ class TocEpisodeViewModel(application: Application) : FilterableViewModel(applic
         }
         set(savedFilter) {
             val value = sortFilterLiveData.value
-            sortFilterLiveData.value =
-                Builder(value).setSaved(savedFilter)
-                    .createSortFilter()
+            sortFilterLiveData.value = value!!.copy(saved = savedFilter)
         }
     var readFilter: Byte
         get() {
@@ -49,191 +73,132 @@ class TocEpisodeViewModel(application: Application) : FilterableViewModel(applic
         }
         set(readFilter) {
             val value = sortFilterLiveData.value
-            sortFilterLiveData.value =
-                Builder(value).setRead(readFilter)
-                    .createSortFilter()
+            sortFilterLiveData.value = value!!.copy(read = readFilter)
         }
-
-    fun getToc(mediumId: Int): LiveData<PagedList<TocEpisode>> {
-        if (repositoryToc == null) {
-            repositoryToc = Transformations.switchMap(
-                sortFilterLiveData
-            ) { input: SortFilter ->
-                repository.getToc(mediumId,
-                    input.sortings!!,
-                    input.read,
-                    input.saved)
-            }
-        }
-        return repositoryToc!!
-    }
 
     @Throws(IOException::class)
-    fun deleteLocalEpisode(
+    suspend fun deleteLocalEpisode(
         episodeIds: Set<Int>,
         combiIndices: List<Double>,
         count: ActionCount?,
-        mediumId: Int
+        mediumId: Int,
     ) {
         when (count) {
-            ActionCount.ALL -> repository.deleteAllLocalEpisodes(mediumId, getApplication())
-            ActionCount.CURRENT -> repository.deleteLocalEpisodes(
+            ActionCount.ALL -> episodeRepository.deleteAllLocalEpisodes(
+                mediumId,
+                getApplication()
+            )
+            ActionCount.CURRENT -> episodeRepository.deleteLocalEpisodes(
                 episodeIds,
                 mediumId,
                 getApplication()
             )
             ActionCount.CURRENT_AND_ONWARDS -> {
                 val lowest = getLowest(combiIndices)
-                repository.deleteLocalEpisodesWithHigherIndex(lowest, mediumId, getApplication())
+                episodeRepository.deleteLocalEpisodesWithHigherIndex(
+                    lowest,
+                    mediumId,
+                    getApplication()
+                )
             }
             ActionCount.CURRENT_AND_PREVIOUSLY -> {
                 val highest = getHighest(combiIndices)
-                repository.deleteLocalEpisodesWithLowerIndex(highest, mediumId, getApplication())
+                episodeRepository.deleteLocalEpisodesWithLowerIndex(
+                    highest,
+                    mediumId,
+                    getApplication()
+                )
             }
         }
     }
 
     @Throws(Exception::class)
-    fun updateRead(
+    suspend fun updateRead(
         episodeIds: Set<Int>,
         combiIndices: List<Double>,
         count: ActionCount?,
         mediumId: Int,
-        read: Boolean
+        read: Boolean,
     ) {
         when (count) {
-            ActionCount.ALL -> repository.updateAllRead(mediumId, read)
-            ActionCount.CURRENT -> repository.updateRead(episodeIds, read)
+            ActionCount.ALL -> episodeRepository.updateAllRead(mediumId, read)
+            ActionCount.CURRENT -> episodeRepository.updateRead(episodeIds, read)
             ActionCount.CURRENT_AND_ONWARDS -> {
                 val lowest = getLowest(combiIndices)
-                repository.updateReadWithHigherIndex(lowest, read, mediumId)
+                episodeRepository.updateReadWithHigherIndex(lowest, read, mediumId)
             }
             ActionCount.CURRENT_AND_PREVIOUSLY -> {
                 val highest = getHighest(combiIndices)
-                repository.updateReadWithLowerIndex(highest, read, mediumId)
+                episodeRepository.updateReadWithLowerIndex(highest, read, mediumId)
             }
         }
     }
 
     @Throws(Exception::class)
-    fun reload(
+    suspend fun reload(
         episodeIds: Set<Int>,
         combiIndices: List<Double>,
         count: ActionCount?,
-        mediumId: Int
+        mediumId: Int,
     ) {
         when (count) {
-            ActionCount.ALL -> repository.reloadAll(mediumId)
-            ActionCount.CURRENT -> repository.reload(episodeIds)
+            ActionCount.ALL -> episodeRepository.reloadAll(mediumId)
+            ActionCount.CURRENT -> episodeRepository.reload(episodeIds)
             ActionCount.CURRENT_AND_ONWARDS -> {
                 val lowest = getLowest(combiIndices)
-                repository.reloadHigherIndex(lowest, mediumId)
+                episodeRepository.reloadHigherIndex(lowest, mediumId)
             }
             ActionCount.CURRENT_AND_PREVIOUSLY -> {
                 val highest = getHighest(combiIndices)
-                repository.reloadLowerIndex(highest, mediumId)
+                episodeRepository.reloadLowerIndex(highest, mediumId)
             }
         }
     }
 
-    fun download(
+    suspend fun download(
         episodeIds: Set<Int>,
         combiIndices: List<Double>,
         count: ActionCount?,
-        mediumId: Int
+        mediumId: Int,
     ) {
         when (count) {
-            ActionCount.ALL -> repository.downloadAll(mediumId, getApplication())
-            ActionCount.CURRENT -> repository.download(episodeIds, mediumId, getApplication())
+            ActionCount.ALL -> episodeRepository.downloadAll(mediumId, getApplication())
+            ActionCount.CURRENT -> episodeRepository.download(episodeIds,
+                mediumId,
+                getApplication())
             ActionCount.CURRENT_AND_ONWARDS -> {
                 val lowest = getLowest(combiIndices)
-                repository.downloadHigherIndex(lowest, mediumId, getApplication())
+                episodeRepository.downloadHigherIndex(lowest, mediumId, getApplication())
             }
             ActionCount.CURRENT_AND_PREVIOUSLY -> {
                 val highest = getHighest(combiIndices)
-                repository.downloadLowerIndex(highest, mediumId, getApplication())
+                episodeRepository.downloadLowerIndex(highest, mediumId, getApplication())
             }
         }
     }
 
     private fun getLowest(combiIndices: List<Double>): Double {
-        var lowest = Int.MAX_VALUE.toDouble()
-        for (index in combiIndices) {
-            lowest = Math.min(index, lowest)
-        }
-        return lowest
+        return combiIndices.fold(Int.MAX_VALUE.toDouble(), ::min)
     }
 
     private fun getHighest(combiIndices: List<Double>): Double {
-        var highest = Int.MIN_VALUE.toDouble()
-        for (index in combiIndices) {
-            highest = Math.max(index, highest)
-        }
-        return highest
+        return combiIndices.fold(Int.MIN_VALUE.toDouble(), ::max)
     }
 
-    private class Builder(sortFilter: SortFilter?) {
-        private var sortings: Sortings? = null
-        private var read: Byte = 0
-        private var saved: Byte = 0
-        fun setSortings(sortings: Sortings?): Builder {
-            this.sortings = sortings
-            return this
-        }
-
-        fun setRead(read: Byte): Builder {
-            var read = read
-            if (read < -1) {
-                read = -1
-            } else if (read > 1) {
-                read = 1
-            }
-            this.read = read
-            return this
-        }
-
-        fun setSaved(saved: Byte): Builder {
-            var saved = saved
-            if (saved < -1) {
-                saved = -1
-            } else if (saved > 1) {
-                saved = 1
-            }
-            this.saved = saved
-            return this
-        }
-
-        fun createSortFilter(): SortFilter {
-            return SortFilter(sortings, read, saved)
-        }
-
-        init {
-            if (sortFilter == null) {
-                sortings = Sortings.INDEX_DESC
-                read = -1
-                saved = -1
-            } else {
-                sortings = sortFilter.sortings
-                read = sortFilter.read
-                saved = sortFilter.saved
-            }
-        }
-    }
-
-    private class SortFilter(
-        val sortings: Sortings?,
+    private data class SortFilter(
+        val sortings: Sortings = Sortings.INDEX_DESC,
         /**
          * -1 for ignore
          * 0 for false
          * 1 for true
          */
-        val read: Byte,
+        val read: Byte = -1,
         /**
          * -1 for ignore
          * 0 for false
          * 1 for true
          */
-        val saved: Byte
+        val saved: Byte = -1,
     )
 
     init {

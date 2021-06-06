@@ -1,8 +1,9 @@
 package com.mytlogos.enterprise.model
 
+import com.mytlogos.enterprise.tools.Selectable
 import org.joda.time.DateTime
 
-class TocEpisode(
+data class TocEpisode(
     val episodeId: Int,
     val progress: Float,
     val partId: Int,
@@ -11,7 +12,9 @@ class TocEpisode(
     val readDate: DateTime?,
     val isSaved: Boolean,
     val releases: List<Release>
-) {
+) : Selectable {
+    override fun getSelectionKey(): Long = episodeId.toLong()
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false

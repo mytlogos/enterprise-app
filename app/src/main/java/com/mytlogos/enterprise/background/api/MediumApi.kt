@@ -4,14 +4,15 @@ import com.mytlogos.enterprise.background.api.model.ClientMedium
 import com.mytlogos.enterprise.background.api.model.ClientMediumInWait
 import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.*
 
 internal interface MediumApi {
     @GET
-    fun getMedium(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientMedium>
+    suspend fun getMedium(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<ClientMedium>
 
     @GET
-    fun getMedia(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientMedium>>
+    suspend fun getMedia(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<List<ClientMedium>>
 
     @GET("{start}/all")
     fun getAllMedia(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<Int>>

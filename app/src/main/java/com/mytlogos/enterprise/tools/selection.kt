@@ -8,7 +8,6 @@ import androidx.recyclerview.selection.ItemKeyProvider
 import androidx.recyclerview.selection.SelectionTracker.SelectionPredicate
 import androidx.recyclerview.widget.RecyclerView
 import com.mytlogos.enterprise.ui.BasePagingFragment
-import com.mytlogos.enterprise.ui.EpisodeFragment
 
 
 class SimpleItemKeyProvider(
@@ -21,43 +20,48 @@ class SimpleItemKeyProvider(
         if (adapter !is BasePagingFragment.BaseAdapter<*, *>) {
             return null
         }
-        val item = adapter.getItemAt(position)
-
-        return if (item is Selectable) {
-            item.getSelectionKey()
-        } else null
+        return getKeyFrom(position, adapter)
     }
 
-    override fun getPosition(key: Long): Int {
-        val viewHolder = recyclerView.findViewHolderForItemId(key)
-        val position = viewHolder?.layoutPosition
+    override fun getPosition(key: Long): Int = getPositionFrom(key, recyclerView)
+}
+fun getKeyFrom(position: Int, adapter: BasePagingFragment.BaseAdapter<*, *>): Long? {
+    val item = adapter.getItemAt(position)
 
-        if (position != null) {
-            return position
-        }
-        for (child in recyclerView.children) {
-            val childViewHolder = recyclerView.getChildViewHolder(child)
-            val adapter = childViewHolder.bindingAdapter
+    return if (item is Selectable) {
+        item.getSelectionKey()
+    } else null
+}
 
-            if (adapter !is BasePagingFragment.BaseAdapter<*, *>) {
-                continue
-            }
+fun getPositionFrom(key: Long, recyclerView: RecyclerView): Int {
+    val viewHolder = recyclerView.findViewHolderForItemId(key)
+    val position = viewHolder?.layoutPosition
 
-            @Suppress("UNCHECKED_CAST")
-            val item =
-                (adapter as BasePagingFragment.BaseAdapter<*, RecyclerView.ViewHolder>).getItemFrom(
-                    childViewHolder
-                )
-
-            if (item !is Selectable) {
-                continue
-            }
-            if (item.getSelectionKey() == key) {
-                return childViewHolder.layoutPosition
-            }
-        }
-        return RecyclerView.NO_POSITION
+    if (position != null) {
+        return position
     }
+    for (child in recyclerView.children) {
+        val childViewHolder = recyclerView.getChildViewHolder(child)
+        val adapter = childViewHolder.bindingAdapter
+
+        if (adapter !is BasePagingFragment.BaseAdapter<*, *>) {
+            continue
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val item =
+            (adapter as BasePagingFragment.BaseAdapter<*, RecyclerView.ViewHolder>).getItemFrom(
+                childViewHolder
+            )
+
+        if (item !is Selectable) {
+            continue
+        }
+        if (item.getSelectionKey() == key) {
+            return childViewHolder.layoutPosition
+        }
+    }
+    return RecyclerView.NO_POSITION
 }
 
 fun <K> createSelectNothing(): SelectionPredicate<K> {

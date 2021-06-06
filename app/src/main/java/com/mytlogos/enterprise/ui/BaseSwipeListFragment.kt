@@ -19,7 +19,7 @@ abstract class BaseSwipeListFragment<Value : Any, ViewModel : AndroidViewModel?>
         savedInstanceState: Bundle?
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
-        val localListContainer = view.findViewById<SwipeRefreshLayout>(listContainerId)
+        val localListContainer: SwipeRefreshLayout = view.findViewById(listContainerId) as SwipeRefreshLayout
         listContainer = localListContainer
         localListContainer.setOnRefreshListener { onSwipeRefresh() }
         return view

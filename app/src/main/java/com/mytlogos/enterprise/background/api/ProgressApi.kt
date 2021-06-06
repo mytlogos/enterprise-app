@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background.api
 
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.*
 
 internal interface ProgressApi {
@@ -8,7 +9,7 @@ internal interface ProgressApi {
     fun getProgress(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<Float>
 
     @POST
-    fun addProgress(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun addProgress(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 
     @DELETE
     fun deleteProgress(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>

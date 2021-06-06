@@ -43,7 +43,7 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
         savedInstanceState: Bundle?
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
-        val recyclerView: RecyclerView = view.findViewById(R.id.list)
+        val recyclerView: RecyclerView = view.findViewById(R.id.list) as RecyclerView
         adapter = FlexibleAdapter(null)
         val manager = LinearLayoutManager(context)
         recyclerView.layoutManager = manager
@@ -234,8 +234,8 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
 
     private class ViewHolder(view: View, adapter: FlexibleAdapter<*>) :
         FlexibleViewHolder(view, adapter) {
-        val imageView: ImageView = view.findViewById(R.id.image)
-        val emptyText: TextView = view.findViewById(R.id.empty_view)
+        val imageView: ImageView = view.findViewById(R.id.image) as ImageView
+        val emptyText: TextView = view.findViewById(R.id.empty_view) as TextView
 
         init {
             emptyText.setOnClickListener(this)

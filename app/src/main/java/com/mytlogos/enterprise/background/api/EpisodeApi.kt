@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.api
 
 import com.mytlogos.enterprise.background.api.model.ClientEpisode
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.*
 
 internal interface EpisodeApi {
@@ -9,7 +10,7 @@ internal interface EpisodeApi {
     fun getEpisode(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientEpisode>
 
     @GET
-    fun getEpisodes(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<MutableList<ClientEpisode>>
+    suspend fun getEpisodes(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<MutableList<ClientEpisode>>
 
     @POST
     fun addEpisode(@Url url: String, @Body body: MutableMap<String, Any?>): Call<ClientEpisode>

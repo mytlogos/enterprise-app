@@ -123,7 +123,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         // TODO: 28.07.2019 when items where loaded and
         //  then a swipe refresh follow somewhere, everything will disappear
         fragmentRoot = inflater.inflate(layoutId, container, false) as ViewGroup
-        val button: FloatingActionButton = fragmentRoot!!.findViewById(R.id.fab)
+        val button: FloatingActionButton = fragmentRoot!!.findViewById(R.id.fab) as FloatingActionButton
         button.tag = R.drawable.ic_arrow_down_bright
         button.setOnLongClickListener {
             val newDrawableResource: Int = if (R.drawable.ic_arrow_down_bright == button.tag) {
@@ -145,7 +145,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
                 flexibleAdapter!!.smoothScrollToPosition(0)
             }
         }
-        listView = fragmentRoot!!.findViewById(R.id.list)
+        listView = fragmentRoot!!.findViewById(R.id.list) as RecyclerView?
         val localListView = listView!!
 
         // Set the adapter
@@ -256,7 +256,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
             view.check(id)
         }
         view.setOnCheckedChangeListener { group: RadioGroup, checkedId: Int ->
-            val radioButton = group.findViewById<View>(checkedId)
+            val radioButton: View = group.findViewById(checkedId)
             val childIndex = group.indexOfChild(radioButton)
             property.set(values[childIndex])
         }
@@ -267,11 +267,11 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         @SuppressLint("InflateParams") val view = inflater.inflate(filterable!!.filterLayout, null)
         if (filterable!!.searchFilterProperties != null) {
             for (property in filterable!!.searchFilterProperties!!) {
-                val filterView = view.findViewById<View>(property.viewId)
+                val filterView: View = view.findViewById(property.viewId)
                 val clearSearchButtonId = property.clearViewId
                 var clearTitleButton: ImageButton? = null
                 if (clearSearchButtonId != View.NO_ID) {
-                    clearTitleButton = view.findViewById(clearSearchButtonId)
+                    clearTitleButton = view.findViewById(clearSearchButtonId) as ImageButton?
                 }
                 when (filterView) {
                     is SearchView -> {
@@ -386,7 +386,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     fun onFlexibleCreated(adapter: FlexibleAdapter<IFlexible<*>>?) {}
     @SuppressLint("SetTextI18n")
     fun setNumberTextField(view: View, @IdRes id: Int, value: Int, minValue: Int) {
-        val minEpisodeRead = view.findViewById<EditText>(id)
+        val minEpisodeRead = view.findViewById(id) as EditText
         if (value < minValue) {
             minEpisodeRead.setText(null)
         } else {
@@ -451,7 +451,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         consumer: Consumer<E?>
     ) {
         val items = valueMap.keys.toTypedArray()
-        val readSpinner = view.findViewById<Spinner>(resId)
+        val readSpinner = view.findViewById(resId) as Spinner
         val readAdapter = TextOnlyListAdapter<String?>(requireContext(), null)
         readAdapter.addAll(*items)
         readSpinner.adapter = readAdapter
@@ -565,7 +565,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         }
         val filterableViewModel = model as MediumFilterableViewModel
         val medium = filterableViewModel.mediumFilter
-        val box = view.findViewById<CheckBox>(boxId)
+        val box = view.findViewById(boxId) as CheckBox?
             ?: throw IllegalStateException(String.format(
                 "%s extends %s,expected a filter checkbox with id: %d",
                 model.javaClass.simpleName,

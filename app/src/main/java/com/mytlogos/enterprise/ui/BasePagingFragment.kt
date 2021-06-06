@@ -16,7 +16,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.PagingData
 import androidx.paging.PagingDataAdapter
+import androidx.recyclerview.selection.SelectionPredicates
 import androidx.recyclerview.selection.SelectionTracker
+import androidx.recyclerview.selection.StorageStrategy
 import androidx.recyclerview.widget.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mytlogos.enterprise.R
@@ -24,23 +26,29 @@ import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.model.MediumType.addMediumType
 import com.mytlogos.enterprise.model.MediumType.isType
 import com.mytlogos.enterprise.model.MediumType.removeMediumType
+import com.mytlogos.enterprise.tools.DetailsLookup
+import com.mytlogos.enterprise.tools.SimpleItemKeyProvider
 import com.mytlogos.enterprise.tools.Sortings
+import com.mytlogos.enterprise.tools.createSelectNothing
 import com.mytlogos.enterprise.viewmodel.FilterableViewModel
 import com.mytlogos.enterprise.viewmodel.MediumFilterableViewModel
 import com.mytlogos.enterprise.viewmodel.SortableViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.util.*
 import java.util.function.Consumer
 import kotlin.reflect.KMutableProperty0
 
 abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : BaseFragment() {
 
-    lateinit var viewModel: ViewModel
-    lateinit var listView: RecyclerView
     private lateinit var fragmentRoot: ViewGroup
     private lateinit var adapter: BaseAdapter<Value, *>
     private var filterable: Filterable? = null
+    protected lateinit var viewModel: ViewModel
+    protected lateinit var listView: RecyclerView
+    protected lateinit var selectionTracker: SelectionTracker<Long>
+    protected var selectionMode: SelectionMode = SelectionMode.IDLE
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,7 +59,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         //  then a swipe refresh follow somewhere, everything will disappear
         fragmentRoot = inflater.inflate(layoutId, container, false) as ViewGroup
 
-        listView = fragmentRoot.findViewById(R.id.list)
+        listView = fragmentRoot.findViewById(R.id.list) as RecyclerView
 
         val context = fragmentRoot.context
         val layoutManager = LinearLayoutManager(context)
@@ -71,10 +79,50 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
 
         initFabButton(fragmentRoot, listView, layoutManager)
 
-        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
+        this.changeSelectionMode(SelectionMode.IDLE)
+
+        viewLifecycleOwner.lifecycleScope.launch {
             createPaged(viewModel).collectLatest { adapter.submitData(it) }
         }
         return fragmentRoot
+    }
+
+    protected enum class SelectionMode {
+        // do not allow any select
+        IDLE,
+
+        // allow only a single select
+        SINGLE,
+
+        // allow multiple selects
+        MULTI
+    }
+
+    protected fun changeSelectionMode(mode: SelectionMode) {
+        val predicate = when (mode) {
+            SelectionMode.SINGLE -> SelectionPredicates.createSelectSingleAnything<Long>()
+            SelectionMode.MULTI -> SelectionPredicates.createSelectAnything()
+            SelectionMode.IDLE -> createSelectNothing()
+        }
+        val newTracker = SelectionTracker.Builder(
+            "MediumSelection",
+            listView,
+            SimpleItemKeyProvider(listView),
+            DetailsLookup(listView),
+            StorageStrategy.createLongStorage(),
+        ).withSelectionPredicate(predicate).build()
+
+        // this ensures that only a initialized [selectionTracker] is used
+        if (mode != SelectionMode.IDLE) {
+            newTracker.setItemsSelected(selectionTracker.selection, true)
+        }
+        // update or initialize [selectionTracker]
+        selectionTracker = newTracker
+        selectionMode = mode
+
+        val adapter = getAdapter()
+        adapter.selectionTracker = selectionTracker
+        adapter.notifyDataSetChanged()
     }
 
     private fun setSearchViewFilter(
@@ -101,6 +149,8 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     abstract class BaseAdapter<Value : Any, ViewHolder : RecyclerView.ViewHolder>(
         diff: DiffUtil.ItemCallback<Value>,
     ) : PagingDataAdapter<Value, ViewHolder>(diff) {
+
+        lateinit var selectionTracker: SelectionTracker<Long>
 
         fun interface ViewInit<ViewHolder : RecyclerView.ViewHolder> {
             fun init(holder: ViewHolder)
@@ -202,7 +252,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
             view.check(id)
         }
         view.setOnCheckedChangeListener { group: RadioGroup, checkedId: Int ->
-            val radioButton = group.findViewById<View>(checkedId)
+            val radioButton: View = group.findViewById(checkedId)
             val childIndex = group.indexOfChild(radioButton)
             property.set(values[childIndex])
         }
@@ -215,11 +265,11 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         @SuppressLint("InflateParams") val view = inflater.inflate(filterable.filterLayout, null)
         if (filterable.searchFilterProperties != null) {
             for (property in filterable.searchFilterProperties!!) {
-                val filterView = view.findViewById<View>(property.viewId)
+                val filterView: View = view.findViewById(property.viewId)
                 val clearSearchButtonId = property.clearViewId
                 var clearTitleButton: ImageButton? = null
                 if (clearSearchButtonId != View.NO_ID) {
-                    clearTitleButton = view.findViewById(clearSearchButtonId)
+                    clearTitleButton = view.findViewById(clearSearchButtonId) as ImageButton?
                 }
                 when (filterView) {
                     is SearchView -> {
@@ -292,7 +342,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
 
     @SuppressLint("SetTextI18n")
     fun setNumberTextField(view: View, @IdRes id: Int, value: Int, minValue: Int = 0) {
-        val minEpisodeRead = view.findViewById<EditText>(id)
+        val minEpisodeRead: EditText = view.findViewById(id) as EditText
         if (value < minValue) {
             minEpisodeRead.text = null
         } else {
@@ -330,7 +380,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         property: KMutableProperty0<String>,
         showToast: (v: String, duration: Int) -> Unit,
         clearViewId: Int = View.NO_ID,
-    ) : SimpleProperty<String>(viewId, property, showToast, clearViewId)
+    ) : SimpleProperty<String>(viewId, property, showToast, clearViewId), TextProperty
 
     protected class IntTextProperty(
         override val viewId: Int,
@@ -378,7 +428,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         consumer: Consumer<E?>,
     ) {
         val items = valueMap.keys.toTypedArray()
-        val readSpinner = view.findViewById<Spinner>(resId)
+        val readSpinner: Spinner = view.findViewById(resId) as Spinner
         val readAdapter = TextOnlyListAdapter<String?>(requireContext(), null)
         readAdapter.addAll(*items)
         readSpinner.adapter = readAdapter
@@ -445,7 +495,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         }
         val filterableViewModel = model as MediumFilterableViewModel
         val medium = filterableViewModel.mediumFilter
-        val box = view.findViewById<CheckBox>(boxId)
+        val box: CheckBox = view.findViewById(boxId) as CheckBox?
             ?: throw IllegalStateException(String.format(
                 "%s extends %s,expected a filter checkbox with id: %d",
                 model.javaClass.simpleName,
@@ -476,7 +526,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         listView: RecyclerView,
         layoutManager: LinearLayoutManager,
     ) {
-        val button: FloatingActionButton = root.findViewById(R.id.fab)
+        val button: FloatingActionButton = root.findViewById(R.id.fab) as FloatingActionButton
 
         val downArrow = R.drawable.ic_arrow_down_bright
         val upArrow = R.drawable.ic_arrow_up_bright

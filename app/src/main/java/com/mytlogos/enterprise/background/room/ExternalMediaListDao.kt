@@ -11,33 +11,34 @@ import com.mytlogos.enterprise.model.ExternalMediaListSetting
 @Dao
 interface ExternalMediaListDao : MultiBaseDao<RoomExternalMediaList?> {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun addJoin(listMediaJoin: ExternalListMediaJoin)
+    suspend fun addJoin(listMediaJoin: ExternalListMediaJoin)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun addJoin(collection: Collection<ExternalListMediaJoin>)
-    fun clearJoins(collection: Collection<Int>) {
+    suspend fun addJoin(collection: Collection<ExternalListMediaJoin>)
+
+    suspend fun clearJoins(collection: Collection<Int>) {
         for (integer in collection) {
             clearJoin(integer)
         }
     }
 
     @Query("DELETE FROM ExternalListMediaJoin WHERE listId=:listId")
-    fun clearJoin(listId: Int)
+    suspend fun clearJoin(listId: Int)
 
     @Query("DELETE FROM ExternalListMediaJoin")
-    fun clearJoins()
+    suspend fun clearJoins()
 
     @Delete
-    fun removeJoin(listMediaJoin: ExternalListMediaJoin)
+    suspend fun removeJoin(listMediaJoin: ExternalListMediaJoin)
 
     @Delete
-    fun removeJoin(collection: Collection<ExternalListMediaJoin>)
+    suspend fun removeJoin(collection: Collection<ExternalListMediaJoin>)
 
     @Query("SELECT externalListId FROM RoomExternalMediaList;")
-    fun loaded(): List<Int>
+    suspend fun loaded(): List<Int>
 
     @Query("SELECT mediumId FROM ExternalListMediaJoin WHERE listId=:externalListId")
-    fun getExternalListItems(externalListId: Int): List<Int>
+    suspend fun getExternalListItems(externalListId: Int): List<Int>
 
     @get:Query("SELECT RoomExternalMediaList.*, " +
             "(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size " +
@@ -60,23 +61,23 @@ interface ExternalMediaListDao : MultiBaseDao<RoomExternalMediaList?> {
             "(SELECT externalListId,1 as toDownload FROM RoomToDownload WHERE externalListId > 0) " +
             "as RoomToDownload ON RoomToDownload.externalListId=RoomExternalMediaList.externalListId " +
             "WHERE RoomExternalMediaList.externalListId=:id")
-    fun getExternalListSettingNow(id: Int): ExternalMediaListSetting
+    suspend fun getExternalListSettingNow(id: Int): ExternalMediaListSetting
 
     @Query("SELECT mediumId FROM ExternalListMediaJoin WHERE listId=:externalListId")
     fun getLiveExternalListItems(externalListId: Int): LiveData<MutableList<Int>>
 
-    @get:Query("SELECT DISTINCT mediumId FROM ExternalListMediaJoin")
-    val allLinkedMedia: List<Int>
+    @Query("SELECT DISTINCT mediumId FROM ExternalListMediaJoin")
+    suspend fun getAllLinkedMedia(): List<Int>
 
     @Query("SELECT COUNT(externalListId) FROM RoomExternalMediaList")
     fun countLists(): LiveData<Int>
 
-    @get:Query("SELECT listId, mediumId FROM ExternalListMediaJoin")
-    val listItems: List<ExternalListMediaJoin>
+    @Query("SELECT listId, mediumId FROM ExternalListMediaJoin")
+    suspend fun getListItems(): List<ExternalListMediaJoin>
 
-    @get:Query("SELECT externalListId as listId, uuid FROM RoomExternalMediaList")
-    val listUser: List<RoomListUser>
+    @Query("SELECT externalListId as listId, uuid FROM RoomExternalMediaList")
+    suspend fun getListUser(): List<RoomListUser>
 
     @Query("DELETE FROM RoomExternalMediaList WHERE externalListId IN (:listIds)")
-    fun delete(listIds: Collection<Int>)
+    suspend fun delete(listIds: Collection<Int>)
 }

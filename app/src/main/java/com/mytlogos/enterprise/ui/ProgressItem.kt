@@ -82,8 +82,8 @@ class ProgressItem : AbstractFlexibleItem<ProgressViewHolder>() {
 
     class ProgressViewHolder internal constructor(view: View, adapter: FlexibleAdapter<*>?) :
         FlexibleViewHolder(view, adapter) {
-        var progressBar: ProgressBar = view.findViewById(R.id.progress_bar)
-        var progressMessage: TextView = view.findViewById(R.id.progress_message)
+        var progressBar: ProgressBar = view.findViewById(R.id.progress_bar) as ProgressBar
+        var progressMessage: TextView = view.findViewById(R.id.progress_message) as TextView
         override fun scrollAnimators(animators: List<Animator>, position: Int, isForward: Boolean) {
             AnimatorHelper.scaleAnimator(animators, itemView, 0f)
         }

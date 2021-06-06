@@ -208,7 +208,7 @@ class ReadHistoryFragment
         val textView: TextView
 
         init {
-            textView = itemView.findViewById(R.id.text)
+            textView = itemView.findViewById(R.id.text) as TextView
         }
     }
 
@@ -225,10 +225,10 @@ class ReadHistoryFragment
         }
 
         init {
-            metaView = mView.findViewById(R.id.item_top_left)
-            novelView = mView.findViewById(R.id.item_top_right)
-            contentView = mView.findViewById(R.id.content)
-            optionsButtonView = mView.findViewById(R.id.item_options_button)
+            metaView = mView.findViewById(R.id.item_top_left) as TextView
+            novelView = mView.findViewById(R.id.item_top_right) as TextView
+            contentView = mView.findViewById(R.id.content) as TextView
+            optionsButtonView = mView.findViewById(R.id.item_options_button) as ImageButton
         }
     }
 

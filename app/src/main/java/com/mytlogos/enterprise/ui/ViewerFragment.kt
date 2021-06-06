@@ -35,7 +35,7 @@ abstract class ViewerFragment<T> : BaseFragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.viewer_layout, container, false)
-        swipeLayout = view.findViewById(R.id.swiper)
+        swipeLayout = view.findViewById(R.id.swiper) as SwipyRefreshLayout?
         inflater.inflate(layoutRes, swipeLayout, true)
         navigationView = view.findViewById(R.id.navigation)
         appbar = requireActivity().findViewById(R.id.appbar)
@@ -43,10 +43,10 @@ abstract class ViewerFragment<T> : BaseFragment() {
         localSwipeLayout!!.setOnRefreshListener { direction: SwipyRefreshLayoutDirection ->
             navigateEpisode(direction)
         }
-        progressView = view.findViewById(R.id.progress)
-        view.findViewById<View>(R.id.left_nav)
+        progressView = view.findViewById(R.id.progress) as TextView?
+        (view.findViewById(R.id.left_nav) as View)
             .setOnClickListener { navigateEpisode(SwipyRefreshLayoutDirection.TOP) }
-        view.findViewById<View>(R.id.right_nav)
+        (view.findViewById(R.id.right_nav) as View)
             .setOnClickListener { navigateEpisode(SwipyRefreshLayoutDirection.BOTTOM) }
         val scrolledViewId = scrolledViewId
         if (scrolledViewId != View.NO_ID) {

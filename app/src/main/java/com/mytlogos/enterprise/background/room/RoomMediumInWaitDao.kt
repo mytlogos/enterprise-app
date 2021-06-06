@@ -43,7 +43,7 @@ interface RoomMediumInWaitDao : MultiBaseDao<RoomMediumInWait> {
     fun getSuggestions(title: String, medium: Int): LiveData<MutableList<MediumInWait>>
 
     @Query("DELETE FROM RoomMediumInWait")
-    fun clear()
+    suspend fun clear()
 
     @Query("SELECT COUNT(*) FROM RoomMediumInWait")
     fun countMedia(): LiveData<Int>

@@ -11,6 +11,7 @@ import com.mytlogos.enterprise.model.MediaListSetting
 import com.mytlogos.enterprise.model.MediumSetting
 import com.mytlogos.enterprise.model.UpdateUser
 import com.mytlogos.enterprise.tools.*
+import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import retrofit2.Response
 import java.io.IOException
@@ -363,8 +364,10 @@ internal class EditService(
             }
             try {
                 client.updateMedia(clientMedium)
-                val medium = client.getMedium(mediumId).body()
-                persister.persist(ClientSimpleMedium(medium!!)).finish()
+                runBlocking {
+                    val medium = client.getMedium(mediumId).body()
+                    persister.persist(ClientSimpleMedium(medium!!)).finish()
+                }
             } catch (e: IOException) {
                 e.printStackTrace()
                 return@runCompletableTask "Could not update Medium"
@@ -398,7 +401,7 @@ internal class EditService(
 
     @Throws(IOException::class)
     private fun updateProgressOnline(progress: Float, ids: Collection<Int>): Boolean {
-        val response: Response<Boolean> = client.addProgress(ids, progress)
+        val response: Response<Boolean> = runBlocking { client.addProgress(ids, progress) }
         if (!response.isSuccessful || response.body() == null || !response.body()!!) {
             return false
         }

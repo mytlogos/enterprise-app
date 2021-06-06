@@ -7,12 +7,12 @@ import com.mytlogos.enterprise.background.room.model.RoomTocStat
 
 @Dao
 interface TocDao : MultiBaseDao<RoomToc> {
-    @get:Query("SELECT mediumId, count(link) as tocCount FROM RoomToc GROUP BY mediumId;")
-    val stat: List<RoomTocStat>
+    @Query("SELECT mediumId, count(link) as tocCount FROM RoomToc GROUP BY mediumId;")
+    suspend fun getStat(): List<RoomTocStat>
 
     @Query("SELECT mediumId, link FROM RoomToc WHERE mediumId IN (:mediumIds)")
-    fun getTocs(mediumIds: Collection<Int>): List<RoomToc>
+    suspend fun getTocs(mediumIds: Collection<Int>): List<RoomToc>
 
-    @get:Query("SELECT mediumId, link FROM RoomToc")
-    val tocs: List<RoomToc>
+    @Query("SELECT mediumId, link FROM RoomToc")
+    suspend fun getTocs(): List<RoomToc>
 }

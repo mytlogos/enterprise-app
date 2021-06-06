@@ -43,9 +43,9 @@ class BaseLayout : DrawerLayout {
     private fun init() {
         this.id = R.id.BASE_ID
         LayoutInflater.from(context).inflate(R.layout.base_layout, this, true)
-        appBar = findViewById(R.id.appbar)
-        progressBar = findViewById(R.id.load_progress)
-        progressContainer = findViewById(R.id.progress_container)
+        appBar = findViewById(R.id.appbar) as AppBarLayout?
+        progressBar = findViewById(R.id.load_progress) as ProgressBar?
+        progressContainer = findViewById(R.id.progress_container) as ViewGroup?
     }
 
     fun activateTabs(): TabLayout {

@@ -51,12 +51,6 @@ interface DatabaseStorage {
 
     fun getMediumSettings(mediumId: Int): LiveData<MediumSetting>
     fun getMediumSettingsNow(mediumId: Int): MediumSetting
-    fun getToc(
-        mediumId: Int,
-        sortings: Sortings,
-        read: Byte,
-        saved: Byte
-    ): LiveData<PagedList<TocEpisode>>
 
     fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>>
     fun listExists(listName: String): Boolean
@@ -99,17 +93,8 @@ interface DatabaseStorage {
     fun getSimpleMedium(mediumId: Int): SimpleMedium
     fun clearNotifications()
     fun clearFailEpisodes()
-    fun getAllEpisodes(mediumId: Int): Collection<Int>
     fun syncProgress()
     fun updateDataStructure(mediaIds: List<Int>, partIds: List<Int>)
-    fun getEpisodeIdsWithHigherIndex(combiIndex: Double, mediumId: Int, read: Boolean): List<Int>
-    fun getEpisodeIdsWithHigherIndex(combiIndex: Double, mediumId: Int): List<Int>
-    fun getEpisodeIdsWithLowerIndex(combiIndex: Double, mediumId: Int, read: Boolean): List<Int>
-    fun getEpisodeIdsWithLowerIndex(combiIndex: Double, mediumId: Int): List<Int>
-    fun getSavedEpisodeIdsWithHigherIndex(combiIndex: Double, mediumId: Int): Collection<Int>
-    fun getSavedEpisodeIdsWithLowerIndex(combiIndex: Double, mediumId: Int): Collection<Int>
-    fun removeEpisodes(episodeIds: List<Int>)
-    fun removeParts(partIds: Collection<Int>)
     fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int>
     fun insertEditEvent(event: EditEvent)
     fun insertEditEvent(events: Collection<EditEvent>)

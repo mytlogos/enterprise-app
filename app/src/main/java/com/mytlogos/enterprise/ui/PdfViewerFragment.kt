@@ -17,7 +17,7 @@ internal class PdfViewerFragment : TextViewerFragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
-        pdfDisplay = view.findViewById(R.id.pdfView)
+        pdfDisplay = view.findViewById(R.id.pdfView) as PDFView?
         setHasOptionsMenu(true)
         pdfDisplay!!.setOnClickListener { toggleReadingMode() }
         return view

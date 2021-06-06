@@ -47,7 +47,7 @@ class NewsFragment
         savedInstanceState: Bundle?
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
-        val recyclerView: RecyclerView = view.findViewById(R.id.list)
+        val recyclerView: RecyclerView = view.findViewById(R.id.list) as RecyclerView
         val service = Executors.newSingleThreadScheduledExecutor()
         val attachedTask: Runnable = object : Runnable {
             override fun run() {
@@ -187,7 +187,7 @@ class NewsFragment
         val textView: TextView
 
         init {
-            textView = itemView.findViewById(R.id.text)
+            textView = itemView.findViewById(R.id.text) as TextView
         }
     }
 

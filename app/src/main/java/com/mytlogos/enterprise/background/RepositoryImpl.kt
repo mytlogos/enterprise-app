@@ -6,24 +6,20 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Transformations
 import androidx.paging.PagedList
-import androidx.work.Worker
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.NetworkIdentificator
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator
 import com.mytlogos.enterprise.background.room.RoomStorage
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.*
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
-import com.mytlogos.enterprise.worker.DownloadWorker
 import org.joda.time.DateTime
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import kotlin.collections.ArrayList
 
 class RepositoryImpl private constructor(application: Application) : Repository {
     private val persister: ClientModelPersister
@@ -115,105 +111,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         }
     }
 
-    override fun loadEpisodeAsync(episodeIds: Collection<Int>): CompletableFuture<List<ClientEpisode>?> {
-        return CompletableFuture.supplyAsync { loadEpisodeSync(episodeIds) }
-    }
-
-    override fun loadEpisodeSync(episodeIds: Collection<Int>): List<ClientEpisode>? {
-        return try {
-            println("loading episodes: " + episodeIds + " on " + Thread.currentThread())
-            client.getEpisodes(episodeIds).body()
-        } catch (e: IOException) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    override fun loadMediaAsync(mediaIds: Collection<Int>): CompletableFuture<List<ClientMedium>?> {
-        return CompletableFuture.supplyAsync { loadMediaSync(mediaIds) }
-    }
-
-    override fun loadMediaSync(mediaIds: Collection<Int>): List<ClientMedium>? {
-        return try {
-            println("loading media: " + mediaIds + " on " + Thread.currentThread())
-            client.getMedia(mediaIds).body()
-        } catch (e: IOException) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    override fun loadPartAsync(partIds: Collection<Int>): CompletableFuture<List<ClientPart>?> {
-        return CompletableFuture.supplyAsync { loadPartSync(partIds) }
-    }
-
-    override fun loadPartSync(partIds: Collection<Int>): List<ClientPart>? {
-        return try {
-            println("loading parts: " + partIds + " on " + Thread.currentThread())
-            client.getParts(partIds).body()
-        } catch (e: IOException) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    override fun loadMediaListAsync(listIds: Collection<Int>): CompletableFuture<ClientMultiListQuery?> {
-        return CompletableFuture.supplyAsync { loadMediaListSync(listIds) }
-    }
-
-    override fun loadMediaListSync(listIds: Collection<Int>): ClientMultiListQuery? {
-        return try {
-            println("loading lists: " + listIds + " on " + Thread.currentThread())
-            client.getLists(listIds).body()
-        } catch (e: IOException) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    override fun loadExternalMediaListAsync(externalListIds: Collection<Int>): CompletableFuture<List<ClientExternalMediaList>?> {
-        return CompletableFuture.supplyAsync { loadExternalMediaListSync(externalListIds) }
-    }
-
-    override fun loadExternalMediaListSync(externalListIds: Collection<Int>): List<ClientExternalMediaList>? {
-        println("loading ExtLists: " + externalListIds + " on " + Thread.currentThread())
-        //        try {
-//                List<ClientEpisode> body = this.client.getExternalUser(episodeIds).execute().body();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-        // todo implement loading of externalMediaLists
-        return null
-    }
-
-    override fun loadExternalUserAsync(externalUuids: Collection<String>): CompletableFuture<List<ClientExternalUser>?> {
-        return CompletableFuture.supplyAsync { loadExternalUserSync(externalUuids) }
-    }
-
-    override fun loadExternalUserSync(externalUuids: Collection<String>): List<ClientExternalUser>? {
-        return try {
-            println("loading ExternalUser: " + externalUuids + " on " + Thread.currentThread())
-            client.getExternalUser(externalUuids).body()
-        } catch (e: IOException) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    override fun loadNewsAsync(newsIds: Collection<Int>): CompletableFuture<List<ClientNews>?> {
-        return CompletableFuture.supplyAsync { loadNewsSync(newsIds) }
-    }
-
-    override fun loadNewsSync(newsIds: Collection<Int>): List<ClientNews>? {
-        return try {
-            println("loading News: " + newsIds + " on " + Thread.currentThread())
-            client.getNews(newsIds).body()
-        } catch (e: IOException) {
-            e.printStackTrace()
-            null
-        }
-    }
-
     override val news: LiveData<PagedList<News>>
         get() = storage.getNews()
 
@@ -236,10 +133,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     override val savedEpisodes: List<Int>
         get() = storage.getSavedEpisodes()
-
-    override fun updateSaved(episodeId: Int, saved: Boolean) {
-        storage.updateSaved(episodeId, saved)
-    }
 
     override fun updateSaved(episodeIds: Collection<Int>, saved: Boolean) {
         try {
@@ -330,15 +223,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return editService.updateMedium(mediumSettings)
     }
 
-    override fun getToc(
-        mediumId: Int,
-        sortings: Sortings,
-        read: Byte,
-        saved: Byte
-    ): LiveData<PagedList<TocEpisode>> {
-        return storage.getToc(mediumId, sortings, read, saved)
-    }
-
     override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>> {
         return storage.getMediumItems(listId, isExternal)
     }
@@ -400,103 +284,25 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         storage.updateDataStructure(mediaIds, partIds)
     }
 
-    @Throws(Exception::class)
-    override fun reloadLowerIndex(combiIndex: Double, mediumId: Int) {
-        val episodeIds = storage.getEpisodeIdsWithLowerIndex(combiIndex, mediumId)
-        reloadEpisodes(episodeIds)
-    }
-
-    @Throws(Exception::class)
-    override fun reloadHigherIndex(combiIndex: Double, mediumId: Int) {
-        val episodeIds = storage.getEpisodeIdsWithHigherIndex(combiIndex, mediumId)
-        reloadEpisodes(episodeIds)
-    }
-
-    @Throws(Exception::class)
-    override fun reload(episodeIds: Set<Int>) {
-        reloadEpisodes(episodeIds)
-    }
-
-    @Throws(IOException::class)
-    override fun reloadAll(mediumId: Int) {
-        val medium = client.getMedium(mediumId).body()
-        if (medium == null) {
-            System.err.println("missing medium: $mediumId")
-            return
-        }
-        val parts = medium.parts ?: intArrayOf()
-        val partIds: MutableCollection<Int> = ArrayList(parts.size)
-        for (part in parts) {
-            partIds.add(part)
-        }
-        val partBody = client.getParts(partIds).body()
-            ?: return
-        val loadedPartIds: MutableList<Int> = ArrayList()
-        for (part in partBody) {
-            loadedPartIds.add(part.id)
-        }
-        val generator = LoadWorkGenerator(loadedData)
-        val filteredParts = generator.filterParts(partBody)
-        persister.persist(filteredParts)
-        partIds.removeAll(loadedPartIds)
-        storage.removeParts(partIds)
-    }
-
-    @Throws(Exception::class)
-    private fun reloadEpisodes(episodeIds: Collection<Int>) {
-        Utils.doPartitionedEx(episodeIds) { integers: List<Int> ->
-            val episodes = client.getEpisodes(integers).body()
-                ?: return@doPartitionedEx true
-            val generator = LoadWorkGenerator(loadedData)
-            val filteredEpisodes = generator.filterEpisodes(episodes)
-            persister.persist(filteredEpisodes)
-            val loadedIds: MutableList<Int> = ArrayList()
-            for (episode in episodes) {
-                loadedIds.add(episode.id)
-            }
-            val ids = ArrayList(integers)
-            ids.removeAll(loadedIds)
-            storage.removeEpisodes(ids)
-            true
-        }
-    }
-
-    override fun downloadLowerIndex(combiIndex: Double, mediumId: Int, context: Context) {
-        val episodeIds = storage.getEpisodeIdsWithLowerIndex(combiIndex, mediumId)
-        DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds)
-    }
-
-    override fun downloadHigherIndex(combiIndex: Double, mediumId: Int, context: Context) {
-        val episodeIds = storage.getEpisodeIdsWithHigherIndex(combiIndex, mediumId)
-        DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds)
-    }
-
-    override fun download(episodeIds: Set<Int>, mediumId: Int, context: Context) {
-        DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds)
-    }
-
-    override fun downloadAll(mediumId: Int, context: Context) {
-        val episodeIds = storage.getAllEpisodes(mediumId)
-        DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds)
-    }
-
     override fun updateProgress(episodeId: Int, progress: Float) {
-        TaskManager.Companion.runTask(Runnable {
+        TaskManager.runTask {
             storage.updateProgress(
                 setOf(episodeId),
                 progress
             )
-        })
+        }
     }
 
-    override fun getClient(worker: Worker): Client {
-        require(!(worker == null || worker.isStopped)) { "not an active Worker" }
+    override fun getClient(): Client {
         return client
     }
 
-    override fun getPersister(worker: Worker): ClientModelPersister {
-        require(!(worker == null || worker.isStopped)) { "not an active Worker" }
+    override fun getPersister(): ClientModelPersister {
         return persister
+    }
+
+    fun getLoadedData(): LoadData {
+        return loadedData
     }
 
     override fun isMediumLoaded(mediumId: Int): Boolean {
@@ -517,69 +323,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     override fun checkReload(stat: ParsedStat): ReloadStat {
         return storage.checkReload(stat)
-    }
-
-    @Throws(IOException::class)
-    override fun deleteLocalEpisodesWithLowerIndex(
-        combiIndex: Double,
-        mediumId: Int,
-        application: Application
-    ) {
-        val episodeIds = storage.getSavedEpisodeIdsWithLowerIndex(combiIndex, mediumId)
-        deleteLocalEpisodes(HashSet(episodeIds), mediumId, application)
-    }
-
-    @Throws(IOException::class)
-    override fun deleteLocalEpisodesWithHigherIndex(
-        combiIndex: Double,
-        mediumId: Int,
-        application: Application
-    ) {
-        val episodeIds = storage.getSavedEpisodeIdsWithHigherIndex(combiIndex, mediumId)
-        deleteLocalEpisodes(HashSet(episodeIds), mediumId, application)
-    }
-
-    @Throws(IOException::class)
-    override fun deleteAllLocalEpisodes(mediumId: Int, application: Application) {
-        val episodes: Collection<Int> = storage.getSavedEpisodes(mediumId)
-        deleteLocalEpisodes(HashSet(episodes), mediumId, application)
-    }
-
-    @Throws(IOException::class)
-    override fun deleteLocalEpisodes(
-        episodeIds: Set<Int>,
-        mediumId: Int,
-        application: Application
-    ) {
-        val medium = getMediumType(mediumId)
-        val contentTool = FileTools.getContentTool(medium, application)
-        if (!contentTool.isSupported) {
-            throw IOException("medium type: $medium is not supported")
-        }
-        contentTool.removeMediaEpisodes(mediumId, episodeIds)
-        this.updateSaved(episodeIds, false)
-    }
-
-    @Throws(Exception::class)
-    override fun updateReadWithHigherIndex(combiIndex: Double, read: Boolean, mediumId: Int) {
-        val episodeIds = storage.getEpisodeIdsWithHigherIndex(combiIndex, mediumId, read)
-        this.updateRead(episodeIds, read)
-    }
-
-    @Throws(Exception::class)
-    override fun updateAllRead(mediumId: Int, read: Boolean) {
-        val episodeIds = storage.getAllEpisodes(mediumId)
-        this.updateRead(episodeIds, read)
-    }
-
-    @Throws(Exception::class)
-    override fun updateRead(episodeId: Int, read: Boolean) {
-        editService.updateRead(listOf(episodeId), read)
-    }
-
-    @Throws(Exception::class)
-    override fun updateRead(episodeIds: Collection<Int>, read: Boolean) {
-        editService.updateRead(episodeIds, read)
     }
 
     override val readTodayEpisodes: LiveData<PagedList<ReadEpisode>>
@@ -732,12 +475,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getReleaseLinks(episodeId)
     }
 
-    @Throws(Exception::class)
-    override fun updateReadWithLowerIndex(combiIndex: Double, read: Boolean, mediumId: Int) {
-        val episodeIds = storage.getEpisodeIdsWithLowerIndex(combiIndex, mediumId, read)
-        this.updateRead(episodeIds, read)
-    }
-
     override fun clearLocalMediaData(context: Context) {
         UserPreferences.lastSync = DateTime(0)
         TaskManager.Companion.runTask(Runnable {
@@ -859,7 +596,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         persister = storage.getPersister(this, loadedData)
         val identificator: NetworkIdentificator =
             AndroidNetworkIdentificator(application.applicationContext)
-        client = Client(identificator)
+        client = Client.getInstance(identificator)
         editService = EditService(client, storage, persister)
     }
 }

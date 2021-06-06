@@ -7,11 +7,11 @@ import com.mytlogos.enterprise.background.room.model.RoomToDownload
 
 @Dao
 interface ToDownloadDao : MultiBaseDao<RoomToDownload> {
-    @get:Query("SELECT * FROM RoomToDownload")
-    val all: List<RoomToDownload>
+    @Query("SELECT * FROM RoomToDownload")
+    suspend fun getAll(): List<RoomToDownload>
 
     @Query("DELETE FROM RoomToDownload WHERE listId is :listId AND externalListId is :externalListId AND mediumId is :mediumId")
-    fun deleteToDownload(mediumId: Int?, listId: Int?, externalListId: Int?)
+    suspend fun deleteToDownload(mediumId: Int?, listId: Int?, externalListId: Int?)
 
     @Query("SELECT COUNT(toDownloadId) FROM RoomToDownload " +
             "LEFT JOIN MediaListMediaJoin ON RoomToDownload.listId=MediaListMediaJoin.listId " +
