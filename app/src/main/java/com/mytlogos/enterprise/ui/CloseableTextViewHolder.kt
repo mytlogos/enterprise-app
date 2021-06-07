@@ -8,11 +8,10 @@ import eu.davidea.viewholders.FlexibleViewHolder
 
 internal class CloseableTextViewHolder(view: View, adapter: FlexibleAdapter<*>) :
     FlexibleViewHolder(view, adapter) {
-    var textView: TextView
+    var textView: TextView = view.findViewById(R.id.text)
 
     init {
-        textView = view.findViewById(R.id.text) as TextView
         val closeButton: View = view.findViewById(R.id.close)
-        closeButton.setOnClickListener { v: View? -> adapter.removeItem(this.flexibleAdapterPosition) }
+        closeButton.setOnClickListener { adapter.removeItem(this.flexibleAdapterPosition) }
     }
 }
