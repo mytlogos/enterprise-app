@@ -16,8 +16,6 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.tools.FileTools.getContentTool
 import com.mytlogos.enterprise.tools.Utils
-import java.util.*
-import java.util.function.Function
 
 open class BaseFragment : Fragment() {
     protected fun setTitle(title: String?) {
@@ -52,9 +50,7 @@ open class BaseFragment : Fragment() {
         if (urls.size == 1) {
             this.openInBrowser(urls[0])
         } else {
-            val domains =
-                urls.stream().map { obj: String -> Utils.getDomain(obj) }
-                    .toArray<String> { arrayOf() }
+            val domains = urls.map { obj: String -> Utils.getDomain(obj) }.toTypedArray()
             AlertDialog.Builder(requireContext())
                 .setItems(domains) { _: DialogInterface?, which: Int ->
                     if (which >= 0 && which < urls.size) {
@@ -104,18 +100,19 @@ open class BaseFragment : Fragment() {
 
     fun openLocal(episodeId: Int, mediumId: Int, mediumType: Int) {
         val application = mainActivity.application
-        val fragment: Fragment?
         val tool = getContentTool(mediumType, application)
+
         if (!tool.isSupported) {
             showToast("This medium type is not yet supported")
             return
         }
         val path = tool.getItemPath(mediumId)
-        if (path!!.isEmpty()) {
+
+        if (path?.isEmpty() == true) {
             showToast("No Medium Found")
             return
         }
-        fragment = when (mediumType) {
+        val fragment: Fragment = when (mediumType) {
             MediumType.TEXT -> TextViewerFragment.newInstance(episodeId, path)
             MediumType.AUDIO -> AudioViewerFragment.newInstance(episodeId, path)
             MediumType.IMAGE -> ImageViewerFragment.newInstance(episodeId, path)
