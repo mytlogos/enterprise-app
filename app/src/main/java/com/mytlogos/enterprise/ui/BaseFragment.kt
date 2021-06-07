@@ -108,7 +108,7 @@ open class BaseFragment : Fragment() {
         }
         val path = tool.getItemPath(mediumId)
 
-        if (path?.isEmpty() == true) {
+        if (path == null || path.isEmpty()) {
             showToast("No Medium Found")
             return
         }

@@ -16,7 +16,7 @@ class ExternalUserListFragment : BaseListFragment<ExternalUser, ExternalUserView
         get() = ExternalUserViewModel::class.java
 
     override fun createPagedListLiveData(): LiveData<PagedList<ExternalUser>> {
-        return viewModel!!.externalUser
+        return viewModel.externalUser
     }
 
     override fun createFlexible(value: ExternalUser): IFlexible<*> {

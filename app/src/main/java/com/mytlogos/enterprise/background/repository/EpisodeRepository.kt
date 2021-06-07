@@ -10,6 +10,7 @@ import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator
 import com.mytlogos.enterprise.background.room.AbstractDatabase
 import com.mytlogos.enterprise.model.DisplayRelease
+import com.mytlogos.enterprise.model.SimpleEpisode
 import com.mytlogos.enterprise.model.TocEpisode
 import com.mytlogos.enterprise.tools.FileTools
 import com.mytlogos.enterprise.tools.SingletonHolder
@@ -277,6 +278,10 @@ class EpisodeRepository private constructor(application: Application) {
     suspend fun downloadAll(mediumId: Int, context: Context) {
         val episodeIds = episodeDao.getAllEpisodes(mediumId)
         DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds)
+    }
+
+    suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
+        return episodeDao.getSimpleEpisodes(ids)
     }
 
     companion object : SingletonHolder<EpisodeRepository, Application>(::EpisodeRepository)

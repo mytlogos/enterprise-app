@@ -10,28 +10,25 @@ import com.mytlogos.enterprise.R
 import java.io.File
 
 internal class PdfViewerFragment : TextViewerFragment() {
-    private var pdfDisplay: PDFView? = null
+    private lateinit var pdfDisplay: PDFView
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
-        pdfDisplay = view.findViewById(R.id.pdfView) as PDFView?
+        pdfDisplay = view.findViewById(R.id.pdfView)
         setHasOptionsMenu(true)
-        pdfDisplay!!.setOnClickListener { toggleReadingMode() }
+        pdfDisplay.setOnClickListener { toggleReadingMode() }
         return view
     }
 
     override fun updateContent() {
-        pdfDisplay!!
+        pdfDisplay
             .fromFile(File(currentBook))
             .defaultPage(0)
-            .onPageScroll { page: Int, positionOffset: Float ->
-                System.out.printf("Page: %d and Offset: %s%n",
-                    page,
-                    positionOffset)
-            }
+            .onPageScroll { page: Int, positionOffset: Float -> println("Page: $page and Offset: $positionOffset") }
             .scrollHandle(DefaultScrollHandle(requireContext()))
             .load()
     }

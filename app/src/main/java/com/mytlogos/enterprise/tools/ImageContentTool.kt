@@ -368,18 +368,21 @@ class ImageContentTool internal constructor(
             return emptyMap()
         }
         val pagePattern = Pattern.compile("^(\\d+)-(\\d+)\\.(png|jpg)$")
-        @SuppressLint("UseSparseArrays") val episodePages: MutableMap<Int, MutableSet<ChapterPage>> =
-            HashMap()
+        val episodePages: MutableMap<Int, MutableSet<ChapterPage>> = HashMap()
+
         for (episodePath in file.list()) {
             val matcher = pagePattern.matcher(episodePath)
+
             if (!matcher.matches()) {
                 continue
             }
+
             val episodeIdString = matcher.group(1)
             val pageString = matcher.group(2)
             val episodeId = episodeIdString.toInt()
             val page = pageString.toInt()
             val absolutePath = File(file, episodePath).absolutePath
+
             episodePages
                 .computeIfAbsent(episodeId) { HashSet() }
                 .add(ChapterPage(episodeId, page, absolutePath))
