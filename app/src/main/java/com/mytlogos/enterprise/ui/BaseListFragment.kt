@@ -24,8 +24,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.isType
 import com.mytlogos.enterprise.model.MediumType.addMediumType
+import com.mytlogos.enterprise.model.MediumType.isType
 import com.mytlogos.enterprise.model.MediumType.removeMediumType
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.viewmodel.FilterableViewModel
@@ -38,51 +38,68 @@ import java.util.*
 import java.util.function.Consumer
 import kotlin.math.min
 
-abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : BaseFragment(),
+@Deprecated(
+    "Uses Deprecated PagedList",
+    replaceWith = ReplaceWith("BasePagingFragment")
+)
+abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel> : BaseFragment(),
     OnItemClickListener, EndlessScrollListener, OnActionStateListener,
     OnDeleteCompleteListener, OnFilterListener, OnItemLongClickListener,
     OnItemMoveListener, OnItemSwipeListener, OnStickyHeaderChangeListener, OnUpdateListener {
-    var flexibleAdapter: FlexibleAdapter<IFlexible<*>>? = null
-        private set
-    var viewModel: ViewModel? = null
-        private set
-    var livePagedList: LiveData<PagedList<Value>>? = null
-        private set
-    open var listContainer: View? = null
 
-    private var fragmentRoot: ViewGroup? = null
+    lateinit var flexibleAdapter: FlexibleAdapter<IFlexible<*>>
+        private set
+    lateinit var viewModel: ViewModel
+        private set
+    lateinit var livePagedList: LiveData<PagedList<Value>>
+        private set
+    lateinit var listView: RecyclerView
+        private set
+
+    open lateinit var listContainer: View
+    private lateinit var fragmentRoot: ViewGroup
     private var filterable: Filterable? = null
     private var scrollToWhenLoaded = -1
+
     private val callback: PagedList.Callback = object : PagedList.Callback() {
         override fun onChanged(position: Int, count: Int) {
-            val pagedList = livePagedList!!.value ?: return
+            val pagedList = livePagedList.value ?: return
             val fragment: BaseListFragment<Value, ViewModel> = this@BaseListFragment
             val values: List<Value> = pagedList.subList(position, position + count)
             val newItems = fragment.convertToFlexible(values)
             val adapter = fragment.flexibleAdapter
-            newItems.removeAll(adapter!!.currentItems)
+
+            newItems.removeAll(adapter.currentItems)
             adapter.onLoadMoreComplete(newItems)
+
             var previouslyUnloaded = 0
+
             for (i in 0 until position) {
                 if (pagedList[i] == null) {
                     previouslyUnloaded++
                 }
             }
+
             val startIndex = position - previouslyUnloaded
             val currentItems = adapter.currentItems
             var currentIndex = startIndex
             var newIndex = 0
+
             while (currentIndex < currentItems.size && newIndex < newItems.size) {
                 val flexible = currentItems[currentIndex]
                 val newFlexible = newItems[newIndex]
+
                 if (flexible != newFlexible) {
                     val oldIndex = currentItems.indexOf(newFlexible)
                     adapter.moveItem(oldIndex, currentIndex)
                 }
+
                 currentIndex++
                 newIndex++
             }
+
             val scrollTo = fragment.scrollToWhenLoaded
+
             if (scrollTo >= 0) {
                 if (pagedList[scrollTo] != null) {
                     fragment.scrollToWhenLoaded = -1
@@ -102,81 +119,92 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         }
     }
     private val pagedListObserver = Observer { items: PagedList<Value> ->
-        if (checkEmptyList(items, fragmentRoot!!, listContainer)) {
+        if (checkEmptyList(items, fragmentRoot, listContainer)) {
             println("empty dataset")
-            flexibleAdapter!!.updateDataSet(null)
+            flexibleAdapter.updateDataSet(null)
             return@Observer
         }
         val flexibles: List<IFlexible<*>> = convertToFlexible(items)
-        flexibleAdapter!!.updateDataSet(flexibles)
+        flexibleAdapter.updateDataSet(flexibles)
+
         val snapshot = items.snapshot()
         items.addWeakCallback(snapshot, callback)
     }
-    var listView: RecyclerView? = null
-        private set
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         // TODO: 28.07.2019 when items where loaded and
         //  then a swipe refresh follow somewhere, everything will disappear
         fragmentRoot = inflater.inflate(layoutId, container, false) as ViewGroup
-        val button: FloatingActionButton = fragmentRoot!!.findViewById(R.id.fab) as FloatingActionButton
-        button.tag = R.drawable.ic_arrow_down_bright
+
+        initFabButton()
+
+        listView = fragmentRoot.findViewById(R.id.list)
+        val context = fragmentRoot.context
+
+        val layoutManager = LinearLayoutManager(context)
+        listView.layoutManager = layoutManager
+        val decoration = DividerItemDecoration(context, layoutManager.orientation)
+        listView.addItemDecoration(decoration)
+
+        flexibleAdapter = FlexibleAdapter<IFlexible<*>>(null)
+            .setStickyHeaders(true)
+            .setDisplayHeadersAtStartUp(true)
+
+        flexibleAdapter.setEndlessScrollListener(this, ProgressItem())
+        flexibleAdapter.addListener(this)
+        onFlexibleCreated(flexibleAdapter)
+
+        // Set the initialized adapter
+        listView.adapter = flexibleAdapter
+
+        viewModel = createViewModel()
+        setLivePagedList(createPagedListLiveData())
+        setHasOptionsMenu(true)
+
+        listContainer = fragmentRoot.findViewById(listContainerId)
+        filterable = createFilterable()
+        return fragmentRoot
+    }
+
+    private fun initFabButton() {
+        val button: FloatingActionButton = fragmentRoot.findViewById(R.id.fab)
+
+        val arrowDown = R.drawable.ic_arrow_down_bright
+        val arrowUp = R.drawable.ic_arrow_up_bright
+
+        button.tag = arrowDown
         button.setOnLongClickListener {
-            val newDrawableResource: Int = if (R.drawable.ic_arrow_down_bright == button.tag) {
-                R.drawable.ic_arrow_up_bright
+            val newDrawableResource: Int = if (arrowDown == button.tag) {
+                arrowUp
             } else {
-                R.drawable.ic_arrow_down_bright
+                arrowDown
             }
             button.setImageResource(newDrawableResource)
             button.tag = newDrawableResource
             true
         }
         button.setOnClickListener {
-            if (flexibleAdapter!!.itemCount == 0) {
+            if (flexibleAdapter.itemCount == 0) {
                 return@setOnClickListener
             }
-            if (R.drawable.ic_arrow_down_bright == button.tag) {
-                flexibleAdapter!!.smoothScrollToPosition(flexibleAdapter!!.itemCount - 1)
+            if (arrowDown == button.tag) {
+                flexibleAdapter.smoothScrollToPosition(flexibleAdapter.itemCount - 1)
             } else {
-                flexibleAdapter!!.smoothScrollToPosition(0)
+                flexibleAdapter.smoothScrollToPosition(0)
             }
         }
-        listView = fragmentRoot!!.findViewById(R.id.list) as RecyclerView?
-        val localListView = listView!!
-
-        // Set the adapter
-        val context = fragmentRoot!!.context
-        val layoutManager = LinearLayoutManager(context)
-        localListView.layoutManager = layoutManager
-        val decoration = DividerItemDecoration(context, layoutManager.orientation)
-        localListView.addItemDecoration(decoration)
-        flexibleAdapter = FlexibleAdapter<IFlexible<*>>(null)
-            .setStickyHeaders(true)
-            .setDisplayHeadersAtStartUp(true)
-        val localFlexibleAdapter = flexibleAdapter!!
-
-        localFlexibleAdapter.setEndlessScrollListener(this, ProgressItem())
-        localFlexibleAdapter.addListener(this)
-        onFlexibleCreated(flexibleAdapter)
-        localListView.adapter = flexibleAdapter
-        viewModel = createViewModel()
-        listContainer = fragmentRoot!!.findViewById(listContainerId)
-        setLivePagedList(createPagedListLiveData())
-        setHasOptionsMenu(true)
-        filterable = createFilterable()
-        return fragmentRoot!!
     }
 
     private fun setSearchViewFilter(
         searchView: SearchView,
         textProperty: TextProperty,
-        clearView: View?
+        clearView: View?,
     ) {
-        val filter = textProperty.get()!!
+        val filter = textProperty.get()
         searchView.setQuery(filter, false)
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String): Boolean {
@@ -192,17 +220,17 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     }
 
     private fun setSpinner(spinner: Spinner, property: PositionProperty) {
-        val value = property.get()!!
+        val value = property.get()
         val values = property.positionalMapping()
         var selected = 0
-        var index = 0
-        val valuesLength = values.size
-        while (index < valuesLength) {
+
+        for (index in values.indices) {
             val i = values[index]
+
             if (i == value) {
                 selected = index
+                break
             }
-            index++
         }
         spinner.setSelection(selected)
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -210,7 +238,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
                 parent: AdapterView<*>?,
                 view: View,
                 position: Int,
-                id: Long
+                id: Long,
             ) {
                 property.set(values[position])
             }
@@ -231,25 +259,24 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     }
 
     private fun setCheckbox(checkBox: CheckBox, property: BooleanProperty) {
-        checkBox.isChecked = property.get()!!
+        checkBox.isChecked = property.get()
         checkBox.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
             property.set(isChecked)
         }
     }
 
-    private fun setRadiogroup(view: RadioGroup, property: PositionProperty) {
-        val value = property.get()!!
+    private fun setRadioGroup(view: RadioGroup, property: PositionProperty) {
+        val value = property.get()
         val values = property.positionalMapping()
         var selected = -1
-        var index = 0
-        val valuesLength = values.size
-        while (index < valuesLength) {
+
+        for (index in values.indices) {
             val i = values[index]
+
             if (i == value) {
                 selected = index
                 break
             }
-            index++
         }
         if (selected >= 0) {
             val id = view.getChildAt(selected).id
@@ -263,16 +290,27 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     }
 
     private fun openFilter() {
+        val filterable = this.filterable
+
+        if (filterable == null) {
+            println("Cannot open Filter without declared Filterables in $this")
+            return
+        }
         val inflater = this.layoutInflater
-        @SuppressLint("InflateParams") val view = inflater.inflate(filterable!!.filterLayout, null)
-        if (filterable!!.searchFilterProperties != null) {
-            for (property in filterable!!.searchFilterProperties!!) {
+        val view = inflater.inflate(filterable.filterLayout, null)
+
+        val searchFilterProperties = filterable.searchFilterProperties
+
+        if (searchFilterProperties != null) {
+            for (property in searchFilterProperties) {
                 val filterView: View = view.findViewById(property.viewId)
                 val clearSearchButtonId = property.clearViewId
                 var clearTitleButton: ImageButton? = null
+
                 if (clearSearchButtonId != View.NO_ID) {
                     clearTitleButton = view.findViewById(clearSearchButtonId) as ImageButton?
                 }
+
                 when (filterView) {
                     is SearchView -> {
                         setSearchViewFilter(filterView, property as TextProperty, clearTitleButton)
@@ -281,7 +319,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
                         setSpinner(filterView, property as PositionProperty)
                     }
                     is RadioGroup -> {
-                        setRadiogroup(filterView, property as PositionProperty)
+                        setRadioGroup(filterView, property as PositionProperty)
                     }
                     is EditText -> {
                         setEditText(filterView, property as TextProperty)
@@ -292,19 +330,20 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
                 }
             }
         }
-        val builder = AlertDialog.Builder(this.mainActivity)
-            .setView(view)
+        val builder = AlertDialog.Builder(this.mainActivity).setView(view)
+
         setMediumCheckbox(view, R.id.text_medium, MediumType.TEXT)
         setMediumCheckbox(view, R.id.audio_medium, MediumType.AUDIO)
         setMediumCheckbox(view, R.id.video_medium, MediumType.VIDEO)
         setMediumCheckbox(view, R.id.image_medium, MediumType.IMAGE)
-        filterable!!.onCreateFilter(view, builder)
+
+        filterable.onCreateFilter(view, builder)
         builder
             .setNeutralButton("Reset Filter") { _: DialogInterface?, _: Int ->
                 if (viewModel is FilterableViewModel) {
                     (viewModel as FilterableViewModel?)!!.resetFilter()
                 } else {
-                    filterable!!.onResetFilter()
+                    filterable.onResetFilter()
                 }
             }
             .setPositiveButton("OK", null)
@@ -317,6 +356,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
             inflater.inflate(R.menu.filter_menu, menu)
         }
         val sortMap: Map<String, Sortings> = sortMap
+
         if (sortMap.isNotEmpty()) {
             inflater.inflate(R.menu.sort_menu, menu)
         }
@@ -341,12 +381,9 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         return super.onOptionsItemSelected(item)
     }
 
-    fun setLivePagedList(livePagedList: LiveData<PagedList<Value>>?) {
-        if (this.livePagedList != null) {
-            this.livePagedList!!.removeObserver(pagedListObserver)
-        }
+    private fun setLivePagedList(livePagedList: LiveData<PagedList<Value>>) {
         this.livePagedList = livePagedList
-        this.livePagedList!!.observe(viewLifecycleOwner, pagedListObserver)
+        this.livePagedList.observe(viewLifecycleOwner, pagedListObserver)
     }
 
     override fun noMoreLoad(newItemsSize: Int) {
@@ -354,13 +391,14 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     }
 
     override fun onLoadMore(lastPosition: Int, currentPage: Int) {
-        val pagedList = livePagedList!!.value
+        val pagedList = livePagedList.value
+
         if (pagedList == null) {
-            flexibleAdapter!!.onLoadMoreComplete(null)
+            flexibleAdapter.onLoadMoreComplete(null)
             return
         }
         if (lastPosition >= pagedList.size) {
-            flexibleAdapter!!.onLoadMoreComplete(null)
+            flexibleAdapter.onLoadMoreComplete(null)
             return
         }
         pagedList.loadAround(lastPosition)
@@ -383,12 +421,13 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     override fun onItemSwipe(position: Int, direction: Int) {}
     override fun onStickyHeaderChange(newPosition: Int, oldPosition: Int) {}
     override fun onUpdateEmptyView(size: Int) {}
-    fun onFlexibleCreated(adapter: FlexibleAdapter<IFlexible<*>>?) {}
+    open fun onFlexibleCreated(adapter: FlexibleAdapter<IFlexible<*>>?) {}
+
     @SuppressLint("SetTextI18n")
     fun setNumberTextField(view: View, @IdRes id: Int, value: Int, minValue: Int) {
         val minEpisodeRead = view.findViewById(id) as EditText
         if (value < minValue) {
-            minEpisodeRead.setText(null)
+            minEpisodeRead.text = null
         } else {
             minEpisodeRead.setText(value.toString())
         }
@@ -431,10 +470,11 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     @get:IdRes
     open val listContainerId: Int
         get() = R.id.list
+
     val items: List<Value>
         get() {
             val values: MutableList<Value> = ArrayList()
-            val pagedList = livePagedList!!.value ?: return values
+            val pagedList = livePagedList.value ?: return values
             for (value in pagedList) {
                 if (value == null) {
                     break
@@ -448,11 +488,12 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         view: View,
         @IdRes resId: Int,
         valueMap: LinkedHashMap<String, E>,
-        consumer: Consumer<E?>
+        consumer: Consumer<E?>,
     ) {
         val items = valueMap.keys.toTypedArray()
         val readSpinner = view.findViewById(resId) as Spinner
-        val readAdapter = TextOnlyListAdapter<String?>(requireContext(), null)
+        val readAdapter = TextOnlyListAdapter<String>(requireContext(), null)
+
         readAdapter.addAll(*items)
         readSpinner.adapter = readAdapter
         readSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -460,7 +501,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
                 parent: AdapterView<*>?,
                 view: View,
                 position: Int,
-                id: Long
+                id: Long,
             ) {
                 val item = items[position]
                 consumer.accept(valueMap[item])
@@ -470,19 +511,25 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         }
     }
 
-    fun onGotoItemClicked() {
+    private fun onGotoItemClicked() {
         val context = requireContext()
-        val builder = AlertDialog.Builder(context)
-        builder.setTitle("Go to Item")
         val inputView = createGotoView(context)
-        builder.setView(inputView)
+
+        val builder = AlertDialog
+            .Builder(context)
+            .setTitle("Go to Item")
+            .setView(inputView)
+
         builder.setPositiveButton("OK") { _: DialogInterface?, _: Int ->
             val position = getPosition(inputView)
+
             if (position < 0) {
                 return@setPositiveButton
             }
+
             val liveData = livePagedList
-            val list = liveData!!.value
+            val list = liveData.value
+
             if (list == null) {
                 showToast("Cannot go anywhere: No Data available.")
                 return@setPositiveButton
@@ -493,31 +540,31 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
             val pageSize = list.config.pageSize
             // this is a unnecessary safety check for lint
             val startKey = lastKey ?: 0
+
             if (startKey < loadAround) {
                 scrollToWhenLoaded = loadAround
-                var i = startKey
-                while (i <= loadAround) {
+
+                for (i in startKey..loadAround step pageSize) {
                     list.loadAround(i)
-                    i += pageSize
                 }
             } else {
-                val upperLimit = flexibleAdapter!!.currentItems.size - 1
+                val upperLimit = flexibleAdapter.currentItems.size - 1
                 loadAround = min(loadAround, upperLimit)
-                flexibleAdapter!!.smoothScrollToPosition(loadAround)
+                flexibleAdapter.smoothScrollToPosition(loadAround)
             }
         }
         builder.setNegativeButton("Cancel") { dialog: DialogInterface, _: Int -> dialog.cancel() }
         builder.show()
     }
 
-    fun createGotoView(context: Context?): View {
+    private fun createGotoView(context: Context?): View {
         val input = EditText(context)
         input.inputType =
             InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
         return input
     }
 
-    fun getPosition(view: View): Int {
+    private fun getPosition(view: View): Int {
         return if (view is EditText) {
             getPosition(view.text.toString())
         } else {
@@ -537,16 +584,17 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     open val sortMap: LinkedHashMap<String, Sortings>
         get() = LinkedHashMap()
 
-    fun onSortingChanged(sortings: Sortings) {
+    private fun onSortingChanged(sortings: Sortings) {
         if (viewModel is SortableViewModel) {
             (viewModel as SortableViewModel).setSort(sortings)
         }
     }
 
-    fun onSortMenuClicked() {
+    private fun onSortMenuClicked() {
         val map = sortMap
         val strings = map.keys.toTypedArray()
         val builder = AlertDialog.Builder(this.requireContext())
+
         builder.setItems(strings) { _: DialogInterface?, which: Int ->
             if (which < strings.size && which >= 0) {
                 val title = strings[which]
@@ -554,8 +602,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
                 onSortingChanged(sortings!!)
             }
         }
-        builder.setTitle("Sort By")
-        builder.create().show()
+        builder.setTitle("Sort By").create().show()
     }
 
     private fun setMediumCheckbox(view: View, @IdRes boxId: Int, @MediumType.Medium type: Int) {
@@ -563,9 +610,10 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
         if (model !is MediumFilterableViewModel) {
             return
         }
+
         val filterableViewModel = model as MediumFilterableViewModel
         val medium = filterableViewModel.mediumFilter
-        val box = view.findViewById(boxId) as CheckBox?
+        val box: CheckBox = view.findViewById(boxId)
             ?: throw IllegalStateException(String.format(
                 "%s extends %s,expected a filter checkbox with id: %d",
                 model.javaClass.simpleName,
@@ -573,8 +621,9 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
                 boxId
             ))
         box.isChecked = isType(medium, type)
-        box.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
+        box.setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
             val filter = filterableViewModel.mediumFilter
+
             val newMediumFilter: Int = if (isChecked) {
                 addMediumType(filter, type)
             } else {
@@ -586,6 +635,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
 
     abstract val viewModelClass: Class<ViewModel>
     abstract fun createPagedListLiveData(): LiveData<PagedList<Value>>
+
     fun convertToFlexible(list: Collection<Value?>): MutableList<IFlexible<*>> {
         val items: MutableList<IFlexible<*>> = ArrayList()
         for (value in list) {
@@ -598,6 +648,7 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel?> : Ba
     }
 
     abstract fun createFlexible(value: Value): IFlexible<*>
+
     private fun createViewModel(): ViewModel {
         return ViewModelProvider(this).get(viewModelClass)
     }

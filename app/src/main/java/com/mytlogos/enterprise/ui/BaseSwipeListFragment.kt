@@ -9,9 +9,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.mytlogos.enterprise.R
 
-abstract class BaseSwipeListFragment<Value : Any, ViewModel : AndroidViewModel?> :
+abstract class BaseSwipeListFragment<Value : Any, ViewModel : AndroidViewModel> :
     BaseListFragment<Value, ViewModel>() {
-    override var listContainer: View? = null
+    override lateinit var listContainer: View
 
     override fun onCreateView(
         inflater: LayoutInflater,
