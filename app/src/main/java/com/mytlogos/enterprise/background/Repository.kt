@@ -66,9 +66,6 @@ interface Repository {
     @Throws(IOException::class)
     fun loadMediaInWaitSync()
 
-    @Throws(IOException::class)
-    fun addList(list: MediaList, autoDownload: Boolean)
-    fun listExists(listName: String): Boolean
     fun countSavedUnreadEpisodes(mediumId: Int): Int
     fun getSavedEpisodes(mediumId: Int): List<Int>
     fun getEpisode(episodeId: Int): Episode

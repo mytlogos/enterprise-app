@@ -1,16 +1,23 @@
 package com.mytlogos.enterprise.viewmodel
 
 import android.app.Application
+import com.mytlogos.enterprise.background.repository.EpisodeRepository
+import com.mytlogos.enterprise.background.repository.MediaListRepository
 import com.mytlogos.enterprise.model.MediaList
 import java.io.IOException
 
+@Suppress("BlockingMethodInNonBlockingContext")
 class AddListViewModel(application: Application) : RepoViewModel(application) {
-    @Throws(IOException::class)
-    fun addList(list: MediaList?, autoDownload: Boolean) {
-        repository.addList(list!!, autoDownload)
+    private val listRepository: MediaListRepository by lazy {
+        MediaListRepository.getInstance(application)
     }
 
-    fun exists(listName: String?): Boolean {
-        return repository.listExists(listName!!)
+    @Throws(IOException::class)
+    suspend fun addList(list: MediaList, autoDownload: Boolean) {
+        listRepository.addList(list, autoDownload)
+    }
+
+    suspend fun exists(listName: String): Boolean {
+        return listRepository.listExists(listName)
     }
 }

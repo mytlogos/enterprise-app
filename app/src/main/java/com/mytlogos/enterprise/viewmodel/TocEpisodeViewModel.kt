@@ -7,7 +7,7 @@ import androidx.paging.PagingData
 import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.TocEpisode
 import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.ui.ActionCount
+import com.mytlogos.enterprise.model.ActionCount
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -450,10 +450,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: POST /api/user/list
      */
     @Throws(IOException::class)
-    fun addList(mediaList: ClientMinList?): Response<ClientMediaList> {
+    suspend fun addList(mediaList: ClientMinList?): Response<ClientMediaList> {
         val body = userAuthenticationMap()
         body["list"] = mediaList
-        return query(ListApi::class.java) { apiImpl: ListApi, url: String -> apiImpl.addList(url, body) }
+        return querySuspend(ListApi::class.java) { apiImpl: ListApi, url: String -> apiImpl.addList(url, body) }
     }
 
     /**

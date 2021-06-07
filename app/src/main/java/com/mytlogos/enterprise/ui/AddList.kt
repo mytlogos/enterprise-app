@@ -1,43 +1,48 @@
 package com.mytlogos.enterprise.ui
 
-import android.os.AsyncTask
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import android.view.View.OnFocusChangeListener
 import android.view.ViewGroup
 import android.widget.*
+import androidx.appcompat.widget.SwitchCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.RepositoryImpl
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.viewmodel.AddListViewModel
+import kotlinx.coroutines.launch
 
 class AddList : BaseFragment() {
-    private var mViewModel: AddListViewModel? = null
-    private var autoDownload: Switch? = null
-    private var audioMedium: CheckBox? = null
-    private var videoMedium: CheckBox? = null
-    private var imageMedium: CheckBox? = null
-    private var textMedium: CheckBox? = null
-    private var editName: EditText? = null
+    private lateinit var mViewModel: AddListViewModel
+    private lateinit var autoDownload: SwitchCompat
+    private lateinit var audioMedium: CheckBox
+    private lateinit var videoMedium: CheckBox
+    private lateinit var imageMedium: CheckBox
+    private lateinit var textMedium: CheckBox
+    private lateinit var editName: EditText
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View? {
         val view = inflater.inflate(R.layout.add_list_fragment, container, false)
+
         textMedium = view.findViewById(R.id.text_medium)
         imageMedium = view.findViewById(R.id.image_medium)
         videoMedium = view.findViewById(R.id.video_medium)
         audioMedium = view.findViewById(R.id.audio_medium)
         autoDownload = view.findViewById(R.id.auto_download)
+
         val addBtn = view.findViewById<Button>(R.id.add_btn)
         val cancelBtn = view.findViewById<Button>(R.id.cancel_button)
+
         mViewModel = ViewModelProvider(this).get(AddListViewModel::class.java)
         cancelBtn.setOnClickListener { this.mainActivity.onBackPressed() }
         addBtn.setOnClickListener { addList() }
+
         val localEditName = view.findViewById<EditText>(R.id.editName)
         editName = localEditName
 
@@ -51,63 +56,50 @@ class AddList : BaseFragment() {
     }
 
     private fun addList() {
-        val name = editName!!.text.toString().trim { it <= ' ' }
+        val name = editName.text.toString().trim { it <= ' ' }
         if (name.isEmpty()) {
             showToast("No Name")
             return
         }
         var medium = 0
         when {
-            textMedium!!.isChecked -> medium = medium or MediumType.TEXT
-            audioMedium!!.isChecked -> medium = medium or MediumType.AUDIO
-            imageMedium!!.isChecked -> medium = medium or MediumType.IMAGE
-            videoMedium!!.isChecked -> medium = medium or MediumType.VIDEO
+            textMedium.isChecked -> medium = medium or MediumType.TEXT
+            audioMedium.isChecked -> medium = medium or MediumType.AUDIO
+            imageMedium.isChecked -> medium = medium or MediumType.IMAGE
+            videoMedium.isChecked -> medium = medium or MediumType.VIDEO
         }
-        val uuid = (RepositoryImpl.instance as RepositoryImpl).getUserNow()!!.uuid
+        val userNow = (RepositoryImpl.instance as RepositoryImpl).getUserNow()
+
+        if (userNow == null) {
+            showToast("User not authenticated")
+            return
+        }
 
         val mediaList = MediaList(
-            uuid,
+            userNow.uuid,
             0,
             name,
             medium,
             0
         )
-        val task = AddListTask(this, mediaList, autoDownload!!.isChecked)
-        task.execute()
-        this.mainActivity.showLoading(true)
-    }
+        lifecycleScope.launch {
+            mainActivity.showLoading(true)
 
-    private class AddListTask(
-        private val addList: AddList,
-        private val mediaList: MediaList,
-        private val autoDownload: Boolean
-    ) : AsyncTask<Void?, Void?, Void?>() {
-        private var errorMessage: String? = null
-
-        override fun doInBackground(vararg voids: Void?): Void? {
-            val name = mediaList.name
-            if (addList.mViewModel!!.exists(name)) {
-                errorMessage = String.format("List with the name '%s' exists already", name)
-                return null
+            if (mViewModel.exists(name)) {
+                showToast("List with the name '$name' exists already")
+                return@launch
             }
+
             try {
-                addList.mViewModel!!.addList(mediaList, autoDownload)
+                @Suppress("BlockingMethodInNonBlockingContext")
+                mViewModel.addList(mediaList, autoDownload.isChecked)
             } catch (e: Throwable) {
                 e.printStackTrace()
-                errorMessage = "List could not be created"
+                showToast("List could not be created")
             }
-            return null
-        }
 
-        override fun onPostExecute(aVoid: Void?) {
-            super.onPostExecute(aVoid)
-            val error = errorMessage
-
-            if (error != null) {
-                addList.showToast(error)
-            }
-            addList.mainActivity.showLoading(false)
-            addList.mainActivity.onBackPressed()
+            mainActivity.showLoading(false)
+            mainActivity.onBackPressed()
         }
     }
 

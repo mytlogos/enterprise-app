@@ -291,10 +291,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
     }
 
-    override fun listExists(listName: String): Boolean {
-        return runBlocking { mediaListDao.listExists(listName) }
-    }
-
     override fun countSavedEpisodes(mediumId: Int): Int {
         return runBlocking { episodeDao.countSavedEpisodes(mediumId) }
     }

@@ -53,7 +53,6 @@ interface DatabaseStorage {
     fun getMediumSettingsNow(mediumId: Int): MediumSetting
 
     fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>>
-    fun listExists(listName: String): Boolean
     fun countSavedEpisodes(mediumId: Int): Int
     fun getSavedEpisodes(mediumId: Int): List<Int>
     fun getEpisode(episodeId: Int): Episode

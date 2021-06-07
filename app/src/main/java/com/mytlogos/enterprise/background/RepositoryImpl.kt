@@ -236,30 +236,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         }
     }
 
-    @Throws(IOException::class)
-    override fun addList(list: MediaList, autoDownload: Boolean) {
-        val value = user.value
-        check(!(value == null || value.uuid.isEmpty())) { "user is not authenticated" }
-        val mediaList = ClientMinList(
-            list.name,
-            list.medium
-        )
-        val clientMediaList = client.addList(mediaList).body()
-            ?: throw IllegalArgumentException("adding list failed")
-        persister.persist(clientMediaList)
-        val toDownload = ToDownload(
-            false,
-            null,
-            clientMediaList.id,
-            null
-        )
-        storage.updateToDownload(true, toDownload)
-    }
-
-    override fun listExists(listName: String): Boolean {
-        return storage.listExists(listName)
-    }
-
     override fun countSavedUnreadEpisodes(mediumId: Int): Int {
         return storage.countSavedEpisodes(mediumId)
     }
