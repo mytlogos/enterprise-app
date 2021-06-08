@@ -7,7 +7,6 @@ import android.annotation.TargetApi
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
-import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
 import android.provider.ContactsContract
@@ -17,16 +16,19 @@ import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.loader.app.LoaderManager
 import androidx.loader.content.CursorLoader
 import androidx.loader.content.Loader
 import com.google.android.material.snackbar.Snackbar
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.viewmodel.UserViewModel
+import kotlinx.coroutines.launch
 import java.util.*
 
 /**
- * A placeholder fragment containing a simple view.
+ * A simple Login Fragment with Email/Username autocomplete.
+ * Mostly copied from some Login Template.
  */
 open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
     /**
@@ -34,26 +36,25 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
      * TODO: remove after connecting to a real authentication system.
      */
     // UI references.
-    var emailUserNameView: AutoCompleteTextView? = null
-    var passwordView: EditText? = null
-    var progressView: View? = null
-    var loginFormView: View? = null
+    protected lateinit var emailUserNameView: AutoCompleteTextView
+    protected lateinit var passwordView: EditText
+    protected lateinit var progressView: View
+    protected lateinit var loginFormView: View
+    protected lateinit var userViewModel: UserViewModel
 
-    /**
-     * Keep track of the login task to ensure we can cancel it if requested.
-     */
-    var authTask: UserLoginTask? = null
-    var userViewModel: UserViewModel? = null
+    private var authenticating = false
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View? {
         val fragmentView = inflater.inflate(R.layout.login, container, false)
         // Set up the login form.
         emailUserNameView = fragmentView.findViewById(R.id.email)
         populateAutoComplete()
+
         passwordView = fragmentView.findViewById(R.id.password)
-        passwordView!!.setOnEditorActionListener { _: TextView?, id: Int, keyEvent: KeyEvent? ->
+        passwordView.setOnEditorActionListener { _: TextView?, id: Int, _: KeyEvent? ->
             if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
                 attemptLogin()
                 return@setOnEditorActionListener true
@@ -62,10 +63,10 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
         }
         val mEmailSignInButton = fragmentView.findViewById<Button>(R.id.email_sign_in_button)
         mEmailSignInButton.setOnClickListener { attemptLogin() }
+
         loginFormView = fragmentView.findViewById(R.id.login_form)
         progressView = fragmentView.findViewById(R.id.login_progress)
-        val activity = this.requireActivity()
-        userViewModel = ViewModelProvider(activity).get(UserViewModel::class.java)
+        userViewModel = ViewModelProvider(this).get(UserViewModel::class.java)
         return fragmentView
     }
 
@@ -83,10 +84,10 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
             return true
         }
         if (shouldShowRequestPermissionRationale(permission.READ_CONTACTS)) {
-            Snackbar.make(emailUserNameView!!,
+            Snackbar.make(emailUserNameView,
                 R.string.permission_rationale,
                 Snackbar.LENGTH_INDEFINITE)
-                .setAction(android.R.string.ok) { v: View? ->
+                .setAction(android.R.string.ok) {
                     requestPermissions(arrayOf(permission.READ_CONTACTS),
                         REQUEST_READ_CONTACTS)
                 }
@@ -102,7 +103,7 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
      */
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<String>,
-        grantResults: IntArray
+        grantResults: IntArray,
     ) {
         if (requestCode == REQUEST_READ_CONTACTS) {
             if (grantResults.size == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -117,30 +118,30 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
      * errors are presented and no actual login attempt is made.
      */
     open fun attemptLogin() {
-        if (authTask != null) {
+        if (authenticating) {
             return
         }
 
         // Reset errors.
-        emailUserNameView!!.error = null
-        passwordView!!.error = null
+        emailUserNameView.error = null
+        passwordView.error = null
 
         // Store values at the time of the login attempt.
-        val emailUserName = emailUserNameView!!.text.toString()
-        val password = passwordView!!.text.toString()
+        val emailUserName = emailUserNameView.text.toString()
+        val password = passwordView.text.toString()
         var cancel = false
         var focusView: View? = null
 
         // Check for a valid password, if the user entered one.
         if (!TextUtils.isEmpty(password) && !isPasswordValid(password)) {
-            passwordView!!.error = getString(R.string.error_invalid_password)
+            passwordView.error = getString(R.string.error_invalid_password)
             focusView = passwordView
             cancel = true
         }
 
         // Check for a valid email address.
         if (TextUtils.isEmpty(emailUserName)) {
-            emailUserNameView!!.error = getString(R.string.error_field_required)
+            emailUserNameView.error = getString(R.string.error_field_required)
             focusView = emailUserNameView
             cancel = true
         }
@@ -152,8 +153,8 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true)
-            authTask = getTask(emailUserName, password)
-            authTask!!.execute(null as Void?)
+            authenticating = true
+            lifecycleScope.launch { authenticate(emailUserName, password) }
         }
     }
 
@@ -171,20 +172,27 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
         // for very easy animations. If available, use these APIs to fade-in
         // the progress spinner.
         val shortAnimTime = resources.getInteger(android.R.integer.config_shortAnimTime)
-        loginFormView!!.visibility = if (show) View.GONE else View.VISIBLE
-        loginFormView!!.animate().setDuration(shortAnimTime.toLong()).alpha(
-            if (show) 0.0f else 1.toFloat()).setListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                loginFormView!!.visibility = if (show) View.GONE else View.VISIBLE
-            }
-        })
-        progressView!!.visibility = if (show) View.VISIBLE else View.GONE
-        progressView!!.animate().setDuration(shortAnimTime.toLong()).alpha(
-            if (show) 1.0f else 0.toFloat()).setListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                progressView!!.visibility = if (show) View.VISIBLE else View.GONE
-            }
-        })
+        loginFormView.visibility = if (show) View.GONE else View.VISIBLE
+
+        loginFormView
+            .animate()
+            .setDuration(shortAnimTime.toLong())
+            .alpha(if (show) 0.0f else 1.toFloat())
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    loginFormView.visibility = if (show) View.GONE else View.VISIBLE
+                }
+            })
+        progressView.visibility = if (show) View.VISIBLE else View.GONE
+        progressView
+            .animate()
+            .setDuration(shortAnimTime.toLong())
+            .alpha(if (show) 1.0f else 0.toFloat())
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    progressView.visibility = if (show) View.VISIBLE else View.GONE
+                }
+            })
     }
 
     override fun onCreateLoader(i: Int, bundle: Bundle?): Loader<Cursor> {
@@ -212,13 +220,25 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
     override fun onLoaderReset(cursorLoader: Loader<Cursor>) {}
     private fun addEmailsToAutoComplete(emailAddressCollection: List<String>) {
         //Create adapter to tell the AutoCompleteTextView what to show in its dropdown list.
-        val adapter = ArrayAdapter(this.requireContext(),
-            android.R.layout.simple_dropdown_item_1line, emailAddressCollection)
-        emailUserNameView!!.setAdapter(adapter)
+        val adapter = ArrayAdapter(
+            this.requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            emailAddressCollection
+        )
+        emailUserNameView.setAdapter(adapter)
     }
 
-    open fun getTask(email: String, password: String): UserLoginTask? {
-        return UserLoginTask(email, password, userViewModel!!)
+    open suspend fun authenticate(email: String, password: String) {
+        val result = runCatching { userViewModel.login(email, password) }
+        showProgress(false)
+
+        if (result.isSuccess) {
+            requireActivity().finish()
+            println("finished login")
+        } else {
+            passwordView.error = getString(R.string.error_incorrect_password)
+            passwordView.requestFocus()
+        }
     }
 
     private interface ProfileQuery {
@@ -227,47 +247,6 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
                 ContactsContract.CommonDataKinds.Email.ADDRESS,
                 ContactsContract.CommonDataKinds.Email.IS_PRIMARY)
             const val ADDRESS = 0
-        }
-    }
-
-    /**
-     * Represents an asynchronous login/registration task used to authenticate
-     * the user.
-     */
-    open inner class UserLoginTask (
-        val email: String,
-        val password: String,
-        val viewModel: UserViewModel
-    ) : AsyncTask<Void, Void, Boolean>() {
-        override fun doInBackground(vararg params: Void?): Boolean {
-            try {
-                viewModel.login(email, password)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                return false
-            }
-            return true
-        }
-
-        override fun onPostExecute(success: Boolean) {
-            authTask = null
-            val activity = this@LoginFragment.activity
-            if (activity != null) {
-                showProgress(false)
-                if (success) {
-                    activity.finish()
-                }
-            }
-            println("finished login")
-            if (!success) {
-                passwordView!!.error = getString(R.string.error_incorrect_password)
-                passwordView!!.requestFocus()
-            }
-        }
-
-        override fun onCancelled() {
-            authTask = null
-            showProgress(false)
         }
     }
 

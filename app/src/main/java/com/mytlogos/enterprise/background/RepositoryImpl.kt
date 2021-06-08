@@ -6,28 +6,31 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Transformations
 import androidx.paging.PagedList
+import androidx.paging.PagingData
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.NetworkIdentificator
-import com.mytlogos.enterprise.background.api.model.*
+import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
 import com.mytlogos.enterprise.background.room.RoomStorage
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.preferences.UserPreferences
-import com.mytlogos.enterprise.tools.*
+import com.mytlogos.enterprise.tools.Sortings
+import com.mytlogos.enterprise.tools.Utils
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
+import kotlinx.coroutines.flow.Flow
 import org.joda.time.DateTime
 import java.io.IOException
-import java.util.*
 import java.util.concurrent.CompletableFuture
 
+@Suppress("BlockingMethodInNonBlockingContext")
 class RepositoryImpl private constructor(application: Application) : Repository {
     private val persister: ClientModelPersister
     override val user: LiveData<User?>
     private val client: Client
     private val storage: DatabaseStorage
     private val loadedData: LoadData
-    private val editService: EditService
+    internal val editService: EditService
 
     private fun loadLoadedData() {
         val loadData = storage.getLoadData()
@@ -42,6 +45,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     override val isClientOnline: Boolean
         get() = client.isClientOnline
+
     override val isClientAuthenticated: Boolean
         get() = client.isClientAuthenticated
 
@@ -68,7 +72,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
      * @throws IOException if an connection problem arose
      */
     @Throws(IOException::class)
-    override fun login(email: String, password: String) {
+    override suspend fun login(email: String, password: String) {
         val response = client.login(email, password)
         val user = response.body()
         if (user != null) {
@@ -86,7 +90,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
      * @param password password of the user
      */
     @Throws(IOException::class)
-    override fun register(email: String, password: String) {
+    override suspend fun register(email: String, password: String) {
         val response = client.register(email, password)
         val user = response.body()
         if (user != null) {
@@ -111,25 +115,8 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         }
     }
 
-    override val news: LiveData<PagedList<News>>
-        get() = storage.getNews()
-
-    override fun removeOldNews() {
-        TaskManager.runTask { storage.deleteOldNews() }
-    }
-
     override val isLoading: Boolean
         get() = storage.isLoading()
-
-    @Throws(IOException::class)
-    override fun refreshNews(latest: DateTime?) {
-        val news = Utils.checkAndGetBody(
-            client.getNews(latest, null)
-        )
-        if (news != null) {
-            persister.persistNews(news)
-        }
-    }
 
     override val savedEpisodes: List<Int>
         get() = storage.getSavedEpisodes()
@@ -185,7 +172,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     override fun getDisplayEpisodesGrouped(
         saved: Int,
-        medium: Int
+        medium: Int,
     ): LiveData<PagedList<DisplayEpisode>> {
         return storage.getDisplayEpisodesGrouped(saved, medium)
     }
@@ -197,17 +184,14 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getListSetting(id, isExternal)
     }
 
-    override fun updateListName(
-        listSetting: MediaListSetting,
-        newName: String
-    ): CompletableFuture<String> {
+    override suspend fun updateListName(listSetting: MediaListSetting, newName: String): String {
         return editService.updateListName(listSetting, newName)
     }
 
-    override fun updateListMedium(
+    override suspend fun updateListMedium(
         listSetting: MediaListSetting,
-        newMediumType: Int
-    ): CompletableFuture<String> {
+        newMediumType: Int,
+    ): String {
         return editService.updateListMedium(listSetting, newMediumType)
     }
 
@@ -219,11 +203,10 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getMediumSettings(mediumId)
     }
 
-    override fun updateMedium(mediumSettings: MediumSetting): CompletableFuture<String> {
-        return editService.updateMedium(mediumSettings)
-    }
-
-    override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>> {
+    override fun getMediumItems(
+        listId: Int,
+        isExternal: Boolean,
+    ): LiveData<MutableList<MediumItem>> {
         return storage.getMediumItems(listId, isExternal)
     }
 
@@ -308,8 +291,8 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         filter: String?,
         mediumFilter: Int,
         hostFilter: String?,
-        sortings: Sortings
-    ): LiveData<PagedList<MediumInWait>> {
+        sortings: Sortings,
+    ): Flow<PagingData<MediumInWait>> {
         return storage.getMediaInWaitBy(filter, mediumFilter, hostFilter, sortings)
     }
 
@@ -320,92 +303,24 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getSimilarMediaInWait(mediumInWait)
     }
 
-    override fun getMediaSuggestions(title: String, medium: Int): LiveData<MutableList<SimpleMedium>> {
+    override fun getMediaSuggestions(
+        title: String,
+        medium: Int,
+    ): LiveData<MutableList<SimpleMedium>> {
         return storage.getMediaSuggestions(title, medium)
     }
 
     override fun getMediaInWaitSuggestions(
         title: String,
-        medium: Int
+        medium: Int,
     ): LiveData<MutableList<MediumInWait>> {
         return storage.getMediaInWaitSuggestions(title, medium)
-    }
-
-    override fun consumeMediumInWait(
-        selectedMedium: SimpleMedium,
-        mediumInWaits: List<MediumInWait>
-    ): CompletableFuture<Boolean> {
-        return TaskManager.runCompletableTask {
-            val others: MutableCollection<ClientMediumInWait> = HashSet()
-            for (inWait in mediumInWaits) {
-                others.add(
-                    ClientMediumInWait(
-                        inWait.title,
-                        inWait.medium,
-                        inWait.link
-                    )
-                )
-            }
-            try {
-                val success = client.consumeMediumInWait(selectedMedium.mediumId, others).body()
-                if (success != null && success) {
-                    storage.deleteMediaInWait(mediumInWaits)
-                    return@runCompletableTask true
-                } else {
-                    return@runCompletableTask false
-                }
-            } catch (e: IOException) {
-                e.printStackTrace()
-                return@runCompletableTask false
-            }
-        }
-    }
-
-    override fun createMedium(
-        mediumInWait: MediumInWait,
-        mediumInWaits: List<MediumInWait>,
-        list: MediaList
-    ): CompletableFuture<Boolean> {
-        return TaskManager.runCompletableTask {
-            val medium = ClientMediumInWait(
-                mediumInWait.title,
-                mediumInWait.medium,
-                mediumInWait.link
-            )
-            val others: MutableCollection<ClientMediumInWait> = HashSet()
-            for (inWait in mediumInWaits) {
-                others.add(
-                    ClientMediumInWait(
-                        inWait.title,
-                        inWait.medium,
-                        inWait.link
-                    )
-                )
-            }
-            val listId = list.listId
-            try {
-                val clientMedium = client.createFromMediumInWait(medium, others, listId).body()
-                    ?: return@runCompletableTask false
-                persister.persist(ClientSimpleMedium(clientMedium))
-                val toDelete: MutableCollection<MediumInWait> = HashSet()
-                toDelete.add(mediumInWait)
-                toDelete.addAll(mediumInWaits)
-                storage.deleteMediaInWait(toDelete)
-                if (listId > 0) {
-                    storage.addItemsToList(listId, setOf(clientMedium.id))
-                }
-                return@runCompletableTask true
-            } catch (e: IOException) {
-                e.printStackTrace()
-                return@runCompletableTask false
-            }
-        }
     }
 
     override fun moveMediaToList(
         oldListId: Int,
         listId: Int,
-        ids: MutableCollection<Int>
+        ids: MutableCollection<Int>,
     ): CompletableFuture<Boolean> {
         return editService.moveMediaToList(oldListId, listId, ids)
     }
@@ -416,14 +331,14 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     override fun removeItemFromList(
         listId: Int,
-        mediumId: MutableCollection<Int>
+        mediumId: MutableCollection<Int>,
     ): CompletableFuture<Boolean> {
         return editService.removeItemFromList(listId, mediumId)
     }
 
     override fun addMediumToList(
         listId: Int,
-        ids: MutableCollection<Int>
+        ids: MutableCollection<Int>,
     ): CompletableFuture<Boolean> {
         return editService.addMediumToList(listId, ids)
     }
@@ -431,7 +346,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
     override fun moveItemFromList(
         oldListId: Int,
         newListId: Int,
-        mediumId: Int
+        mediumId: Int,
     ): CompletableFuture<Boolean> {
         return editService.moveItemFromList(oldListId, newListId, mediumId)
     }
@@ -460,9 +375,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         })
     }
 
-    override val notifications: LiveData<PagedList<NotificationItem>>
-        get() = storage.getNotifications()
-
     override fun updateFailedDownloads(episodeId: Int) {
         storage.updateFailedDownload(episodeId)
     }
@@ -481,10 +393,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     override fun getSimpleMedium(mediumId: Int): SimpleMedium {
         return storage.getSimpleMedium(mediumId)
-    }
-
-    override fun clearNotifications() {
-        storage.clearNotifications()
     }
 
     override fun clearFailEpisodes() {

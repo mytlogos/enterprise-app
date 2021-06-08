@@ -5,9 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
 import android.widget.TextView
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
 import androidx.paging.PagedList
 import com.mytlogos.enterprise.R
@@ -34,7 +32,7 @@ class ReadHistoryFragment
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
         this.setTitle("Read History")
@@ -45,11 +43,11 @@ class ReadHistoryFragment
         get() = ReadEpisodeViewModel::class.java
 
     override fun createPagedListLiveData(): LiveData<PagedList<ReadEpisode>> {
-        return viewModel!!.getReadEpisodes()
+        return viewModel.getReadEpisodes()
     }
 
     override fun createFlexible(value: ReadEpisode): IFlexible<*> {
-        return ReadEpisodeItem(value, this)
+        return ReadEpisodeItem(value)
     }
 
     private class SectionableReadEpisodeItem(val displayReadEpisode: ReadEpisode) :
@@ -79,7 +77,7 @@ class ReadHistoryFragment
 
         override fun createViewHolder(
             view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?
+            adapter: FlexibleAdapter<IFlexible<*>>,
         ): ViewHolder {
             return ViewHolder(view, adapter)
         }
@@ -89,9 +87,8 @@ class ReadHistoryFragment
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: ViewHolder,
             position: Int,
-            payloads: List<Any>
+            payloads: List<Any>,
         ) {
-            holder.mItem = displayReadEpisode
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
             holder.novelView.text = displayReadEpisode.mediumTitle
@@ -110,10 +107,15 @@ class ReadHistoryFragment
         }
     }
 
-    private class ReadEpisodeItem(
-        private val displayReadEpisode: ReadEpisode,
-        fragment: Fragment?
-    ) : AbstractFlexibleItem<ViewHolder>() {
+    private class ReadEpisodeItem(private val displayReadEpisode: ReadEpisode) :
+        AbstractFlexibleItem<ViewHolder>() {
+
+        init {
+            this.isDraggable = false
+            this.isSwipeable = false
+            this.isSelectable = false
+        }
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is SectionableReadEpisodeItem) return false
@@ -130,7 +132,7 @@ class ReadHistoryFragment
 
         override fun createViewHolder(
             view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?
+            adapter: FlexibleAdapter<IFlexible<*>>,
         ): ViewHolder {
             return ViewHolder(view, adapter)
         }
@@ -140,36 +142,36 @@ class ReadHistoryFragment
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: ViewHolder,
             position: Int,
-            payloads: List<Any>
+            payloads: List<Any>,
         ) {
             val episode = displayReadEpisode
-            holder.mItem = episode
-            // transform news id (int) to a string,
-            // because it would expect a resource id if it is an int
+
             holder.novelView.text = episode.mediumTitle
-            var title = displayReadEpisode
+            var title = episode
                 .releases
                 .stream()
                 .max(Comparator.comparingInt { value: Release -> value.title!!.length })
                 .map(Release::title)
                 .orElse("Not available")
-            title = if (episode.partialIndex > 0) {
-                String.format("#%d.%d - %s", episode.totalIndex, episode.partialIndex, title)
+
+            val partialIndex = episode.partialIndex
+            val totalIndex = episode.totalIndex
+
+            title = if (partialIndex > 0) {
+                "#$totalIndex.$partialIndex - $title"
             } else {
-                String.format("#%d - %s", episode.totalIndex, title)
+                "#$totalIndex - $title"
             }
             holder.contentView.text = title
         }
-
-        init {
-            this.isDraggable = false
-            this.isSwipeable = false
-            this.isSelectable = false
-        }
     }
 
-    private class HeaderItem(private val title: String, private val mediumId: Int) :
+    private class HeaderItem(
+        private val title: String,
+        private val mediumId: Int,
+    ) :
         AbstractHeaderItem<HeaderViewHolder>() {
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is HeaderItem) return false
@@ -186,7 +188,7 @@ class ReadHistoryFragment
 
         override fun createViewHolder(
             view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?
+            adapter: FlexibleAdapter<IFlexible<*>>,
         ): HeaderViewHolder {
             return HeaderViewHolder(view, adapter)
         }
@@ -195,7 +197,7 @@ class ReadHistoryFragment
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: HeaderViewHolder,
             position: Int,
-            payloads: List<Any>
+            payloads: List<Any>,
         ) {
             holder.textView.text = title
         }
@@ -203,33 +205,22 @@ class ReadHistoryFragment
 
     private class HeaderViewHolder(
         itemView: View,
-        adapter: FlexibleAdapter<IFlexible<*>?>?
+        adapter: FlexibleAdapter<IFlexible<*>>,
     ) : FlexibleViewHolder(itemView, adapter, true) {
-        val textView: TextView
 
-        init {
-            textView = itemView.findViewById(R.id.text) as TextView
-        }
+        val textView: TextView = itemView.findViewById(R.id.text) as TextView
     }
 
-    private class ViewHolder(mView: View, adapter: FlexibleAdapter<*>?) :
-        FlexibleViewHolder(
-            mView, adapter) {
-        val contentView: TextView
-        private val metaView: TextView
-        val novelView: TextView
-        private val optionsButtonView: ImageButton
-        var mItem: ReadEpisode? = null
+    private class ViewHolder(mView: View, adapter: FlexibleAdapter<*>) :
+        FlexibleViewHolder(mView, adapter) {
+
+        val contentView: TextView = mView.findViewById(R.id.content) as TextView
+        val novelView: TextView = mView.findViewById(R.id.item_top_right) as TextView
+
         override fun toString(): String {
-            return super.toString() + " '" + contentView.text + "'"
+            return "${super.toString()} '${contentView.text}'"
         }
 
-        init {
-            metaView = mView.findViewById(R.id.item_top_left) as TextView
-            novelView = mView.findViewById(R.id.item_top_right) as TextView
-            contentView = mView.findViewById(R.id.content) as TextView
-            optionsButtonView = mView.findViewById(R.id.item_options_button) as ImageButton
-        }
     }
 
     /**

@@ -3,6 +3,7 @@ package com.mytlogos.enterprise.background.api
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser
 import com.mytlogos.enterprise.background.api.model.ClientUser
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.*
 
 internal interface BasicApi {
@@ -14,9 +15,9 @@ internal interface BasicApi {
 
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/login")
-    fun login(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<ClientUser>
+    suspend fun login(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Response<ClientUser>
 
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/register")
-    fun register(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<ClientUser>
+    suspend fun register(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Response<ClientUser>
 }

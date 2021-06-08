@@ -1,6 +1,11 @@
 package com.mytlogos.enterprise.model
 
-class ToDownload(val isProhibited: Boolean, mediumId: Int?, listId: Int?, externalListId: Int?) {
+class ToDownload(
+    val isProhibited: Boolean,
+    mediumId: Int? = null,
+    listId: Int? = null,
+    externalListId: Int? = null,
+) {
     val mediumId: Int?
     val listId: Int?
     val externalListId: Int?

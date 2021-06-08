@@ -37,7 +37,7 @@ class TaskManager private constructor() {
         }
 
         @kotlin.jvm.JvmStatic
-        fun runTask(task: suspend () -> Unit) {
+        fun runTaskSuspend(task: suspend () -> Unit) {
             CoroutineScope(instance.service.asCoroutineDispatcher()).launch {
                 task()
             }

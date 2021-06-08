@@ -21,14 +21,14 @@ internal interface MediumApi {
     fun getMediumInWait(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientMediumInWait>>
 
     @PUT("{start}/unused")
-    fun consumeMediumInWait(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun consumeMediumInWait(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 
     @POST("{start}/create")
-    fun createFromMediumInWait(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<ClientMedium>
+    suspend fun createFromMediumInWait(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Response<ClientMedium>
 
     @POST
     fun addMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Call<ClientSimpleMedium>
 
     @PUT
-    fun updateMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun updateMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 }

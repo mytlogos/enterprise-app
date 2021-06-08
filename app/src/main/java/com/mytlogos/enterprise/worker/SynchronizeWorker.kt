@@ -53,14 +53,13 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         UserPreferences.init(application)
 
         try {
+            initNotification()
             val repository = getInstance(application)
 
             if (!repository.isClientAuthenticated) {
                 cleanUp()
                 return Result.retry()
             }
-            notificationManager = NotificationManagerCompat.from(this.applicationContext)
-            builder = NotificationCompat.Builder(this.applicationContext, CHANNEL_ID)
             builder
                 .setContentTitle("Start Synchronizing")
                 .setSmallIcon(R.mipmap.ic_launcher).priority = NotificationCompat.PRIORITY_DEFAULT
@@ -96,6 +95,11 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         }
         cleanUp()
         return Result.success()
+    }
+
+    private fun initNotification() {
+        notificationManager = NotificationManagerCompat.from(this.applicationContext)
+        builder = NotificationCompat.Builder(this.applicationContext, CHANNEL_ID)
     }
 
     private fun notifyFinish(contentText: String, finished: Int) {

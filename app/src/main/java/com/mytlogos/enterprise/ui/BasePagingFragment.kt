@@ -26,10 +26,7 @@ import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.model.MediumType.addMediumType
 import com.mytlogos.enterprise.model.MediumType.isType
 import com.mytlogos.enterprise.model.MediumType.removeMediumType
-import com.mytlogos.enterprise.tools.DetailsLookup
-import com.mytlogos.enterprise.tools.SimpleItemKeyProvider
-import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.createSelectNothing
+import com.mytlogos.enterprise.tools.*
 import com.mytlogos.enterprise.viewmodel.FilterableViewModel
 import com.mytlogos.enterprise.viewmodel.MediumFilterableViewModel
 import com.mytlogos.enterprise.viewmodel.SortableViewModel
@@ -67,9 +64,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         val decoration = DividerItemDecoration(context, layoutManager.orientation)
         listView.addItemDecoration(decoration)
 
-        // Set the adapter
-        adapter = createAdapter()
-        listView.adapter = adapter
+        listView.adapter = initAdapter()
 
         viewModel = createViewModel()
 
@@ -85,6 +80,35 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
             createPaged(viewModel).collectLatest { adapter.submitData(it) }
         }
         return fragmentRoot
+    }
+
+    private fun initAdapter(): BaseAdapter<Value, *> {
+        // Set the adapter
+        adapter = createAdapter()
+        adapter.holderInit = BaseAdapter.ViewInit { holder: RecyclerView.ViewHolder ->
+            holder.itemView.isLongClickable = true
+
+            // add long click listener on view holder with a bound item
+            holder.itemView.setOnLongClickListener {
+                val position = holder.bindingAdapterPosition
+
+                if (position != RecyclerView.NO_POSITION) {
+                    val item = getAdapter().getItemAt(position)
+                    return@setOnLongClickListener onItemLongClick(position, item)
+                }
+                true
+            }
+            // add click listener on view holder with a bound item
+            holder.itemView.setOnClickListener {
+                val position = holder.bindingAdapterPosition
+
+                if (position != RecyclerView.NO_POSITION) {
+                    val item = getAdapter().getItemAt(position)
+                    onItemClick(position, item)
+                }
+            }
+        }
+        return adapter
     }
 
     protected enum class SelectionMode {
@@ -156,7 +180,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
             fun init(holder: ViewHolder)
         }
 
-        var holderInit: ViewInit<ViewHolder>? = null
+        open var holderInit: ViewInit<in ViewHolder>? = null
 
         fun getItemAt(position: Int) = super.getItem(position)
 
@@ -257,6 +281,23 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
             property.set(values[childIndex])
         }
     }
+
+    fun getSelectedItems(): List<Value> {
+        return selectionTracker.selection.mapNotNull {
+            val position = getPositionFrom(it, listView)
+
+            if (position == RecyclerView.NO_POSITION) {
+                return@mapNotNull null
+            }
+            return@mapNotNull getAdapter().getItemAt(position)
+        }
+    }
+
+    open fun onItemClick(position: Int, item: Value?) {
+
+    }
+
+    open fun onItemLongClick(position: Int, item: Value?): Boolean = false
 
     private fun openFilter() {
         val inflater = this.layoutInflater
@@ -385,7 +426,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     protected class IntTextProperty(
         override val viewId: Int,
         val property: KMutableProperty0<Int>,
-        val showToast: (v: String, duration: Int) -> Unit
+        val showToast: (v: String, duration: Int) -> Unit,
     ) : TextProperty {
         override fun get(): String = property.get().toString()
         override fun set(newFilter: String) {

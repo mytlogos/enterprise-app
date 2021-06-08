@@ -19,7 +19,7 @@ import androidx.preference.*
  * API Guide](http://developer.android.com/guide/topics/ui/settings.html) for more information on developing a Settings UI.
  */
 class SettingsFragment : PreferenceFragmentCompat() {
-    override fun onCreatePreferences(savedInstanceState: Bundle, rootKey: String) {
+    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.pref_headers)
     }
 
@@ -33,7 +33,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             setHasOptionsMenu(true)
         }
 
-        override fun onCreatePreferences(savedInstanceState: Bundle, rootKey: String) {
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             addPreferencesFromResource(R.xml.pref_general)
 
             // Bind the summaries of EditText/List/Dialog/Ringtone preferences
@@ -64,8 +64,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
             setHasOptionsMenu(true)
         }
 
-        override fun onCreatePreferences(savedInstanceState: Bundle, rootKey: String) {
-            addPreferencesFromResource(R.xml.pref_notification)
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+//            addPreferencesFromResource(R.xml.pref_notification)
         }
 
         override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -88,7 +88,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             setHasOptionsMenu(true)
         }
 
-        override fun onCreatePreferences(savedInstanceState: Bundle, rootKey: String) {
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             addPreferencesFromResource(R.xml.pref_data_sync)
             // Bind the summaries of EditText/List/Dialog/Ringtone preferences
             // to their values. When their values change, their summaries are
@@ -117,7 +117,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             setHasOptionsMenu(true)
         }
 
-        override fun onCreatePreferences(savedInstanceState: Bundle, rootKey: String) {
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             addPreferencesFromResource(R.xml.pref_download)
             bindPreferenceSummaryToValue(findPreference("download-medium-1-count"), true)
             bindPreferenceSummaryToValue(findPreference("download-medium-2-count"), true)

@@ -1,11 +1,10 @@
 package com.mytlogos.enterprise.tools
 
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
-import androidx.paging.DataSource
-import androidx.paging.LivePagedListBuilder
-import androidx.paging.PageKeyedDataSource
-import androidx.paging.PagedList
+import androidx.lifecycle.map
+import androidx.paging.*
 import com.mytlogos.enterprise.background.api.NotConnectedException
 import com.mytlogos.enterprise.background.api.ServerException
 import kotlinx.coroutines.Deferred
@@ -43,6 +42,10 @@ object Utils {
         }
     }
 
+    @Deprecated(
+        "PagedList is deprecated",
+        replaceWith = ReplaceWith("transformPaging")
+    )
     @JvmStatic
     fun <E : Any> transform(listLiveData: LiveData<MutableList<E>>): LiveData<PagedList<E>> {
         return Transformations.switchMap(
@@ -56,6 +59,11 @@ object Utils {
                 }, 1000
             ).build()
         }
+    }
+
+    @JvmStatic
+    fun <E : Any> transformPaging(listLiveData: LiveData<MutableList<E>>): LiveData<PagingData<E>> {
+        return listLiveData.map { PagingData.from(it) }
     }
 
     @Throws(Exception::class)

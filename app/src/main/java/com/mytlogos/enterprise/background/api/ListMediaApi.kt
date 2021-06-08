@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.api
 
 import com.mytlogos.enterprise.background.api.model.ClientListQuery
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.*
 
 internal interface ListMediaApi {
@@ -12,8 +13,8 @@ internal interface ListMediaApi {
     fun addListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 
     @HTTP(method = "DELETE", hasBody = true)
-    fun deleteListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun deleteListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 
     @PUT
-    fun updateListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun updateListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 }

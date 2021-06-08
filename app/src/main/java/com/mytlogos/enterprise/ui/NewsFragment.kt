@@ -40,11 +40,11 @@ class NewsFragment
  */
     : BaseSwipeListFragment<News, NewsViewModel>() {
     private var attachedListener: AttachedListener? = null
-    private var attachedFuture: ScheduledFuture<*>? = null
+    private lateinit var attachedFuture: ScheduledFuture<*>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
         val recyclerView: RecyclerView = view.findViewById(R.id.list) as RecyclerView
@@ -61,9 +61,8 @@ class NewsFragment
         attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS)
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                if (attachedFuture != null) {
-                    attachedFuture!!.cancel(true)
-                }
+                attachedFuture.cancel(true)
+
                 if (RecyclerView.SCROLL_STATE_IDLE == newState) {
                     attachedFuture = service.schedule(attachedTask, 2, TimeUnit.SECONDS)
                 }
@@ -77,30 +76,27 @@ class NewsFragment
         attachedListener = AttachedListener {
             val firstPosition = LayoutUtils.findFirstCompletelyVisibleItemPosition(recyclerView)
             val lastPosition = LayoutUtils.findLastCompletelyVisibleItemPosition(recyclerView)
+
             if (firstPosition == RecyclerView.NO_POSITION || lastPosition == RecyclerView.NO_POSITION) {
                 return@AttachedListener
             }
             val minimumVisible = DateTime.now().minusSeconds(2)
             val readNews: MutableList<Int> = ArrayList()
-            var i = firstPosition
-            while (i <= lastPosition) {
-                val item = flexibleAdapter!!.getItem(i)
-                if (item !is NewsItem) {
-                    i++
+
+            for (i in firstPosition..lastPosition) {
+                val item = flexibleAdapter.getItem(i)
+
+                if (item !is NewsItem || item.attached == null) {
                     continue
                 }
-                val newsItem = item
-                if (newsItem.attached == null) {
-                    i++
-                    continue
+
+                if (item.attached!!.isBefore(minimumVisible) && !item.news.read) {
+                    readNews.add(item.news.id)
                 }
-                if (newsItem.attached!!.isBefore(minimumVisible) && !newsItem.news.read) {
-                    readNews.add(newsItem.news.id)
-                }
-                i++
             }
+
             if (readNews.isNotEmpty()) {
-                viewModel!!.markNewsRead(readNews)
+                viewModel.markNewsRead(readNews)
             }
         }
         this.setTitle("News")
@@ -111,7 +107,7 @@ class NewsFragment
         get() = NewsViewModel::class.java
 
     override fun createPagedListLiveData(): LiveData<PagedList<News>> {
-        return viewModel!!.news!!
+        return viewModel.news
     }
 
     override fun createFlexible(value: News): IFlexible<*> {
@@ -121,8 +117,9 @@ class NewsFragment
     }
 
     override fun onSwipeRefresh() {
-        val news: List<News?>? = livePagedList!!.value
+        val news: List<News?>? = livePagedList.value
         var latest: DateTime? = null
+
         if (news != null) {
             val newsComparator = Comparator.nullsLast { o1: News, o2: News ->
                 o1.getTimeStamp().compareTo(o2.getTimeStamp())
@@ -130,15 +127,15 @@ class NewsFragment
             val latestNews = Collections.max(news, newsComparator)
             latest = latestNews?.getTimeStamp()
         }
-        viewModel!!.refresh(latest).observe(this, { loadingComplete: Boolean? ->
+        viewModel.refresh(latest).observe(this, { loadingComplete: Boolean? ->
             if (loadingComplete != null && loadingComplete) {
-                (listContainer!! as SwipeRefreshLayout).isRefreshing = false
+                (listContainer as SwipeRefreshLayout).isRefreshing = false
             }
         })
     }
 
     override fun onItemClick(view: View, position: Int): Boolean {
-        val item = flexibleAdapter!!.getItem(position) as? NewsItem ?: return false
+        val item = flexibleAdapter.getItem(position) as? NewsItem ?: return false
         val url = item.news.url
         this.openInBrowser(url)
         return false
@@ -165,7 +162,7 @@ class NewsFragment
 
         override fun createViewHolder(
             view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?
+            adapter: FlexibleAdapter<IFlexible<*>?>?,
         ): HeaderViewHolder {
             return HeaderViewHolder(view, adapter)
         }
@@ -174,7 +171,7 @@ class NewsFragment
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: HeaderViewHolder,
             position: Int,
-            payloads: List<Any>
+            payloads: List<Any>,
         ) {
             holder.textView.text = date.toString("E, dd.MM.yyyy")
         }
@@ -182,21 +179,19 @@ class NewsFragment
 
     private class HeaderViewHolder(
         itemView: View,
-        adapter: FlexibleAdapter<IFlexible<*>?>?
+        adapter: FlexibleAdapter<IFlexible<*>?>?,
     ) : FlexibleViewHolder(itemView, adapter, true) {
-        val textView: TextView
-
-        init {
-            textView = itemView.findViewById(R.id.text) as TextView
-        }
+        val textView: TextView = itemView.findViewById(R.id.text)
     }
 
     private class NewsItem(val news: News) :
         AbstractSectionableItem<MetaViewHolder, HeaderItem?>(
-            HeaderItem(
-                news.getTimeStamp().toLocalDate())) {
+            HeaderItem(news.getTimeStamp().toLocalDate())
+        ) {
+
         var attached: DateTime? = null
         var listener: AttachedListener? = null
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is NewsItem) return false
@@ -213,7 +208,7 @@ class NewsFragment
 
         override fun createViewHolder(
             view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?
+            adapter: FlexibleAdapter<IFlexible<*>>,
         ): MetaViewHolder {
             return MetaViewHolder(view, adapter)
         }
@@ -223,7 +218,7 @@ class NewsFragment
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: MetaViewHolder,
             position: Int,
-            payloads: List<Any>
+            payloads: List<Any>,
         ) {
             // transform news id (int) to a string,
             // because it would expect a resource id if it is an int
@@ -235,7 +230,7 @@ class NewsFragment
         override fun onViewAttached(
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: MetaViewHolder,
-            position: Int
+            position: Int,
         ) {
             super.onViewAttached(adapter, holder, position)
             attached = DateTime.now()
@@ -244,7 +239,7 @@ class NewsFragment
         override fun onViewDetached(
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: MetaViewHolder,
-            position: Int
+            position: Int,
         ) {
             super.onViewDetached(adapter, holder, position)
             attached = null

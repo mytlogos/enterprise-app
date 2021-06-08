@@ -2,7 +2,6 @@ package com.mytlogos.enterprise.ui
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.os.AsyncTask
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
 import android.view.*
@@ -13,7 +12,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
 import com.mytlogos.enterprise.R
-import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
 import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.SimpleEpisode

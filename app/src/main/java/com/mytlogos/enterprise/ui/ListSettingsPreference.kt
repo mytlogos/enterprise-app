@@ -9,6 +9,9 @@ import androidx.preference.PreferenceManager
 import com.mytlogos.enterprise.R
 import java.util.regex.Pattern
 
+/**
+ * TODO: decide what to do with this, delete it or replace [ListSettings] with this one
+ */
 class ListSettingsPreference : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle, rootKey: String) {
         setPreferencesFromResource(R.xml.list_preferences, rootKey)

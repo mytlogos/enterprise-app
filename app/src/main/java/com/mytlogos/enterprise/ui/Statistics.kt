@@ -10,6 +10,8 @@ import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 import com.mytlogos.enterprise.R
+import java.lang.IllegalArgumentException
+import java.lang.IndexOutOfBoundsException
 
 /**
  *
@@ -22,29 +24,33 @@ class Statistics : BaseFragment() {
         this.setTitle("Statistics")
         val pager = inflater.inflate(R.layout.statistics, container, false) as ViewPager
         val tabLayout = this.mainActivity.tabLayout
+
         pager.adapter = SectionsPagerAdapter(childFragmentManager)
         tabLayout.setupWithViewPager(pager)
         tabLayout.tabMode = TabLayout.MODE_SCROLLABLE
         return pager
     }
 
-    private inner class SectionsPagerAdapter(fm: FragmentManager?) :
-        FragmentPagerAdapter(
-            fm!!, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
+    private inner class SectionsPagerAdapter(fm: FragmentManager) :
+        FragmentPagerAdapter(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
+
         private val fragments: Array<Fragment?>
+
         override fun getItem(position: Int): Fragment {
             var fragment = fragments[position]
             if (fragment == null) {
                 if (position == 0) {
                     fragment = SpaceViewFragment()
                     fragments[0] = fragment
+                } else {
+                    throw IndexOutOfBoundsException("Only a single Item available but tried to access $position")
                 }
             }
-            return fragment!!
+            return fragment
         }
 
-        override fun destroyItem(container: ViewGroup, position: Int, `object`: Any) {
-            super.destroyItem(container, position, `object`)
+        override fun destroyItem(container: ViewGroup, position: Int, fragment: Any) {
+            super.destroyItem(container, position, fragment)
             fragments[position] = null
         }
 

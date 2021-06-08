@@ -9,7 +9,7 @@ import retrofit2.http.*
 
 internal interface ListApi {
     @GET
-    fun getList(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientListQuery>
+    suspend fun getList(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<ClientListQuery>
 
     @GET
     fun getLists(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientMultiListQuery>
@@ -21,5 +21,5 @@ internal interface ListApi {
     fun deleteList(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 
     @PUT
-    fun updateList(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun updateList(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 }

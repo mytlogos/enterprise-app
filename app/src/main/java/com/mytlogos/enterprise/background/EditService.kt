@@ -21,6 +21,7 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 
+@Suppress("BlockingMethodInNonBlockingContext")
 @SuppressLint("UseSparseArrays")
 internal class EditService(
     private val client: Client,
@@ -229,42 +230,38 @@ internal class EditService(
         }
     }
 
-    fun updateListMedium(
+    suspend fun updateListMedium(
         listSetting: MediaListSetting,
         newMediumType: Int
-    ): CompletableFuture<String> {
-        return TaskManager.runCompletableTask {
-            if (listSetting is ExternalMediaListSetting) {
-                return@runCompletableTask "Cannot update External Lists"
-            }
-            val listId = listSetting.listId
-            val mediaList = ClientMediaList(
-                listSetting.uuid,
-                listId,
-                listSetting.name,
-                newMediumType, IntArray(0)
-            )
-            updateList(listSetting.name, newMediumType, listId, mediaList)
+    ): String {
+        if (listSetting is ExternalMediaListSetting) {
+            return "Cannot update External Lists"
         }
+        val listId = listSetting.listId
+        val mediaList = ClientMediaList(
+            listSetting.uuid,
+            listId,
+            listSetting.name,
+            newMediumType, IntArray(0)
+        )
+        return updateList(listSetting.name, newMediumType, listId, mediaList)
     }
 
-    fun updateListName(listSetting: MediaListSetting, newName: String): CompletableFuture<String> {
-        return TaskManager.runCompletableTask {
-            if (listSetting is ExternalMediaListSetting) {
-                return@runCompletableTask "Cannot update External Lists"
-            }
-            val listId = listSetting.listId
-            val mediaList = ClientMediaList(
-                listSetting.uuid,
-                listId,
-                newName,
-                listSetting.medium, IntArray(0)
-            )
-            updateList(newName, listSetting.medium, listId, mediaList)
+    suspend fun updateListName(listSetting: MediaListSetting, newName: String): String {
+        if (listSetting is ExternalMediaListSetting) {
+            return "Cannot update External Lists"
         }
+        val listId = listSetting.listId
+        val mediaList = ClientMediaList(
+            listSetting.uuid,
+            listId,
+            newName,
+            listSetting.medium, IntArray(0)
+        )
+        return updateList(newName, listSetting.medium, listId, mediaList)
     }
 
-    private fun updateList(
+    private suspend fun updateList(
         newName: String,
         newMediumType: Int,
         listId: Int,
@@ -272,9 +269,9 @@ internal class EditService(
     ): String {
         try {
             if (!client.isClientOnline) {
-                val setting =
-                    storage.getListSettingNow(listId, false) ?: return "Not available in storage"
+                val setting = storage.getListSettingNow(listId, false) ?: return "Not available in storage"
                 val editEvents: MutableList<EditEvent> = ArrayList()
+
                 if (setting.name != newName) {
                     editEvents.add(
                         EditEventImpl(
@@ -314,66 +311,64 @@ internal class EditService(
         return ""
     }
 
-    fun updateMedium(mediumSettings: MediumSetting): CompletableFuture<String> {
-        return TaskManager.runCompletableTask {
-            val mediumId = mediumSettings.mediumId
-            val clientMedium = ClientMedium(
-                IntArray(0), IntArray(0),
-                mediumSettings.currentRead, IntArray(0),
-                mediumId,
-                mediumSettings.getCountryOfOrigin(),
-                mediumSettings.getLanguageOfOrigin(),
-                mediumSettings.getAuthor(),
-                mediumSettings.getTitle(),
-                mediumSettings.medium,
-                mediumSettings.getArtist(),
-                mediumSettings.getLang(),
-                mediumSettings.stateOrigin,
-                mediumSettings.stateTL,
-                mediumSettings.getSeries(),
-                mediumSettings.getUniverse()
-            )
-            if (!client.isClientOnline) {
-                val setting = storage.getMediumSettingsNow(mediumId)
-                    ?: return@runCompletableTask "Not available in storage"
-                val editEvents: MutableList<EditEvent> = ArrayList()
-                if (setting.getTitle() != mediumSettings.getTitle()) {
-                    editEvents.add(
-                        EditEventImpl(
-                            mediumId,
-                            MEDIUM,
-                            CHANGE_NAME,
-                            setting.getTitle(),
-                            mediumSettings.getTitle()
-                        )
+    suspend fun updateMedium(mediumSettings: MediumSetting): String {
+        val mediumId = mediumSettings.mediumId
+
+        val clientMedium = ClientMedium(
+            IntArray(0), IntArray(0),
+            mediumSettings.currentRead, IntArray(0),
+            mediumId,
+            mediumSettings.getCountryOfOrigin(),
+            mediumSettings.getLanguageOfOrigin(),
+            mediumSettings.getAuthor(),
+            mediumSettings.getTitle(),
+            mediumSettings.medium,
+            mediumSettings.getArtist(),
+            mediumSettings.getLang(),
+            mediumSettings.stateOrigin,
+            mediumSettings.stateTL,
+            mediumSettings.getSeries(),
+            mediumSettings.getUniverse()
+        )
+        if (!client.isClientOnline) {
+            val setting = storage.getMediumSettingsNow(mediumId)
+
+            val editEvents: MutableList<EditEvent> = ArrayList()
+
+            if (setting.getTitle() != mediumSettings.getTitle()) {
+                editEvents.add(
+                    EditEventImpl(
+                        mediumId,
+                        MEDIUM,
+                        CHANGE_NAME,
+                        setting.getTitle(),
+                        mediumSettings.getTitle()
                     )
-                }
-                if (setting.medium != mediumSettings.medium) {
-                    editEvents.add(
-                        EditEventImpl(
-                            mediumId,
-                            MEDIUM,
-                            CHANGE_TYPE,
-                            setting.medium,
-                            mediumSettings.medium
-                        )
+                )
+            }
+            if (setting.medium != mediumSettings.medium) {
+                editEvents.add(
+                    EditEventImpl(
+                        mediumId,
+                        MEDIUM,
+                        CHANGE_TYPE,
+                        setting.medium,
+                        mediumSettings.medium
                     )
-                }
-                storage.insertEditEvent(editEvents)
-                persister.persist(ClientSimpleMedium(clientMedium)).finish()
+                )
             }
-            try {
-                client.updateMedia(clientMedium)
-                runBlocking {
-                    val medium = client.getMedium(mediumId).body()
-                    persister.persist(ClientSimpleMedium(medium!!)).finish()
-                }
-            } catch (e: IOException) {
-                e.printStackTrace()
-                return@runCompletableTask "Could not update Medium"
-            }
-            ""
+            storage.insertEditEvent(editEvents)
+            persister.persist(ClientSimpleMedium(clientMedium)).finish()
         }
+        try {
+            client.updateMedia(clientMedium)
+            val medium = client.getMedium(mediumId).body()
+            persister.persist(ClientSimpleMedium(medium!!)).finish()
+        } catch (e: IOException) {
+            e.printStackTrace()
+            return "Could not update Medium"
+        }
+        return ""
     }
 
     @Throws(Exception::class)
@@ -391,7 +386,9 @@ internal class EditService(
                 for (id in filteredIds) {
                     events.add(EditEventImpl(id, EPISODE, CHANGE_PROGRESS, null, progress))
                 }
-                storage.insertEditEvent(events)
+                runBlocking {
+                    storage.insertEditEvent(events)
+                }
                 storage.updateProgress(filteredIds, progress)
                 return@doPartitionedEx false
             }
@@ -418,12 +415,14 @@ internal class EditService(
                         val event: EditEvent = EditEventImpl(id, MEDIUM, REMOVE_FROM, listId, null)
                         events.add(event)
                     }
-                    storage.insertEditEvent(events)
+                    runBlocking {
+                        storage.insertEditEvent(events)
+                    }
                     storage.removeItemFromList(listId, mediumIds)
                     storage.insertDanglingMedia(mediumIds)
                     return@runCompletableTask true
                 }
-                val response = client.deleteListMedia(listId, mediumIds)
+                val response = runBlocking { client.deleteListMedia(listId, mediumIds) }
                 val success = response.body()
                 if (success != null && success) {
                     storage.removeItemFromList(listId, mediumIds)
@@ -455,7 +454,9 @@ internal class EditService(
                         val event: EditEvent = EditEventImpl(id, MEDIUM, ADD_TO, null, listId)
                         events.add(event)
                     }
-                    storage.insertEditEvent(events)
+                    runBlocking {
+                        storage.insertEditEvent(events)
+                    }
                     storage.addItemsToList(listId, ids)
                     return@runCompletableTask true
                 }
@@ -487,7 +488,7 @@ internal class EditService(
                     storage.addItemsToList(newListId, setOf(mediumId))
                     return@runCompletableTask true
                 }
-                val response = client.updateListMedia(oldListId, newListId, mediumId)
+                val response = runBlocking { client.updateListMedia(oldListId, newListId, mediumId) }
                 val success = response.body()
                 if (success != null && success) {
                     storage.removeItemFromList(oldListId, mediumId)
@@ -523,13 +524,15 @@ internal class EditService(
                         val event: EditEvent = EditEventImpl(id, MEDIUM, MOVE, oldListId, listId)
                         events.add(event)
                     }
-                    storage.insertEditEvent(events)
+                    runBlocking {
+                        storage.insertEditEvent(events)
+                    }
                     storage.moveItemsToList(oldListId, listId, ids)
                     return@runCompletableTask true
                 }
                 val successMove: MutableCollection<Int> = ArrayList()
                 for (id in ids) {
-                    val response = client.updateListMedia(oldListId, listId, id)
+                    val response = runBlocking { client.updateListMedia(oldListId, listId, id) }
                     val success = response.body()
                     if (success != null && success) {
                         successMove.add(id)

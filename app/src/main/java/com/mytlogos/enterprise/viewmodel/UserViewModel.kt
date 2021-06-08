@@ -7,9 +7,11 @@ import com.mytlogos.enterprise.model.UpdateUser
 import com.mytlogos.enterprise.model.User
 import java.io.IOException
 
+@Suppress("BlockingMethodInNonBlockingContext")
 class UserViewModel(application: Application) : RepoViewModel(application) {
-    val userLiveData: LiveData<User?>
-    val homeStatsLiveData: LiveData<HomeStats>
+    val userLiveData: LiveData<User?> = repository.user
+    val homeStatsLiveData: LiveData<HomeStats> = repository.homeStats
+
     val isLoading: Boolean
         get() = repository.isLoading
 
@@ -18,13 +20,13 @@ class UserViewModel(application: Application) : RepoViewModel(application) {
     }
 
     @Throws(IOException::class)
-    fun login(user: String?, password: String?) {
-        repository.login(user!!, password!!)
+    suspend fun login(user: String, password: String) {
+        repository.login(user, password)
     }
 
     @Throws(IOException::class)
-    fun register(user: String?, password: String?) {
-        repository.register(user!!, password!!)
+    suspend fun register(user: String, password: String) {
+        repository.register(user, password)
     }
 
     fun logout() {
@@ -33,10 +35,5 @@ class UserViewModel(application: Application) : RepoViewModel(application) {
 
     override fun onCleared() {
         // todo clean up
-    }
-
-    init {
-        homeStatsLiveData = repository.homeStats
-        userLiveData = repository.user
     }
 }

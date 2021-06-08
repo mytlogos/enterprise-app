@@ -18,7 +18,7 @@ internal class NewMetaViewHolder(mView: View) : SelectableViewHolder(mView) {
     val topRightText: TextView = mView.findViewById(R.id.item_top_right) as TextView
 
     override fun toString(): String {
-        return super.toString() + " '" + mainText.text + "'"
+        return "${super.toString()} '${mainText.text}'"
     }
 
 }

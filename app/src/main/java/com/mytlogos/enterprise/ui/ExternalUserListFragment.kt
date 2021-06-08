@@ -42,7 +42,7 @@ class ExternalUserListFragment : BaseListFragment<ExternalUser, ExternalUserView
 
         override fun createViewHolder(
             view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?
+            adapter: FlexibleAdapter<IFlexible<*>>
         ): MetaViewHolder {
             return MetaViewHolder(view, adapter)
         }

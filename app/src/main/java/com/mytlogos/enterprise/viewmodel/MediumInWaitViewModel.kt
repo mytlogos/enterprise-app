@@ -4,15 +4,17 @@ import android.app.Application
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
+import com.mytlogos.enterprise.background.repository.MediumInWaitRepository
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.model.MediumInWait
 import com.mytlogos.enterprise.model.SimpleMedium
-import java.util.concurrent.CompletableFuture
 
 class MediumInWaitViewModel(application: Application) : FilterableViewModel(application) {
     private val mediumTitleFilterLiveData = MutableLiveData<String?>()
     private val mediumInWaitTitleFilterLiveData = MutableLiveData<String?>()
     private val listNameFilterLiveData = MutableLiveData<String?>()
+    private val mediumInWaitRepository by lazy { MediumInWaitRepository.getInstance(application) }
+
     override fun resetFilter() {}
 
     fun getInternalLists(): LiveData<MutableList<MediaList>> {
@@ -42,36 +44,30 @@ class MediumInWaitViewModel(application: Application) : FilterableViewModel(appl
     }
 
     fun setMediumInWaitTitleFilter(titleFilter: String) {
-        var titleFilter = titleFilter
-        titleFilter = processStringFilter(titleFilter)
-        mediumInWaitTitleFilterLiveData.value = titleFilter
+        mediumInWaitTitleFilterLiveData.value = processStringFilter(titleFilter)
     }
 
     fun setMediumTitleFilter(titleFilter: String) {
-        var titleFilter = titleFilter
-        titleFilter = processStringFilter(titleFilter)
-        mediumTitleFilterLiveData.value = titleFilter
+        mediumTitleFilterLiveData.value = processStringFilter(titleFilter)
     }
 
     fun setListNameFilter(filter: String) {
-        var filter = filter
-        filter = processStringFilter(filter)
-        listNameFilterLiveData.value = filter
+        listNameFilterLiveData.value = processStringFilter(filter)
     }
 
-    fun consumeMediumInWait(
+    suspend fun consumeMediumInWait(
         selectedMedium: SimpleMedium,
         mediumInWaits: List<MediumInWait>,
-    ): CompletableFuture<Boolean> {
-        return repository.consumeMediumInWait(selectedMedium, mediumInWaits)
+    ): Boolean {
+        return mediumInWaitRepository.consumeMediumInWait(selectedMedium, mediumInWaits)
     }
 
-    fun createMedium(
+    suspend fun createMedium(
         mediumInWait: MediumInWait,
         mediumInWaits: List<MediumInWait>,
-        list: MediaList?,
-    ): CompletableFuture<Boolean> {
-        return repository.createMedium(mediumInWait, mediumInWaits, list!!)
+        list: MediaList,
+    ): Boolean {
+        return mediumInWaitRepository.createMedium(mediumInWait, mediumInWaits, list)
     }
 
     val listSuggestion: LiveData<MutableList<MediaList>>

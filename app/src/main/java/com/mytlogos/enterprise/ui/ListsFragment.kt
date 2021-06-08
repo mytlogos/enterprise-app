@@ -4,40 +4,38 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Bundle
 import android.view.*
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.Transformations
-import androidx.paging.PagedList
-import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.asFlow
+import androidx.paging.PagingData
+import androidx.recyclerview.widget.DiffUtil
 import com.mytlogos.enterprise.R
-import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.model.ExternalMediaList
+import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.requireSupportActionBar
-import com.mytlogos.enterprise.tools.Utils.transform
+import com.mytlogos.enterprise.tools.Utils.transformPaging
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
-import eu.davidea.flexibleadapter.FlexibleAdapter
-import eu.davidea.flexibleadapter.SelectableAdapter
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
-import eu.davidea.flexibleadapter.items.IFlexible
 import eu.davidea.flexibleadapter.utils.DrawableUtils
+import kotlinx.coroutines.flow.Flow
 import java.net.URI
 import java.util.*
 import java.util.regex.Pattern
 
 /**
- * A fragment representing a list of Items.
+ * A fragment representing a list of [MediaList].
  */
 class ListsFragment
 /**
  * Mandatory empty constructor for the fragment manager to instantiate the
  * fragment (e.g. upon screen orientation changes).
  */
-    : BaseListFragment<MediaList, ListsViewModel>() {
+    : BasePagingFragment<MediaList, ListsViewModel>() {
     private var inActionMode = false
     private val callback: ActionMode.Callback = object : ActionMode.Callback {
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
             mode.title = "Delete Lists"
             mode.menuInflater.inflate(R.menu.list_medium_action_mode_menu, menu)
             mainActivity.requireSupportActionBar().hide()
-            flexibleAdapter!!.mode = SelectableAdapter.Mode.MULTI
+            changeSelectionMode(SelectionMode.MULTI)
             return true
         }
 
@@ -52,11 +50,9 @@ class ListsFragment
         }
 
         private fun deleteItemsFromList(mode: ActionMode): Boolean {
-            val selectedPositions = flexibleAdapter!!.selectedPositions
             val selectedListsIds: MutableList<Int> = ArrayList()
-            for (selectedPosition in selectedPositions) {
-                val flexible = flexibleAdapter!!.getItem(selectedPosition) as? ListItem ?: continue
-                val list = flexible.list
+
+            for (list in getSelectedItems()) {
                 if (TRASH_LIST.listId == list.listId) {
                     showToast("You cannot delete the Trash list")
                     return true
@@ -75,8 +71,8 @@ class ListsFragment
 
         override fun onDestroyActionMode(mode: ActionMode) {
             mainActivity.requireSupportActionBar().show()
-            flexibleAdapter!!.mode = SelectableAdapter.Mode.IDLE
-            flexibleAdapter!!.clearSelection()
+            changeSelectionMode(SelectionMode.IDLE)
+
             println("destroyed action mode")
             inActionMode = false
         }
@@ -97,105 +93,70 @@ class ListsFragment
     override val viewModelClass: Class<ListsViewModel>
         get() = ListsViewModel::class.java
 
-    override fun createPagedListLiveData(): LiveData<PagedList<MediaList>> {
-        return transform(Transformations.map(
-            viewModel!!.lists
-        ) { input: MutableList<MediaList> ->
-            input.remove(TRASH_LIST)
-            input.add(TRASH_LIST)
-            input
-        })
-    }
-
-    override fun createFlexible(value: MediaList): IFlexible<*> {
-        return ListItem(value)
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
         this.setTitle("Lists")
         return view
     }
 
-    override fun onItemLongClick(position: Int) {
-        if (inActionMode) {
-            return
+    override fun onItemLongClick(position: Int, item: MediaList?): Boolean {
+        if (inActionMode || item == null) {
+            return false
         }
-        val list = flexibleAdapter!!.getItem(position) as? ListItem ?: return
-        if (list.list is ExternalMediaList) {
-            return
+
+        if (item is ExternalMediaList) {
+            return false
         }
         inActionMode = true
         println("starting action mode")
-        flexibleAdapter!!.addSelection(position)
+        selectionTracker.select(item.getSelectionKey())
         this.mainActivity.startActionMode(callback)
+        return true
     }
 
-    override fun onItemClick(view: View, position: Int): Boolean {
-        val list = flexibleAdapter!!.getItem(position) as? ListItem ?: return false
-        val item = list
-        if (inActionMode) {
-            return if (position != RecyclerView.NO_POSITION && item.list !is ExternalMediaList) {
-                flexibleAdapter!!.toggleSelection(position)
-                true
-            } else {
-                false
+    override fun onItemClick(position: Int, item: MediaList?) {
+        if (item == null) {
+            return
+        }
+
+        if (!inActionMode) {
+            mainActivity.switchWindow(ListMediumFragment.getInstance(item), true)
+        }
+    }
+
+    private class ListDiff : DiffUtil.ItemCallback<MediaList>() {
+        override fun areItemsTheSame(oldItem: MediaList, newItem: MediaList): Boolean {
+            return oldItem.listId == newItem.listId
+        }
+
+        override fun areContentsTheSame(oldItem: MediaList, newItem: MediaList): Boolean {
+            return oldItem == newItem
+        }
+    }
+
+    private class ListAdapter : BaseAdapter<MediaList, NewMetaViewHolder>(ListDiff()) {
+        override val layoutId = R.layout.meta_item
+
+        override fun createViewHolder(root: View, viewType: Int) = NewMetaViewHolder(root)
+
+        @SuppressLint("SetTextI18n")
+        override fun onBindViewHolder(holder: NewMetaViewHolder, position: Int) {
+            getItem(position)?.let {
+                // transform news id (int) to a string,
+                // because it would expect a resource id if it is an int
+                holder.topLeftText.text = "${it.size} Items"
+                holder.topRightText.text = getDenominator(it)
+                holder.mainText.text = it.name
+
+                val drawable = DrawableUtils.getSelectableBackgroundCompat(
+                    Color.WHITE,  // normal background
+                    Color.GRAY,  // pressed background
+                    Color.BLACK) // ripple color
+                DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
             }
-        }
-        mainActivity.switchWindow(ListMediumFragment.getInstance(item.list), true)
-        return false
-    }
-
-    private class ListItem(val list: MediaList) :
-        AbstractFlexibleItem<MetaViewHolder>() {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val that = other as ListItem
-            return list.listId == that.list.listId
-        }
-
-        override fun hashCode(): Int {
-            return list.listId
-        }
-
-        override fun getLayoutRes(): Int {
-            return R.layout.meta_item
-        }
-
-        override fun createViewHolder(
-            view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?
-        ): MetaViewHolder {
-            return MetaViewHolder(view, adapter)
-        }
-
-        @SuppressLint("DefaultLocale")
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: MetaViewHolder,
-            position: Int,
-            payloads: List<Any>
-        ) {
-            // transform news id (int) to a string,
-            // because it would expect a resource id if it is an int
-            holder.topLeftText.text = String.format("%d Items", list.size)
-            holder.topRightText.text = getDenominator(list)
-            holder.mainText.text = list.name
-            val drawable = DrawableUtils.getSelectableBackgroundCompat(
-                Color.WHITE,  // normal background
-                Color.GRAY,  // pressed background
-                Color.BLACK) // ripple color
-            DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
-        }
-
-        init {
-            this.isDraggable = false
-            this.isSwipeable = false
-            this.isSelectable = true
         }
     }
 
@@ -208,20 +169,31 @@ class ListsFragment
         )
 
         private fun getDenominator(list: MediaList): String {
-            val denominator: String
-            denominator = if (list is ExternalMediaList) {
+            return if (list is ExternalMediaList) {
                 val host = URI.create(list.url).host
                 val matcher = Pattern.compile("(www\\.)?(.+)").matcher(host)
+
                 if (matcher.matches()) {
-                    matcher
-                        .group(2)
+                    matcher.group(2)
                 } else {
                     host
                 }
             } else {
                 "Intern"
             }
-            return denominator
         }
+    }
+
+    override fun createAdapter(): BaseAdapter<MediaList, *> = ListAdapter()
+
+    override fun createPaged(model: ListsViewModel): Flow<PagingData<MediaList>> {
+        val listLiveData = Transformations.map(
+            viewModel.lists
+        ) { input: MutableList<MediaList> ->
+            input.remove(TRASH_LIST)
+            input.add(TRASH_LIST)
+            input
+        }
+        return transformPaging(listLiveData).asFlow()
     }
 }

@@ -2,20 +2,20 @@ package com.mytlogos.enterprise.ui
 
 import android.os.Bundle
 import android.view.*
-import androidx.lifecycle.LiveData
-import androidx.paging.PagedList
+import androidx.lifecycle.lifecycleScope
+import androidx.paging.PagingData
+import androidx.recyclerview.widget.DiffUtil
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.NotificationItem
 import com.mytlogos.enterprise.viewmodel.NotificationViewModel
-import eu.davidea.flexibleadapter.FlexibleAdapter
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
-import eu.davidea.flexibleadapter.items.IFlexible
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
-class NotificationFragment : BaseListFragment<NotificationItem, NotificationViewModel>() {
+class NotificationFragment : BasePagingFragment<NotificationItem, NotificationViewModel>() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
         setTitle("Notification History")
@@ -25,14 +25,6 @@ class NotificationFragment : BaseListFragment<NotificationItem, NotificationView
     override val viewModelClass: Class<NotificationViewModel>
         get() = NotificationViewModel::class.java
 
-    override fun createPagedListLiveData(): LiveData<PagedList<NotificationItem>> {
-        return viewModel!!.notifications
-    }
-
-    override fun createFlexible(value: NotificationItem): IFlexible<*> {
-        return FlexibleNotification(value)
-    }
-
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.notification_menu, menu)
         super.onCreateOptionsMenu(menu, inflater)
@@ -40,49 +32,45 @@ class NotificationFragment : BaseListFragment<NotificationItem, NotificationView
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.clear_notifications) {
-            viewModel!!.clearNotifications()
+            lifecycleScope.launch { viewModel.clearNotifications() }
             return true
         }
         return super.onOptionsItemSelected(item)
     }
 
-    private class FlexibleNotification(item: NotificationItem) :
-        AbstractFlexibleItem<MetaViewHolder>() {
-        private val item: NotificationItem?
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val that = other as FlexibleNotification
-            return item == that.item
+    internal class NotificationDiff : DiffUtil.ItemCallback<NotificationItem>() {
+        override fun areItemsTheSame(
+            oldItem: NotificationItem,
+            newItem: NotificationItem,
+        ): Boolean {
+            return oldItem == newItem
         }
 
-        override fun hashCode(): Int {
-            return item?.hashCode() ?: 0
+        override fun areContentsTheSame(
+            oldItem: NotificationItem,
+            newItem: NotificationItem,
+        ): Boolean {
+            return oldItem == newItem
         }
+    }
 
-        override fun getLayoutRes(): Int {
-            return R.layout.meta_item
-        }
+    internal class NotificationAdapter :
+        BaseAdapter<NotificationItem, NewMetaViewHolder>(NotificationDiff()) {
+        override val layoutId = R.layout.meta_item
 
-        override fun createViewHolder(
-            view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?
-        ): MetaViewHolder {
-            return MetaViewHolder(view, adapter)
-        }
+        override fun createViewHolder(root: View, viewType: Int) = NewMetaViewHolder(root)
 
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: MetaViewHolder,
-            position: Int,
-            payloads: List<Any>
-        ) {
-            holder.mainText.text = item!!.title
-            holder.topLeftText.text = item.dateTime.toString("dd.MM.yyyy HH:mm:ss")
+        override fun onBindViewHolder(holder: NewMetaViewHolder, position: Int) {
+            val item = getItem(position)
+            holder.mainText.text = item?.title ?: "Not available"
+            holder.topLeftText.text =
+                item?.dateTime?.toString("dd.MM.yyyy HH:mm:ss") ?: "Not available"
         }
+    }
 
-        init {
-            this.item = item
-        }
+    override fun createAdapter(): BaseAdapter<NotificationItem, *> = NotificationAdapter()
+
+    override fun createPaged(model: NotificationViewModel): Flow<PagingData<NotificationItem>> {
+        return viewModel.notifications
     }
 }

@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
+import com.mytlogos.enterprise.background.repository.NewsRepository
 
 class DateChangeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -13,7 +13,7 @@ class DateChangeReceiver : BroadcastReceiver() {
                 println("Context not instance of Application")
                 return
             }
-            getInstance(context).removeOldNews()
+            NewsRepository.getInstance(context).removeOldNews()
         }
     }
 }

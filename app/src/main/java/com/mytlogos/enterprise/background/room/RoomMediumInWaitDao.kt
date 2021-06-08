@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.room
 
 import androidx.lifecycle.LiveData
 import androidx.paging.DataSource
+import androidx.paging.PagingSource
 import androidx.room.*
 import com.mytlogos.enterprise.background.room.model.RoomMediumInWait
 import com.mytlogos.enterprise.model.MediumInWait
@@ -20,7 +21,12 @@ interface RoomMediumInWaitDao : MultiBaseDao<RoomMediumInWait> {
             "WHEN 3 THEN title " +
             "ELSE title " +
             "END ASC")
-    fun getByAsc(sortBy: Int, titleFilter: String?, mediumFilter: Int, hostFilter: String?):DataSource.Factory<Int, RoomMediumInWait>
+    fun getByAsc(
+        sortBy: Int,
+        titleFilter: String?,
+        mediumFilter: Int,
+        hostFilter: String?,
+    ): PagingSource<Int, RoomMediumInWait>
 
     @Query("SELECT * FROM RoomMediumInWait " +
             "WHERE (:titleFilter IS NULL OR INSTR(lower(title), :titleFilter) > 0) " +
@@ -33,7 +39,12 @@ interface RoomMediumInWaitDao : MultiBaseDao<RoomMediumInWait> {
             "WHEN 3 THEN title " +
             "ELSE title " +
             "END DESC")
-    fun getByDesc(sortBy: Int, titleFilter: String?, mediumFilter: Int, hostFilter: String?): DataSource.Factory<Int, RoomMediumInWait>
+    fun getByDesc(
+        sortBy: Int,
+        titleFilter: String?,
+        mediumFilter: Int,
+        hostFilter: String?,
+    ): PagingSource<Int, RoomMediumInWait>
 
     @Query("SELECT * FROM RoomMediumInWait WHERE INSTR(title, :title) > 0 AND medium=:medium")
     fun getSimilar(title: String, medium: Int): LiveData<MutableList<MediumInWait>>

@@ -25,6 +25,7 @@ import eu.davidea.viewholders.FlexibleViewHolder
  */
 class ProgressItem : AbstractFlexibleItem<ProgressViewHolder>() {
     var status = StatusEnum.MORE_TO_LOAD
+
     override fun equals(other: Any?): Boolean {
         return this === other //The default implementation
     }
@@ -46,11 +47,13 @@ class ProgressItem : AbstractFlexibleItem<ProgressViewHolder>() {
         val context = holder.itemView.context
         holder.progressBar.visibility = View.GONE
         holder.progressMessage.visibility = View.VISIBLE
+
         if (!adapter.isEndlessScrollEnabled) {
             status = StatusEnum.DISABLE_ENDLESS
         } else if (payloads.contains(Payload.NO_MORE_LOAD)) {
             status = StatusEnum.NO_MORE_LOAD
         }
+
         when (status) {
             StatusEnum.NO_MORE_LOAD -> {
                 holder.progressMessage.text = context.getString(R.string.no_more_load_retry)
@@ -84,6 +87,7 @@ class ProgressItem : AbstractFlexibleItem<ProgressViewHolder>() {
         FlexibleViewHolder(view, adapter) {
         var progressBar: ProgressBar = view.findViewById(R.id.progress_bar) as ProgressBar
         var progressMessage: TextView = view.findViewById(R.id.progress_message) as TextView
+
         override fun scrollAnimators(animators: List<Animator>, position: Int, isForward: Boolean) {
             AnimatorHelper.scaleAnimator(animators, itemView, 0f)
         }

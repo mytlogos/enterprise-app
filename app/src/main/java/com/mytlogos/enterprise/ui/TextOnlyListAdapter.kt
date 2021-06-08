@@ -18,6 +18,7 @@ class TextOnlyListAdapter<E> : ArrayAdapter<E> {
         liveData: LiveData<MutableList<E>>,
         extractor: Function<E, String>?
     ) : super(fragment.requireContext(), R.layout.text_only_item) {
+
         this.extractor = extractor
         liveData.observe(fragment, { mediaLists: List<E>? ->
             this.clear()
@@ -25,8 +26,7 @@ class TextOnlyListAdapter<E> : ArrayAdapter<E> {
         })
     }
 
-    internal constructor(context: Context, extractor: Function<E, String>?) : super(context,
-        R.layout.text_only_item) {
+    internal constructor(context: Context, extractor: Function<E, String>?) : super(context, R.layout.text_only_item) {
         this.extractor = extractor
     }
 

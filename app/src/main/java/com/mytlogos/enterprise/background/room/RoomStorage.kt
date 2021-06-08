@@ -5,9 +5,7 @@ import androidx.arch.core.util.Function
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.paging.DataSource
-import androidx.paging.LivePagedListBuilder
-import androidx.paging.PagedList
+import androidx.paging.*
 import com.mytlogos.enterprise.background.*
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
@@ -21,6 +19,8 @@ import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.tools.Utils
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import java.util.*
@@ -62,7 +62,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
     }
 
     override fun deleteAllUser() {
-        TaskManager.runTask { userDao.deleteAllUser() }
+        TaskManager.runTaskSuspend { userDao.deleteAllUser() }
     }
 
     override fun getPersister(repository: Repository, loadedData: LoadData): ClientModelPersister {
@@ -70,7 +70,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
     }
 
     override fun deleteOldNews() {
-        TaskManager.runTask { newsDao.deleteOldNews() }
+        TaskManager.runTaskSuspend { newsDao.deleteOldNews() }
     }
 
     override fun isLoading(): Boolean {
@@ -182,7 +182,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return LivePagedListBuilder(factory, 50).build()
     }
 
-    override fun getDisplayEpisodesGrouped(saved: Int, medium: Int): LiveData<PagedList<DisplayEpisode>> {
+    override fun getDisplayEpisodesGrouped(
+        saved: Int,
+        medium: Int,
+    ): LiveData<PagedList<DisplayEpisode>> {
         val converter = RoomConverter()
         return LivePagedListBuilder(
             episodeDao.getDisplayEpisodesGrouped(saved, medium).map { episode: RoomDisplayEpisode ->
@@ -209,12 +212,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (list in roomMediaLists) {
                 val mediaList = list.mediaList
                 mediaLists.add(ExternalMediaList(
-                        mediaList.uuid,
-                        mediaList.externalListId,
-                        mediaList.name,
-                        mediaList.medium,
-                        mediaList.url,
-                        list.size
+                    mediaList.uuid,
+                    mediaList.externalListId,
+                    mediaList.name,
+                    mediaList.medium,
+                    mediaList.url,
+                    list.size
                 ))
             }
             val set = HashSet<MediaList>()
@@ -257,8 +260,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
         } else mediaListDao.getListSettings(id)
     }
 
-    override fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting = runBlocking {
-        if (isExternal) {
+    override suspend fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting {
+        return if (isExternal) {
             externalMediaListDao.getExternalListSettingNow(id)
         } else mediaListDao.getListSettingsNow(id)
     }
@@ -268,9 +271,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
             toDownloadDao.insert(RoomConverter().convert(toDownload))
         } else {
             toDownloadDao.deleteToDownload(
-                    toDownload.mediumId,
-                    toDownload.listId,
-                    toDownload.externalListId
+                toDownload.mediumId,
+                toDownload.listId,
+                toDownload.externalListId
             )
         }
     }
@@ -283,7 +286,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return runBlocking { mediumDao.getMediumSettingsNow(mediumId) }
     }
 
-    override fun getMediumItems(listId: Int, isExternal: Boolean): LiveData<MutableList<MediumItem>> {
+    override fun getMediumItems(
+        listId: Int,
+        isExternal: Boolean,
+    ): LiveData<MutableList<MediumItem>> {
         return if (isExternal) {
             mediumDao.getExternalListMedia(listId)
         } else {
@@ -318,27 +324,33 @@ class RoomStorage(application: Application) : DatabaseStorage {
         mediumFilter: Int,
         hostFilter: String?,
         sortings: Sortings,
-    ): LiveData<PagedList<MediumInWait>> {
-        val factory: DataSource.Factory<Int, RoomMediumInWait>
+    ): Flow<PagingData<MediumInWait>> {
         var sortValue = sortings.sortValue
-        if (sortValue < 0) {
+        val query = if (sortValue < 0) {
             sortValue = -sortValue
-            factory = mediumInWaitDao.getByDesc(sortValue, filter, mediumFilter, hostFilter)
+            mediumInWaitDao::getByDesc
         } else {
-            factory = mediumInWaitDao.getByAsc(sortValue, filter, mediumFilter, hostFilter)
+            mediumInWaitDao::getByAsc
         }
         val converter = RoomConverter()
-        return LivePagedListBuilder(
-                factory.map { input: RoomMediumInWait -> converter.convert(input) },
-                50
-        ).build()
+        return Pager(
+            PagingConfig(50),
+            pagingSourceFactory = { query(
+                sortValue,
+                filter,
+                mediumFilter,
+                hostFilter
+            )}
+        ).flow.map { it.map(converter::convert) }
     }
 
     override fun getReadTodayEpisodes(): LiveData<PagedList<ReadEpisode>> {
         val converter = RoomConverter()
         return LivePagedListBuilder(
-                episodeDao.readTodayEpisodes.map(Function { input: RoomReadEpisode -> converter.convert(input) }),
-                50
+            episodeDao.readTodayEpisodes.map(Function { input: RoomReadEpisode ->
+                converter.convert(input)
+            }),
+            50
         ).build()
     }
 
@@ -360,11 +372,17 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return mediumInWaitDao.getSimilar(mediumInWait.title, mediumInWait.medium)
     }
 
-    override fun getMediaSuggestions(title: String, medium: Int): LiveData<MutableList<SimpleMedium>> {
+    override fun getMediaSuggestions(
+        title: String,
+        medium: Int,
+    ): LiveData<MutableList<SimpleMedium>> {
         return mediumDao.getSuggestions(title, medium)
     }
 
-    override fun getMediaInWaitSuggestions(title: String, medium: Int): LiveData<MutableList<MediumInWait>> {
+    override fun getMediaInWaitSuggestions(
+        title: String,
+        medium: Int,
+    ): LiveData<MutableList<MediumInWait>> {
         return mediumInWaitDao.getSuggestions(title, medium)
     }
 
@@ -414,15 +432,16 @@ class RoomStorage(application: Application) : DatabaseStorage {
         mediaListDao.removeJoin(listId, mediumId)
     }
 
-    override fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>) = runBlocking {
-        val oldJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
-        val newJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
-        for (id in ids) {
-            oldJoins.add(MediaListMediaJoin(oldListId, id))
-            newJoins.add(MediaListMediaJoin(newListId, id))
+    override fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>) =
+        runBlocking {
+            val oldJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
+            val newJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
+            for (id in ids) {
+                oldJoins.add(MediaListMediaJoin(oldListId, id))
+                newJoins.add(MediaListMediaJoin(newListId, id))
+            }
+            mediaListDao.moveJoins(oldJoins, newJoins)
         }
-        mediaListDao.moveJoins(oldJoins, newJoins)
-    }
 
     override fun getExternalUser(): LiveData<PagedList<ExternalUser>> {
         return LivePagedListBuilder(externalUserDao.all, 50).build()
@@ -450,10 +469,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
         clearMediaInWait()
     }
 
-    override fun getNotifications(): LiveData<PagedList<NotificationItem>> {
-        return LivePagedListBuilder(notificationDao.notifications, 50).build()
-    }
-
     override fun updateFailedDownload(episodeId: Int) = runBlocking {
         val failedEpisode = failedEpisodesDao.getFailedEpisode(episodeId)
         var failedCount = 0
@@ -470,9 +485,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
     override fun addNotification(notification: NotificationItem) = runBlocking {
         notificationDao.insert(RoomNotification(
-                notification.title,
-                notification.description,
-                notification.dateTime
+            notification.title,
+            notification.description,
+            notification.dateTime
         ))
     }
 
@@ -482,10 +497,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
     override fun getSimpleMedium(mediumId: Int): SimpleMedium {
         return runBlocking { mediumDao.getSimpleMedium(mediumId) }
-    }
-
-    override fun clearNotifications() = runBlocking {
-        notificationDao.deleteAll()
     }
 
     override fun clearFailEpisodes() = runBlocking {
@@ -498,7 +509,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         editDao.insert(roomEditEvent)
     }
 
-    override fun insertEditEvent(events: Collection<EditEvent>) = runBlocking {
+    override suspend fun insertEditEvent(events: Collection<EditEvent>) {
         val converter = RoomConverter()
         val roomEditEvent = converter.convertEditEvents(events)
         editDao.insertBulk(roomEditEvent)
@@ -532,13 +543,14 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val partstat = partStats.remove(localStat.partId)
             if (partstat == null) {
                 println(String.format(
-                        "Local Part %s does not exist on Server, missing local Part Deletion",
-                        localStat.partId
+                    "Local Part %s does not exist on Server, missing local Part Deletion",
+                    localStat.partId
                 ))
                 continue
             }
             if (partstat.episodeCount != localStat.episodeCount
-                    || partstat.episodeSum != localStat.episodeSum) {
+                || partstat.episodeSum != localStat.episodeSum
+            ) {
                 loadEpisode.add(localStat.partId)
             } else if (partstat.releaseCount != localStat.releaseCount) {
                 loadRelease.add(localStat.partId)
@@ -555,7 +567,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 continue
             }
             if (remotePartStat.episodeCount != localPartStat.episodeCount
-                    || remotePartStat.episodeSum != localPartStat.episodeSum) {
+                || remotePartStat.episodeSum != localPartStat.episodeSum
+            ) {
                 loadEpisode.add(localPartStat.partId)
             } else if (remotePartStat.releaseCount != localPartStat.releaseCount) {
                 loadRelease.add(localPartStat.partId)
@@ -592,7 +605,13 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 }
             }
         }
-        return ReloadStat(loadEpisode, loadRelease, loadMediumTocs, missingMedia, loadPart, missingLists, loadUser)
+        return ReloadStat(loadEpisode,
+            loadRelease,
+            loadMediumTocs,
+            missingMedia,
+            loadPart,
+            missingLists,
+            loadUser)
     }
 
     override fun syncProgress() = runBlocking {
@@ -600,8 +619,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
         for (comparison in all) {
             if (comparison.currentMaxReadIndex != 0.0) {
                 mediumProgressDao.update(RoomMediumProgress(
-                        comparison.mediumId,
-                        comparison.currentMaxReadIndex)
+                    comparison.mediumId,
+                    comparison.currentMaxReadIndex)
                 )
                 continue
             }
@@ -610,9 +629,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
             // TODO: 09.09.2019 check this unused variable
             for (part in parts) {
                 val episodeIds = episodeDao.getEpisodeIdsWithLowerIndex(
-                        comparison.mediumId,
-                        comparison.currentReadIndex,
-                        true
+                    comparison.mediumId,
+                    comparison.currentReadIndex,
+                    true
                 )
                 try {
                     Utils.doPartitionedEx(episodeIds) { ids: List<Int> ->
@@ -687,11 +706,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
             persistReleases(filteredEpisodes.releases.stream().map { value: ClientEpisodeRelease ->
                 ClientRelease(
-                        value.episodeId,
-                        value.title,
-                        value.url,
-                        value.isLocked,
-                        value.releaseDate
+                    value.episodeId,
+                    value.title,
+                    value.url,
+                    value.isLocked,
+                    value.releaseDate
                 )
             }.collect(Collectors.toList()))
             return this
@@ -707,11 +726,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val uuid = getUserNow()!!.uuid
             return persistMediaLists(mediaLists.stream().map { value: ClientUserList ->
                 ClientMediaList(
-                        uuid,
-                        value.id,
-                        value.name,
-                        value.medium,
-                        null
+                    uuid,
+                    value.id,
+                    value.name,
+                    value.medium,
+                    null
                 )
             }.collect(Collectors.toList()))
         }
@@ -720,7 +739,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this.persist(filteredMediaList, RoomConverter(loadedData))
         }
 
-        private fun persist(filteredMediaList: FilteredMediaList, converter: RoomConverter): ClientModelPersister {
+        private fun persist(
+            filteredMediaList: FilteredMediaList,
+            converter: RoomConverter,
+        ): ClientModelPersister {
             val list = converter.convertMediaList(filteredMediaList.newList)
             val update = converter.convertMediaList(filteredMediaList.updateList)
             runBlocking {
@@ -743,7 +765,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this.persist(filteredExtMediaList, RoomConverter(loadedData))
         }
 
-        private fun persist(filteredExtMediaList: FilteredExtMediaList, converter: RoomConverter): ClientModelPersister {
+        private fun persist(
+            filteredExtMediaList: FilteredExtMediaList,
+            converter: RoomConverter,
+        ): ClientModelPersister {
             val list = converter.convertExternalMediaList(filteredExtMediaList.newList)
             val update = converter.convertExternalMediaList(filteredExtMediaList.updateList)
             runBlocking {
@@ -766,7 +791,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this.persist(filteredExternalUser, converter)
         }
 
-        private fun persist(filteredExternalUser: FilteredExternalUser, converter: RoomConverter): ClientModelPersister {
+        private fun persist(
+            filteredExternalUser: FilteredExternalUser,
+            converter: RoomConverter,
+        ): ClientModelPersister {
             val newUser = converter.convertExternalUser(filteredExternalUser.newUser)
             val updatedUser = converter.convertExternalUser(filteredExternalUser.updateUser)
             runBlocking {
@@ -861,13 +889,15 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
 
         override fun persist(query: ClientListQuery): ClientModelPersister {
-            this.persistMedia(query.media.asList().map { medium: ClientMedium -> ClientSimpleMedium(medium) })
+            this.persistMedia(query.media.asList()
+                .map { medium: ClientMedium -> ClientSimpleMedium(medium) })
             this.persist(query.list)
             return this
         }
 
         override fun persist(query: ClientMultiListQuery): ClientModelPersister {
-            this.persistMedia(query.media.asList().map { medium: ClientMedium -> ClientSimpleMedium(medium) })
+            this.persistMedia(query.media.asList()
+                .map { medium: ClientMedium -> ClientSimpleMedium(medium) })
             this.persist(*query.list)
             return this
         }
@@ -882,7 +912,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun persist(user: ClientUpdateUser): ClientModelPersister {
             val value = userLiveData.value
-                    ?: throw IllegalArgumentException("cannot update user if none is stored in the database")
+                ?: throw IllegalArgumentException("cannot update user if none is stored in the database")
             require(user.uuid == value.uuid) { "cannot update user which do not share the same uuid" }
             // at the moment the only thing that can change for the user on client side is the name
             if (user.name == value.name) {
@@ -1071,7 +1101,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        private fun <T : ListMediaJoin?> filterListMediumJoins(stat: ParsedStat, deletedLists: MutableSet<Int>, newJoins: MutableList<T>, external: Boolean): List<T> {
+        private fun <T : ListMediaJoin?> filterListMediumJoins(
+            stat: ParsedStat,
+            deletedLists: MutableSet<Int>,
+            newJoins: MutableList<T>,
+            external: Boolean,
+        ): List<T> {
             val previousListJoins: MutableList<T>
             val currentJoins: Map<Int, List<Int>>
             runBlocking {
@@ -1085,7 +1120,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
             val previousListJoinMap: MutableMap<Int, MutableSet<Int>> = HashMap()
             previousListJoins.removeIf { join: T ->
-                previousListJoinMap.computeIfAbsent(join!!.listId) { integer: Int? -> HashSet() }.add(join.mediumId)
+                previousListJoinMap.computeIfAbsent(join!!.listId) { integer: Int? -> HashSet() }
+                    .add(join.mediumId)
                 val currentListItems = currentJoins[join.listId]
                 if (currentListItems == null) {
                     deletedLists.add(join.listId)

@@ -30,34 +30,41 @@ import java.io.File
 import java.util.*
 
 class SpaceViewFragment : BaseFragment() {
-    private var chart: PieChartView? = null
-    private var view: SwipeRefreshLayout? = null
     private val sliceValueSpaceDataNodeMap: MutableMap<SliceValue, SpaceDataNode> = HashMap()
     private val textNode = SpaceDataNode("Books", 0)
     private val audioNode = SpaceDataNode("Audio", 0)
     private val videoNode = SpaceDataNode("Video", 0)
     private val imageNode = SpaceDataNode("Images", 0)
     private val root = SpaceDataNode("Media")
+
     private var currentNode: SpaceDataNode? = null
     private var selectedNode: SpaceDataNode? = null
     private var viewedNode: SpaceDataNode? = null
-    private var selectedTitle: TextView? = null
-    private var title: TextView? = null
-    private var clearBtn: Button? = null
-    private var viewSelected: Button? = null
-    @SuppressLint("UseRequireInsteadOfGet")
+
+    private lateinit var chart: PieChartView
+    private lateinit var view: SwipeRefreshLayout
+    private lateinit var selectedTitle: TextView
+    private lateinit var title: TextView
+    private lateinit var clearBtn: Button
+    private lateinit var viewSelected: Button
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        view =
-            inflater.inflate(R.layout.space_view_fragment, container, false) as SwipeRefreshLayout
-        chart = view!!.findViewById(R.id.chart) as PieChartView?
-        selectedTitle = view!!.findViewById(R.id.selected_title) as TextView?
-        title = view!!.findViewById(R.id.title) as TextView?
-        (view!!.findViewById(R.id.container) as View).setOnClickListener { deselectNode() }
-        val previousViewed = view!!.findViewById(R.id.previous_view) as TextView
+    ): View {
+        view = inflater.inflate(
+            R.layout.space_view_fragment,
+            container,
+            false
+        ) as SwipeRefreshLayout
+
+        chart = view.findViewById(R.id.chart)
+        selectedTitle = view.findViewById(R.id.selected_title)
+        title = view.findViewById(R.id.title)
+        (view.findViewById(R.id.container) as View).setOnClickListener { deselectNode() }
+
+        val previousViewed = view.findViewById(R.id.previous_view) as TextView
         previousViewed.setOnClickListener {
             if (viewedNode == null || viewedNode!!.parent == null) {
                 return@setOnClickListener
@@ -71,8 +78,9 @@ class SpaceViewFragment : BaseFragment() {
             previousViewed.text =
                 if (currentNode!!.parent == null) null else currentNode!!.parent!!.name
         }
-        viewSelected = view!!.findViewById(R.id.view_selected) as Button?
-        viewSelected!!.setOnClickListener {
+
+        viewSelected = view.findViewById(R.id.view_selected) as Button
+        viewSelected.setOnClickListener {
             if (selectedNode == null) {
                 return@setOnClickListener
             }
@@ -82,44 +90,47 @@ class SpaceViewFragment : BaseFragment() {
             previousViewed.visibility = View.VISIBLE
             previousViewed.text = currentNode!!.parent!!.name
         }
-        clearBtn = view!!.findViewById(R.id.clear_all_local_btn) as Button?
-        clearBtn!!.setOnClickListener {
+        clearBtn = view.findViewById(R.id.clear_all_local_btn) as Button
+        clearBtn.setOnClickListener {
             val node = (if (selectedNode == null) currentNode else selectedNode)
                 ?: return@setOnClickListener
             AlertDialog.Builder(requireContext())
                 .setTitle("""
-    Do you really want to delete 
-    '${node.hierarchyName()}' ?
-    """.trimIndent())
+                    Do you really want to delete 
+                    '${node.hierarchyName()}' ?
+                    """.trimIndent()
+                )
                 .setPositiveButton("Yes") { _: DialogInterface?, _: Int -> clearNode(node) }
                 .setNegativeButton("No", null)
                 .show()
         }
-        view!!.isRefreshing = true
+        view.isRefreshing = true
         GatherDataTask().execute()
-        chart!!.isValueSelectionEnabled = true
-        chart!!.onValueTouchListener = object : PieChartOnValueSelectListener {
+
+        chart.isValueSelectionEnabled = true
+        chart.onValueTouchListener = object : PieChartOnValueSelectListener {
             override fun onValueSelected(arcIndex: Int, value: SliceValue) {
                 val node = sliceValueSpaceDataNodeMap[value] ?: return
                 selectedNode = node
-                viewSelected!!.isEnabled = node.children.isNotEmpty()
-                selectedTitle!!.text = String.format("%s (%s MB)", node.name, node.sizeMB)
-                selectedTitle!!.visibility = View.VISIBLE
-                clearBtn!!.text = String.format("Clear %s", String(value.labelAsChars))
-                clearBtn!!.isEnabled = true
+                viewSelected.isEnabled = node.children.isNotEmpty()
+                selectedTitle.text = String.format("%s (%s MB)", node.name, node.sizeMB)
+                selectedTitle.visibility = View.VISIBLE
+                clearBtn.text = String.format("Clear %s", String(value.labelAsChars))
+                clearBtn.isEnabled = true
             }
 
             override fun onValueDeselected() {
                 deselectNode()
             }
         }
-        view!!.setOnRefreshListener { GatherDataTask().execute() }
+        view.setOnRefreshListener { GatherDataTask().execute() }
         return view
     }
 
     private fun clearNode(node: SpaceDataNode) {
         val application = requireActivity().application
         val task: AsyncTask<Void, Void, String>
+
         when {
             node == root -> {
                 task = ClearRootTask(getSupportedContentTools(application), this.requireContext())
@@ -131,10 +142,12 @@ class SpaceViewFragment : BaseFragment() {
             node is EpisodeNode -> {
                 val id = node.id
                 val episodeParent = node.parent
-                val parent = episodeParent!!.parent
                 if (episodeParent !is MediumNode) {
                     throw Error("episode node which is no child of medium node")
                 }
+
+                val parent = episodeParent.parent
+
                 val tool = getContentTool(parent)
                 task = ClearEpisodeTask(episodeParent.id, id, tool, this.requireContext())
             }
@@ -171,9 +184,9 @@ class SpaceViewFragment : BaseFragment() {
 
     private class ClearEpisodeTask(
         private val mediumId: Int, private val episodeId: Int, private val tool: ContentTool,
-        @field:SuppressLint(
-            "StaticFieldLeak") private val context: Context?
+        @field:SuppressLint("StaticFieldLeak") private val context: Context?
     ) : AsyncTask<Void, Void, String>() {
+
         override fun doInBackground(vararg voids: Void?): String? {
             try {
                 tool.removeMediaEpisodes(mediumId, setOf(episodeId))
@@ -221,16 +234,17 @@ class SpaceViewFragment : BaseFragment() {
 
     private fun deselectNode() {
         selectedNode = null
-        viewSelected!!.isEnabled = false
-        clearBtn!!.isEnabled = currentNode != null
-        clearBtn!!.text = if (currentNode == null) "No Value" else "Clear " + currentNode!!.name
-        selectedTitle!!.text = null
-        selectedTitle!!.visibility = View.GONE
+        viewSelected.isEnabled = false
+        clearBtn.isEnabled = currentNode != null
+        clearBtn.text = if (currentNode == null) "No Value" else "Clear " + currentNode!!.name
+        selectedTitle.text = null
+        selectedTitle.visibility = View.GONE
     }
 
     private open class SpaceDataNode(val name: String, private val size: Long = 0) {
         val children: MutableList<SpaceDataNode> = ArrayList()
         var parent: SpaceDataNode? = null
+
         fun hierarchyName(): String {
             return if (parent == null) name else parent!!.hierarchyName() + "/" + name
         }
@@ -285,11 +299,13 @@ class SpaceViewFragment : BaseFragment() {
                 return
             }
             val books: Map<Int, File> = contentTool.getItemContainers(externalSpace)
+
             for ((mediumId, value) in books) {
                 val bookFile = books[mediumId] ?: continue
                 val medium = instance.getSpaceMedium(mediumId)
                 val episodePaths = contentTool.getEpisodePaths(value.absolutePath)
                 val simpleEpisodes = instance.getSimpleEpisodes(episodePaths.keys)
+
                 val mediumNode: SpaceDataNode = MediumNode(
                     medium.title,
                     bookFile.length(),
@@ -321,12 +337,12 @@ class SpaceViewFragment : BaseFragment() {
         override fun onPostExecute(spaceDataNode: SpaceDataNode?) {
             val size = root.getSize().toDouble()
             if (size == 0.0) {
-                view!!.isRefreshing = false
+                view.isRefreshing = false
                 return
             }
             sliceValueSpaceDataNodeMap.clear()
             updateData(root)
-            view!!.isRefreshing = false
+            view.isRefreshing = false
         }
     }
 
@@ -342,8 +358,8 @@ class SpaceViewFragment : BaseFragment() {
             values.add(value)
         }
         val data = getData(values, node.getSize())
-        chart!!.pieChartData = data
-        title!!.text = node.name
+        chart.pieChartData = data
+        title.text = node.name
         currentNode = node
     }
 
@@ -353,7 +369,7 @@ class SpaceViewFragment : BaseFragment() {
         val readableByteCount = humanReadableByteCount(size, true)
         data.setValues(sliceValues)
             .setHasCenterCircle(true)
-            .setCenterText1("Usage: \n\r$readableByteCount").centerText1FontSize = 17
+            .setCenterText1("Usage: \n$readableByteCount").centerText1FontSize = 17
         return data
     }
 
@@ -372,9 +388,11 @@ class SpaceViewFragment : BaseFragment() {
             var red = -510 / size * index + 255
             var blue = 510 / size * index - 255
             var green = (if (index < size / 2) blue else red) + 255
+
             red = if (red < 0) 0 else if (red > 255) 255 else red
             green = if (green < 0) 0 else if (green > 255) 255 else green
             blue = if (blue < 0) 0 else if (blue > 255) 255 else blue
+
             value.color = Color.rgb(red, green, blue)
         }
         sliceValueSpaceDataNodeMap[value] = child

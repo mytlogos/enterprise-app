@@ -2,11 +2,12 @@ package com.mytlogos.enterprise.background
 
 import androidx.lifecycle.LiveData
 import androidx.paging.PagedList
+import androidx.paging.PagingData
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
-import org.joda.time.DateTime
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Interface for querying and deleting data.
@@ -46,7 +47,7 @@ interface DatabaseStorage {
     fun insertDanglingMedia(mediaIds: MutableCollection<Int>)
     fun removeDanglingMedia(mediaIds: Collection<Int>)
     fun getListSetting(id: Int, isExternal: Boolean): LiveData<out MediaListSetting?>
-    fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting?
+    suspend fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting?
     fun updateToDownload(add: Boolean, toDownload: ToDownload)
 
     fun getMediumSettings(mediumId: Int): LiveData<MediumSetting>
@@ -58,12 +59,13 @@ interface DatabaseStorage {
     fun getEpisode(episodeId: Int): Episode
     fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
     fun updateProgress(episodeIds: Collection<Int>, progress: Float)
+
     fun getMediaInWaitBy(
         filter: String?,
         mediumFilter: Int,
         hostFilter: String?,
         sortings: Sortings
-    ): LiveData<PagedList<MediumInWait>>
+    ): Flow<PagingData<MediumInWait>>
 
     fun getReadTodayEpisodes(): LiveData<PagedList<ReadEpisode>>
     fun getInternLists(): LiveData<MutableList<MediaList>>
@@ -84,19 +86,17 @@ interface DatabaseStorage {
     fun getMediumType(mediumId: Int): Int
     fun getReleaseLinks(episodeId: Int): List<String>
     fun clearLocalMediaData()
-    fun getNotifications(): LiveData<PagedList<NotificationItem>>
     fun updateFailedDownload(episodeId: Int)
     fun getFailedEpisodes(episodeIds: Collection<Int>): List<FailedEpisode>
     fun addNotification(notification: NotificationItem)
     fun getSimpleEpisode(episodeId: Int): SimpleEpisode
     fun getSimpleMedium(mediumId: Int): SimpleMedium
-    fun clearNotifications()
     fun clearFailEpisodes()
     fun syncProgress()
     fun updateDataStructure(mediaIds: List<Int>, partIds: List<Int>)
     fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int>
     fun insertEditEvent(event: EditEvent)
-    fun insertEditEvent(events: Collection<EditEvent>)
+    suspend fun insertEditEvent(events: Collection<EditEvent>)
     fun getEditEvents(): MutableList<out EditEvent>
     fun removeEditEvents(editEvents: Collection<EditEvent>)
     fun checkReload(parsedStat: ParsedStat): ReloadStat

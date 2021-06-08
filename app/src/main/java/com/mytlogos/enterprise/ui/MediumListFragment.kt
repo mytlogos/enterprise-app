@@ -171,8 +171,7 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
         }
     }
 
-    private class MediumAdapter :
-        BaseAdapter<MediumItem, NewMetaViewHolder>(MediumItemCallback()) {
+    private class MediumAdapter : BaseAdapter<MediumItem, NewMetaViewHolder>(MediumItemCallback()) {
 
         @SuppressLint("SetTextI18n")
         override fun onBindViewHolder(holder: NewMetaViewHolder, position: Int) {
@@ -285,7 +284,7 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
 
         override fun createViewHolder(
             view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
+            adapter: FlexibleAdapter<IFlexible<*>>,
         ): MetaViewHolder {
             return MetaViewHolder(view, adapter)
         }

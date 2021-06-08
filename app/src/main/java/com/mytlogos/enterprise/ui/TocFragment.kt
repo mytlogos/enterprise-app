@@ -177,31 +177,7 @@ class TocFragment
         return view
     }
 
-    override fun createAdapter(): BaseAdapter<TocEpisode, *> {
-        val mediumAdapter = TocAdapter()
-        mediumAdapter.holderInit = BaseAdapter.ViewInit { holder ->
-            holder.itemView.isLongClickable = true
-
-            // add long click listener on view holder with a bound item
-            holder.itemView.setOnLongClickListener {
-                val position = holder.bindingAdapterPosition
-
-                if (position != RecyclerView.NO_POSITION) {
-                    onItemLongClick(position)
-                }
-                true
-            }
-            // add click listener on view holder with a bound item
-            holder.itemView.setOnClickListener {
-                val position = holder.bindingAdapterPosition
-
-                if (position != RecyclerView.NO_POSITION) {
-                    onItemClick(position)
-                }
-            }
-        }
-        return mediumAdapter
-    }
+    override fun createAdapter(): BaseAdapter<TocEpisode, *> = TocAdapter()
 
     @ExperimentalCoroutinesApi
     override fun createPaged(model: TocEpisodeViewModel): Flow<PagingData<TocEpisode>> {
@@ -354,13 +330,15 @@ class TocFragment
             return hashMap
         }
 
-    private fun onItemClick(position: Int): Boolean {
+    override fun onItemClick(position: Int, item: TocEpisode?) {
         // in actionMode the selection tracker should handle these
         if (inActionMode) {
-            return false
+            return
         }
-        val item = getAdapter().getItemAt(position) ?: return false
 
+        if (item == null) {
+            return
+        }
         if (item.isSaved) {
             val task = runCompletableTask {
                 instance.getMediumType(mediumId)
@@ -374,18 +352,15 @@ class TocFragment
             val urls = item.releases.mapNotNull(Release::url)
             openInBrowser(urls)
         }
-        return false
     }
 
-    private fun onItemLongClick(position: Int) {
+    override fun onItemLongClick(position: Int, item: TocEpisode?): Boolean {
         if (!inActionMode) {
             this.mainActivity.startActionMode(callback)
-            getKeyFrom(position, getAdapter())?.let(selectionTracker::select)
-        } else {
-            if (position != RecyclerView.NO_POSITION) {
-//                flexibleAdapter!!.toggleSelection(position)
-            }
+            item?.getSelectionKey()?.let(selectionTracker::select)
+            return true
         }
+        return false
     }
 
     private fun displayActionModeActions() {
