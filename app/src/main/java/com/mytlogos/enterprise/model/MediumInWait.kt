@@ -2,7 +2,11 @@ package com.mytlogos.enterprise.model
 
 import java.io.Serializable
 
-class MediumInWait(val title: String, val medium: Int, val link: String) : Serializable {
+data class MediumInWait(
+    val title: String,
+    val medium: Int,
+    val link: String,
+) : Serializable {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false

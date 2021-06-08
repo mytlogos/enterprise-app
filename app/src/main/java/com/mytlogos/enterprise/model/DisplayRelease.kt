@@ -2,7 +2,7 @@ package com.mytlogos.enterprise.model
 
 import org.joda.time.DateTime
 
-class DisplayRelease(
+data class DisplayRelease(
     val episodeId: Int,
     val mediumId: Int,
     val mediumTitle: String,
@@ -30,21 +30,5 @@ class DisplayRelease(
         result = 31 * result + releaseDate.hashCode()
         result = 31 * result + if (locked) 1 else 0
         return result
-    }
-
-    override fun toString(): String {
-        return "DisplayRelease{" +
-                "episodeId=" + episodeId +
-                ", mediumId=" + mediumId +
-                ", mediumTitle='" + mediumTitle + '\'' +
-                ", totalIndex=" + totalIndex +
-                ", partialIndex=" + partialIndex +
-                ", saved=" + saved +
-                ", read=" + read +
-                ", title='" + title + '\'' +
-                ", url='" + url + '\'' +
-                ", releaseDate=" + releaseDate +
-                ", locked=" + locked +
-                '}'
     }
 }

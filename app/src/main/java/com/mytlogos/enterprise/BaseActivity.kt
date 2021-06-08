@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
@@ -15,15 +16,17 @@ import com.google.android.material.navigation.NavigationView
 import com.mytlogos.enterprise.ui.Home
 import com.mytlogos.enterprise.ui.ListsFragment
 import com.mytlogos.enterprise.ui.NewsFragment
-import java.util.*
 
 abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
-    private var progressView: View? = null
+    private lateinit var progressView: View
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkToolbar()
         setContentView(content)
+
         progressView = findViewById(R.id.load_progress)
+
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
         navigationView.setNavigationItemSelectedListener(this)
     }
@@ -42,10 +45,12 @@ abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationIt
      * @return resource Id which uses [BaseLayout] as its root
      */
     protected abstract val content: Int
+
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         var activityClass: Class<out Activity?>? = null
         var fragment: Fragment? = null
         var addToBackStack = true
+
         when (item.itemId) {
             R.id.home -> {
                 fragment = Home()
@@ -83,11 +88,12 @@ abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationIt
         return true
     }
 
-    fun switchWindow(fragment: Fragment?, addToBackStack: Boolean) {
+    fun switchWindow(fragment: Fragment, addToBackStack: Boolean) {
         val manager = supportFragmentManager
         val transaction = manager.beginTransaction()
         //replace your current container being most of the time as FrameLayout
-        transaction.replace(R.id.container, fragment!!)
+        transaction.replace(R.id.container, fragment)
+
         if (addToBackStack) {
             transaction.addToBackStack(null)
         }
@@ -104,9 +110,10 @@ abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationIt
             return
         }
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
+
         if (toolbar != null) {
             setSupportActionBar(toolbar)
-            Objects.requireNonNull(supportActionBar)!!.setDisplayHomeAsUpEnabled(true)
+            requireSupportActionBar().setDisplayHomeAsUpEnabled(true)
 
             // Create the adapter that will return a fragment for each of the three
             // primary sections of the activity.
@@ -124,4 +131,8 @@ abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationIt
             }
         }
     }
+}
+
+fun AppCompatActivity.requireSupportActionBar(): ActionBar {
+    return supportActionBar!!
 }

@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.*
-import com.mytlogos.enterprise.tools.Utils.getDomain
+import com.mytlogos.enterprise.tools.getDomain
 import com.mytlogos.enterprise.viewmodel.MediumInWaitViewModel
 import eu.davidea.flexibleadapter.FlexibleAdapter
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem

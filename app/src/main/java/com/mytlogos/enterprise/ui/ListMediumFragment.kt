@@ -16,7 +16,7 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.requireSupportActionBar
 import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.Utils.transform
+import com.mytlogos.enterprise.tools.transform
 import com.mytlogos.enterprise.ui.MediumListFragment.FlexibleMediumItem
 import com.mytlogos.enterprise.viewmodel.ListMediaViewModel
 import com.mytlogos.enterprise.viewmodel.ListsViewModel

@@ -33,19 +33,20 @@ class LoginRegisterActivity : AppCompatActivity() {
           may be best to switch to a
           {@link android.support.v4.app.FragmentStatePagerAdapter}.
          */
-        val mSectionsPagerAdapter: SectionsPagerAdapter = SectionsPagerAdapter(
-            supportFragmentManager)
+        val mSectionsPagerAdapter = SectionsPagerAdapter(supportFragmentManager)
 
         // Set up the ViewPager with the sections adapter.
         val mViewPager = findViewById<ViewPager>(R.id.container)
         mViewPager.adapter = mSectionsPagerAdapter
+
         val tabLayout = findViewById<TabLayout>(R.id.tabs)
         mViewPager.addOnPageChangeListener(TabLayoutOnPageChangeListener(tabLayout))
         tabLayout.addOnTabSelectedListener(TabLayout.ViewPagerOnTabSelectedListener(mViewPager))
+
         ViewModelProvider(this)
             .get(UserViewModel::class.java)
             .userLiveData
-            .observe(this, Observer { user: User? ->
+            .observe(this, { user: User? ->
                 if (user != null) {
                     finish()
                 }
@@ -56,9 +57,8 @@ class LoginRegisterActivity : AppCompatActivity() {
      * A [FragmentPagerAdapter] that returns a fragment corresponding to
      * one of the sections/tabs/pages.
      */
-    private inner class SectionsPagerAdapter internal constructor(fm: FragmentManager?) :
-        FragmentPagerAdapter(
-            fm!!, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
+    private inner class SectionsPagerAdapter(fm: FragmentManager) :
+        FragmentPagerAdapter(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
         override fun getItem(position: Int): Fragment {
             // getItem is called to instantiate the fragment for the given page.
             // Return a LoginFragment (defined as a static inner class below).

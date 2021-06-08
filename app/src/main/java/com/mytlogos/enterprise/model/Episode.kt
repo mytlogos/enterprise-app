@@ -2,7 +2,7 @@ package com.mytlogos.enterprise.model
 
 import org.joda.time.DateTime
 
-class Episode(
+data class Episode(
     val episodeId: Int,
     val progress: Float,
     val partId: Int,

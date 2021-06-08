@@ -9,7 +9,7 @@ object Formatter {
         return DateTimeFormat.forPattern("dd.MM.YYYY HH:mm").print(date)
     }
 
-    fun parseDateTime(isoDate: String?): DateTime {
+    fun parseDateTime(isoDate: String): DateTime {
         return Instant.parse(isoDate).toDateTime()
     }
 }

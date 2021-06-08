@@ -44,6 +44,7 @@ class ImageContentTool internal constructor(
         }
         for (episodePath in file.listFiles()) {
             val name = episodePath.name
+
             for (prefix in prefixes) {
                 if (!name.startsWith(prefix)) {
                     continue
@@ -51,9 +52,7 @@ class ImageContentTool internal constructor(
                 try {
                     if (episodePath.exists() && !episodePath.delete()) {
                         val idSubString = prefix.substring(0, prefix.indexOf("-"))
-                        System.err.printf("could not delete episode %s totally, deleting: '%s' failed%n",
-                            idSubString,
-                            file.name)
+                        print("could not delete episode $idSubString totally, deleting: '${file.name}' failed")
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -65,6 +64,7 @@ class ImageContentTool internal constructor(
 
     override val mediumContainerPattern: Pattern
         get() = Pattern.compile("^(\\d+)$")
+
     override val mediumContainerPatternGroup: Int
         get() = 1
 
@@ -74,7 +74,8 @@ class ImageContentTool internal constructor(
             return emptyMap()
         }
         val pagePattern = Pattern.compile("^(\\d+)-\\d+\\.(png|jpg)$")
-        @SuppressLint("UseSparseArrays") val firstPageEpisodes: MutableMap<Int, String> = HashMap()
+        val firstPageEpisodes: MutableMap<Int, String> = HashMap()
+
         for (episodePath in file.list()) {
             val matcher = pagePattern.matcher(episodePath)
             if (!matcher.matches()) {
@@ -206,14 +207,14 @@ class ImageContentTool internal constructor(
         writtenFiles: MutableList<File>
     ) {
         val link = content[page]
-        val pageLinkDomain = Utils.getDomain(link)
+        val pageLinkDomain = getDomain(link)
         if (pageLinkDomain == null) {
             System.err.println("invalid url: '$link'")
             return
         }
         var referer: String? = null
         for (releaseUrl in links) {
-            if (Utils.getDomain(link) == pageLinkDomain) {
+            if (getDomain(link) == pageLinkDomain) {
                 referer = releaseUrl
                 break
             }

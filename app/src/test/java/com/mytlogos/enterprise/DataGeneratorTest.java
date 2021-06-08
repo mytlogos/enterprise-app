@@ -9,12 +9,20 @@ import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static com.mytlogos.enterprise.Utils.getEpisode;
+import static com.mytlogos.enterprise.Utils.getExtMediaList;
+import static com.mytlogos.enterprise.Utils.getExtUser;
+import static com.mytlogos.enterprise.Utils.getMediaList;
+import static com.mytlogos.enterprise.Utils.getMedium;
+import static com.mytlogos.enterprise.Utils.getPart;
 
 class DataGeneratorTest {
 
@@ -39,17 +47,18 @@ class DataGeneratorTest {
 
         for (ClientNews news : user.getUnreadNews()) {
             Assertions.assertNotNull(news);
-            Assertions.assertNotNull(Utils.getNews(this.generator.getNews(), news.getId()));
+            List<ClientNews> news1 = this.generator.getNews();
+            Assertions.assertNotNull(Utils.getNews(news1, news.getId()));
         }
 
         for (int id : user.getUnreadChapter()) {
             Assertions.assertTrue(id > 0);
-            Assertions.assertNotNull(Utils.getEpisode(this.generator.getEpisodes(), id));
+            Assertions.assertNotNull(getEpisode(this.generator.getEpisodes(), id));
         }
 
         for (ClientReadEpisode readEpisode : user.getReadToday()) {
             Assertions.assertTrue(readEpisode.getEpisodeId() > 0);
-            Assertions.assertNotNull(Utils.getEpisode(this.generator.getEpisodes(), readEpisode.getEpisodeId()));
+            Assertions.assertNotNull(getEpisode(this.generator.getEpisodes(), readEpisode.getEpisodeId()));
         }
 
         for (ClientMediaList list : user.getLists()) {
@@ -59,17 +68,21 @@ class DataGeneratorTest {
 
     private void assertMediaList(ClientMediaList list) {
         Assertions.assertNotNull(list);
-        Assertions.assertNotNull(Utils.getMediaList(this.generator.getMediaLists(), list.getId()));
+        Assertions.assertNotNull(getMediaList(this.generator.getMediaLists(), list.getId()));
 
-        for (int item : list.getItems()) {
-            assertMedium(item);
+        int[] items = list.getItems();
+
+        if (items != null) {
+            for (int item : list.getItems()) {
+                assertMedium(item);
+            }
         }
     }
 
     private void assertMedium(int item) {
         Assertions.assertTrue(item > 0);
 
-        ClientMedium medium = Utils.getMedium(this.generator.getMedia(), item);
+        ClientMedium medium = getMedium(this.generator.getMedia(), item);
 
         Assertions.assertNotNull(medium);
         Assertions.assertNotNull(medium.getParts());
@@ -91,7 +104,7 @@ class DataGeneratorTest {
         for (int part : medium.getParts()) {
             Assertions.assertTrue(part > 0);
 
-            ClientPart actual = Utils.getPart(this.generator.getParts(), part);
+            ClientPart actual = getPart(this.generator.getParts(), part);
             Assertions.assertNotNull(actual);
             Assertions.assertNotNull(actual.getEpisodes());
             Assertions.assertEquals(actual.getMediumId(), item);
@@ -106,12 +119,12 @@ class DataGeneratorTest {
         Assertions.assertTrue(mediumId > 0);
         Assertions.assertTrue(episodeId > 0);
 
-        ClientEpisode clientEpisode = Utils.getEpisode(this.generator.getEpisodes(), episodeId);
+        ClientEpisode clientEpisode = getEpisode(this.generator.getEpisodes(), episodeId);
         Assertions.assertNotNull(clientEpisode);
         Assertions.assertNotNull(clientEpisode.getReleases());
         Assertions.assertTrue(clientEpisode.getPartId() > 0);
 
-        ClientPart part = Utils.getPart(this.generator.getParts(), clientEpisode.getPartId());
+        ClientPart part = getPart(this.generator.getParts(), clientEpisode.getPartId());
         Assertions.assertNotNull(part);
         Assertions.assertEquals(part.getMediumId(), mediumId);
 
@@ -142,7 +155,7 @@ class DataGeneratorTest {
             Assertions.assertTrue(episode.getPartId() > 0);
             Assertions.assertTrue(episode.getProgress() >= 0);
 
-            ClientPart part = Utils.getPart(this.generator.getParts(), episode.getPartId());
+            ClientPart part = getPart(this.generator.getParts(), episode.getPartId());
             Assertions.assertNotNull(part);
 
             for (ClientEpisodeRelease release : episode.getReleases()) {
@@ -171,7 +184,7 @@ class DataGeneratorTest {
                 Assertions.assertNotNull(list);
                 Assertions.assertEquals(list.getUuid(), user.getUuid());
                 Assertions.assertTrue(list.getId() > 0);
-                Assertions.assertNotNull(Utils.getExtMediaList(this.generator.getExtMediaLists(), list.getId()));
+                Assertions.assertNotNull(getExtMediaList(this.generator.getExtMediaLists(), list.getId()));
 
                 for (int item : list.getItems()) {
                     assertMedium(item);
@@ -201,7 +214,7 @@ class DataGeneratorTest {
             Assertions.assertNotNull(episode);
             Assertions.assertTrue(episode.getEpisodeId() > 0);
             Assertions.assertTrue(episode.getProgress() >= 0);
-            Assertions.assertNotNull(Utils.getEpisode(this.generator.getEpisodes(), episode.getEpisodeId()));
+            Assertions.assertNotNull(getEpisode(this.generator.getEpisodes(), episode.getEpisodeId()));
         }
     }
 
@@ -209,7 +222,7 @@ class DataGeneratorTest {
     void getExtMediaLists() {
         for (ClientExternalMediaList list : this.generator.getExtMediaLists()) {
             Assertions.assertNotNull(list);
-            Assertions.assertNotNull(Utils.getExtUser(this.generator.getExternalUser(), list.getUuid()));
+            Assertions.assertNotNull(getExtUser(this.generator.getExternalUser(), list.getUuid()));
             Assertions.assertTrue(list.getId() > 0);
 
             for (int item : list.getItems()) {

@@ -7,6 +7,7 @@ import org.joda.time.DateTime
 
 class UserPreferences private constructor(context: Context) {
     private val sharedPreferences: SharedPreferences
+
     val downloadPreference: DownloadPreference
         get() = DownloadPreference(sharedPreferences)
 
@@ -16,6 +17,7 @@ class UserPreferences private constructor(context: Context) {
         private const val LOGGED_USER = "user_login_uuid"
         private const val LAST_SYNC = "last_time_sync"
         private const val EPISODES_FILTER = "episodes_filter"
+
         @JvmStatic
         @Synchronized
         fun init(context: Context) {

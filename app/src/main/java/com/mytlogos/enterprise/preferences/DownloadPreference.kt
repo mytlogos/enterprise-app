@@ -10,6 +10,7 @@ import kotlin.math.min
 class DownloadPreference internal constructor(preferences: SharedPreferences) :
     BasePreference(preferences) {
     private val map: Map<String, Set<BiConsumer<Int, Int>>> = HashMap()
+
     val isDownloadEnabled: Boolean
         get() = preferences.getBoolean("enable_download", true)
 

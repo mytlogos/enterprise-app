@@ -5,7 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.paging.PagedList
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.ExternalUser
-import com.mytlogos.enterprise.tools.Utils.externalUserTypeToName
+import com.mytlogos.enterprise.tools.externalUserTypeToName
 import com.mytlogos.enterprise.viewmodel.ExternalUserViewModel
 import eu.davidea.flexibleadapter.FlexibleAdapter
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem

@@ -8,9 +8,9 @@ open class SimpleEpisode(
 ) {
     val formattedTitle: String
         get() = if (partialIndex > 0) {
-            String.format("#%s.%s", totalIndex, partialIndex)
+            "#$totalIndex.$partialIndex"
         } else {
-            String.format("#%s", totalIndex)
+            "#$totalIndex"
         }
 
     override fun equals(other: Any?): Boolean {

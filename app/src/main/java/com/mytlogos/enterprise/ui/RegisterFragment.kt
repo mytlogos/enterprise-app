@@ -1,6 +1,5 @@
 package com.mytlogos.enterprise.ui
 
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.text.TextUtils
 import android.view.*

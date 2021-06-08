@@ -25,8 +25,10 @@ object FileTools {
     fun humanReadableByteCount(bytes: Long, si: Boolean): String {
         val unit = if (si) 1000 else 1024
         if (bytes < unit) return "$bytes B"
+
         val exp = (ln(bytes.toDouble()) / ln(unit.toDouble())).toInt()
         val pre = (if (si) "kMGTPE" else "KMGTPE")[exp - 1].toString() + if (si) "" else "i"
+
         return String.format("%.1f %sB", bytes / unit.toDouble().pow(exp.toDouble()), pre)
     }
 
@@ -96,7 +98,9 @@ object FileTools {
     fun getExternalBookDir(application: Application): File? {
         return if (Environment.MEDIA_MOUNTED != Environment.getExternalStorageState()) {
             null
-        } else createBookDirectory(application.getExternalFilesDir(null))
+        } else {
+            application.getExternalFilesDir(null)?.let(::createBookDirectory)
+        }
     }
 
     fun getInternalBookDir(application: Application): File? {

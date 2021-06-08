@@ -16,7 +16,8 @@ import com.mytlogos.enterprise.background.room.RoomStorage
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.Utils
+import com.mytlogos.enterprise.tools.checkAndGetBody
+import com.mytlogos.enterprise.tools.doPartitionedEx
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
 import kotlinx.coroutines.flow.Flow
 import org.joda.time.DateTime
@@ -123,7 +124,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     override fun updateSaved(episodeIds: Collection<Int>, saved: Boolean) {
         try {
-            Utils.doPartitionedEx(episodeIds) { ids: List<Int> ->
+            doPartitionedEx(episodeIds) { ids: List<Int> ->
                 storage.updateSaved(ids, saved)
                 false
             }
@@ -212,8 +213,8 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     @Throws(IOException::class)
     override fun loadMediaInWaitSync() {
-        val medium = Utils.checkAndGetBody(client.mediumInWait)
-        if (medium != null && !medium.isEmpty()) {
+        val medium = checkAndGetBody(client.mediumInWait)
+        if (medium.isNotEmpty()) {
             storage.clearMediaInWait()
             persister.persistMediaInWait(medium)
         }

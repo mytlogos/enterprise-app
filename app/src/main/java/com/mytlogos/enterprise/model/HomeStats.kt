@@ -1,6 +1,6 @@
 package com.mytlogos.enterprise.model
 
-class HomeStats(
+data class HomeStats(
     val unreadNewsCount: Int,
     val unreadChapterCount: Int,
     val readTodayCount: Int,

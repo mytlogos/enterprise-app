@@ -2,7 +2,11 @@ package com.mytlogos.enterprise.model
 
 import org.joda.time.DateTime
 
-class NotificationItem(val title: String, val description: String, val dateTime: DateTime) {
+data class NotificationItem(
+    val title: String,
+    val description: String,
+    val dateTime: DateTime,
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false

@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static com.mytlogos.enterprise.Utils.containsMediumId;
+
 class LoadWorkGeneratorTest {
     private LoadWorkGenerator generator;
     private LoadData loadedData;
@@ -74,7 +76,7 @@ class LoadWorkGeneratorTest {
         LoadWorkGenerator.FilteredParts parts = this.generator.filterParts(this.parts);
 
         for (LoadWorkGenerator.IntDependency<ClientPart> dependency : parts.mediumDependencies) {
-            Assertions.assertTrue(Utils.containsMediumId(this.media, dependency.id));
+            Assertions.assertTrue(containsMediumId(this.media, dependency.id));
             Assertions.assertEquals(dependency.dependency.getMediumId(), dependency.id);
         }
         for (ClientPart part : parts.newParts) {

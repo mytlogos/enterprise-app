@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.background.room
 
 import android.app.Application
+import android.database.sqlite.SQLiteConstraintException
 import androidx.arch.core.util.Function
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
@@ -17,7 +18,8 @@ import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.Exter
 import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.Utils
+import com.mytlogos.enterprise.tools.doPartitioned
+import com.mytlogos.enterprise.tools.doPartitionedEx
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -634,7 +636,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     true
                 )
                 try {
-                    Utils.doPartitionedEx(episodeIds) { ids: List<Int> ->
+                    doPartitionedEx(episodeIds) { ids: List<Int> ->
                         runBlocking { episodeDao.updateProgress(ids, 1f, DateTime.now()) }
                         false
                     }
@@ -660,7 +662,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             availableEpisodeIds.removeAll(episodePartIds)
             if (availableEpisodeIds.isNotEmpty()) {
                 try {
-                    Utils.doPartitionedEx(availableEpisodeIds) { ids: List<Int> ->
+                    doPartitionedEx(availableEpisodeIds) { ids: List<Int> ->
                         runBlocking { episodeDao.deletePerId(ids) }
                         true
                     }
@@ -967,7 +969,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     deleteEpisodes.add(roomPartEpisode.episodeId)
                 }
             })
-            Utils.doPartitioned(deleteEpisodes) { ids: List<Int> ->
+            doPartitioned(deleteEpisodes) { ids: List<Int> ->
                 runBlocking { episodeDao.deletePerId(ids) }
                 false
             }

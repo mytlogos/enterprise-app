@@ -13,7 +13,6 @@ import androidx.lifecycle.lifecycleScope
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.TimeAgo
 import com.mytlogos.enterprise.model.MediumSetting
-import com.mytlogos.enterprise.model.MediumSetting.MediumSettingBuilder
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.model.MediumType.isType
 import com.mytlogos.enterprise.model.ToDownload
@@ -221,9 +220,7 @@ class MediumSettingFragment : BaseFragment() {
             checkSupportedMedia()
 
             if (isChecked) {
-                val setting = MediumSettingBuilder(currentSettings)
-                    .setMedium(mediumType)
-                    .createMediumSetting()
+                val setting = currentSettings.copy(medium = mediumType)
 
                 lifecycleScope.launch {
                     val result = runCatching {
@@ -259,9 +256,7 @@ class MediumSettingFragment : BaseFragment() {
             if (newTitle.isEmpty()) {
                 editName.setText(currentMediumSetting.getTitle())
             } else if (newTitle != currentMediumSetting.getTitle()) {
-                val setting = MediumSettingBuilder(currentMediumSetting)
-                    .setTitle(newTitle)
-                    .createMediumSetting()
+                val setting = currentMediumSetting.copy(title = newTitle)
 
                 lifecycleScope.launch {
                     val result = runCatching {

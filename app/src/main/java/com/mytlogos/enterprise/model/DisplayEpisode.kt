@@ -1,6 +1,6 @@
 package com.mytlogos.enterprise.model
 
-class DisplayEpisode(
+data class DisplayEpisode(
     val episodeId: Int,
     val mediumId: Int,
     val mediumTitle: String,

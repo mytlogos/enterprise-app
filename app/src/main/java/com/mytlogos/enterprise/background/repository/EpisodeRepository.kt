@@ -12,10 +12,7 @@ import com.mytlogos.enterprise.background.room.AbstractDatabase
 import com.mytlogos.enterprise.model.DisplayRelease
 import com.mytlogos.enterprise.model.SimpleEpisode
 import com.mytlogos.enterprise.model.TocEpisode
-import com.mytlogos.enterprise.tools.FileTools
-import com.mytlogos.enterprise.tools.SingletonHolder
-import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.Utils
+import com.mytlogos.enterprise.tools.*
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
 import com.mytlogos.enterprise.worker.DownloadWorker
 import kotlinx.coroutines.*
@@ -137,7 +134,7 @@ class EpisodeRepository private constructor(application: Application) {
         val loadedData = repositoryImpl.getLoadedData()
 
         coroutineScope {
-            Utils.doPartitionedExSuspend(episodeIds) { integers: List<Int> ->
+            doPartitionedExSuspend(episodeIds) { integers: List<Int> ->
                 async {
                     val episodes = client.getEpisodes(integers).body()
                         ?: return@async false
@@ -224,7 +221,7 @@ class EpisodeRepository private constructor(application: Application) {
         val progress = if (read) 1f else 0f
 
         coroutineScope {
-            Utils.doPartitionedExSuspend(episodeIds) { ids: List<Int> ->
+            doPartitionedExSuspend(episodeIds) { ids: List<Int> ->
                 async {
                     val response: Response<Boolean> = client.addProgress(ids, progress)
                     if (!response.isSuccessful || response.body() == null || !response.body()!!) {
@@ -249,7 +246,7 @@ class EpisodeRepository private constructor(application: Application) {
 
     suspend fun updateSaved(episodeIds: Collection<Int>, saved: Boolean) {
         try {
-            Utils.doPartitionedEx(episodeIds) { ids: List<Int> ->
+            doPartitionedEx(episodeIds) { ids: List<Int> ->
                 runBlocking {
                     episodeDao.updateSaved(ids, saved)
                 }

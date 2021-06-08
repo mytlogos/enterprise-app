@@ -14,6 +14,7 @@ abstract class ContentTool internal constructor(
     val externalContentDir: File?
 ) {
     val minMBSpaceAvailable = 150
+
     val mediaPaths: List<String>
         get() {
             val books: MutableList<String> = ArrayList()
@@ -25,7 +26,9 @@ abstract class ContentTool internal constructor(
             }
             return books
         }
+
     abstract val medium: Int
+
     private fun getMediaPaths(dir: File): List<String> {
         val imageMedia: MutableList<String> = ArrayList()
         for (file in dir.listFiles()) {
@@ -38,7 +41,6 @@ abstract class ContentTool internal constructor(
 
     abstract fun isContentMedium(file: File): Boolean
 
-    @SuppressLint("UseSparseArrays")
     fun getItemContainers(externalSpace: Boolean): MutableMap<Int, File> {
         // return an empty hashmap if no content dir is available
         val file = (if (externalSpace) externalContentDir else internalContentDir)
@@ -84,10 +86,15 @@ abstract class ContentTool internal constructor(
     }
 
     abstract val isSupported: Boolean
+
     abstract fun removeMediaEpisodes(episodeIds: Set<Int>, internalFile: String?)
+
     abstract val mediumContainerPattern: Pattern
+
     abstract val mediumContainerPatternGroup: Int
+
     abstract fun getEpisodePaths(mediumPath: String?): Map<Int, String>
+
     open fun getItemPath(mediumId: Int): String? {
         var bookZipFile: String? = null
         if (externalContentDir != null) {
@@ -145,9 +152,12 @@ abstract class ContentTool internal constructor(
     open fun mergeExternalAndInternalMedia(toExternal: Boolean) {
         val internalContainers = getItemContainers(false)
         val externalContainers = getItemContainers(true)
+
         val sourceContainers = if (toExternal) internalContainers else externalContainers
         val toContainers = if (toExternal) externalContainers else internalContainers
+
         val toParent = if (toExternal) externalContentDir else internalContentDir
+
         for ((key, value) in sourceContainers) {
             val file = toContainers[key]
             mergeExternalAndInternalMedium(toExternal, value, file, toParent, key)
@@ -174,6 +184,7 @@ abstract class ContentTool internal constructor(
     )
 
     abstract fun getEpisodeSize(value: File, episodeId: Int): Long
+
     fun removeMedia(id: Int) {
         if (externalContentDir != null) {
             val externalFile = getItemPath(id, externalContentDir)
@@ -190,20 +201,24 @@ abstract class ContentTool internal constructor(
     }
 
     fun removeAll() {
-        for (file in internalContentDir!!.listFiles()) {
-            if (file.isDirectory) {
-                deleteDir(file)
-            }
-            if (file.exists() && !file.delete()) {
-                System.err.println("could not delete file: " + file.absolutePath)
+        if (this.internalContentDir != null) {
+            for (file in internalContentDir.listFiles()) {
+                if (file.isDirectory) {
+                    deleteDir(file)
+                }
+                if (file.exists() && !file.delete()) {
+                    System.err.println("could not delete file: " + file.absolutePath)
+                }
             }
         }
-        for (file in externalContentDir!!.listFiles()) {
-            if (file.isDirectory) {
-                deleteDir(file)
-            }
-            if (file.exists() && !file.delete()) {
-                System.err.println("could not delete file: " + file.absolutePath)
+        if (externalContentDir != null) {
+            for (file in externalContentDir.listFiles()) {
+                if (file.isDirectory) {
+                    deleteDir(file)
+                }
+                if (file.exists() && !file.delete()) {
+                    System.err.println("could not delete file: " + file.absolutePath)
+                }
             }
         }
     }
@@ -232,7 +247,7 @@ abstract class ContentTool internal constructor(
 ](https://stackoverflow.com/a/4770586/9492864) *
          */
         @Throws(IOException::class)
-        fun copyFile(src: File?, dst: File?) {
+        fun copyFile(src: File, dst: File) {
             FileInputStream(src).channel.use { inChannel ->
                 FileOutputStream(dst).channel.use { outChannel ->
                     inChannel.transferTo(0,

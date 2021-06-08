@@ -8,12 +8,13 @@ class ListSettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.settings_activity)
+
         supportFragmentManager
             .beginTransaction()
             .replace(R.id.settings, SettingsFragment())
             .commit()
-        val actionBar = supportActionBar
-        actionBar?.setDisplayHomeAsUpEnabled(true)
+
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
 
     class SettingsFragment : PreferenceFragmentCompat() {

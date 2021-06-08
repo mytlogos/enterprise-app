@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.News
-import com.mytlogos.enterprise.tools.Utils.getDomain
+import com.mytlogos.enterprise.tools.getDomain
 import com.mytlogos.enterprise.ui.NewsFragment.AttachedListener
 import com.mytlogos.enterprise.viewmodel.NewsViewModel
 import eu.davidea.flexibleadapter.FlexibleAdapter

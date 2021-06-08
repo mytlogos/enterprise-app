@@ -17,7 +17,7 @@ import com.mytlogos.enterprise.background.TaskManager.Companion.runCompletableTa
 import com.mytlogos.enterprise.model.DisplayRelease
 import com.mytlogos.enterprise.model.ExternalMediaList
 import com.mytlogos.enterprise.model.MediaList
-import com.mytlogos.enterprise.tools.Utils.getDomain
+import com.mytlogos.enterprise.tools.getDomain
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
 import eu.davidea.flexibleadapter.FlexibleAdapter
 import eu.davidea.flexibleadapter.SelectableAdapter

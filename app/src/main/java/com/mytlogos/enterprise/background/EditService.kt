@@ -374,7 +374,7 @@ internal class EditService(
     @Throws(Exception::class)
     fun updateRead(episodeIds: Collection<Int>, read: Boolean) {
         val progress = if (read) 1f else 0f
-        Utils.doPartitionedEx(episodeIds) { ids: List<Int> ->
+        doPartitionedEx(episodeIds) { ids: List<Int> ->
             if (!client.isClientOnline) {
                 val filteredIds = storage.getReadEpisodes(episodeIds, !read)
                 if (filteredIds.isEmpty()) {

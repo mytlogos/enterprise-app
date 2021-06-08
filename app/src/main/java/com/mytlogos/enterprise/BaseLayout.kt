@@ -21,10 +21,10 @@ class BaseLayout : DrawerLayout {
     // fixme this could lead to problems if multiple custom views have unknowingly the same id
     private var container: ViewGroup? = null
     private var containerContent: View? = null
-    private var appBar: AppBarLayout? = null
     private var tabLayout: TabLayout? = null
-    private var progressBar: ProgressBar? = null
-    private var progressContainer: ViewGroup? = null
+    private lateinit var appBar: AppBarLayout
+    private lateinit var progressBar: ProgressBar
+    private lateinit var progressContainer: ViewGroup
 
     constructor(context: Context?) : super(context!!) {
         init()
@@ -43,27 +43,29 @@ class BaseLayout : DrawerLayout {
     private fun init() {
         this.id = R.id.BASE_ID
         LayoutInflater.from(context).inflate(R.layout.base_layout, this, true)
-        appBar = findViewById(R.id.appbar) as AppBarLayout?
-        progressBar = findViewById(R.id.load_progress) as ProgressBar?
-        progressContainer = findViewById(R.id.progress_container) as ViewGroup?
+        appBar = findViewById(R.id.appbar)
+        progressBar = findViewById(R.id.load_progress)
+        progressContainer = findViewById(R.id.progress_container)
     }
 
     fun activateTabs(): TabLayout {
+        var tabLayout = this.tabLayout
         if (tabLayout != null) {
-            tabLayout!!.removeAllTabs()
-            tabLayout!!.tabMode = TabLayout.MODE_FIXED
+            tabLayout.removeAllTabs()
+            tabLayout.tabMode = TabLayout.MODE_FIXED
         } else {
             tabLayout = TabLayout(this.context)
+            this.tabLayout = tabLayout
         }
-        if (tabLayout!!.parent == null) {
-            appBar!!.addView(tabLayout)
+        if (tabLayout.parent == null) {
+            appBar.addView(this.tabLayout)
         }
-        return tabLayout!!
+        return tabLayout
     }
 
     fun deactivateTabs() {
         if (tabLayout != null && tabLayout!!.parent != null) {
-            appBar!!.removeView(tabLayout)
+            appBar.removeView(tabLayout)
         }
     }
 
@@ -71,16 +73,20 @@ class BaseLayout : DrawerLayout {
         if (child.id == R.id.nav_view) {
             return true
         }
+        var localContainer = container
+
         if (child.id == R.id.base_content) {
-            container = child as ViewGroup
+            localContainer = child as ViewGroup
+            container = localContainer
+
             if (containerContent != null) {
-                container!!.addView(containerContent)
+                localContainer.addView(containerContent)
             }
             return true
         }
-        if (container != null) {
+        if (localContainer != null) {
             containerContent = child
-            container!!.addView(child)
+            localContainer.addView(child)
         }
         return false
     }
@@ -94,19 +100,22 @@ class BaseLayout : DrawerLayout {
         // for very easy animations. If available, use these APIs to fade-in
         // the progress spinner.
         val shortAnimTime = resources.getInteger(android.R.integer.config_shortAnimTime)
-        progressContainer!!.visibility = if (showLoading) VISIBLE else GONE
-        progressBar!!.animate().setDuration(shortAnimTime.toLong()).alpha(
-            if (showLoading) 1.0f else 0.0f).setListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationStart(animation: Animator) {
-                println("animation start")
-                super.onAnimationStart(animation)
-            }
+        progressContainer.visibility = if (showLoading) VISIBLE else GONE
+        progressBar
+            .animate()
+            .setDuration(shortAnimTime.toLong())
+            .alpha(if (showLoading) 1.0f else 0.0f)
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationStart(animation: Animator) {
+                    println("animation start")
+                    super.onAnimationStart(animation)
+                }
 
-            override fun onAnimationEnd(animation: Animator) {
-                println("animation ended")
-                progressBar!!.visibility = if (showLoading) VISIBLE else GONE
-            }
-        })
+                override fun onAnimationEnd(animation: Animator) {
+                    println("animation ended")
+                    progressBar.visibility = if (showLoading) VISIBLE else GONE
+                }
+            })
     }
 
     /* @Override

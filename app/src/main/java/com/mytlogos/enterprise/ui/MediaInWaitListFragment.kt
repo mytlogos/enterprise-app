@@ -14,7 +14,7 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.MediumInWait
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.Utils.getDomain
+import com.mytlogos.enterprise.tools.getDomain
 import com.mytlogos.enterprise.viewmodel.MediaInWaitListViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow

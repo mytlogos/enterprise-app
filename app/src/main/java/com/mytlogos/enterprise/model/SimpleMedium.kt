@@ -1,6 +1,10 @@
 package com.mytlogos.enterprise.model
 
-class SimpleMedium(val mediumId: Int, val title: String, val medium: Int) {
+data class SimpleMedium(
+    val mediumId: Int,
+    val title: String,
+    val medium: Int,
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false

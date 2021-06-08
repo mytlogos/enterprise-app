@@ -12,7 +12,7 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.ExternalMediaList
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.requireSupportActionBar
-import com.mytlogos.enterprise.tools.Utils.transformPaging
+import com.mytlogos.enterprise.tools.transformPaging
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
 import eu.davidea.flexibleadapter.utils.DrawableUtils
 import kotlinx.coroutines.flow.Flow

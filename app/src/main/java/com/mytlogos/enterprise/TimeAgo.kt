@@ -9,10 +9,22 @@ import java.util.concurrent.TimeUnit
  */
 object TimeAgo {
     private val times: MutableMap<String, Long> = LinkedHashMap()
+
+    init {
+        times["year"] = TimeUnit.DAYS.toMillis(365)
+        times["month"] = TimeUnit.DAYS.toMillis(30)
+        times["week"] = TimeUnit.DAYS.toMillis(7)
+        times["day"] = TimeUnit.DAYS.toMillis(1)
+        times["hour"] = TimeUnit.HOURS.toMillis(1)
+        times["minute"] = TimeUnit.MINUTES.toMillis(1)
+        times["second"] = TimeUnit.SECONDS.toMillis(1)
+    }
+
     fun toPastRelative(duration: Long): String {
         val res = StringBuilder()
         for ((key, value) in times) {
             val timeDelta = duration / value
+
             if (timeDelta > 0) {
                 res.append(timeDelta)
                     .append(" ")
@@ -35,6 +47,7 @@ object TimeAgo {
         val res = StringBuilder()
         for ((key, value) in times) {
             val timeDelta = duration / value
+
             if (timeDelta > 0) {
                 res.append(timeDelta)
                     .append(" ")
@@ -53,15 +66,9 @@ object TimeAgo {
 
     fun toRelative(duration: Long): String {
         return when {
-            duration == 0L -> {
-                "Now"
-            }
-            duration > 0 -> {
-                toPastRelative(duration)
-            }
-            else -> {
-                toFutureRelative(duration)
-            }
+            duration == 0L -> "Now"
+            duration > 0 -> toPastRelative(duration)
+            else -> toFutureRelative(duration)
         }
     }
 
@@ -69,15 +76,5 @@ object TimeAgo {
         return if (start == null || end == null) {
             null
         } else toRelative(end.millis - start.millis)
-    }
-
-    init {
-        times["year"] = TimeUnit.DAYS.toMillis(365)
-        times["month"] = TimeUnit.DAYS.toMillis(30)
-        times["week"] = TimeUnit.DAYS.toMillis(7)
-        times["day"] = TimeUnit.DAYS.toMillis(1)
-        times["hour"] = TimeUnit.HOURS.toMillis(1)
-        times["minute"] = TimeUnit.MINUTES.toMillis(1)
-        times["second"] = TimeUnit.SECONDS.toMillis(1)
     }
 }

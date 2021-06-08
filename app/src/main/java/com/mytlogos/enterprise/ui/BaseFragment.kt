@@ -15,7 +15,7 @@ import com.mytlogos.enterprise.MainActivity
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.tools.FileTools.getContentTool
-import com.mytlogos.enterprise.tools.Utils
+import com.mytlogos.enterprise.tools.getDomain
 
 open class BaseFragment : Fragment() {
     protected fun setTitle(title: String?) {
@@ -50,7 +50,7 @@ open class BaseFragment : Fragment() {
         if (urls.size == 1) {
             this.openInBrowser(urls[0])
         } else {
-            val domains = urls.map { obj: String -> Utils.getDomain(obj) }.toTypedArray()
+            val domains = urls.map { obj: String -> getDomain(obj) }.toTypedArray()
             AlertDialog.Builder(requireContext())
                 .setItems(domains) { _: DialogInterface?, which: Int ->
                     if (which >= 0 && which < urls.size) {

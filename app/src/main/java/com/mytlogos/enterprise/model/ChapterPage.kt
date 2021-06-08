@@ -1,6 +1,6 @@
 package com.mytlogos.enterprise.model
 
-class ChapterPage(val episodeId: Int, val page: Int, val path: String) {
+data class ChapterPage(val episodeId: Int, val page: Int, val path: String) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false
@@ -12,12 +12,5 @@ class ChapterPage(val episodeId: Int, val page: Int, val path: String) {
         var result = episodeId
         result = 31 * result + page
         return result
-    }
-
-    override fun toString(): String {
-        return "ChapterPage{" +
-                "episodeId=" + episodeId +
-                ", page=" + page +
-                '}'
     }
 }
