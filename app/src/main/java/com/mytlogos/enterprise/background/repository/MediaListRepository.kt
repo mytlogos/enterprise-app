@@ -2,63 +2,98 @@ package com.mytlogos.enterprise.background.repository
 
 import android.app.Application
 import androidx.lifecycle.LiveData
-import com.mytlogos.enterprise.background.*
+import androidx.lifecycle.MediatorLiveData
+import com.mytlogos.enterprise.background.EditService
+import com.mytlogos.enterprise.background.RepositoryImpl
+import com.mytlogos.enterprise.background.RoomConverter
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.model.ClientMinList
 import com.mytlogos.enterprise.background.room.AbstractDatabase
+import com.mytlogos.enterprise.background.room.model.RoomExternListView
 import com.mytlogos.enterprise.background.room.model.RoomMediaList
+import com.mytlogos.enterprise.model.ExternalMediaList
 import com.mytlogos.enterprise.model.MediaList
+import com.mytlogos.enterprise.model.MediaListSetting
 import com.mytlogos.enterprise.model.ToDownload
 import com.mytlogos.enterprise.tools.SingletonHolder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import retrofit2.Response
 import java.io.IOException
 import java.util.*
 
 @Suppress("BlockingMethodInNonBlockingContext")
 class MediaListRepository private constructor(application: Application) {
     private val mediaListDao = AbstractDatabase.getInstance(application).mediaListDao()
-    private val externalMediaListDao = AbstractDatabase.getInstance(application).mediaListDao()
+    private val externalMediaListDao = AbstractDatabase.getInstance(application).externalMediaListDao()
     private val toDownloadDao = AbstractDatabase.getInstance(application).toDownloadDao()
     private val danglingDao = AbstractDatabase.getInstance(application).roomDanglingDao()
 
-    val internLists: LiveData<MutableList<MediaList>>
-        get() = mediaListDao.listViews
+    private val editService: EditService
+        get() = (RepositoryImpl.instance as RepositoryImpl).editService
 
     val client: Client by lazy {
         Client.getInstance(AndroidNetworkIdentificator(application))
     }
 
+    val lists: LiveData<MutableList<MediaList>>
+        get() {
+            val liveData = MediatorLiveData<MutableList<MediaList>>()
+            liveData.addSource(mediaListDao.listViews) { mediaLists: List<MediaList>? ->
+                val set = HashSet<MediaList>()
+                if (liveData.value != null) {
+                    set.addAll(liveData.value!!)
+                }
+                set.addAll(mediaLists!!)
+                liveData.setValue(ArrayList(set))
+            }
+            liveData.addSource(externalMediaListDao.externalListViews) { roomMediaLists: List<RoomExternListView> ->
+                val mediaLists: MutableList<MediaList> = ArrayList()
+                for (list in roomMediaLists) {
+                    val mediaList = list.mediaList
+                    mediaLists.add(ExternalMediaList(
+                        mediaList.uuid,
+                        mediaList.externalListId,
+                        mediaList.name,
+                        mediaList.medium,
+                        mediaList.url,
+                        list.size
+                    ))
+                }
+                val set = HashSet<MediaList>()
+                if (liveData.value != null) {
+                    set.addAll(liveData.value!!)
+                }
+                set.addAll(mediaLists)
+                liveData.setValue(ArrayList(set))
+            }
+            return liveData
+        }
+
+    val internLists: LiveData<MutableList<MediaList>>
+        get() = mediaListDao.listViews
+
+    suspend fun removeItemFromList(
+        listId: Int,
+        mediumId: MutableCollection<Int>,
+    ): Boolean {
+        return editService.removeItemFromList(listId, mediumId)
+    }
+
     suspend fun addMediumToList(
         listId: Int,
         ids: MutableCollection<Int>,
-    ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            // to prevent duplicates
-            val items = mediaListDao.getListItems(listId)
-            ids.removeAll(items)
-
-            // adding nothing cannot fail
-            if (ids.isEmpty()) {
-                return@withContext true
-            }
-            @Suppress("BlockingMethodInNonBlockingContext")
-            val response: Response<Boolean> = client.addListMedia(listId, ids)
-
-            if (response.body() == null || !response.body()!!) {
-                return@withContext false
-            }
-            val joins = ids.map { RoomMediaList.MediaListMediaJoin(listId, it) }
-            mediaListDao.addJoin(joins)
-            return@withContext true
-        } catch (e: IOException) {
-            e.printStackTrace()
-            return@withContext false
-        }
+    ): Boolean {
+        return editService.addMediumToList(listId, ids)
     }
 
+    fun getListSetting(id: Int, isExternal: Boolean): LiveData<out MediaListSetting> {
+        return if (isExternal) {
+            externalMediaListDao.getExternalListSetting(id)
+        } else mediaListDao.getListSettings(id)
+    }
+
+    suspend fun getListItems(listId: Int): Collection<Int> {
+        return mediaListDao.getListItems(listId)
+    }
 
     @Throws(IOException::class)
     suspend fun addList(list: MediaList, autoDownload: Boolean) {
@@ -85,30 +120,6 @@ class MediaListRepository private constructor(application: Application) {
 
     suspend fun listExists(listName: String): Boolean {
         return mediaListDao.listExists(listName)
-    }
-
-    suspend fun removeItemFromList(listId: Int, mediumIds: MutableCollection<Int>): Boolean {
-        val success = kotlin.runCatching {
-            val response = client.deleteListMedia(listId, mediumIds)
-            response.body()
-        }.getOrNull()
-
-        if (success != null && success) {
-            mediaListDao.removeJoin(listId, mediumIds)
-
-            val listMedia = mediaListDao.getAllLinkedMedia()
-            val externalListMedia = externalMediaListDao.getAllLinkedMedia()
-
-            mediumIds.removeAll(listMedia)
-            mediumIds.removeAll(externalListMedia)
-
-            if (mediumIds.isNotEmpty()) {
-                val converter = RoomConverter()
-                danglingDao.insertBulk(converter.convertToDangling(mediumIds))
-            }
-            return true
-        }
-        return false
     }
 
     suspend fun moveMediaToList(oldListId: Int, newListId: Int, ids: MutableCollection<Int>): Boolean {

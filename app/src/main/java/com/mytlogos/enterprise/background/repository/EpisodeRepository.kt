@@ -7,9 +7,12 @@ import com.mytlogos.enterprise.background.RepositoryImpl
 import com.mytlogos.enterprise.background.RoomConverter
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
+import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator
 import com.mytlogos.enterprise.background.room.AbstractDatabase
+import com.mytlogos.enterprise.background.room.model.RoomFailedEpisode
 import com.mytlogos.enterprise.model.DisplayRelease
+import com.mytlogos.enterprise.model.FailedEpisode
 import com.mytlogos.enterprise.model.SimpleEpisode
 import com.mytlogos.enterprise.model.TocEpisode
 import com.mytlogos.enterprise.tools.*
@@ -25,6 +28,7 @@ import java.util.*
 
 @Suppress("BlockingMethodInNonBlockingContext")
 class EpisodeRepository private constructor(application: Application) {
+    private val failedEpisodesDao = AbstractDatabase.getInstance(application).failedEpisodesDao()
     private val episodeDao = AbstractDatabase.getInstance(application).episodeDao()
     private val mediumDao = AbstractDatabase.getInstance(application).mediumDao()
     private val partDao = AbstractDatabase.getInstance(application).partDao()
@@ -157,6 +161,10 @@ class EpisodeRepository private constructor(application: Application) {
         }
     }
 
+    suspend fun downloadEpisodes(episodeIds: Collection<Int>): List<ClientDownloadedEpisode>? {
+        return client.downloadEpisodes(episodeIds).body()
+    }
+
     @Throws(IOException::class)
     suspend fun deleteLocalEpisodesWithLowerIndex(
         combiIndex: Double,
@@ -227,11 +235,7 @@ class EpisodeRepository private constructor(application: Application) {
                     if (!response.isSuccessful || response.body() == null || !response.body()!!) {
                         return@async false
                     }
-                    launch {
-                        withContext(Dispatchers.IO) {
-                            episodeDao.updateProgress(ids, progress, DateTime.now())
-                        }
-                    }
+                    episodeDao.updateProgress(ids, progress, DateTime.now())
                     false
                 }
             }
@@ -277,8 +281,38 @@ class EpisodeRepository private constructor(application: Application) {
         DownloadWorker.enqueueDownloadTask(context, mediumId, episodeIds)
     }
 
+    suspend fun getSimpleEpisode(episodeId: Int): SimpleEpisode {
+        return episodeDao.getSimpleEpisode(episodeId)
+    }
+
     suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
         return episodeDao.getSimpleEpisodes(ids)
+    }
+
+    suspend fun getDownloadableEpisodes(mediumId: Int, limit: Int): List<Int> {
+        return episodeDao.getDownloadableEpisodes(mediumId, limit)
+    }
+
+    fun getSavedEpisodes(mediumId: Int): Collection<Int> {
+        return runBlocking { episodeDao.getSavedEpisodes(mediumId) }
+    }
+
+    suspend fun clearFailEpisodes() {
+        failedEpisodesDao.clearAll()
+    }
+
+    suspend fun getFailedEpisodes(episodeIds: Collection<Int>): List<FailedEpisode> {
+        return failedEpisodesDao.getFailedEpisodes(episodeIds)
+    }
+
+    suspend fun updateFailedDownload(episodeId: Int) {
+        val failedEpisode = failedEpisodesDao.getFailedEpisode(episodeId)
+        var failedCount = 0
+        if (failedEpisode != null) {
+            failedCount = failedEpisode.failCount
+        }
+        failedCount++
+        failedEpisodesDao.insert(RoomFailedEpisode(episodeId, failedCount))
     }
 
     companion object : SingletonHolder<EpisodeRepository, Application>(::EpisodeRepository)

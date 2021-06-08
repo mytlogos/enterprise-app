@@ -10,6 +10,10 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.*
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
+import com.mytlogos.enterprise.background.repository.EpisodeRepository
+import com.mytlogos.enterprise.background.repository.MediaListRepository
+import com.mytlogos.enterprise.background.repository.NotificationRepository
+import com.mytlogos.enterprise.background.repository.ToDownloadRepository
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.model.NotificationItem
 import com.mytlogos.enterprise.preferences.DownloadPreference
@@ -31,6 +35,10 @@ class DownloadWorker(
     private val builder: NotificationCompat.Builder
     private lateinit var contentTools: Map<Int, ContentTool>
     private lateinit var repository: Repository
+    private lateinit var notificationRepository: NotificationRepository
+    private lateinit var episodeRepository: EpisodeRepository
+    private lateinit var toDownloadRepository: ToDownloadRepository
+    private lateinit var mediaListRepository: MediaListRepository
     private var downloadCount = 0
     private var successFull = 0
     private var notSuccessFull = 0
@@ -101,6 +109,10 @@ class DownloadWorker(
         UserPreferences.init(application)
         // init lateinit fields
         repository = getInstance(application)
+        notificationRepository = NotificationRepository.getInstance(application)
+        episodeRepository = EpisodeRepository.getInstance(application)
+        toDownloadRepository = ToDownloadRepository.getInstance(application)
+        mediaListRepository = MediaListRepository.getInstance(application)
         contentTools = FileTools.getSupportedContentTools(application).associateBy { it.medium }
 
         for (tool in contentTools.values) {
@@ -188,8 +200,8 @@ class DownloadWorker(
         }
     }
 
-    private fun getToDownloadMedia(): MutableSet<Int> {
-        val toDownloadList = repository.toDownload
+    private suspend fun getToDownloadMedia(): MutableSet<Int> {
+        val toDownloadList = toDownloadRepository.getToDownloads()
         val prohibitedMedia: MutableList<Int> = ArrayList()
         val toDownloadMedia: MutableSet<Int> = HashSet()
 
@@ -203,7 +215,7 @@ class DownloadWorker(
                 affectedMedia.addAll(repository.getExternalListItems(toDownload.externalListId))
             }
             if (toDownload.listId != null) {
-                affectedMedia.addAll(repository.getListItems(toDownload.listId))
+                affectedMedia.addAll(mediaListRepository.getListItems(toDownload.listId))
             }
             if (toDownload.isProhibited) {
                 prohibitedMedia.addAll(affectedMedia)
@@ -222,14 +234,14 @@ class DownloadWorker(
             async {
                 val medium = repository.getSimpleMedium(mediumId)
                 val count = downloadPreference.getDownloadLimitCount(medium.medium)
-                val episodeIds = repository.getDownloadableEpisodes(mediumId, count)
+                val episodeIds = episodeRepository.getDownloadableEpisodes(mediumId, count)
                 val uniqueEpisodes: MutableSet<Int> = LinkedHashSet(episodeIds)
 
                 if (uniqueEpisodes.isEmpty()) {
                     return@async null
                 }
 
-                val failedEpisodes = repository.getFailedEpisodes(uniqueEpisodes)
+                val failedEpisodes = episodeRepository.getFailedEpisodes(uniqueEpisodes)
 
                 for (failedEpisode in failedEpisodes) {
                     // if it failed 3 times or more, don't try anymore for now
@@ -320,7 +332,7 @@ class DownloadWorker(
             return null
         }
 
-        val downloadedEpisodes = repository.downloadEpisodes(episodePackage.episodeIds)
+        val downloadedEpisodes = episodeRepository.downloadEpisodes(episodePackage.episodeIds)
 
         if (downloadedEpisodes == null) {
             onFailed(episodePackage.episodeIds, episodePackage.mediumTitle)
@@ -336,9 +348,9 @@ class DownloadWorker(
             } else {
                 notSuccessFull++
                 updateProgress()
-                val episode = repository.getSimpleEpisode(episodeId)
-                repository.updateFailedDownloads(episodeId)
-                repository.addNotification(
+                val episode = episodeRepository.getSimpleEpisode(episodeId)
+                episodeRepository.updateFailedDownload(episodeId)
+                notificationRepository.addNotification(
                     NotificationItem.createNow(
                         "Could not save Episode ${episode.formattedTitle} of ${episodePackage.mediumTitle}",
                     )
@@ -358,14 +370,14 @@ class DownloadWorker(
         data.contentTool.saveContent(data.toSave, data.mediumId)
         val currentlySavedEpisodes = data.toSave.map { it.episodeId }
 
-        repository.updateSaved(currentlySavedEpisodes, true)
+        episodeRepository.updateSaved(currentlySavedEpisodes, true)
 
-        val episodes = repository.getSimpleEpisodes(currentlySavedEpisodes)
+        val episodes = episodeRepository.getSimpleEpisodes(currentlySavedEpisodes)
 
         for (episode in episodes) {
             successFull++
             updateProgress()
-            repository.addNotification(
+            notificationRepository.addNotification(
                 NotificationItem.createNow(
                     "Episode ${episode.formattedTitle} of ${data.mediumTitle} saved",
                 )
@@ -390,20 +402,20 @@ class DownloadWorker(
         uuids.remove(this.id)
     }
 
-    private fun onFailed(
+    private suspend fun onFailed(
         episodeIds: Collection<Int>,
         mediumTitle: String,
         notEnoughSpace: Boolean = false
     ) {
         for (episodeId in episodeIds) {
-            repository.updateFailedDownloads(episodeId)
-            val episode = repository.getSimpleEpisode(episodeId)
+            episodeRepository.updateFailedDownload(episodeId)
+            val episode = episodeRepository.getSimpleEpisode(episodeId)
             val format = if (notEnoughSpace) {
                 "Not enough Space for Episode %s of %s"
             } else {
                 "Could not save Episode %s of %s"
             }
-            repository.addNotification(
+            notificationRepository.addNotification(
                 NotificationItem.createNow(
                     String.format(format, episode.formattedTitle, mediumTitle),
                 )
@@ -473,7 +485,7 @@ class DownloadWorker(
      * Ignores Episodes which are already marked as saved.
      */
     private suspend fun createDownloadPackagesFlow(episodeIds: Set<MediumDownload>): Flow<DownloadPackage> = flow {
-            val savedEpisodes = repository.savedEpisodes
+            val savedEpisodes = episodeRepository.getAllSavedEpisodes()
             val savedIds = savedEpisodes.toSet()
 
             for (mediumDownload in episodeIds) {

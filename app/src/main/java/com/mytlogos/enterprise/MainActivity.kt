@@ -21,12 +21,14 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.tabs.TabLayout
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
+import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.User
 import com.mytlogos.enterprise.preferences.UserPreferences.Companion.init
 import com.mytlogos.enterprise.preferences.UserPreferences.Companion.loggedStatus
@@ -40,6 +42,7 @@ import com.mytlogos.enterprise.worker.DownloadWorker.Companion.enqueueDownloadTa
 import com.mytlogos.enterprise.worker.DownloadWorker.Companion.stopWorker
 import com.mytlogos.enterprise.worker.DownloadWorker.Companion.watchDatabase
 import com.mytlogos.enterprise.worker.SynchronizeWorker.Companion.enqueueOneTime
+import kotlinx.coroutines.launch
 import java.util.*
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener,
@@ -224,7 +227,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 selected = true
             }
             R.id.reset_fail_counter -> {
-                instance.clearFailEpisodes()
+                lifecycleScope.launch {
+                    EpisodeRepository.getInstance(application).clearFailEpisodes()
+                }
                 selected = true
             }
             android.R.id.home -> {

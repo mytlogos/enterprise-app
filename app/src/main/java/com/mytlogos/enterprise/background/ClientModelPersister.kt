@@ -13,7 +13,7 @@ interface ClientModelPersister {
         return persistEpisodes(listOf(*episode))
     }
 
-    fun persistEpisodes(episode: Collection<ClientEpisode>): ClientModelPersister
+    fun persistEpisodes(episodes: Collection<ClientEpisode>): ClientModelPersister
     fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister
     fun persist(vararg mediaLists: ClientMediaList): ClientModelPersister {
         return persistMediaLists(listOf(*mediaLists))
@@ -93,7 +93,7 @@ interface ClientModelPersister {
     }
 
     fun persist(filteredParts: FilteredParts): ClientModelPersister
-    fun persistReadEpisodes(readMedia: Collection<ClientReadEpisode>): ClientModelPersister
+    fun persistReadEpisodes(readEpisodes: Collection<ClientReadEpisode>): ClientModelPersister
     fun persist(stat: ParsedStat): ClientModelPersister
     fun finish()
     fun persist(toDownload: ToDownload): ClientModelPersister

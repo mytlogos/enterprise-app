@@ -84,8 +84,8 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
         }
     }
 
-    fun convertClientMediaInWait(medium: Collection<ClientMediumInWait>?): Collection<RoomMediumInWait> {
-        return this.convert(medium) { medium: ClientMediumInWait -> this.convert(medium) }
+    fun convertClientMediaInWait(media: Collection<ClientMediumInWait>?): Collection<RoomMediumInWait> {
+        return this.convert(media) { medium: ClientMediumInWait -> this.convert(medium) }
     }
 
     fun convertToDangling(mediaIds: Collection<Int>?): Collection<RoomDanglingMedium> {
@@ -315,15 +315,6 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             roomEpisode.readDate,
             roomEpisode.saved
         )
-    }
-
-    fun toUser(
-        user: RoomUser?,
-        countReadToday: Int?,
-        countUnreadChapter: Int?,
-        countUnreadNews: Int?
-    ): HomeStats? {
-        return null
     }
 
     fun convert(input: RoomMediumInWait): MediumInWait {

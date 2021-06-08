@@ -10,7 +10,7 @@ internal interface UserApi {
     fun logout(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
 
     @PUT
-    fun updateUser(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun updateUser(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 
     @GET
     fun getUser(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientUser>

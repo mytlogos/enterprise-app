@@ -9,8 +9,12 @@ import androidx.work.*
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.*
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
+import com.mytlogos.enterprise.background.repository.EpisodeRepository
+import com.mytlogos.enterprise.background.repository.MediaListRepository
+import com.mytlogos.enterprise.background.repository.ToDownloadRepository
 import com.mytlogos.enterprise.tools.ContentTool
 import com.mytlogos.enterprise.tools.FileTools
+import kotlinx.coroutines.runBlocking
 import java.util.*
 import kotlin.collections.HashSet
 
@@ -21,6 +25,8 @@ class CheckSavedWorker(
 
     private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var builder: NotificationCompat.Builder
+    private lateinit var episodeRepository: EpisodeRepository
+    private lateinit var mediaListRepository: MediaListRepository
     private val checkLocalNotificationId = 0x300
     private var correctedSaveState = 0
     private var clearedLooseEpisodes = 0
@@ -45,6 +51,8 @@ class CheckSavedWorker(
             .setContentTitle("Checking Local Content Integrity")
             .setSmallIcon(R.mipmap.ic_launcher).priority = NotificationCompat.PRIORITY_DEFAULT
         notificationManager.notify(checkLocalNotificationId, builder.build())
+        episodeRepository = EpisodeRepository.getInstance(applicationContext as Application)
+        mediaListRepository = MediaListRepository.getInstance(applicationContext as Application)
     }
 
     @SuppressLint("UseSparseArrays")
@@ -133,13 +141,13 @@ class CheckSavedWorker(
     ) {
         for ((mediumId, looseIds) in mediumSavedEpisodes) {
             // get the episodeIds with saved=true of medium
-            val savedEpisodes = repository.getSavedEpisodes(mediumId)
+            val savedEpisodes = episodeRepository.getSavedEpisodes(mediumId)
             val unSavedIds: MutableSet<Int> = HashSet(savedEpisodes)
             unSavedIds.removeAll(looseIds)
             looseIds.removeAll(savedEpisodes)
 
             if (unSavedIds.isNotEmpty()) {
-                repository.updateSaved(unSavedIds, false)
+                runBlocking { episodeRepository.updateSaved(unSavedIds, false) }
                 correctedSaveState += unSavedIds.size
             }
 
@@ -154,7 +162,7 @@ class CheckSavedWorker(
                         }
                     }
                     HandleLooseEpisode.UPDATE_STATE -> {
-                        repository.updateSaved(looseIds, true)
+                        runBlocking { episodeRepository.updateSaved(looseIds, true) }
                         correctedSaveState += looseIds.size
                     }
                 }
@@ -212,7 +220,9 @@ class CheckSavedWorker(
         }
 
         // get the current toDownload List
-        val toDownloadList = repository.toDownload
+        val toDownloadList = runBlocking {
+            ToDownloadRepository.getInstance(applicationContext as Application).getToDownloads()
+        }
         val prohibitedMedia: MutableList<Int> = ArrayList()
         val toDownloadMedia: MutableSet<Int> = HashSet()
 
@@ -226,7 +236,7 @@ class CheckSavedWorker(
                 affectedMediaIds.addAll(repository.getExternalListItems(toDownload.externalListId))
             }
             if (toDownload.listId != null) {
-                affectedMediaIds.addAll(repository.getListItems(toDownload.listId))
+                affectedMediaIds.addAll(runBlocking { mediaListRepository.getListItems(toDownload.listId) })
             }
 
             if (toDownload.isProhibited) {

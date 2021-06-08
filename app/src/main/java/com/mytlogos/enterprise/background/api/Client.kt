@@ -169,10 +169,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: PUT /api/user
      */
     @Throws(IOException::class)
-    fun updateUser(updateUser: ClientUpdateUser?): Response<Boolean> {
+    suspend fun updateUser(updateUser: ClientUpdateUser?): Response<Boolean> {
         val body = userAuthenticationMap()
         body["user"] = updateUser
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.updateUser(url, body) }
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.updateUser(url, body) }
     }
 
     /**
@@ -367,11 +367,11 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: POST /api/user/list/medium
      */
     @Throws(IOException::class)
-    fun addListMedia(listId: Int, mediumId: Int): Response<Boolean> {
+    suspend fun addListMedia(listId: Int, mediumId: Int): Response<Boolean> {
         val body = userAuthenticationMap()
         body["listId"] = listId
         body["mediumId"] = mediumId
-        return query(ListMediaApi::class.java) { apiImpl: ListMediaApi, url: String -> apiImpl.addListMedia(url, body) }
+        return querySuspend(ListMediaApi::class.java) { apiImpl: ListMediaApi, url: String -> apiImpl.addListMedia(url, body) }
     }
 
     /**
@@ -379,11 +379,11 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: POST /api/user/list/medium
      */
     @Throws(IOException::class)
-    fun addListMedia(listId: Int, mediumId: Collection<Int?>?): Response<Boolean> {
+    suspend fun addListMedia(listId: Int, mediumId: Collection<Int?>?): Response<Boolean> {
         val body = userAuthenticationMap()
         body["listId"] = listId
         body["mediumId"] = mediumId
-        return query(ListMediaApi::class.java) { apiImpl: ListMediaApi, url: String -> apiImpl.addListMedia(url, body) }
+        return querySuspend(ListMediaApi::class.java) { apiImpl: ListMediaApi, url: String -> apiImpl.addListMedia(url, body) }
     }
 
     /**

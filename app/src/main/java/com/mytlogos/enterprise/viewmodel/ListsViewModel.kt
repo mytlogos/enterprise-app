@@ -2,31 +2,32 @@ package com.mytlogos.enterprise.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.LiveData
-import com.mytlogos.enterprise.background.TaskManager.Companion.runTask
+import com.mytlogos.enterprise.background.TaskManager.Companion.runTaskSuspend
 import com.mytlogos.enterprise.background.repository.MediaListRepository
 import com.mytlogos.enterprise.background.repository.MediumRepository
+import com.mytlogos.enterprise.background.repository.ToDownloadRepository
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.model.MediaListSetting
 import com.mytlogos.enterprise.model.MediumSetting
 import com.mytlogos.enterprise.model.ToDownload
-import java.util.concurrent.CompletableFuture
 
 class ListsViewModel(application: Application) : RepoViewModel(application) {
     private var listSettings: LiveData<out MediaListSetting?>? = null
     private var settings: LiveData<MediumSetting>? = null
 
     val lists: LiveData<MutableList<MediaList>>
-        get() = repository.lists
+        get() = mediaListRepository.lists
 
     val internLists: LiveData<MutableList<MediaList>>
-        get() = repository.internLists
+        get() = mediaListRepository.internLists
 
     private val mediaListRepository by lazy { MediaListRepository.getInstance(application) }
+    private val toDownloadRepository by lazy { ToDownloadRepository.getInstance(application) }
     private val mediumRepository by lazy { MediumRepository.getInstance(application) }
 
     fun getListSettings(id: Int, isExternal: Boolean): LiveData<out MediaListSetting?> {
         if (listSettings == null) {
-            listSettings = repository.getListSettings(id, isExternal)
+            listSettings = mediaListRepository.getListSetting(id, isExternal)
         }
         return listSettings!!
     }
@@ -42,13 +43,13 @@ class ListsViewModel(application: Application) : RepoViewModel(application) {
         return repository.updateListMedium(listSetting!!, newMediumType)
     }
 
-    fun updateToDownload(add: Boolean, toDownload: ToDownload?) {
-        runTask { repository.updateToDownload(add, toDownload!!) }
+    fun updateToDownload(add: Boolean, toDownload: ToDownload) {
+        runTaskSuspend { toDownloadRepository.updateToDownload(add, toDownload) }
     }
 
     fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
         if (settings == null) {
-            settings = repository.getMediumSettings(mediumId)
+            settings = mediumRepository.getMediumSettings(mediumId)
         }
         return settings!!
     }

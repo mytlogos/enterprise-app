@@ -11,14 +11,12 @@ import com.mytlogos.enterprise.model.MediaListSetting
 import com.mytlogos.enterprise.model.MediumSetting
 import com.mytlogos.enterprise.model.UpdateUser
 import com.mytlogos.enterprise.tools.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
-import org.joda.time.DateTime
 import retrofit2.Response
 import java.io.IOException
-import kotlin.annotation.Retention
-import kotlin.annotation.AnnotationRetention
 import java.util.*
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 
 @Suppress("BlockingMethodInNonBlockingContext")
@@ -26,7 +24,7 @@ import java.util.concurrent.Executors
 internal class EditService(
     private val client: Client,
     private val storage: DatabaseStorage,
-    private val persister: ClientModelPersister
+    private val persister: ClientModelPersister,
 ) {
     @IntDef(value = [USER, EXTERNAL_LIST, EXTERNAL_USER, LIST, MEDIUM, PART, EPISODE, RELEASE, NEWS])
     @Retention(AnnotationRetention.SOURCE)
@@ -39,7 +37,7 @@ internal class EditService(
     internal annotation class Event
 
     private val pushEditExecutor = Executors.newSingleThreadExecutor()
-    private fun publishEditEvents() {
+    private suspend fun publishEditEvents() {
         val events = storage.getEditEvents()
         if (events.isEmpty()) {
             return
@@ -118,7 +116,7 @@ internal class EditService(
     }
 
     @Throws(NotConnectedException::class)
-    private fun publishEpisodeEvents(typeEventsMap: Map<Int, List<EditEvent>>) {
+    private suspend fun publishEpisodeEvents(typeEventsMap: Map<Int, List<EditEvent>>) {
         for ((key, value) in typeEventsMap) {
             if (key == CHANGE_PROGRESS) {
                 publishEpisodeProgress(value)
@@ -128,7 +126,7 @@ internal class EditService(
     }
 
     @Throws(NotConnectedException::class)
-    private fun publishEpisodeProgress(value: List<EditEvent>) {
+    private suspend fun publishEpisodeProgress(value: List<EditEvent>) {
         val latestProgress: MutableMap<Int, EditEvent> = HashMap()
         val earliestProgress: MutableMap<Int, EditEvent> = HashMap()
         for (event in value) {
@@ -154,13 +152,16 @@ internal class EditService(
             }
         }
         val currentProgressEpisodeMap: MutableMap<Float, MutableSet<Int>> = HashMap()
+
         for ((key, value1) in latestProgress) {
             val newValue = value1.secondValue
             val newProgress = parseProgress(newValue)
+
             currentProgressEpisodeMap
                 .computeIfAbsent(newProgress) { ArraySet() }
                 .add(key)
         }
+
         for ((progress, ids) in currentProgressEpisodeMap) {
             try {
                 if (!updateProgressOnline(progress, ids)) {
@@ -205,34 +206,34 @@ internal class EditService(
         // TODO: 26.09.2019 implement
     }
 
-    fun updateUser(updateUser: UpdateUser) {
-        TaskManager.runTask {
-            val value = storage.getUserNow()
-                ?: throw IllegalArgumentException("cannot change user when none is logged in")
-            val user = ClientUpdateUser(
-                value.uuid,
-                updateUser.name,
-                updateUser.password,
-                updateUser.newPassword
-            )
-            if (!client.isClientOnline) {
-                System.err.println("offline user edits are not allowed")
-                return@runTask
+    suspend fun updateUser(updateUser: UpdateUser) {
+        val value = storage.getUserNow()
+            ?: throw IllegalArgumentException("cannot change user when none is logged in")
+
+        val user = ClientUpdateUser(
+            value.uuid,
+            updateUser.name,
+            updateUser.password,
+            updateUser.newPassword
+        )
+        if (!client.isClientOnline) {
+            System.err.println("offline user edits are not allowed")
+            return
+        }
+        try {
+            val body = client.updateUser(user).body()
+
+            if (body != null && body) {
+                persister.persist(user)
             }
-            try {
-                val body = client.updateUser(user).body()
-                if (body != null && body) {
-                    persister.persist(user)
-                }
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
     }
 
     suspend fun updateListMedium(
         listSetting: MediaListSetting,
-        newMediumType: Int
+        newMediumType: Int,
     ): String {
         if (listSetting is ExternalMediaListSetting) {
             return "Cannot update External Lists"
@@ -265,11 +266,14 @@ internal class EditService(
         newName: String,
         newMediumType: Int,
         listId: Int,
-        mediaList: ClientMediaList
+        mediaList: ClientMediaList,
     ): String {
         try {
             if (!client.isClientOnline) {
-                val setting = storage.getListSettingNow(listId, false) ?: return "Not available in storage"
+                val setting = storage.getListSettingNow(
+                    listId,
+                    false
+                ) ?: return "Not available in storage"
                 val editEvents: MutableList<EditEvent> = ArrayList()
 
                 if (setting.name != newName) {
@@ -315,20 +319,22 @@ internal class EditService(
         val mediumId = mediumSettings.mediumId
 
         val clientMedium = ClientMedium(
-            IntArray(0), IntArray(0),
-            mediumSettings.currentRead, IntArray(0),
-            mediumId,
-            mediumSettings.getCountryOfOrigin(),
-            mediumSettings.getLanguageOfOrigin(),
-            mediumSettings.getAuthor(),
-            mediumSettings.getTitle(),
-            mediumSettings.medium,
-            mediumSettings.getArtist(),
-            mediumSettings.getLang(),
-            mediumSettings.stateOrigin,
-            mediumSettings.stateTL,
-            mediumSettings.getSeries(),
-            mediumSettings.getUniverse()
+            parts = IntArray(0),
+            latestReleased = IntArray(0),
+            currentRead = mediumSettings.currentRead,
+            unreadEpisodes = IntArray(0),
+            id = mediumId,
+            countryOfOrigin = mediumSettings.getCountryOfOrigin(),
+            languageOfOrigin = mediumSettings.getLanguageOfOrigin(),
+            author = mediumSettings.getAuthor(),
+            title = mediumSettings.getTitle(),
+            medium = mediumSettings.medium,
+            artist = mediumSettings.getArtist(),
+            lang = mediumSettings.getLang(),
+            stateOrigin = mediumSettings.stateOrigin,
+            stateTL = mediumSettings.stateTL,
+            series = mediumSettings.getSeries(),
+            universe = mediumSettings.getUniverse()
         )
         if (!client.isClientOnline) {
             val setting = storage.getMediumSettingsNow(mediumId)
@@ -372,33 +378,37 @@ internal class EditService(
     }
 
     @Throws(Exception::class)
-    fun updateRead(episodeIds: Collection<Int>, read: Boolean) {
+    suspend fun updateRead(episodeIds: Collection<Int>, read: Boolean) {
         val progress = if (read) 1f else 0f
-        doPartitionedEx(episodeIds) { ids: List<Int> ->
-            if (!client.isClientOnline) {
-                val filteredIds = storage.getReadEpisodes(episodeIds, !read)
-                if (filteredIds.isEmpty()) {
-                    return@doPartitionedEx false
+        coroutineScope {
+            doPartitionedExSuspend(episodeIds) { ids: List<Int> ->
+                async {
+                    if (!client.isClientOnline) {
+                        val filteredIds = storage.getReadEpisodes(episodeIds, !read)
+                        if (filteredIds.isEmpty()) {
+                            return@async false
+                        }
+                        val events: MutableCollection<EditEvent> = ArrayList(
+                            filteredIds.size
+                        )
+                        for (id in filteredIds) {
+                            events.add(EditEventImpl(id, EPISODE, CHANGE_PROGRESS, null, progress))
+                        }
+                        runBlocking {
+                            storage.insertEditEvent(events)
+                        }
+                        storage.updateProgress(filteredIds, progress)
+                        return@async false
+                    }
+                    !updateProgressOnline(progress, ids)
                 }
-                val events: MutableCollection<EditEvent> = ArrayList(
-                    filteredIds.size
-                )
-                for (id in filteredIds) {
-                    events.add(EditEventImpl(id, EPISODE, CHANGE_PROGRESS, null, progress))
-                }
-                runBlocking {
-                    storage.insertEditEvent(events)
-                }
-                storage.updateProgress(filteredIds, progress)
-                return@doPartitionedEx false
             }
-            !updateProgressOnline(progress, ids)
         }
     }
 
     @Throws(IOException::class)
-    private fun updateProgressOnline(progress: Float, ids: Collection<Int>): Boolean {
-        val response: Response<Boolean> = runBlocking { client.addProgress(ids, progress) }
+    private suspend fun updateProgressOnline(progress: Float, ids: Collection<Int>): Boolean {
+        val response: Response<Boolean> = client.addProgress(ids, progress)
         if (!response.isSuccessful || response.body() == null || !response.body()!!) {
             return false
         }
@@ -406,144 +416,105 @@ internal class EditService(
         return true
     }
 
-    fun removeItemFromList(listId: Int, mediumIds: MutableCollection<Int>): CompletableFuture<Boolean> {
-        return TaskManager.runCompletableTask {
-            try {
-                if (!client.isClientOnline) {
-                    val events: MutableCollection<EditEvent> = ArrayList(mediumIds.size)
-                    for (id in mediumIds) {
-                        val event: EditEvent = EditEventImpl(id, MEDIUM, REMOVE_FROM, listId, null)
-                        events.add(event)
-                    }
-                    runBlocking {
-                        storage.insertEditEvent(events)
-                    }
-                    storage.removeItemFromList(listId, mediumIds)
-                    storage.insertDanglingMedia(mediumIds)
-                    return@runCompletableTask true
+    suspend fun removeItemFromList(listId: Int, mediumIds: MutableCollection<Int>): Boolean {
+        try {
+            if (!client.isClientOnline) {
+                val events: MutableCollection<EditEvent> = ArrayList(mediumIds.size)
+                for (id in mediumIds) {
+                    val event: EditEvent = EditEventImpl(id, MEDIUM, REMOVE_FROM, listId, null)
+                    events.add(event)
                 }
-                val response = runBlocking { client.deleteListMedia(listId, mediumIds) }
-                val success = response.body()
-                if (success != null && success) {
-                    storage.removeItemFromList(listId, mediumIds)
-                    storage.insertDanglingMedia(mediumIds)
-                    return@runCompletableTask true
-                }
-                return@runCompletableTask false
-            } catch (e: IOException) {
-                e.printStackTrace()
+                storage.insertEditEvent(events)
+                storage.removeItemFromList(listId, mediumIds)
+                storage.insertDanglingMedia(mediumIds)
+                return true
             }
-            false
+            val response = client.deleteListMedia(listId, mediumIds)
+            val success = response.body()
+
+            if (success != null && success) {
+                storage.removeItemFromList(listId, mediumIds)
+                storage.insertDanglingMedia(mediumIds)
+                return true
+            }
+            return false
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
+        return false
     }
 
-    fun addMediumToList(listId: Int, ids: MutableCollection<Int>): CompletableFuture<Boolean> {
-        return TaskManager.runCompletableTask {
-            try {
-                // to prevent duplicates
-                val items = storage.getListItems(listId)
-                ids.removeAll(items)
+    suspend fun addMediumToList(listId: Int, ids: MutableCollection<Int>): Boolean {
+        try {
+            // to prevent duplicates
+            val items = storage.getListItems(listId)
+            ids.removeAll(items)
 
-                // adding nothing cannot fail
-                if (ids.isEmpty()) {
-                    return@runCompletableTask true
+            // adding nothing cannot fail
+            if (ids.isEmpty()) {
+                return true
+            }
+            if (!client.isClientOnline) {
+                val events: MutableCollection<EditEvent> = ArrayList(ids.size)
+                for (id in ids) {
+                    val event: EditEvent = EditEventImpl(id, MEDIUM, ADD_TO, null, listId)
+                    events.add(event)
                 }
-                if (!client.isClientOnline) {
-                    val events: MutableCollection<EditEvent> = ArrayList(ids.size)
-                    for (id in ids) {
-                        val event: EditEvent = EditEventImpl(id, MEDIUM, ADD_TO, null, listId)
-                        events.add(event)
-                    }
-                    runBlocking {
-                        storage.insertEditEvent(events)
-                    }
-                    storage.addItemsToList(listId, ids)
-                    return@runCompletableTask true
-                }
-                val response: Response<Boolean> = client.addListMedia(listId, ids)
-                if (response.body() == null || !response.body()!!) {
-                    return@runCompletableTask false
-                }
+                storage.insertEditEvent(events)
                 storage.addItemsToList(listId, ids)
-                return@runCompletableTask true
-            } catch (e: IOException) {
-                e.printStackTrace()
-                return@runCompletableTask false
+                return true
             }
+            val response: Response<Boolean> = client.addListMedia(listId, ids)
+            if (response.body() == null || !response.body()!!) {
+                return false
+            }
+            storage.addItemsToList(listId, ids)
+            return true
+        } catch (e: IOException) {
+            e.printStackTrace()
+            return false
         }
     }
 
-    fun moveItemFromList(
-        oldListId: Int,
-        newListId: Int,
-        mediumId: Int
-    ): CompletableFuture<Boolean> {
-        return TaskManager.runCompletableTask {
-            try {
-                if (!client.isClientOnline) {
-                    val event: EditEvent =
-                        EditEventImpl(mediumId, MEDIUM, MOVE, oldListId, newListId)
-                    storage.insertEditEvent(event)
-                    storage.removeItemFromList(oldListId, mediumId)
-                    storage.addItemsToList(newListId, setOf(mediumId))
-                    return@runCompletableTask true
-                }
-                val response = runBlocking { client.updateListMedia(oldListId, newListId, mediumId) }
-                val success = response.body()
-                if (success != null && success) {
-                    storage.removeItemFromList(oldListId, mediumId)
-                    storage.addItemsToList(newListId, setOf(mediumId))
-                    return@runCompletableTask true
-                }
-                return@runCompletableTask false
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-            false
-        }
-    }
-
-    fun moveMediaToList(
+    suspend fun moveMediaToList(
         oldListId: Int,
         listId: Int,
-        ids: MutableCollection<Int>
-    ): CompletableFuture<Boolean> {
-        return TaskManager.runCompletableTask {
-            try {
-                // to prevent duplicates
-                val items = storage.getListItems(listId)
-                ids.removeAll(items)
+        ids: MutableCollection<Int>,
+    ): Boolean {
+        try {
+            // to prevent duplicates
+            val items = storage.getListItems(listId)
+            ids.removeAll(items)
 
-                // adding nothing cannot fail
-                if (ids.isEmpty()) {
-                    return@runCompletableTask true
-                }
-                if (!client.isClientOnline) {
-                    val events: MutableCollection<EditEvent> = ArrayList(ids.size)
-                    for (id in ids) {
-                        val event: EditEvent = EditEventImpl(id, MEDIUM, MOVE, oldListId, listId)
-                        events.add(event)
-                    }
-                    runBlocking {
-                        storage.insertEditEvent(events)
-                    }
-                    storage.moveItemsToList(oldListId, listId, ids)
-                    return@runCompletableTask true
-                }
-                val successMove: MutableCollection<Int> = ArrayList()
-                for (id in ids) {
-                    val response = runBlocking { client.updateListMedia(oldListId, listId, id) }
-                    val success = response.body()
-                    if (success != null && success) {
-                        successMove.add(id)
-                    }
-                }
-                storage.moveItemsToList(oldListId, listId, successMove)
-                return@runCompletableTask !successMove.isEmpty()
-            } catch (e: IOException) {
-                e.printStackTrace()
-                return@runCompletableTask false
+            // adding nothing cannot fail
+            if (ids.isEmpty()) {
+                return true
             }
+            if (!client.isClientOnline) {
+                val events: MutableCollection<EditEvent> = ArrayList(ids.size)
+                for (id in ids) {
+                    val event: EditEvent = EditEventImpl(id, MEDIUM, MOVE, oldListId, listId)
+                    events.add(event)
+                }
+                storage.insertEditEvent(events)
+                storage.moveItemsToList(oldListId, listId, ids)
+                return true
+            }
+            val successMove: MutableCollection<Int> = ArrayList()
+
+            for (id in ids) {
+                val response = client.updateListMedia(oldListId, listId, id)
+                val success = response.body()
+
+                if (success != null && success) {
+                    successMove.add(id)
+                }
+            }
+            storage.moveItemsToList(oldListId, listId, successMove)
+            return !successMove.isEmpty()
+        } catch (e: IOException) {
+            e.printStackTrace()
+            return false
         }
     }
 
@@ -572,6 +543,6 @@ internal class EditService(
     }
 
     init {
-        client.addDisconnectedListener { timeDisconnected: DateTime? -> pushEditExecutor.execute { publishEditEvents() } }
+        client.addDisconnectedListener { pushEditExecutor.execute { runBlocking { publishEditEvents() } } }
     }
 }

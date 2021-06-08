@@ -17,12 +17,8 @@ import com.mytlogos.enterprise.background.room.model.*
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.ExternalListMediaJoin
 import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
 import com.mytlogos.enterprise.model.*
-import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.tools.doPartitioned
 import com.mytlogos.enterprise.tools.doPartitionedEx
-import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import java.util.*
@@ -47,32 +43,50 @@ class RoomStorage(application: Application) : DatabaseStorage {
     private val dataStructureDao: DataStructureDao
     private val toDownloadDao: ToDownloadDao
     private val editDao: EditDao
-    private var loading = false
     private val tocDao: TocDao
+    private var loading = false
+
+    init {
+        val database = AbstractDatabase.getInstance(application)
+        userDao = database.userDao()
+        newsDao = database.newsDao()
+        externalUserDao = database.externalUserDao()
+        externalMediaListDao = database.externalMediaListDao()
+        mediaListDao = database.mediaListDao()
+        mediumDao = database.mediumDao()
+        partDao = database.partDao()
+        episodeDao = database.episodeDao()
+        toDownloadDao = database.toDownloadDao()
+        mediumInWaitDao = database.roomMediumInWaitDao()
+        roomDanglingDao = database.roomDanglingDao()
+        notificationDao = database.notificationDao()
+        mediumProgressDao = database.mediumProgressDao()
+        failedEpisodesDao = database.failedEpisodesDao()
+        dataStructureDao = database.dataStructureDao()
+        editDao = database.editDao()
+        tocDao = database.tocDao()
+        userLiveData = userDao.user
+    }
 
     override fun getUser(): LiveData<User?> {
         return userLiveData
     }
 
-    override fun getUserNow(): User? {
+    override suspend fun getUserNow(): User? {
         val converter = RoomConverter()
-        return converter.convert(runBlocking { userDao.getUserNow() })
+        return converter.convert(userDao.getUserNow())
     }
 
     override fun getHomeStats(): LiveData<HomeStats> {
         return userDao.homeStats
     }
 
-    override fun deleteAllUser() {
+    fun deleteAllUser() {
         TaskManager.runTaskSuspend { userDao.deleteAllUser() }
     }
 
     override fun getPersister(repository: Repository, loadedData: LoadData): ClientModelPersister {
         return RoomPersister(loadedData)
-    }
-
-    override fun deleteOldNews() {
-        TaskManager.runTaskSuspend { newsDao.deleteOldNews() }
     }
 
     override fun isLoading(): Boolean {
@@ -98,138 +112,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return data
     }
 
-    override fun getNews(): LiveData<PagedList<News>> {
-        return LivePagedListBuilder(newsDao.news, 50).build()
-    }
-
-    override fun getSavedEpisodes(): List<Int> {
-        return runBlocking { episodeDao.getAllSavedEpisodes() }
-    }
-
-    override fun getToDeleteEpisodes(): List<Int> {
-        return runBlocking { episodeDao.getAllToDeleteLocalEpisodes() }
-    }
-
-    override fun updateSaved(episodeId: Int, saved: Boolean) = runBlocking {
-        episodeDao.updateSaved(episodeId, saved)
-    }
-
-    override fun updateSaved(episodeIds: Collection<Int>, saved: Boolean) = runBlocking {
-        episodeDao.updateSaved(episodeIds, saved)
-        if (saved) {
-            failedEpisodesDao.deleteBulkPerId(episodeIds)
-        }
-    }
-
-    override fun getAllToDownloads(): List<ToDownload> {
-        return RoomConverter().convertRoomToDownload(runBlocking { toDownloadDao.getAll() })
-    }
-
-    override fun removeToDownloads(toDownloads: Collection<ToDownload>) {
-        runBlocking {
-            for (toDownload in RoomConverter().convertToDownload(toDownloads)) {
-                toDownloadDao.deleteToDownload(toDownload.mediumId ?: 0,
-                    toDownload.listId ?: 0,
-                    toDownload.externalListId ?: 0)
-            }
-        }
-    }
-
     override fun getListItems(listId: Int): Collection<Int> {
         return runBlocking { mediaListDao.getListItems(listId) }
     }
 
-    override fun getLiveListItems(listId: Int): LiveData<MutableList<Int>> {
-        return mediaListDao.getLiveListItems(listId)
-    }
-
     override fun getExternalListItems(externalListId: Int): Collection<Int> {
         return runBlocking { externalMediaListDao.getExternalListItems(externalListId) }
-    }
-
-    override fun getLiveExternalListItems(externalListId: Int): LiveData<MutableList<Int>> {
-        return externalMediaListDao.getLiveExternalListItems(externalListId)
-    }
-
-    override fun getDownloadableEpisodes(mediumId: Int, limit: Int): List<Int> {
-        return runBlocking { episodeDao.getDownloadableEpisodes(mediumId, limit) }
-    }
-
-    override fun getDownloadableEpisodes(mediaIds: Collection<Int>): List<Int> {
-        return runBlocking { episodeDao.getDownloadableEpisodes(mediaIds) }
-    }
-
-    override fun getDisplayEpisodes(filter: EpisodeViewModel.Filter): LiveData<PagedList<DisplayRelease>> {
-        val factory: DataSource.Factory<Int, DisplayRelease> = if (filter.latestOnly) {
-            episodeDao.getDisplayEpisodesLatestOnly(
-                filter.saved,
-                filter.read,
-                filter.medium,
-                filter.minIndex,
-                filter.maxIndex,
-                filter.filterListIds,
-                filter.filterListIds.isEmpty()
-            )
-        } else {
-            episodeDao.getDisplayEpisodes(
-                filter.saved,
-                filter.read,
-                filter.medium,
-                filter.minIndex,
-                filter.maxIndex,
-                filter.filterListIds,
-                filter.filterListIds.isEmpty()
-            )
-        }
-        return LivePagedListBuilder(factory, 50).build()
-    }
-
-    override fun getDisplayEpisodesGrouped(
-        saved: Int,
-        medium: Int,
-    ): LiveData<PagedList<DisplayEpisode>> {
-        val converter = RoomConverter()
-        return LivePagedListBuilder(
-            episodeDao.getDisplayEpisodesGrouped(saved, medium).map { episode: RoomDisplayEpisode ->
-                converter.convertRoomEpisodeNonNull(
-                    episode
-                )
-            },
-            50
-        ).build()
-    }
-
-    override fun getLists(): LiveData<MutableList<MediaList>> {
-        val liveData = MediatorLiveData<MutableList<MediaList>>()
-        liveData.addSource(mediaListDao.listViews) { mediaLists: List<MediaList>? ->
-            val set = HashSet<MediaList>()
-            if (liveData.value != null) {
-                set.addAll(liveData.value!!)
-            }
-            set.addAll(mediaLists!!)
-            liveData.setValue(ArrayList(set))
-        }
-        liveData.addSource(externalMediaListDao.externalListViews) { roomMediaLists: List<RoomExternListView> ->
-            val mediaLists: MutableList<MediaList> = ArrayList()
-            for (list in roomMediaLists) {
-                val mediaList = list.mediaList
-                mediaLists.add(ExternalMediaList(
-                    mediaList.uuid,
-                    mediaList.externalListId,
-                    mediaList.name,
-                    mediaList.medium,
-                    mediaList.url,
-                    list.size
-                ))
-            }
-            val set = HashSet<MediaList>()
-            if (liveData.value != null) {
-                set.addAll(liveData.value!!)
-            }
-            set.addAll(mediaLists)
-            liveData.setValue(ArrayList(set))
-        }
-        return liveData
     }
 
     override fun insertDanglingMedia(mediaIds: MutableCollection<Int>) {
@@ -246,104 +134,22 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
     }
 
-    override fun removeDanglingMedia(mediaIds: Collection<Int>) {
-        if (mediaIds.isEmpty()) {
-            return
-        }
-        val converter = RoomConverter()
-        runBlocking {
-            roomDanglingDao.deleteBulk(converter.convertToDangling(mediaIds))
-        }
-    }
-
-    override fun getListSetting(id: Int, isExternal: Boolean): LiveData<out MediaListSetting> {
-        return if (isExternal) {
-            externalMediaListDao.getExternalListSetting(id)
-        } else mediaListDao.getListSettings(id)
-    }
-
     override suspend fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting {
         return if (isExternal) {
             externalMediaListDao.getExternalListSettingNow(id)
         } else mediaListDao.getListSettingsNow(id)
     }
 
-    override fun updateToDownload(add: Boolean, toDownload: ToDownload) = runBlocking {
-        if (add) {
-            toDownloadDao.insert(RoomConverter().convert(toDownload))
-        } else {
-            toDownloadDao.deleteToDownload(
-                toDownload.mediumId,
-                toDownload.listId,
-                toDownload.externalListId
-            )
-        }
-    }
-
-    override fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
-        return mediumDao.getMediumSettings(mediumId)
-    }
-
-    override fun getMediumSettingsNow(mediumId: Int): MediumSetting {
-        return runBlocking { mediumDao.getMediumSettingsNow(mediumId) }
-    }
-
-    override fun getMediumItems(
-        listId: Int,
-        isExternal: Boolean,
-    ): LiveData<MutableList<MediumItem>> {
-        return if (isExternal) {
-            mediumDao.getExternalListMedia(listId)
-        } else {
-            mediumDao.getListMedia(listId)
-        }
-    }
-
-    override fun countSavedEpisodes(mediumId: Int): Int {
-        return runBlocking { episodeDao.countSavedEpisodes(mediumId) }
-    }
-
-    override fun getSavedEpisodes(mediumId: Int): List<Int> {
-        return runBlocking { episodeDao.getSavedEpisodes(mediumId) }
-    }
-
-    override fun getEpisode(episodeId: Int): Episode {
-        val converter = RoomConverter()
-        val roomEpisode = runBlocking { episodeDao.getEpisode(episodeId) }
-        return converter.convert(roomEpisode)
+    override suspend fun getMediumSettingsNow(mediumId: Int): MediumSetting {
+        return mediumDao.getMediumSettingsNow(mediumId)
     }
 
     override fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
         return runBlocking { episodeDao.getSimpleEpisodes(ids) }
     }
 
-    override fun updateProgress(episodeIds: Collection<Int>, progress: Float) = runBlocking {
+    override suspend fun updateProgress(episodeIds: Collection<Int>, progress: Float) {
         episodeDao.updateProgress(episodeIds, progress, DateTime.now())
-    }
-
-    override fun getMediaInWaitBy(
-        filter: String?,
-        mediumFilter: Int,
-        hostFilter: String?,
-        sortings: Sortings,
-    ): Flow<PagingData<MediumInWait>> {
-        var sortValue = sortings.sortValue
-        val query = if (sortValue < 0) {
-            sortValue = -sortValue
-            mediumInWaitDao::getByDesc
-        } else {
-            mediumInWaitDao::getByAsc
-        }
-        val converter = RoomConverter()
-        return Pager(
-            PagingConfig(50),
-            pagingSourceFactory = { query(
-                sortValue,
-                filter,
-                mediumFilter,
-                hostFilter
-            )}
-        ).flow.map { it.map(converter::convert) }
     }
 
     override fun getReadTodayEpisodes(): LiveData<PagedList<ReadEpisode>> {
@@ -356,36 +162,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
         ).build()
     }
 
-    override fun getInternLists(): LiveData<MutableList<MediaList>> {
-        return mediaListDao.listViews
-    }
-
-    override fun addItemsToList(listId: Int, ids: Collection<Int>) {
+    override suspend fun addItemsToList(listId: Int, ids: Collection<Int>) {
         val joins: MutableList<MediaListMediaJoin> = ArrayList()
         for (id in ids) {
             joins.add(MediaListMediaJoin(listId, id))
         }
-        runBlocking {
-            mediaListDao.addJoin(joins)
-        }
-    }
-
-    override fun getSimilarMediaInWait(mediumInWait: MediumInWait): LiveData<MutableList<MediumInWait>> {
-        return mediumInWaitDao.getSimilar(mediumInWait.title, mediumInWait.medium)
-    }
-
-    override fun getMediaSuggestions(
-        title: String,
-        medium: Int,
-    ): LiveData<MutableList<SimpleMedium>> {
-        return mediumDao.getSuggestions(title, medium)
-    }
-
-    override fun getMediaInWaitSuggestions(
-        title: String,
-        medium: Int,
-    ): LiveData<MutableList<MediumInWait>> {
-        return mediumInWaitDao.getSuggestions(title, medium)
+        mediaListDao.addJoin(joins)
     }
 
     override fun getListSuggestion(name: String): LiveData<MutableList<MediaList>> {
@@ -399,31 +181,20 @@ class RoomStorage(application: Application) : DatabaseStorage {
         val downloadableEpisodeCount = episodeDao.countDownloadableRows()
         val downloadAbles = MediatorLiveData<Boolean>()
         downloadAbles.addSource(toDownloadCount) { input: Int ->
-            val previous = getOr(previousDownloadCount.value, 0)
-            val current = getOr(input, 0)
-            previousDownloadCount.value = current
-            downloadAbles.postValue(current > previous)
+            val previous = previousDownloadCount.value ?: 0
+            previousDownloadCount.value = input
+            downloadAbles.postValue(input > previous)
         }
         downloadAbles.addSource(downloadableEpisodeCount) { input: Int ->
-            val previous = getOr(previousEpisodeCount.value, 0)
-            val current = getOr(input, 0)
-            previousEpisodeCount.value = current
-            downloadAbles.postValue(current > previous)
+            val previous = previousEpisodeCount.value ?: 0
+            previousEpisodeCount.value = input
+            downloadAbles.postValue(input > previous)
         }
         return downloadAbles
     }
 
-    override fun clearMediaInWait() = runBlocking {
+    fun clearMediaInWait() = runBlocking {
         mediumInWaitDao.clear()
-    }
-
-    override fun deleteMediaInWait(toDelete: Collection<MediumInWait>) = runBlocking {
-        val converter = RoomConverter()
-        mediumInWaitDao.deleteBulk(converter.convertMediaInWait(toDelete))
-    }
-
-    override fun getAllDanglingMedia(): LiveData<MutableList<MediumItem>> {
-        return roomDanglingDao.all
     }
 
     override fun removeItemFromList(listId: Int, mediumId: Int) = runBlocking {
@@ -434,16 +205,15 @@ class RoomStorage(application: Application) : DatabaseStorage {
         mediaListDao.removeJoin(listId, mediumId)
     }
 
-    override fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>) =
-        runBlocking {
-            val oldJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
-            val newJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
-            for (id in ids) {
-                oldJoins.add(MediaListMediaJoin(oldListId, id))
-                newJoins.add(MediaListMediaJoin(newListId, id))
-            }
-            mediaListDao.moveJoins(oldJoins, newJoins)
+    override suspend fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>) {
+        val oldJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
+        val newJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
+        for (id in ids) {
+            oldJoins.add(MediaListMediaJoin(oldListId, id))
+            newJoins.add(MediaListMediaJoin(newListId, id))
         }
+        mediaListDao.moveJoins(oldJoins, newJoins)
+    }
 
     override fun getExternalUser(): LiveData<PagedList<ExternalUser>> {
         return LivePagedListBuilder(externalUserDao.all, 50).build()
@@ -471,38 +241,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
         clearMediaInWait()
     }
 
-    override fun updateFailedDownload(episodeId: Int) = runBlocking {
-        val failedEpisode = failedEpisodesDao.getFailedEpisode(episodeId)
-        var failedCount = 0
-        if (failedEpisode != null) {
-            failedCount = failedEpisode.failCount
-        }
-        failedCount++
-        failedEpisodesDao.insert(RoomFailedEpisode(episodeId, failedCount))
-    }
-
-    override fun getFailedEpisodes(episodeIds: Collection<Int>): List<FailedEpisode> {
-        return runBlocking { failedEpisodesDao.getFailedEpisodes(episodeIds) }
-    }
-
-    override fun addNotification(notification: NotificationItem) = runBlocking {
-        notificationDao.insert(RoomNotification(
-            notification.title,
-            notification.description,
-            notification.dateTime
-        ))
-    }
-
-    override fun getSimpleEpisode(episodeId: Int): SimpleEpisode {
-        return runBlocking { episodeDao.getSimpleEpisode(episodeId) }
-    }
-
     override fun getSimpleMedium(mediumId: Int): SimpleMedium {
         return runBlocking { mediumDao.getSimpleMedium(mediumId) }
-    }
-
-    override fun clearFailEpisodes() = runBlocking {
-        failedEpisodesDao.clearAll()
     }
 
     override fun insertEditEvent(event: EditEvent) = runBlocking {
@@ -647,36 +387,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
     }
 
-    override fun updateDataStructure(mediaIds: List<Int>, partIds: List<Int>) = runBlocking {
-        for (mediumId in mediaIds) {
-            val mediumPartIds = dataStructureDao.getPartJoin(mediumId)
-            val availablePartIds = partDao.getPartsIds(mediumId)
-            availablePartIds.removeAll(mediumPartIds)
-            if (availablePartIds.isNotEmpty()) {
-                partDao.deletePerId(availablePartIds)
-            }
-        }
-        for (partId in partIds) {
-            val episodePartIds = dataStructureDao.getEpisodeJoin(partId)
-            val availableEpisodeIds = episodeDao.getEpisodeIds(partId)
-            availableEpisodeIds.removeAll(episodePartIds)
-            if (availableEpisodeIds.isNotEmpty()) {
-                try {
-                    doPartitionedEx(availableEpisodeIds) { ids: List<Int> ->
-                        runBlocking { episodeDao.deletePerId(ids) }
-                        true
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
-
-    private fun <E> getOr(value: E?, defaultValue: E): E {
-        return value ?: defaultValue
-    }
-
     private inner class RoomPersister(private val loadedData: LoadData) : ClientModelPersister {
         private val generator: LoadWorkGenerator = LoadWorkGenerator(loadedData)
 
@@ -725,8 +435,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
 
         override fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister {
-            val uuid = getUserNow()!!.uuid
-            return persistMediaLists(mediaLists.stream().map { value: ClientUserList ->
+            val uuid = runBlocking { getUserNow()!!.uuid }
+            return persistMediaLists(mediaLists.map { value: ClientUserList ->
                 ClientMediaList(
                     uuid,
                     value.id,
@@ -734,7 +444,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     value.medium,
                     null
                 )
-            }.collect(Collectors.toList()))
+            })
         }
 
         override fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister {
@@ -1153,27 +863,5 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun finish() {}
 
-    }
-
-    init {
-        val database = AbstractDatabase.getInstance(application)
-        userDao = database.userDao()
-        newsDao = database.newsDao()
-        externalUserDao = database.externalUserDao()
-        externalMediaListDao = database.externalMediaListDao()
-        mediaListDao = database.mediaListDao()
-        mediumDao = database.mediumDao()
-        partDao = database.partDao()
-        episodeDao = database.episodeDao()
-        toDownloadDao = database.toDownloadDao()
-        mediumInWaitDao = database.roomMediumInWaitDao()
-        roomDanglingDao = database.roomDanglingDao()
-        notificationDao = database.notificationDao()
-        mediumProgressDao = database.mediumProgressDao()
-        failedEpisodesDao = database.failedEpisodesDao()
-        dataStructureDao = database.dataStructureDao()
-        editDao = database.editDao()
-        tocDao = database.tocDao()
-        userLiveData = userDao.user
     }
 }

@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.RepositoryImpl
+import com.mytlogos.enterprise.background.repository.UserRepository
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.viewmodel.AddListViewModel
@@ -68,21 +69,21 @@ class AddList : BaseFragment() {
             imageMedium.isChecked -> medium = medium or MediumType.IMAGE
             videoMedium.isChecked -> medium = medium or MediumType.VIDEO
         }
-        val userNow = (RepositoryImpl.instance as RepositoryImpl).getUserNow()
-
-        if (userNow == null) {
-            showToast("User not authenticated")
-            return
-        }
-
-        val mediaList = MediaList(
-            userNow.uuid,
-            0,
-            name,
-            medium,
-            0
-        )
         lifecycleScope.launch {
+            val userNow = (RepositoryImpl.instance as RepositoryImpl).getUserNow()
+
+            if (userNow == null) {
+                showToast("User not authenticated")
+                return@launch
+            }
+
+            val mediaList = MediaList(
+                userNow.uuid,
+                0,
+                name,
+                medium,
+                0
+            )
             mainActivity.showLoading(true)
 
             if (mViewModel.exists(name)) {

@@ -53,6 +53,22 @@ class MediumRepository private constructor(application: Application) {
         ).flow
     }
 
+    fun getMediumSettings(mediumId: Int): LiveData<MediumSetting> {
+        return mediumDao.getMediumSettings(mediumId)
+    }
+
+    fun getMediumItems(
+        listId: Int,
+        isExternal: Boolean,
+    ): LiveData<MutableList<MediumItem>> {
+        return if (isExternal) {
+            mediumDao.getExternalListMedia(listId)
+        } else {
+            mediumDao.getListMedia(listId)
+        }
+    }
+
+
     suspend fun updateMedium(settings: MediumSetting): String {
         return (RepositoryImpl.instance as RepositoryImpl).editService.updateMedium(settings)
     }

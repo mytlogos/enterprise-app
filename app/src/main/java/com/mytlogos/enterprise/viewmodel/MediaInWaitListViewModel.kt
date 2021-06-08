@@ -4,11 +4,13 @@ import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.asFlow
 import androidx.paging.PagingData
+import com.mytlogos.enterprise.background.repository.MediumInWaitRepository
 import com.mytlogos.enterprise.model.MediumInWait
 import com.mytlogos.enterprise.tools.Sortings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.runBlocking
 import java.io.IOException
 import kotlin.math.max
 
@@ -17,10 +19,12 @@ class MediaInWaitListViewModel(application: Application) :
     SortableViewModel,
     MediumFilterableViewModel {
 
+    private val mediumInWaitRepository by lazy { MediumInWaitRepository.getInstance(application) }
+
     @ExperimentalCoroutinesApi
     val mediaInWait: Flow<PagingData<MediumInWait>> by lazy {
         filterSortLiveData.asFlow().flatMapLatest {
-            return@flatMapLatest repository.getMediaInWaitBy(
+            return@flatMapLatest mediumInWaitRepository.getMediaInWaitBy(
                 it.titleFilter,
                 it.mediumFilter,
                 it.hostFilter,
@@ -33,7 +37,7 @@ class MediaInWaitListViewModel(application: Application) :
 
     @Throws(IOException::class)
     fun loadMediaInWait() {
-        repository.loadMediaInWaitSync()
+        runBlocking { mediumInWaitRepository.loadMediaInWaitSync() }
     }
 
     override fun setSort(sort: Sortings) {

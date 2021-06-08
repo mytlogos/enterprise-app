@@ -10,7 +10,7 @@ internal interface ListMediaApi {
     fun getListMedia(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientListQuery>
 
     @POST
-    fun addListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun addListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 
     @HTTP(method = "DELETE", hasBody = true)
     suspend fun deleteListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
