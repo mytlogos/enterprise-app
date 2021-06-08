@@ -35,7 +35,7 @@ interface ClientModelPersister {
     fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister
     fun persistExternalUsers(externalUsers: List<ClientExternalUser>): ClientModelPersister
     fun persistExternalUsersPure(externalUsers: List<ClientExternalUserPure>): ClientModelPersister {
-        val unpure = externalUsers.stream().map { value: ClientExternalUserPure ->
+        val unpure = externalUsers.map { value: ClientExternalUserPure ->
             ClientExternalUser(
                 value.localUuid,
                 value.getUuid()!!,
@@ -43,7 +43,7 @@ interface ClientModelPersister {
                 value.type,
                 arrayOf()
             )
-        }.collect(Collectors.toList())
+        }
         return persistExternalUsers(unpure)
     }
 
@@ -66,7 +66,6 @@ interface ClientModelPersister {
     fun persistParts(parts: Collection<ClientPart>): ClientModelPersister
     fun persistPartsPure(parts: Collection<ClientPartPure>): ClientModelPersister {
         val unPureParts = parts
-            .stream()
             .map { part: ClientPartPure ->
                 ClientPart(
                     part.mediumId,
@@ -77,7 +76,6 @@ interface ClientModelPersister {
                     null
                 )
             }
-            .collect(Collectors.toList())
         persistParts(unPureParts)
         return this
     }

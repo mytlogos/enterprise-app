@@ -582,8 +582,7 @@ class DownloadWorker(
         fun enqueueDownloadTask(context: Context, mediumId: Int, episodeIds: Collection<Int>) {
             val data = Data.Builder()
                 .putInt(Companion.mediumId, mediumId)
-                .putIntArray(Companion.episodeIds, episodeIds.stream().mapToInt { obj: Int -> obj }
-                    .toArray())
+                .putIntArray(Companion.episodeIds, episodeIds.toIntArray())
                 .build()
 
             val oneTimeWorkRequest = getWorkRequest(data)

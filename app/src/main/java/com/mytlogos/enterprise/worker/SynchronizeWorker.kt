@@ -25,7 +25,6 @@ import org.joda.time.DateTime
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.ExecutionException
-import java.util.stream.Collectors
 
 @Suppress("BlockingMethodInNonBlockingContext")
 class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
@@ -304,7 +303,6 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         repository: Repository,
     ) {
         val unPureParts = parts
-            .stream()
             .map { part: ClientPartPure ->
                 ClientPart(
                     part.mediumId,
@@ -314,8 +312,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                     part.partialIndex,
                     null
                 )
-            }
-            .collect(Collectors.toList())
+            }.toMutableList()
         persistParts(unPureParts, client, persister, repository)
     }
 
@@ -360,7 +357,6 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         repository: Repository,
     ) {
         val unPure = episodes
-            .stream()
             .map { part: ClientEpisodePure ->
                 ClientEpisode(
                     part.id,
@@ -372,8 +368,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                     part.readDate,
                     arrayOf()
                 )
-            }
-            .collect(Collectors.toList())
+            }.toMutableList()
         persistEpisodes(unPure, client, persister, repository)
     }
 
@@ -447,7 +442,6 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         repository: Repository,
     ) {
         val unPure = externalMediaLists
-            .stream()
             .map { part: ClientExternalMediaListPure ->
                 ClientExternalMediaList(
                     part.uuid,
@@ -456,8 +450,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                     part.medium,
                     part.url, IntArray(0)
                 )
-            }
-            .collect(Collectors.toList())
+            }.toMutableList()
         persistExternalLists(unPure, client, persister, repository)
     }
 

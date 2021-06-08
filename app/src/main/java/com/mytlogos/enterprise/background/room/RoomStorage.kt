@@ -416,7 +416,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (episode in list) {
                 loadedData.episodes.add(episode.episodeId)
             }
-            persistReleases(filteredEpisodes.releases.stream().map { value: ClientEpisodeRelease ->
+            persistReleases(filteredEpisodes.releases.map { value: ClientEpisodeRelease ->
                 ClientRelease(
                     value.episodeId,
                     value.title,
@@ -424,7 +424,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     value.isLocked,
                     value.releaseDate
                 )
-            }.collect(Collectors.toList()))
+            })
             return this
         }
 

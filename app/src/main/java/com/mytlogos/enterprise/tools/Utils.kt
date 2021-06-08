@@ -190,9 +190,7 @@ suspend fun <T : Any> doPartitionedRethrowSuspend(
 fun <T> finishAll(futuresList: Collection<CompletableFuture<T>>): CompletableFuture<List<T>> {
     val allFuturesResult =
         CompletableFuture.allOf(*futuresList.toTypedArray<CompletableFuture<*>>())
-    return allFuturesResult.thenApply {
-        futuresList.stream().map { obj: CompletableFuture<T> -> obj.join() }
-            .collect(Collectors.toList())
+    return allFuturesResult.thenApply { futuresList.map { obj: CompletableFuture<T> -> obj.join() }
     }
 }
 
