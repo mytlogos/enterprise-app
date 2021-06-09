@@ -185,7 +185,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
                         //  storageHomeStatsLiveData does nothing
 //                    new Handler(Looper.getMainLooper()).post(() -> );
                         // check first login
-                        TaskManager.runTask {
+                        TaskManager.runTaskSuspend {
                             try {
                                 // ask the database what data it has, to check if it needs to be loaded from the server
                                 instance.loadLoadedData()

@@ -7,17 +7,17 @@ import retrofit2.http.*
 
 internal interface EpisodeApi {
     @GET
-    fun getEpisode(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientEpisode>
+    suspend fun  getEpisode(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<ClientEpisode>
 
     @GET
     suspend fun getEpisodes(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<MutableList<ClientEpisode>>
 
     @POST
-    fun addEpisode(@Url url: String, @Body body: MutableMap<String, Any?>): Call<ClientEpisode>
+    suspend fun  addEpisode(@Url url: String, @Body body: MutableMap<String, Any?>): Response<ClientEpisode>
 
     @DELETE
-    fun deleteEpisode(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun  deleteEpisode(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 
     @PUT
-    fun updateEpisode(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun  updateEpisode(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 }

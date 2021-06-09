@@ -12,13 +12,13 @@ internal interface ListApi {
     suspend fun getList(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<ClientListQuery>
 
     @GET
-    fun getLists(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientMultiListQuery>
+    suspend fun  getLists(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<ClientMultiListQuery>
 
     @POST
     suspend fun addList(@Url url: String, @Body body: MutableMap<String, Any?>): Response<ClientMediaList>
 
     @DELETE
-    fun deleteList(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun  deleteList(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 
     @PUT
     suspend fun updateList(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>

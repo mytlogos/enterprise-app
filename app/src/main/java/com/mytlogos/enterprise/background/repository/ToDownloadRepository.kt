@@ -27,7 +27,7 @@ class ToDownloadRepository private constructor(application: Application) {
         return RoomConverter().convertRoomToDownload(toDownloadDao.getAll())
     }
 
-    fun addToDownload(toDownload: ToDownload) {
+    suspend fun addToDownload(toDownload: ToDownload) {
         persister.persist(toDownload).finish()
     }
 

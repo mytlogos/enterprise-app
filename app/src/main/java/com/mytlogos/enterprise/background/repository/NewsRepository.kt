@@ -29,7 +29,7 @@ class NewsRepository private constructor(application: Application) {
         TaskManager.runTaskSuspend { newsDao.deleteOldNews() }
     }
 
-    fun refreshNews(latest: DateTime?) {
+    suspend fun refreshNews(latest: DateTime?) {
         val news = checkAndGetBody(
             client.getNews(latest, null)
         )

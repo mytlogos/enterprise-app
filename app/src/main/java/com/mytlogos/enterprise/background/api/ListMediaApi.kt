@@ -7,7 +7,7 @@ import retrofit2.http.*
 
 internal interface ListMediaApi {
     @GET
-    fun getListMedia(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Call<ClientListQuery>
+    suspend fun  getListMedia(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<ClientListQuery>
 
     @POST
     suspend fun addListMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>

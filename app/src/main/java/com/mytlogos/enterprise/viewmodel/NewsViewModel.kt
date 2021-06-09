@@ -9,6 +9,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.paging.PagedList
 import com.mytlogos.enterprise.background.TaskManager.Companion.runTask
+import com.mytlogos.enterprise.background.TaskManager.Companion.runTaskSuspend
 import com.mytlogos.enterprise.background.repository.NewsRepository
 import com.mytlogos.enterprise.model.News
 import org.joda.time.DateTime
@@ -28,7 +29,7 @@ class NewsViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refresh(latest: DateTime?): LiveData<Boolean> {
-        runTask {
+        runTaskSuspend {
             try {
                 newsRepository.refreshNews(latest)
             } catch (e: Exception) {

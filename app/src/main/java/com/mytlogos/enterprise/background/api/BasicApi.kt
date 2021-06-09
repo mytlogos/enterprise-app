@@ -8,10 +8,10 @@ import retrofit2.http.*
 
 internal interface BasicApi {
     @GET
-    fun checkLogin(@Url url: String): Call<ClientSimpleUser>
+    suspend fun  checkLogin(@Url url: String): Response<ClientSimpleUser>
 
     @GET("{start}/dev")
-    fun checkDev(@Path(value = "start", encoded = true) url: String): Call<Boolean>
+    suspend fun  checkDev(@Path(value = "start", encoded = true) url: String): Response<Boolean>
 
     // start ends with an slash (/), so no need to use it again
     @POST("{start}/login")

@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.joda.time.DateTime
@@ -113,7 +114,7 @@ internal class ServerDiscovery {
                 .build()
 
             val apiImpl = retrofit.create(BasicApi::class.java)
-            val devResponse = apiImpl.checkDev("api").execute()
+            val devResponse = runBlocking { apiImpl.checkDev("api") }
             val isDev = devResponse.body() ?: return null
 
             return Server(ipv4, 3000, true, isDev)

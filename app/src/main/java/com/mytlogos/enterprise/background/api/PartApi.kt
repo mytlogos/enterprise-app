@@ -11,17 +11,17 @@ internal interface PartApi {
     suspend fun getPart(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<MutableList<ClientPart>>
 
     @GET("{start}/items")
-    fun getPartItems(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<Map<String, List<Int>>>
+    suspend fun  getPartItems(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Response<Map<String, List<Int>>>
 
     @GET("{start}/releases")
-    fun getPartReleases(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<Map<String, List<ClientSimpleRelease>>>
+    suspend fun  getPartReleases(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Response<Map<String, List<ClientSimpleRelease>>>
 
     @POST
-    fun addPart(@Url url: String, @Body body: MutableMap<String, Any?>): Call<ClientPart>
+    suspend fun  addPart(@Url url: String, @Body body: MutableMap<String, Any?>): Response<ClientPart>
 
     @DELETE
-    fun deletePart(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun  deletePart(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 
     @PUT
-    fun updatePart(@Url url: String, @Body body: MutableMap<String, Any?>): Call<Boolean>
+    suspend fun  updatePart(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
 }

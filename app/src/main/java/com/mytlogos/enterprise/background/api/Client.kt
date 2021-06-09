@@ -106,8 +106,8 @@ class Client private constructor(private val identificator: NetworkIdentificator
     }
 
     @Throws(IOException::class)
-    fun checkLogin(): Response<ClientSimpleUser> {
-        return query(BasicApi::class.java) { apiImpl: BasicApi, url: String -> apiImpl.checkLogin(url) }
+    suspend fun checkLogin(): Response<ClientSimpleUser> {
+        return querySuspend(BasicApi::class.java) { apiImpl: BasicApi, url: String -> apiImpl.checkLogin(url) }
     }
 
     /**
@@ -158,12 +158,13 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * Get current User.
      * API: GET /api/user
      */
-    @get:Throws(IOException::class)
-    val user: Response<ClientUser>
-        get() {
-            val body: MutableMap<String, Any?> = userAuthenticationMap()
-            return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getUser(url, body) }
+    @Throws(IOException::class)
+    suspend fun getUser(): Response<ClientUser> {
+        val body: MutableMap<String, Any?> = userAuthenticationMap()
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String ->
+            apiImpl.getUser(url, body)
         }
+    }
 
     /**
      * Update current User.
@@ -181,32 +182,33 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: POST /api/user/logout
      */
     @Throws(IOException::class)
-    fun logout(): Response<Boolean> {
+    suspend fun logout(): Response<Boolean> {
         val body: MutableMap<String, Any?> = userAuthenticationMap()
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.logout(url, body) }
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.logout(url, body) }
     }
 
     /**
      * Get Lists of current User.
      * API: GET /api/user/lists
      */
-    @get:Throws(IOException::class)
-    val lists: Response<List<ClientMediaList>>
-        get() {
-            val body: MutableMap<String, Any?> = userAuthenticationMap()
-            return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getLists(url, body) }
+    @Throws(IOException::class)
+    suspend fun getLists(): Response<List<ClientMediaList>> {
+        val body: MutableMap<String, Any?> = userAuthenticationMap()
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String ->
+            apiImpl.getLists(url,  body)
         }
+    }
 
     /**
      * Request adding a toc.
      * API: POST /api/user/toc
      */
     @Throws(IOException::class)
-    fun addToc(mediumId: Int, link: String?): Response<Boolean> {
+    suspend fun addToc(mediumId: Int, link: String?): Response<Boolean> {
         val body = userAuthenticationMap()
         body["mediumId"] = mediumId
         body["toc"] = link
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.addToc(url, body) }
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.addToc(url, body) }
     }
 
     /**
@@ -214,10 +216,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/toc
      */
     @Throws(IOException::class)
-    fun getMediumTocs(mediumIds: Collection<Int?>?): Response<List<ClientToc>> {
+    suspend fun getMediumTocs(mediumIds: Collection<Int?>?): Response<List<ClientToc>> {
         val body = userAuthenticationMap()
         body["mediumId"] = mediumIds
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getToc(url, body) }
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getToc(url, body) }
     }
 
     /**
@@ -225,33 +227,34 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: DELETE /api/user/toc
      */
     @Throws(IOException::class)
-    fun removeToc(mediumId: Int, link: String?): Response<Boolean> {
+    suspend fun removeToc(mediumId: Int, link: String?): Response<Boolean> {
         val body = userAuthenticationMap()
         body["mediumId"] = mediumId
         body["link"] = link
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.removeToc(url, body) }
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.removeToc(url, body) }
     }
 
     /**
      * Get Stats about current User Data.
      * API: GET /api/user/stats
      */
-    @get:Throws(IOException::class)
-    val stats: Response<ClientStat>
-        get() {
-            val body: MutableMap<String, Any?> = userAuthenticationMap()
-            return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getStats(url, body) }
+    @Throws(IOException::class)
+    suspend fun getStats(): Response<ClientStat> {
+        val body: MutableMap<String, Any?> = userAuthenticationMap()
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String ->
+            apiImpl.getStats(url, body)
         }
+    }
 
     /**
      * Get New Data since lastSync.
      * API: GET /api/user/new
      */
     @Throws(IOException::class)
-    fun getNew(lastSync: DateTime?): Response<ClientChangedEntities> {
+    suspend fun getNew(lastSync: DateTime?): Response<ClientChangedEntities> {
         val body = userAuthenticationMap()
         body["date"] = lastSync
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getNew(url, body) }
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getNew(url, body) }
     }
 
     /**
@@ -273,7 +276,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/news
      */
     @Throws(IOException::class)
-    fun getNews(from: DateTime?, to: DateTime?): Response<List<ClientNews>> {
+    suspend fun getNews(from: DateTime?, to: DateTime?): Response<List<ClientNews>> {
         val body = userAuthenticationMap()
         if (from != null) {
             body["from"] = from
@@ -281,7 +284,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
         if (to != null) {
             body["to"] = to
         }
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getNews(url, body) }
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getNews(url, body) }
     }
 
     /**
@@ -289,12 +292,12 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/news
      */
     @Throws(IOException::class)
-    fun getNews(newsIds: Collection<Int?>?): Response<List<ClientNews>> {
+    suspend fun getNews(newsIds: Collection<Int?>?): Response<List<ClientNews>> {
         val body = userAuthenticationMap()
         if (newsIds != null) {
             body["newsId"] = newsIds
         }
-        return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getNews(url, body) }
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getNews(url, body) }
     }
 
     /**
@@ -302,10 +305,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/externalUser
      */
     @Throws(IOException::class)
-    fun getExternalUser(externalUuid: String?): Response<ClientExternalUser> {
+    suspend fun getExternalUser(externalUuid: String?): Response<ClientExternalUser> {
         val body = userAuthenticationMap()
         body["externalUuid"] = externalUuid
-        return query(ExternalUserApi::class.java) { apiImpl: ExternalUserApi, url: String -> apiImpl.getExternalUser(url, body) }
+        return querySuspend(ExternalUserApi::class.java) { apiImpl: ExternalUserApi, url: String -> apiImpl.getExternalUser(url, body) }
     }
 
     /**
@@ -313,10 +316,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/externalUser
      */
     @Throws(IOException::class)
-    fun getExternalUser(externalUuid: Collection<String?>?): Response<List<ClientExternalUser>> {
+    suspend fun getExternalUser(externalUuid: Collection<String?>?): Response<List<ClientExternalUser>> {
         val body = userAuthenticationMap()
         body["externalUuid"] = externalUuid
-        return query(ExternalUserApi::class.java) { apiImpl: ExternalUserApi, url: String -> apiImpl.getExternalUsers(url, body) }
+        return querySuspend(ExternalUserApi::class.java) { apiImpl: ExternalUserApi, url: String -> apiImpl.getExternalUsers(url, body) }
     }
 
     /**
@@ -324,10 +327,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: POST /api/user/externalUser
      */
     @Throws(IOException::class)
-    fun addExternalUser(externalUser: AddClientExternalUser?): Response<ClientExternalUser> {
+    suspend fun addExternalUser(externalUser: AddClientExternalUser?): Response<ClientExternalUser> {
         val body = userAuthenticationMap()
         body["externalUser"] = externalUser
-        return query(ExternalUserApi::class.java) { apiImpl: ExternalUserApi, url: String -> apiImpl.addExternalUser(url, body) }
+        return querySuspend(ExternalUserApi::class.java) { apiImpl: ExternalUserApi, url: String -> apiImpl.addExternalUser(url, body) }
     }
 
     /**
@@ -335,10 +338,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: DELETE /api/user/externalUser
      */
     @Throws(IOException::class)
-    fun deleteExternalUser(externalUuid: String?): Response<Boolean> {
+    suspend fun deleteExternalUser(externalUuid: String?): Response<Boolean> {
         val body = userAuthenticationMap()
         body["externalUuid"] = externalUuid
-        return query(ExternalUserApi::class.java) { apiImpl: ExternalUserApi, url: String -> apiImpl.deleteExternalUser(url, body) }
+        return querySuspend(ExternalUserApi::class.java) { apiImpl: ExternalUserApi, url: String -> apiImpl.deleteExternalUser(url, body) }
     }
 
     /**
@@ -346,11 +349,11 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/new
      */
     @Throws(IOException::class)
-    fun getListMedia(loadedMedia: Collection<Int?>?, listId: Int): Response<ClientListQuery> {
+    suspend fun getListMedia(loadedMedia: Collection<Int?>?, listId: Int): Response<ClientListQuery> {
         val body = userAuthenticationMap()
         body["media"] = loadedMedia
         body["listId"] = listId
-        return query(ListMediaApi::class.java) { apiImpl: ListMediaApi, url: String -> apiImpl.getListMedia(url, body) }
+        return querySuspend(ListMediaApi::class.java) { apiImpl: ListMediaApi, url: String -> apiImpl.getListMedia(url, body) }
     }
 
     /**
@@ -418,10 +421,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/list
      */
     @Throws(IOException::class)
-    fun getLists(listIds: Collection<Int?>?): Response<ClientMultiListQuery> {
+    suspend fun getLists(listIds: Collection<Int?>?): Response<ClientMultiListQuery> {
         val body = userAuthenticationMap()
         body["listId"] = listIds
-        return query(ListApi::class.java) { apiImpl: ListApi, url: String -> apiImpl.getLists(url, body) }
+        return querySuspend(ListApi::class.java) { apiImpl: ListApi, url: String -> apiImpl.getLists(url, body) }
     }
 
     /**
@@ -451,33 +454,35 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: DELETE /api/user/list
      */
     @Throws(IOException::class)
-    fun deleteList(listId: Int): Response<Boolean> {
+    suspend fun deleteList(listId: Int): Response<Boolean> {
         val body = userAuthenticationMap()
         body["listId"] = listId
-        return query(ListApi::class.java) { apiImpl: ListApi, url: String -> apiImpl.deleteList(url, body) }
+        return querySuspend(ListApi::class.java) { apiImpl: ListApi, url: String -> apiImpl.deleteList(url, body) }
     }
 
     /**
      * Get MediumInWaits.
      * API: GET /api/user/medium/unused
      */
-    @get:Throws(IOException::class)
-    val mediumInWait: Response<List<ClientMediumInWait>>
-        get() {
-            val body: MutableMap<String, Any?> = userAuthenticationMap()
-            return query(MediumApi::class.java) { apiImpl: MediumApi, url: String -> apiImpl.getMediumInWait(url, body) }
+    @Throws(IOException::class)
+    suspend fun getMediumInWait(): Response<List<ClientMediumInWait>> {
+        val body: MutableMap<String, Any?> = userAuthenticationMap()
+        return querySuspend(MediumApi::class.java) { apiImpl: MediumApi, url: String ->
+            apiImpl.getMediumInWait(url, body)
         }
+    }
 
     /**
      * Get all Medium Ids.
      * API: GET /api/user/medium
      */
-    @get:Throws(IOException::class)
-    val allMedia: Response<List<Int>>
-        get() {
-            val body: MutableMap<String, Any?> = userAuthenticationMap()
-            return query(MediumApi::class.java) { apiImpl: MediumApi, url: String -> apiImpl.getAllMedia(url, body) }
+    @Throws(IOException::class)
+    suspend fun getAllMedia(): Response<List<Int>> {
+        val body: MutableMap<String, Any?> = userAuthenticationMap()
+        return querySuspend(MediumApi::class.java) { apiImpl: MediumApi, url: String ->
+            apiImpl.getAllMedia(url, body)
         }
+    }
 
     /**
      * Consume Tocs from MediumInWaits to existing Medium.
@@ -531,10 +536,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: POST /api/user/medium
      */
     @Throws(IOException::class)
-    fun addMedia(clientMedium: ClientSimpleMedium?): Response<ClientSimpleMedium> {
+    suspend fun addMedia(clientMedium: ClientSimpleMedium?): Response<ClientSimpleMedium> {
         val body = userAuthenticationMap()
         body["medium"] = clientMedium
-        return query(MediumApi::class.java) { apiImpl: MediumApi, url: String -> apiImpl.addMedia(url, body) }
+        return querySuspend(MediumApi::class.java) { apiImpl: MediumApi, url: String -> apiImpl.addMedia(url, body) }
     }
 
     /**
@@ -554,10 +559,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/medium/progress
      */
     @Throws(IOException::class)
-    fun getProgress(episodeId: Int): Response<Float> {
+    suspend fun getProgress(episodeId: Int): Response<Float> {
         val body = userAuthenticationMap()
         body["episodeId"] = episodeId
-        return query(ProgressApi::class.java) { apiImpl: ProgressApi, url: String -> apiImpl.getProgress(url, body) }
+        return querySuspend(ProgressApi::class.java) { apiImpl: ProgressApi, url: String -> apiImpl.getProgress(url, body) }
     }
 
     /**
@@ -577,11 +582,11 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: PUT /api/user/medium/progress
      */
     @Throws(IOException::class)
-    fun updateProgress(episodeId: Int, progress: Float): Response<Boolean> {
+    suspend fun updateProgress(episodeId: Int, progress: Float): Response<Boolean> {
         val body = userAuthenticationMap()
         body["episodeId"] = episodeId
         body["progress"] = progress
-        return query(ProgressApi::class.java) { apiImpl: ProgressApi, url: String -> apiImpl.updateProgress(url, body) }
+        return querySuspend(ProgressApi::class.java) { apiImpl: ProgressApi, url: String -> apiImpl.updateProgress(url, body) }
     }
 
     /**
@@ -589,10 +594,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: DELETE /api/user/medium/progress
      */
     @Throws(IOException::class)
-    fun deleteProgress(episodeId: Int): Response<Boolean> {
+    suspend fun deleteProgress(episodeId: Int): Response<Boolean> {
         val body = userAuthenticationMap()
         body["episodeId"] = episodeId
-        return query(ProgressApi::class.java) { apiImpl: ProgressApi, url: String -> apiImpl.deleteProgress(url, body) }
+        return querySuspend(ProgressApi::class.java) { apiImpl: ProgressApi, url: String -> apiImpl.deleteProgress(url, body) }
     }
 
     /**
@@ -623,11 +628,11 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: POST /api/user/medium/part
      */
     @Throws(IOException::class)
-    fun addPart(part: ClientPart): Response<ClientPart> {
+    suspend fun addPart(part: ClientPart): Response<ClientPart> {
         val body = userAuthenticationMap()
         body["part"] = part
         body["mediumId"] = part.mediumId
-        return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.addPart(url, body) }
+        return querySuspend(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.addPart(url, body) }
     }
 
     /**
@@ -635,10 +640,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: PUT /api/user/medium/part
      */
     @Throws(IOException::class)
-    fun updatePart(part: ClientPart?): Response<Boolean> {
+    suspend fun updatePart(part: ClientPart?): Response<Boolean> {
         val body = userAuthenticationMap()
         body["part"] = part
-        return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.updatePart(url, body) }
+        return querySuspend(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.updatePart(url, body) }
     }
 
     /**
@@ -646,10 +651,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: DELETE /api/user/medium/part
      */
     @Throws(IOException::class)
-    fun deletePart(partId: Int): Response<Boolean> {
+    suspend fun deletePart(partId: Int): Response<Boolean> {
         val body = userAuthenticationMap()
         body["partId"] = partId
-        return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.deletePart(url, body) }
+        return querySuspend(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.deletePart(url, body) }
     }
 
     /**
@@ -657,10 +662,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/medium/part/items
      */
     @Throws(IOException::class)
-    fun getPartEpisodes(partIds: Collection<Int?>?): Response<Map<String, List<Int>>> {
+    suspend fun getPartEpisodes(partIds: Collection<Int?>?): Response<Map<String, List<Int>>> {
         val body = userAuthenticationMap()
         body["part"] = partIds
-        return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPartItems(url, body) }
+        return querySuspend(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPartItems(url, body) }
     }
 
     /**
@@ -668,10 +673,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/medium/part/releases
      */
     @Throws(IOException::class)
-    fun getPartReleases(partIds: Collection<Int?>?): Response<Map<String, List<ClientSimpleRelease>>> {
+    suspend fun getPartReleases(partIds: Collection<Int?>?): Response<Map<String, List<ClientSimpleRelease>>> {
         val body = userAuthenticationMap()
         body["part"] = partIds
-        return query(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPartReleases(url, body) }
+        return querySuspend(PartApi::class.java) { apiImpl: PartApi, url: String -> apiImpl.getPartReleases(url, body) }
     }
 
     /**
@@ -679,10 +684,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/medium/part/episode
      */
     @Throws(IOException::class)
-    fun getEpisode(episodeId: Int): Response<ClientEpisode> {
+    suspend fun getEpisode(episodeId: Int): Response<ClientEpisode> {
         val body = userAuthenticationMap()
         body["episodeId"] = episodeId
-        return query(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.getEpisode(url, body) }
+        return querySuspend(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.getEpisode(url, body) }
     }
 
     /**
@@ -701,11 +706,11 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: POST /api/user/medium/part/episode
      */
     @Throws(IOException::class)
-    fun addEpisode(partId: Int, episode: ClientEpisode?): Response<ClientEpisode> {
+    suspend fun addEpisode(partId: Int, episode: ClientEpisode?): Response<ClientEpisode> {
         val body = userAuthenticationMap()
         body["partId"] = partId
         body["episode"] = episode
-        return query(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.addEpisode(url, body) }
+        return querySuspend(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.addEpisode(url, body) }
     }
 
     /**
@@ -713,10 +718,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: PUT /api/user/medium/part/episode
      */
     @Throws(IOException::class)
-    fun updateEpisode(episode: ClientSimpleEpisode?): Response<Boolean> {
+    suspend fun updateEpisode(episode: ClientSimpleEpisode?): Response<Boolean> {
         val body = userAuthenticationMap()
         body["episode"] = listOf(episode)
-        return query(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.updateEpisode(url, body) }
+        return querySuspend(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.updateEpisode(url, body) }
     }
 
     /**
@@ -724,10 +729,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: DELETE /api/user/medium/part/episode
      */
     @Throws(IOException::class)
-    fun deleteEpisode(episodeId: Int): Response<Boolean> {
+    suspend fun deleteEpisode(episodeId: Int): Response<Boolean> {
         val body = userAuthenticationMap()
         body["episodeId"] = episodeId
-        return query(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.deleteEpisode(url, body) }
+        return querySuspend(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.deleteEpisode(url, body) }
     }
 
     private fun setConnected() {

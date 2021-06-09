@@ -406,7 +406,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     }
 
     @Throws(IOException::class)
-    private fun persistExternalLists(
+    private suspend fun persistExternalLists(
         externalMediaLists: MutableList<ClientExternalMediaList>,
         client: Client,
         persister: ClientModelPersister,
@@ -426,16 +426,20 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         if (missingIds.isEmpty()) {
             return
         }
-        doPartitionedRethrow(missingIds) { ids: List<String> ->
-            val parents = checkAndGetBody(client.getExternalUser(ids))
-            persister.persistExternalUsers(parents)
-            false
+        coroutineScope {
+            doPartitionedRethrowSuspend(missingIds) { ids: List<String> ->
+                async {
+                    val parents = checkAndGetBody(client.getExternalUser(ids))
+                    persister.persistExternalUsers(parents)
+                    false
+                }
+            }
         }
         persister.persistExternalMediaLists(loading)
     }
 
     @Throws(IOException::class)
-    private fun persistExternalListsPure(
+    private suspend fun persistExternalListsPure(
         externalMediaLists: List<ClientExternalMediaListPure>,
         client: Client,
         persister: ClientModelPersister,
@@ -462,7 +466,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     ) {
         notifyIndeterminate("Synchronize Deleted Items", removeContent = false)
 
-        val statBody = checkAndGetBody(client.stats)
+        val statBody = checkAndGetBody(client.getStats())
         val parsedStat = statBody.parse()
         persister.persist(parsedStat)
         var reloadStat = repository.checkReload(parsedStat)
@@ -573,16 +577,20 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                 mediaTocs.computeIfAbsent(mediumToc.mediumId) { ArrayList() }
                     .add(mediumToc.link)
             }
-            doPartitionedRethrow(mediaTocs.keys) { mediaIds: List<Int> ->
-                val partitionedMediaTocs: MutableMap<Int, List<String>> = HashMap()
-                for (mediaId in mediaIds) {
-                    partitionedMediaTocs[mediaId] = Objects.requireNonNull<List<String>>(
-                        mediaTocs[mediaId]
-                    )
+            coroutineScope {
+                doPartitionedRethrowSuspend(mediaTocs.keys) { mediaIds: List<Int> ->
+                    async {
+                        val partitionedMediaTocs: MutableMap<Int, List<String>> = HashMap()
+                        for (mediaId in mediaIds) {
+                            partitionedMediaTocs[mediaId] = Objects.requireNonNull<List<String>>(
+                                mediaTocs[mediaId]
+                            )
+                        }
+                        persistTocs(partitionedMediaTocs, persister)
+                        persister.deleteLeftoverTocs(partitionedMediaTocs)
+                        false
+                    }
                 }
-                persistTocs(partitionedMediaTocs, persister)
-                persister.deleteLeftoverTocs(partitionedMediaTocs)
-                false
             }
         }
 
@@ -622,7 +630,10 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         }
     }
 
-    private fun persistTocs(mediaTocs: Map<Int, List<String>>, persister: ClientModelPersister) {
+    private suspend fun persistTocs(
+        mediaTocs: Map<Int, List<String>>,
+        persister: ClientModelPersister,
+    ) {
         val inserts: MutableList<Toc> = LinkedList()
         for ((mediumId, value) in mediaTocs) {
             for (tocLink in value) {

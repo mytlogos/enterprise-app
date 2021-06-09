@@ -156,7 +156,7 @@ class MediumInWaitRepository private constructor(application: Application) {
     }
 
     suspend fun loadMediaInWaitSync() {
-        val medium = checkAndGetBody(client.mediumInWait)
+        val medium = checkAndGetBody(client.getMediumInWait())
 
         if (medium.isNotEmpty()) {
             mediumInWaitDao.clear()

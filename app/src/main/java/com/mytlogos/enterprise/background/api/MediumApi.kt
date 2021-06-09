@@ -15,10 +15,10 @@ internal interface MediumApi {
     suspend fun getMedia(@Url url: String, @QueryMap body: MutableMap<String, Any?>): Response<List<ClientMedium>>
 
     @GET("{start}/all")
-    fun getAllMedia(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<Int>>
+    suspend fun  getAllMedia(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Response<List<Int>>
 
     @GET("{start}/unused")
-    fun getMediumInWait(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientMediumInWait>>
+    suspend fun  getMediumInWait(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Response<List<ClientMediumInWait>>
 
     @PUT("{start}/unused")
     suspend fun consumeMediumInWait(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
@@ -27,7 +27,7 @@ internal interface MediumApi {
     suspend fun createFromMediumInWait(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Response<ClientMedium>
 
     @POST
-    fun addMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Call<ClientSimpleMedium>
+    suspend fun  addMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Response<ClientSimpleMedium>
 
     @PUT
     suspend fun updateMedia(@Url url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>

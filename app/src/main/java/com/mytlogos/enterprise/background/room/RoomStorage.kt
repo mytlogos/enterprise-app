@@ -403,7 +403,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister {
             val converter = RoomConverter(loadedData)
-            runBlocking { episodeDao.insertBulkRelease(converter.convertReleases(releases)) }
+            episodeDao.insertBulkRelease(converter.convertReleases(releases))
             return this
         }
 
@@ -411,10 +411,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val converter = RoomConverter(loadedData)
             val list = converter.convertEpisodes(filteredEpisodes.newEpisodes)
             val update = converter.convertEpisodesClient(filteredEpisodes.updateEpisodes)
-            runBlocking {
-                episodeDao.insertBulk(list)
-                episodeDao.updateBulkClient(update)
-            }
+
+            episodeDao.insertBulk(list)
+            episodeDao.updateBulkClient(update)
+
             for (episode in list) {
                 loadedData.episodes.add(episode.episodeId)
             }
@@ -459,10 +459,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
         ): ClientModelPersister {
             val list = converter.convertMediaList(filteredMediaList.newList)
             val update = converter.convertMediaList(filteredMediaList.updateList)
-            runBlocking {
-                mediaListDao.insertBulk(list)
-                mediaListDao.updateBulk(update)
-            }
+
+            mediaListDao.insertBulk(list)
+            mediaListDao.updateBulk(update)
+
             for (mediaList in list) {
                 loadedData.mediaList.add(mediaList.listId)
             }
@@ -485,10 +485,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
         ): ClientModelPersister {
             val list = converter.convertExternalMediaList(filteredExtMediaList.newList)
             val update = converter.convertExternalMediaList(filteredExtMediaList.updateList)
-            runBlocking {
-                externalMediaListDao.insertBulk(list)
-                externalMediaListDao.updateBulk(update)
-            }
+
+            externalMediaListDao.insertBulk(list)
+            externalMediaListDao.updateBulk(update)
+
             for (mediaList in list) {
                 loadedData.externalMediaList.add(mediaList.externalListId)
             }
@@ -511,10 +511,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
         ): ClientModelPersister {
             val newUser = converter.convertExternalUser(filteredExternalUser.newUser)
             val updatedUser = converter.convertExternalUser(filteredExternalUser.updateUser)
-            runBlocking {
-                externalUserDao.insertBulk(newUser)
-                externalUserDao.updateBulk(updatedUser)
-            }
+
+            externalUserDao.insertBulk(newUser)
+            externalUserDao.updateBulk(updatedUser)
+
             for (user in newUser) {
                 loadedData.externalUser.add(user.uuid)
             }
@@ -532,10 +532,15 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val converter = RoomConverter(loadedData)
             val newMedia = converter.convertSimpleMedia(filteredMedia.newMedia)
             val updatedMedia = converter.convertSimpleMedia(filteredMedia.updateMedia)
-            runBlocking {
+
+            try {
                 mediumDao.insertBulk(newMedia)
-                mediumDao.updateBulk(updatedMedia)
+            } catch (e: SQLiteConstraintException) {
+                e.printStackTrace()
+                throw e
             }
+            mediumDao.updateBulk(updatedMedia)
+
             for (medium in newMedia) {
                 loadedData.media.add(medium.mediumId)
             }
@@ -554,10 +559,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     newNews.add(roomNews)
                 }
             }
-            runBlocking {
-                newsDao.insertNews(newNews)
-                newsDao.updateNews(updatedNews)
-            }
+
+            newsDao.insertNews(newNews)
+            newsDao.updateNews(updatedNews)
+
             for (roomNews in newNews) {
                 loadedData.news.add(roomNews.newsId)
             }
@@ -573,10 +578,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val converter = RoomConverter()
             val newParts = converter.convertParts(filteredParts.newParts)
             val updatedParts = converter.convertParts(filteredParts.updateParts)
-            runBlocking {
-                partDao.insertBulk(newParts)
-                partDao.updateBulk(updatedParts)
-            }
+
+            partDao.insertBulk(newParts)
+            partDao.updateBulk(updatedParts)
+
             for (part in newParts) {
                 loadedData.part.add(part.partId)
             }
@@ -589,16 +594,16 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this.persist(filteredReadEpisodes)
         }
 
-        override fun persist(filteredReadEpisodes: FilteredReadEpisodes): ClientModelPersister {
-            runBlocking {
-                for (readEpisode in filteredReadEpisodes.episodeList) {
-                    episodeDao.updateProgress(
-                        readEpisode.episodeId,
-                        readEpisode.progress,
-                        readEpisode.readDate
-                    )
-                }
+        override suspend fun persist(filteredReadEpisodes: FilteredReadEpisodes): ClientModelPersister {
+
+            for (readEpisode in filteredReadEpisodes.episodeList) {
+                episodeDao.updateProgress(
+                    readEpisode.episodeId,
+                    readEpisode.progress,
+                    readEpisode.readDate
+                )
             }
+
             return this
         }
 
@@ -618,9 +623,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister {
             val roomToDownloads = RoomConverter().convertToDownload(toDownloads)
-            runBlocking {
-                toDownloadDao.insertBulk(roomToDownloads)
-            }
+
+            toDownloadDao.insertBulk(roomToDownloads)
+
             return this
         }
 
@@ -632,16 +637,16 @@ class RoomStorage(application: Application) : DatabaseStorage {
             if (user.name == value.name) {
                 return this
             }
-            runBlocking {
-                userDao.update(RoomUser(user.name, value.uuid, value.session))
-            }
+
+            userDao.update(RoomUser(user.name, value.uuid, value.session))
+
             return this
         }
 
-        override fun persist(toDownload: ToDownload): ClientModelPersister {
-            runBlocking {
-                toDownloadDao.insert(RoomConverter().convert(toDownload))
-            }
+        override suspend fun persist(toDownload: ToDownload): ClientModelPersister {
+
+            toDownloadDao.insert(RoomConverter().convert(toDownload))
+
             return this
         }
 
@@ -657,17 +662,17 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
             val converter = RoomConverter()
             val newRoomUser = converter.convert(user)
-            runBlocking {
-                val currentUser = userDao.getUserNow()
-                if (currentUser != null && newRoomUser.uuid == currentUser.uuid) {
-                    // update user, so previous one wont be deleted
-                    userDao.update(newRoomUser)
-                } else {
-                    userDao.deleteAllUser()
-                    // persist user
-                    userDao.insert(newRoomUser)
-                }
+
+            val currentUser = userDao.getUserNow()
+            if (currentUser != null && newRoomUser.uuid == currentUser.uuid) {
+                // update user, so previous one wont be deleted
+                userDao.update(newRoomUser)
+            } else {
+                userDao.deleteAllUser()
+                // persist user
+                userDao.insert(newRoomUser)
             }
+
             return this
         }
 
@@ -737,9 +742,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
             val roomTocs = RoomConverter().convertToc(tocs)
-            runBlocking {
-                tocDao.insertBulk(roomTocs)
-            }
+
+            tocDao.insertBulk(roomTocs)
+
             return this
         }
 
@@ -751,17 +756,17 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
             val converter = RoomConverter()
             val newRoomUser = converter.convert(clientUser)
-            runBlocking {
-                val currentUser = userDao.getUserNow()
-                if (currentUser != null && newRoomUser.uuid == currentUser.uuid) {
-                    // update user, so previous one wont be deleted
-                    userDao.update(newRoomUser)
-                } else {
-                    userDao.deleteAllUser()
-                    // persist user
-                    userDao.insert(newRoomUser)
-                }
+
+            val currentUser = userDao.getUserNow()
+            if (currentUser != null && newRoomUser.uuid == currentUser.uuid) {
+                // update user, so previous one wont be deleted
+                userDao.update(newRoomUser)
+            } else {
+                userDao.deleteAllUser()
+                // persist user
+                userDao.insert(newRoomUser)
             }
+
             // persist lists
             this.persist(*clientUser.lists)
             // persist externalUser
@@ -780,38 +785,36 @@ class RoomStorage(application: Application) : DatabaseStorage {
              * Add any new ListJoin
              * Add any new ExListJoin
              */
-            runBlocking {
-                val listUser = externalMediaListDao.getListUser()
+            val listUser = externalMediaListDao.getListUser()
 
-                val deletedLists: MutableSet<Int> = HashSet()
-                val deletedExLists: MutableSet<Int> = HashSet()
-                val deletedExUser: MutableSet<String> = HashSet()
-                val newInternalJoins: MutableList<MediaListMediaJoin> = LinkedList()
-                val toDeleteInternalJoins =
-                    filterListMediumJoins(stat, deletedLists, newInternalJoins, false)
-                val newExternalJoins: MutableList<ExternalListMediaJoin> = LinkedList()
-                val toDeleteExternalJoins =
-                    filterListMediumJoins(stat, deletedExLists, newExternalJoins, true)
+            val deletedLists: MutableSet<Int> = HashSet()
+            val deletedExLists: MutableSet<Int> = HashSet()
+            val deletedExUser: MutableSet<String> = HashSet()
+            val newInternalJoins: MutableList<MediaListMediaJoin> = LinkedList()
+            val toDeleteInternalJoins =
+                filterListMediumJoins(stat, deletedLists, newInternalJoins, false)
+            val newExternalJoins: MutableList<ExternalListMediaJoin> = LinkedList()
+            val toDeleteExternalJoins =
+                filterListMediumJoins(stat, deletedExLists, newExternalJoins, true)
 
-                for (roomListUser in listUser) {
-                    val listIds = stat.extUser[roomListUser.uuid]
-                    if (listIds == null) {
-                        deletedExUser.add(roomListUser.uuid)
-                        deletedExLists.add(roomListUser.listId)
-                        break
-                    }
-                    if (!listIds.contains(roomListUser.listId)) {
-                        deletedExLists.add(roomListUser.listId)
-                    }
+            for (roomListUser in listUser) {
+                val listIds = stat.extUser[roomListUser.uuid]
+                if (listIds == null) {
+                    deletedExUser.add(roomListUser.uuid)
+                    deletedExLists.add(roomListUser.listId)
+                    break
                 }
-                externalMediaListDao.removeJoin(toDeleteExternalJoins)
-                mediaListDao.removeJoin(toDeleteInternalJoins)
-                externalMediaListDao.addJoin(newExternalJoins)
-                mediaListDao.addJoin(newInternalJoins)
-                externalMediaListDao.delete(deletedExLists)
-                mediaListDao.delete(deletedLists)
-                externalUserDao.delete(deletedExUser)
+                if (!listIds.contains(roomListUser.listId)) {
+                    deletedExLists.add(roomListUser.listId)
+                }
             }
+            externalMediaListDao.removeJoin(toDeleteExternalJoins)
+            mediaListDao.removeJoin(toDeleteInternalJoins)
+            externalMediaListDao.addJoin(newExternalJoins)
+            mediaListDao.addJoin(newInternalJoins)
+            externalMediaListDao.delete(deletedExLists)
+            mediaListDao.delete(deletedLists)
+            externalUserDao.delete(deletedExUser)
             return this
         }
 
