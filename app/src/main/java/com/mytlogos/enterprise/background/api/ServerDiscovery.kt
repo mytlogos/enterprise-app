@@ -3,65 +3,72 @@ package com.mytlogos.enterprise.background.api
 import com.google.gson.GsonBuilder
 import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.joda.time.DateTime
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.InetAddress
-import java.net.NetworkInterface
+import java.net.*
+import java.nio.ByteBuffer
+import java.nio.channels.ClosedByInterruptException
+import java.nio.channels.DatagramChannel
 import java.util.*
 import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicInteger
 
 internal class ServerDiscovery {
     private val maxAddress = 50
     private val executor = Executors.newFixedThreadPool(maxAddress, object : ThreadFactory {
         var id = 0
-        override fun newThread(r: Runnable?) = Thread(r, "Server-Discovery-TCP-${id++}")
+        private val threadFactoryId = tcpId.incrementAndGet()
+        override fun newThread(r: Runnable?) = Thread(r, "Server-Discovery-${threadFactoryId}-TCP-${id++}")
     })
+    private val loudDiscovery = false
+
+    private fun logLoud(msg: Any) {
+        if (loudDiscovery) {
+            println(msg)
+        }
+    }
 
     suspend fun discover(broadcastAddress: InetAddress?): Server? = withContext(Dispatchers.IO) {
         val discoveredServer = Collections.synchronizedSet(HashSet<Server>())
-        val futures: MutableList<CompletableFuture<Server?>> = ArrayList()
+        val futures: MutableList<Future<Server?>> = ArrayList()
 
         for (i in 1 until maxAddress) {
             // this is for emulator sessions,
             // as localhost udp server cannot seem to receive upd packets send from emulator
-            futures.add(CompletableFuture.supplyAsync({
-                return@supplyAsync try {
-                    println("${Thread.currentThread()} Started TCP Discovery of $i")
+            futures.add(executor.submit( Callable {
+                 return@Callable try {
+                    logLoud("${Thread.currentThread()} Started TCP Discovery of $i")
                     discoverLocalNetworkServerPerTcp(i)
                 } finally {
-                    println("${Thread.currentThread()} Finished TCP Discovery of $i")
+                    logLoud("${Thread.currentThread()} Finished TCP Discovery of $i")
                 }
-            }, executor))
+            }))
         }
 
         var server: Server? = null
 
-        val udpExecutor = Executors.newSingleThreadExecutor { Thread(it, "Server-Discovery-UDP") }
+        val udpExecutor = Executors.newSingleThreadExecutor { Thread(it, "Server-Discovery-${udpId.incrementAndGet()}-UDP") }
         try {
-            val future = CompletableFuture.runAsync({
-                println("${Thread.currentThread()} Started UDP Discovery")
+            udpExecutor.execute {
+                logLoud("${Thread.currentThread()} Started UDP Discovery")
                 discoverLocalNetworkServerPerUdp(broadcastAddress, discoveredServer)
-            }, udpExecutor)
-            try {
-                future[5, TimeUnit.SECONDS]
-            } catch (ignored: TimeoutException) {
             }
+            // wait 5s for possible responses for udp messages
+            delay(5000)
+
             for (serverFuture in futures) {
-                try {
-                    val now = serverFuture.getNow(null)
-                    if (now != null) {
-                        discoveredServer.add(now)
-                    } else if (!serverFuture.isDone) {
-                        serverFuture.cancel(true)
+                if (serverFuture.isDone) {
+                    val result = serverFuture.runCatching { get() }
+                    val value = result.getOrNull()
+
+                    if (value != null) {
+                        discoveredServer.add(value)
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
             }
 
@@ -69,9 +76,11 @@ internal class ServerDiscovery {
             server = discoveredServer.find { it.isLocal && it.isDevServer == isDev }
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            // shutdown and interrupt any leftover threads
+            executor.shutdownNow()
+            udpExecutor.shutdownNow()
         }
-        executor.shutdownNow()
-        udpExecutor.shutdownNow()
         println("${Thread.currentThread()} Discovered Server: $server")
         return@withContext server
     }
@@ -187,6 +196,7 @@ internal class ServerDiscovery {
                     //Check if the message is correct
                     val message = String(recvBuf.array()).trim { it <= ' ' }
 
+                    println("UDP Message received on UDP Server $serverId: '$message'")
                     // the weird thing is if the message is over 34 bytes long
                     // e.g. 'DISCOVER_SERVER_RESPONSE_ENTERPRISE' the last character will be cut off
                     // either the node server does not send correctly
