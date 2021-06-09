@@ -65,9 +65,4 @@ class MediumInWaitViewModel(application: Application) : FilterableViewModel(appl
     ): Boolean {
         return mediumInWaitRepository.createMedium(mediumInWait, mediumInWaits, list)
     }
-
-    val listSuggestion: LiveData<MutableList<MediaList>>
-        get() = Transformations.switchMap(listNameFilterLiveData) { name: String ->
-            repository.getListSuggestion(name)
-        }
 }

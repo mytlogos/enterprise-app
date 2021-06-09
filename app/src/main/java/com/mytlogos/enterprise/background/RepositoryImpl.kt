@@ -57,17 +57,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.getExternalListItems(externalListId)
     }
 
-    override suspend fun updateListName(listSetting: MediaListSetting, newName: String): String {
-        return editService.updateListName(listSetting, newName)
-    }
-
-    override suspend fun updateListMedium(
-        listSetting: MediaListSetting,
-        newMediumType: Int,
-    ): String {
-        return editService.updateListMedium(listSetting, newMediumType)
-    }
-
     override fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
         return storage.getSimpleEpisodes(ids)
     }
@@ -146,10 +135,6 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
     override fun getSimpleMedium(mediumId: Int): SimpleMedium {
         return storage.getSimpleMedium(mediumId)
-    }
-
-    override fun getListSuggestion(name: String): LiveData<MutableList<MediaList>> {
-        return storage.getListSuggestion(name)
     }
 
     override fun onDownloadable(): LiveData<Boolean> {

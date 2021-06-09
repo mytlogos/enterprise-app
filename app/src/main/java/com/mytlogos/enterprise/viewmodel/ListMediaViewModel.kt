@@ -1,13 +1,14 @@
 package com.mytlogos.enterprise.viewmodel
 
 import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import com.mytlogos.enterprise.background.repository.MediaListRepository
 import com.mytlogos.enterprise.background.repository.MediumRepository
 import com.mytlogos.enterprise.model.MediumItem
 import com.mytlogos.enterprise.tools.Sortings
 
-class ListMediaViewModel(application: Application) : RepoViewModel(application) {
+class ListMediaViewModel(application: Application) : AndroidViewModel(application) {
     private var items: LiveData<MutableList<MediumItem>>? = null
     private val mediaListRepository by lazy { MediaListRepository.getInstance(application) }
     private val mediumRepository by lazy { MediumRepository.getInstance(application) }

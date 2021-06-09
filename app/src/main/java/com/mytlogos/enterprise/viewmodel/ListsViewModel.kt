@@ -33,14 +33,14 @@ class ListsViewModel(application: Application) : RepoViewModel(application) {
     }
 
     suspend fun updateListName(listSetting: MediaListSetting, text: String): String {
-        return repository.updateListName(listSetting, text)
+        return mediaListRepository.updateListName(listSetting, text)
     }
 
     suspend fun updateListMedium(
         listSetting: MediaListSetting?,
         newMediumType: Int
     ): String {
-        return repository.updateListMedium(listSetting!!, newMediumType)
+        return mediaListRepository.updateListMedium(listSetting!!, newMediumType)
     }
 
     fun updateToDownload(add: Boolean, toDownload: ToDownload) {

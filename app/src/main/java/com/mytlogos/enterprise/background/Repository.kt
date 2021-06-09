@@ -18,11 +18,6 @@ interface Repository {
 
     fun getExternalListItems(externalListId: Int): Collection<Int>
 
-    suspend fun updateListName(listSetting: MediaListSetting, newName: String): String
-    suspend fun updateListMedium(listSetting: MediaListSetting, newMediumType: Int): String
-
-    fun getListSuggestion(name: String): LiveData<MutableList<MediaList>>
-
     fun onDownloadable(): LiveData<Boolean>
 
     val externalUser: Flow<PagingData<ExternalUser>>

@@ -159,6 +159,16 @@ class MediaListRepository private constructor(application: Application) {
         }
     }
 
+    suspend fun updateListName(listSetting: MediaListSetting, newName: String): String {
+        return editService.updateListName(listSetting, newName)
+    }
+
+    suspend fun updateListMedium(
+        listSetting: MediaListSetting,
+        newMediumType: Int,
+    ): String {
+        return editService.updateListMedium(listSetting, newMediumType)
+    }
 
     companion object : SingletonHolder<MediaListRepository, Application>(::MediaListRepository)
 }
