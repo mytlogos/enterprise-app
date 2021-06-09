@@ -190,6 +190,7 @@ internal class ServerDiscovery {
                     val sender = c.receive(recvBuf)
 
                     if (sender !is InetSocketAddress) {
+                        println("Received Message, but no sender address available: $sender")
                         continue
                     }
 

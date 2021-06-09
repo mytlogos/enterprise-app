@@ -9,9 +9,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.mytlogos.enterprise.R
 
+@Deprecated("Uses deprecated BaseListFragment, use BaseSwipePagingFragment instead")
 abstract class BaseSwipeListFragment<Value : Any, ViewModel : AndroidViewModel> :
     BaseListFragment<Value, ViewModel>() {
-    override lateinit var listContainer: View
 
     override fun onCreateView(
         inflater: LayoutInflater,
