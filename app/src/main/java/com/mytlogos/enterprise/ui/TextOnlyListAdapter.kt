@@ -20,7 +20,7 @@ class TextOnlyListAdapter<E> : ArrayAdapter<E> {
     ) : super(fragment.requireContext(), R.layout.text_only_item) {
 
         this.extractor = extractor
-        liveData.observe(fragment, { mediaLists: List<E>? ->
+        liveData.observe(fragment.viewLifecycleOwner, { mediaLists: List<E>? ->
             this.clear()
             this.addAll(mediaLists ?: listOf())
         })

@@ -1,7 +1,6 @@
 package com.mytlogos.enterprise.background.resourceLoader;
 
 import com.mytlogos.enterprise.DataGenerator;
-import com.mytlogos.enterprise.Utils;
 import com.mytlogos.enterprise.background.LoadData;
 import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;

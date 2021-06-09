@@ -40,45 +40,56 @@ class HtmlToPlainText {
         // hit when the node is first seen
         override fun head(node: Node, depth: Int) {
             val name = node.nodeName()
-            if (node is TextNode) {
-                append(node.text()) // TextNodes carry all user-readable text in the DOM.
-            } else if (name == "ul") {
-                listNesting++
-            } else if (name == "li") {
-                append("\n ")
-                for (i in 1 until listNesting) {
+            when {
+                node is TextNode -> {
+                    append(node.text()) // TextNodes carry all user-readable text in the DOM.
+                }
+                name == "ul" -> {
+                    listNesting++
+                }
+                name == "li" -> {
+                    append("\n ")
+                    for (i in 1 until listNesting) {
+                        append("  ")
+                    }
+                    if (listNesting == 1) {
+                        append("* ")
+                    } else {
+                        append("- ")
+                    }
+                }
+                name == "dt" -> {
                     append("  ")
                 }
-                if (listNesting == 1) {
-                    append("* ")
-                } else {
-                    append("- ")
+                StringUtil.`in`(name, "p", "h1", "h2", "h3", "h4", "h5", "tr") -> {
+                    append("\n")
                 }
-            } else if (name == "dt") {
-                append("  ")
-            } else if (StringUtil.`in`(name, "p", "h1", "h2", "h3", "h4", "h5", "tr")) {
-                append("\n")
             }
         }
 
         // hit when all of the node's children (if any) have been visited
         override fun tail(node: Node, depth: Int) {
             val name = node.nodeName()
-            if (StringUtil.`in`(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5")) {
-                append("\n")
-            } else if (StringUtil.`in`(name, "th", "td")) {
-                append(" ")
-            } else if (name == "a") {
-                append(String.format(" <%s>", node.absUrl("href")))
-            } else if (name == "ul") {
-                listNesting--
+            when {
+                StringUtil.`in`(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5") -> {
+                    append("\n")
+                }
+                StringUtil.`in`(name, "th", "td") -> {
+                    append(" ")
+                }
+                name == "a" -> {
+                    append(String.format(" <%s>", node.absUrl("href")))
+                }
+                name == "ul" -> {
+                    listNesting--
+                }
             }
         }
 
         // appends text to the string builder with a simple word wrap method
         private fun append(text: String) {
             if (text == " " &&
-                (accum.length == 0 || StringUtil.`in`(accum.substring(accum.length - 1), " ", "\n"))
+                (accum.isEmpty() || StringUtil.`in`(accum.substring(accum.length - 1), " ", "\n"))
             ) {
                 return  // don't accumulate long runs of empty spaces
             }

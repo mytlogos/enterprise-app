@@ -4,7 +4,7 @@ package com.mytlogos.enterprise.background.api.model
  * API Model for DisplayExternalUser.
  */
 class ClientExternalUserPure(val localUuid: String, private val uuid: String, val identifier: String, val type: Int) {
-    fun getUuid(): String? {
+    fun getUuid(): String {
         return uuid
     }
 
@@ -17,14 +17,14 @@ class ClientExternalUserPure(val localUuid: String, private val uuid: String, va
                 '}'
     }
 
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val that = o as ClientExternalUserPure
-        return if (getUuid() != null) getUuid() == that.getUuid() else that.getUuid() == null
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as ClientExternalUserPure
+        return getUuid() == that.getUuid()
     }
 
     override fun hashCode(): Int {
-        return if (getUuid() != null) getUuid().hashCode() else 0
+        return getUuid().hashCode()
     }
 }

@@ -12,20 +12,20 @@ class ClientMultiListQuery(val list: Array<ClientMediaList>, val media: Array<Cl
         val that = o as ClientMultiListQuery
 
         // Probably incorrect - comparing Object[] arrays with Arrays.equals
-        return if (!Arrays.equals(list, that.list)) false else Arrays.equals(media, that.media)
+        return if (!list.contentEquals(that.list)) false else media.contentEquals(that.media)
         // Probably incorrect - comparing Object[] arrays with Arrays.equals
     }
 
     override fun hashCode(): Int {
-        var result = Arrays.hashCode(list)
-        result = 31 * result + Arrays.hashCode(media)
+        var result = list.contentHashCode()
+        result = 31 * result + media.contentHashCode()
         return result
     }
 
     override fun toString(): String {
         return "ClientMultiListQuery{" +
-                "list=" + Arrays.toString(list) +
-                ", media=" + Arrays.toString(media) +
+                "list=" + list.contentToString() +
+                ", media=" + media.contentToString() +
                 '}'
     }
 }

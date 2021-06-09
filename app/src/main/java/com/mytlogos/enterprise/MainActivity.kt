@@ -151,10 +151,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         toolbar?.let { setSupportActionBar(it) }
     }
 
-    override fun onStop() {
-        super.onStop()
-    }
-
     override fun onResume() {
         super.onResume()
         init(this)

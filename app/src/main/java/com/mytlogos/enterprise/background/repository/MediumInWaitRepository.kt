@@ -6,7 +6,9 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
-import com.mytlogos.enterprise.background.*
+import com.mytlogos.enterprise.background.ClientModelPersister
+import com.mytlogos.enterprise.background.RepositoryImpl
+import com.mytlogos.enterprise.background.RoomConverter
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.model.ClientMediumInWait
@@ -21,7 +23,6 @@ import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.tools.checkAndGetBody
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 import java.io.IOException
 import java.util.*
 

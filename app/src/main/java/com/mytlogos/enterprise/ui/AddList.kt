@@ -10,7 +10,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.RepositoryImpl
-import com.mytlogos.enterprise.background.repository.UserRepository
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.viewmodel.AddListViewModel

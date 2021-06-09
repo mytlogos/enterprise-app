@@ -5,7 +5,6 @@ import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator.*
 import com.mytlogos.enterprise.model.ToDownload
 import com.mytlogos.enterprise.model.Toc
-import java.util.stream.Collectors
 
 interface ClientModelPersister {
     fun getConsumer(): Collection<ClientConsumer<*>>
@@ -38,7 +37,7 @@ interface ClientModelPersister {
         val unpure = externalUsers.map { value: ClientExternalUserPure ->
             ClientExternalUser(
                 value.localUuid,
-                value.getUuid()!!,
+                value.getUuid(),
                 value.identifier,
                 value.type,
                 arrayOf()

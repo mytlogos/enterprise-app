@@ -11,7 +11,6 @@ import com.mytlogos.enterprise.background.room.model.RoomNotification
 import com.mytlogos.enterprise.model.NotificationItem
 import com.mytlogos.enterprise.tools.SingletonHolder
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.runBlocking
 
 @Suppress("BlockingMethodInNonBlockingContext")
 class NotificationRepository private constructor(application: Application) {

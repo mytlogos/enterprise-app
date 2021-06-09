@@ -21,9 +21,6 @@ internal interface UserApi {
     @GET("{start}/lists")
     fun getLists(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<ClientMediaList>>
 
-    @GET("{start}/invalidated")
-    fun getInvalidated(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Call<List<InvalidatedData>>
-
     @GET("{start}/download")
     suspend fun downloadEpisodes(@Path(value = "start", encoded = true) url: String, @QueryMap body: MutableMap<String, Any?>): Response<List<ClientDownloadedEpisode>>
 

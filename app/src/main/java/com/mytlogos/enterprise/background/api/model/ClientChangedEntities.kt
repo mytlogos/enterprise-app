@@ -4,7 +4,7 @@ package com.mytlogos.enterprise.background.api.model
  * API Model for NewData.
  * TODO: missing properties: tocs: FullMediumToc[]
  */
-class ClientChangedEntities() {
+class ClientChangedEntities {
     lateinit var media: MutableList<ClientSimpleMedium>
     lateinit var releases: MutableList<ClientRelease>
     lateinit var episodes: MutableList<ClientEpisodePure>

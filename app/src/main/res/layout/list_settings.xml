@@ -19,7 +19,9 @@
         android:ems="10"
         android:imeOptions="actionDone"
         android:inputType="none"
-        android:text="@string/name" />
+        android:text="@string/name"
+        android:hint="@string/name_of_the_list"
+        android:importantForAutofill="no" />
 
     <TextView
         android:layout_width="match_parent"

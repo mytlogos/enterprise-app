@@ -4,7 +4,7 @@ package com.mytlogos.enterprise.background.api.model
  * TODO: check Parameter for POST externalUser.
  */
 class AddClientExternalUser(uuid: String, identifier: String, type: Int, lists: Array<ClientExternalMediaList>, private val pwd: String) : ClientExternalUser("", uuid, identifier, type, lists) {
-    fun getPwd(): String? {
+    fun getPwd(): String {
         return pwd
     }
 

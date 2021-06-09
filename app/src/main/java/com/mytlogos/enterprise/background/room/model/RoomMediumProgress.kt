@@ -21,7 +21,8 @@ class RoomMediumProgress(@field:PrimaryKey val mediumId: Int, val currentReadInd
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false
         val that = other as RoomMediumProgress
-        return if (mediumId != that.mediumId) false else java.lang.Double.compare(that.currentReadIndex, currentReadIndex) == 0
+        return if (mediumId != that.mediumId) false else that.currentReadIndex.compareTo(
+            currentReadIndex) == 0
     }
 
     override fun hashCode(): Int {

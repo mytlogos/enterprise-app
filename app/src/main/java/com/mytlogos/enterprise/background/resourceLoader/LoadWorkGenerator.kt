@@ -340,7 +340,7 @@ class LoadWorkGenerator(private val loadedData: LoadData) {
         val dependencies: MutableList<IntDependency<ClientReadEpisode>> = ArrayList()
     }
 
-    public class IntDependency<T> constructor(val id: Int, val dependency: T)
+    class IntDependency<T> constructor(val id: Int, val dependency: T)
 
-    public class Dependency<V, T> constructor(val id: V, val dependency: T)
+    class Dependency<V, T> constructor(val id: V, val dependency: T)
 }

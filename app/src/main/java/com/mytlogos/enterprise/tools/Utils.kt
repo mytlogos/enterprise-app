@@ -13,7 +13,6 @@ import java.net.URI
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
-import java.util.stream.Collectors
 
 fun getDomain(url: String?): String? {
     val host = URI.create(url).host ?: return null

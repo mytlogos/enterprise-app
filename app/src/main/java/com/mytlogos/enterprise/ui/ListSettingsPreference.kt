@@ -22,8 +22,7 @@ class ListSettingsPreference : PreferenceFragmentCompat() {
         require(!(prefix == null || prefix.isEmpty())) { "invalid 'prefix' argument: empty or null" }
         require(!(intId == 0 && (stringId == null || stringId.isEmpty()))) { "invalid 'id' argument: zero, empty or null" }
         val manager = this.preferenceManager
-        val store: ItemPreferenceDataStore
-        store = if (intId != 0) {
+        val store: ItemPreferenceDataStore = if (intId != 0) {
             ItemPreferenceDataStore(this.context, prefix, intId)
         } else {
             ItemPreferenceDataStore(this.context, prefix, stringId)

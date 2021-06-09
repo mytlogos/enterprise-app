@@ -14,7 +14,7 @@ class ClientExternalMediaList(val uuid: String, val id: Int, val name: String, v
                 ", name='" + name + '\'' +
                 ", medium=" + medium +
                 ", url='" + url + '\'' +
-                ", items=" + Arrays.toString(items) +
+                ", items=" + items.contentToString() +
                 '}'
     }
 

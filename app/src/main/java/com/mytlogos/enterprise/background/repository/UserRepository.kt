@@ -1,19 +1,13 @@
 package com.mytlogos.enterprise.background.repository
 
 import android.app.Application
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
 import com.mytlogos.enterprise.background.*
-import com.mytlogos.enterprise.background.EditService
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.room.AbstractDatabase
-import com.mytlogos.enterprise.model.NotificationItem
 import com.mytlogos.enterprise.model.UpdateUser
 import com.mytlogos.enterprise.model.User
 import com.mytlogos.enterprise.tools.SingletonHolder
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 import java.io.IOException
 

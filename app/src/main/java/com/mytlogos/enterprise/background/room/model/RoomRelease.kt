@@ -18,5 +18,4 @@ class RoomRelease(
     override val url: String,
     override val releaseDate: DateTime,
     override val locked: Boolean,
-) : Release {
-}
+) : Release

@@ -1,11 +1,14 @@
 package com.mytlogos.enterprise.background.room
 
 import androidx.lifecycle.LiveData
-import androidx.paging.DataSource
 import androidx.paging.PagingSource
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Query
 import com.mytlogos.enterprise.background.room.model.RoomMedium
-import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.model.MediumItem
+import com.mytlogos.enterprise.model.MediumSetting
+import com.mytlogos.enterprise.model.SimpleMedium
+import com.mytlogos.enterprise.model.SpaceMedium
 import org.joda.time.DateTime
 
 @Dao

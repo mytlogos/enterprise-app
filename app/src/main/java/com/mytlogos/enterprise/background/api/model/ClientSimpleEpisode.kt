@@ -13,7 +13,7 @@ class ClientSimpleEpisode(val id: Int, val partId: Int, val totalIndex: Int, val
                 ", totalIndex=" + totalIndex +
                 ", partialIndex=" + partialIndex +
                 ", combiIndex" + combiIndex +
-                ", releases=" + Arrays.toString(releases) +
+                ", releases=" + releases.contentToString() +
                 '}'
     }
 

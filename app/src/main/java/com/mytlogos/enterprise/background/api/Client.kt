@@ -140,9 +140,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
 
     private fun userAuthenticationMap(): MutableMap<String, Any?> {
         val body: MutableMap<String, Any?> = HashMap()
+        val authentication = this.authentication
         checkNotNull(authentication) { "user not authenticated" }
-        body["uuid"] = authentication!!.getUuid()
-        body["session"] = authentication!!.getSession()
+        body["uuid"] = authentication.getUuid()
+        body["session"] = authentication.getSession()
         return body
     }
 
@@ -295,16 +296,6 @@ class Client private constructor(private val identificator: NetworkIdentificator
         }
         return query(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.getNews(url, body) }
     }
-
-    /**
-     * Web API was removed.
-     * Remove this method and all connected code.
-     */
-    @get:Throws(IOException::class)
-    val invalidated: Response<List<InvalidatedData>>
-        get() {
-            throw IllegalAccessError("API was removed")
-        }
 
     /**
      * Get a single ExternalUser.
@@ -783,6 +774,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
         var retrofit = retrofitMap[api]
         val path = fullClassPathMap[api]
             ?: throw IllegalArgumentException("Unknown api class: " + api.canonicalName)
+        @Suppress("BlockingMethodInNonBlockingContext")
         val localServer = getServer()
         server = localServer
 

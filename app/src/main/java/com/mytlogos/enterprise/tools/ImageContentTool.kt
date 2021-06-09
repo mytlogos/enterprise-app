@@ -1,6 +1,5 @@
 package com.mytlogos.enterprise.tools
 
-import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.mytlogos.enterprise.background.Repository

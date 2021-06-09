@@ -9,7 +9,6 @@ import com.mytlogos.enterprise.background.api.model.ClientMedium;
 import com.mytlogos.enterprise.background.api.model.ClientNews;
 import com.mytlogos.enterprise.background.api.model.ClientPart;
 import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
 import com.mytlogos.enterprise.background.api.model.ClientUser;
 
 import org.joda.time.DateTime;

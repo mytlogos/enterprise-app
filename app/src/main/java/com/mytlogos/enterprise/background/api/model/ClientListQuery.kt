@@ -1,7 +1,5 @@
 package com.mytlogos.enterprise.background.api.model
 
-import java.util.*
-
 /**
  * API Model for ListMedia.
  */

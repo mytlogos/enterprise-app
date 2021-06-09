@@ -10,7 +10,7 @@ import java.io.IOException
 
 @Suppress("BlockingMethodInNonBlockingContext")
 class UserViewModel(application: Application) : RepoViewModel(application) {
-    val userRepository by lazy { UserRepository.getInstance(application) }
+    private val userRepository by lazy { UserRepository.getInstance(application) }
     val userLiveData: LiveData<User?> by lazy { repository.user }
     val homeStatsLiveData: LiveData<HomeStats> by lazy { repository.homeStats }
 

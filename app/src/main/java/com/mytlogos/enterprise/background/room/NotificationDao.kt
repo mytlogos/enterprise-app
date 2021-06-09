@@ -1,9 +1,8 @@
 package com.mytlogos.enterprise.background.room
 
-import androidx.paging.DataSource
-import androidx.paging.PagingConfig
 import androidx.paging.PagingSource
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Query
 import com.mytlogos.enterprise.background.room.model.RoomNotification
 import com.mytlogos.enterprise.model.NotificationItem
 

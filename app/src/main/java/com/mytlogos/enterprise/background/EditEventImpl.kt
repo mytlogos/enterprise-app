@@ -48,8 +48,7 @@ class EditEventImpl : EditEvent {
         eventType: Int,
         firstValue: Any?,
         secondValue: Any?
-    ) : this(id, objectType, eventType, DateTime.now(), firstValue, secondValue) {
-    }
+    ) : this(id, objectType, eventType, DateTime.now(), firstValue, secondValue)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
