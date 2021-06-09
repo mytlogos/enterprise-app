@@ -2,7 +2,6 @@ package com.mytlogos.enterprise.background.room
 
 import android.app.Application
 import android.database.sqlite.SQLiteConstraintException
-import androidx.arch.core.util.Function
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
@@ -19,11 +18,11 @@ import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMedi
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.doPartitioned
 import com.mytlogos.enterprise.tools.doPartitionedEx
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import java.util.*
 import java.util.function.Consumer
-import java.util.stream.Collectors
 
 class RoomStorage(application: Application) : DatabaseStorage {
     private val userDao: UserDao
@@ -152,14 +151,14 @@ class RoomStorage(application: Application) : DatabaseStorage {
         episodeDao.updateProgress(episodeIds, progress, DateTime.now())
     }
 
-    override fun getReadTodayEpisodes(): LiveData<PagedList<ReadEpisode>> {
+    override fun getReadTodayEpisodes(): Flow<PagingData<ReadEpisode>> {
         val converter = RoomConverter()
-        return LivePagedListBuilder(
-            episodeDao.readTodayEpisodes.map(Function { input: RoomReadEpisode ->
-                converter.convert(input)
-            }),
-            50
-        ).build()
+        return Pager(
+            PagingConfig(50),
+            pagingSourceFactory = episodeDao.readTodayEpisodes
+                .map(converter::convert)
+                .asPagingSourceFactory(),
+        ).flow
     }
 
     override suspend fun addItemsToList(listId: Int, ids: Collection<Int>) {
@@ -215,8 +214,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
         mediaListDao.moveJoins(oldJoins, newJoins)
     }
 
-    override fun getExternalUser(): LiveData<PagedList<ExternalUser>> {
-        return LivePagedListBuilder(externalUserDao.all, 50).build()
+    override fun getExternalUser(): Flow<PagingData<ExternalUser>> {
+        return Pager(
+            PagingConfig(50),
+            pagingSourceFactory = externalUserDao.all.asPagingSourceFactory()
+        ).flow
     }
 
     override fun getSpaceMedium(mediumId: Int): SpaceMedium = runBlocking {

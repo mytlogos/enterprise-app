@@ -1,31 +1,31 @@
 package com.mytlogos.enterprise.ui
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.DialogInterface
+import android.graphics.Color
 import android.os.*
 import android.view.*
 import android.widget.*
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.Transformations
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
-import androidx.paging.PagedList
-import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.*
+import androidx.paging.PagingData
+import androidx.recyclerview.widget.DiffUtil
 import com.mytlogos.enterprise.R
+import com.mytlogos.enterprise.TimeAgo
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.requireSupportActionBar
 import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.transform
-import com.mytlogos.enterprise.ui.MediumListFragment.FlexibleMediumItem
+import com.mytlogos.enterprise.tools.transformPaging
 import com.mytlogos.enterprise.viewmodel.ListMediaViewModel
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
-import eu.davidea.flexibleadapter.SelectableAdapter
-import eu.davidea.flexibleadapter.items.IFlexible
+import eu.davidea.flexibleadapter.utils.DrawableUtils
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.util.*
+import kotlin.math.max
 
-class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
+class ListMediumFragment : BasePagingFragment<MediumItem, ListMediaViewModel>() {
     private var listId = 0
     private var isExternal = false
     private var listTitle: String? = null
@@ -36,7 +36,7 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
             mode.title = "Edit MediumList"
             mode.menuInflater.inflate(R.menu.list_medium_action_mode_menu, menu)
             mainActivity.requireSupportActionBar().hide()
-            flexibleAdapter.mode = SelectableAdapter.Mode.MULTI
+            changeSelectionMode(SelectionMode.MULTI)
             return true
         }
 
@@ -60,15 +60,8 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
                 // TODO: 01.08.2019 ask if we really want to remove this item
                 return true
             }
-            val selectedPositions = flexibleAdapter.selectedPositions
-            val selectedMediaIds: MutableList<Int> = ArrayList()
+            val selectedMediaIds = getSelectedItems().map { it.mediumId }.toMutableList()
 
-            for (selectedPosition in selectedPositions) {
-                val flexible =
-                    flexibleAdapter.getItem(selectedPosition) as? FlexibleMediumItem ?: continue
-                val mediumItem = flexible.item
-                selectedMediaIds.add(mediumItem.mediumId)
-            }
             val size = selectedMediaIds.size
 
             lifecycleScope.launch {
@@ -89,7 +82,8 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
         fun moveItemsToList(mode: ActionMode): Boolean {
             val context = Objects.requireNonNull(context)
             val builder = AlertDialog.Builder(context)
-            val listsViewModel = ViewModelProvider(this@ListMediumFragment).get(ListsViewModel::class.java)
+            val listsViewModel =
+                ViewModelProvider(this@ListMediumFragment).get(ListsViewModel::class.java)
 
             val listLiveData = Transformations.map(
                 listsViewModel.internLists
@@ -104,13 +98,8 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
             )
             builder.setAdapter(adapter) { _: DialogInterface?, which: Int ->
                 val list = adapter.getItem(which) ?: return@setAdapter
-                val selectedPositions = flexibleAdapter.selectedPositions
 
-                val selectedMediaIds: MutableList<Int> = selectedPositions.mapNotNull {
-                    val flexible = flexibleAdapter.getItem(it) as? FlexibleMediumItem ?: return@mapNotNull null
-                    val mediumItem = flexible.item
-                    mediumItem.mediumId
-                }.toMutableList()
+                val selectedMediaIds = getSelectedItems().map { it.mediumId }.toMutableList()
 
                 lifecycleScope.launch {
                     val success = listsViewModel.moveMediumToList(
@@ -134,8 +123,7 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
 
         override fun onDestroyActionMode(mode: ActionMode) {
             mainActivity.requireSupportActionBar().show()
-            flexibleAdapter.mode = SelectableAdapter.Mode.IDLE
-            flexibleAdapter.clearSelection()
+            changeSelectionMode(SelectionMode.IDLE)
             println("destroyed action mode")
             inActionMode = false
         }
@@ -151,7 +139,7 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
         this.setTitle(listTitle)
@@ -184,52 +172,23 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
         } else super.onOptionsItemSelected(item)
     }
 
-    override fun onItemLongClick(position: Int) {
+    override fun onItemLongClick(position: Int, item: MediumItem?): Boolean {
         // actionMode on external Lists is forbidden, they are not modifiable
         if (!inActionMode && !isExternal) {
             inActionMode = true
             println("starting action mode")
-            flexibleAdapter.addSelection(position)
+            item?.let { selectionTracker.select(it.getSelectionKey()) }
             this.mainActivity.startActionMode(callback)
         }
+        return true
     }
 
-    override fun onItemClick(view: View, position: Int): Boolean {
-        if (inActionMode) {
-            return if (position != RecyclerView.NO_POSITION) {
-                flexibleAdapter.toggleSelection(position)
-                true
-            } else {
-                false
-            }
+    override fun onItemClick(position: Int, item: MediumItem?) {
+        if (inActionMode || item == null) {
+            return
         }
-        val item = flexibleAdapter.getItem(position) as? FlexibleMediumItem ?: return false
-        val mediumItem = item.item
-        val fragment: TocFragment = TocFragment.newInstance(mediumItem.mediumId)
+        val fragment: TocFragment = TocFragment.newInstance(item.mediumId)
         mainActivity.switchWindow(fragment, true)
-        return false
-    }
-
-    override fun onItemSwipe(position: Int, direction: Int) {
-        /*CompletableFuture<Boolean> future = this.getViewModel().removeMedia(this.listId, item.item.getMediumId());
-        future.whenComplete((aBoolean, throwable) -> {
-            Context context = this.getContext();
-            if (!this.isAdded() || context == null) {
-                return;
-            }
-            String msg;
-
-            if (aBoolean == null || !aBoolean || throwable != null) {
-                msg = "Could not remove item from list";
-            } else {
-                msg = "Successfully removed Item from List";
-            }
-            this.requireActivity().runOnUiThread(() -> {
-                showToast(msg)
-                this.requireActivity().onBackPressed();
-            });
-
-        });*/
     }
 
     override val sortMap: LinkedHashMap<String, Sortings>
@@ -252,12 +211,53 @@ class ListMediumFragment : BaseListFragment<MediumItem, ListMediaViewModel>() {
     override val viewModelClass: Class<ListMediaViewModel>
         get() = ListMediaViewModel::class.java
 
-    override fun createPagedListLiveData(): LiveData<PagedList<MediumItem>> {
-        return transform(viewModel.getMedia(listId, isExternal))
+    override fun createPaged(model: ListMediaViewModel): Flow<PagingData<MediumItem>> {
+        return transformPaging(viewModel.getMedia(listId, isExternal)).asFlow()
     }
 
-    override fun createFlexible(value: MediumItem): IFlexible<*> {
-        return FlexibleMediumItem(value)
+    override fun createAdapter(): BaseAdapter<MediumItem, *> = MediumAdapter()
+
+    private class MediumItemDiff : DiffUtil.ItemCallback<MediumItem>() {
+        override fun areItemsTheSame(oldItem: MediumItem, newItem: MediumItem): Boolean {
+            return oldItem.mediumId == newItem.mediumId
+        }
+
+        override fun areContentsTheSame(oldItem: MediumItem, newItem: MediumItem): Boolean {
+            return oldItem == newItem
+        }
+    }
+
+    private class MediumAdapter : BaseAdapter<MediumItem, NewMetaViewHolder>(MediumItemDiff()) {
+
+        @SuppressLint("SetTextI18n")
+        override fun onBindViewHolder(holder: NewMetaViewHolder, position: Int) {
+            val item = getItem(position)
+
+            if (item != null) {
+                val currentReadEpisode = max(item.currentReadEpisode, 0)
+                val lastEpisode = max(item.lastEpisode, 0)
+                val lastUpdated = item.lastUpdated
+                val relativeTime: String = TimeAgo.toRelative(lastUpdated) ?: "No Updates"
+
+                holder.topLeftText.text = "$currentReadEpisode/$lastEpisode"
+                holder.topRightText.text = relativeTime
+                holder.mainText.text = item.title
+
+                val drawable = DrawableUtils.getSelectableBackgroundCompat(
+                    Color.WHITE,  // normal background
+                    Color.GRAY,  // pressed background
+                    Color.BLACK) // ripple color
+                DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
+
+                holder.itemView.isActivated = selectionTracker.isSelected(item.getSelectionKey())
+            } else {
+                holder.itemView.isActivated = false
+            }
+        }
+
+        override val layoutId = R.layout.meta_item
+
+        override fun createViewHolder(root: View, viewType: Int) = NewMetaViewHolder(root)
     }
 
     companion object {

@@ -2,10 +2,11 @@ package com.mytlogos.enterprise.background
 
 import android.content.Context
 import androidx.lifecycle.LiveData
-import androidx.paging.PagedList
+import androidx.paging.PagingData
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
 import com.mytlogos.enterprise.model.*
+import kotlinx.coroutines.flow.Flow
 
 interface Repository {
     val isClientOnline: Boolean
@@ -24,7 +25,7 @@ interface Repository {
 
     fun onDownloadable(): LiveData<Boolean>
 
-    val externalUser: LiveData<PagedList<ExternalUser>>
+    val externalUser: Flow<PagingData<ExternalUser>>
 
     fun getSpaceMedium(mediumId: Int): SpaceMedium
     fun getMediumType(mediumId: Int): Int
@@ -33,7 +34,7 @@ interface Repository {
     fun clearLocalMediaData(context: Context)
 
     fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
-    val readTodayEpisodes: LiveData<PagedList<ReadEpisode>>
+    val readTodayEpisodes: Flow<PagingData<ReadEpisode>>
     fun getReleaseLinks(episodeId: Int): List<String>
     fun updateProgress(episodeId: Int, progress: Float)
 

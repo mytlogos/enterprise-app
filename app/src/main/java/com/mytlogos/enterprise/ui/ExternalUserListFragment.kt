@@ -1,61 +1,50 @@
 package com.mytlogos.enterprise.ui
 
-import android.view.*
-import androidx.lifecycle.LiveData
-import androidx.paging.PagedList
+import android.annotation.SuppressLint
+import android.view.View
+import androidx.paging.PagingData
+import androidx.recyclerview.widget.DiffUtil
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.ExternalUser
 import com.mytlogos.enterprise.tools.externalUserTypeToName
 import com.mytlogos.enterprise.viewmodel.ExternalUserViewModel
-import eu.davidea.flexibleadapter.FlexibleAdapter
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
-import eu.davidea.flexibleadapter.items.IFlexible
+import kotlinx.coroutines.flow.Flow
 
-class ExternalUserListFragment : BaseListFragment<ExternalUser, ExternalUserViewModel>() {
+class ExternalUserListFragment : BasePagingFragment<ExternalUser, ExternalUserViewModel>() {
     override val viewModelClass: Class<ExternalUserViewModel>
         get() = ExternalUserViewModel::class.java
 
-    override fun createPagedListLiveData(): LiveData<PagedList<ExternalUser>> {
+    override fun createAdapter(): BaseAdapter<ExternalUser, *> = UserAdapter()
+
+    override fun createPaged(model: ExternalUserViewModel): Flow<PagingData<ExternalUser>> {
         return viewModel.externalUser
     }
 
-    override fun createFlexible(value: ExternalUser): IFlexible<*> {
-        return UserItem(value)
-    }
-
-    private class UserItem(private val externalUser: ExternalUser) :
-        AbstractFlexibleItem<MetaViewHolder>() {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val userItem = other as UserItem
-            return externalUser == userItem.externalUser
+    private class UserDiff : DiffUtil.ItemCallback<ExternalUser>() {
+        override fun areItemsTheSame(oldItem: ExternalUser, newItem: ExternalUser): Boolean {
+            return oldItem.uuid == newItem.uuid
         }
 
-        override fun hashCode(): Int {
-            return externalUser.hashCode()
-        }
-
-        override fun getLayoutRes(): Int {
-            return R.layout.meta_item
-        }
-
-        override fun createViewHolder(
-            view: View,
-            adapter: FlexibleAdapter<IFlexible<*>>
-        ): MetaViewHolder {
-            return MetaViewHolder(view, adapter)
-        }
-
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: MetaViewHolder,
-            position: Int,
-            payloads: List<Any>
-        ) {
-            holder.topLeftText.text = externalUserTypeToName(
-                externalUser.type)
-            holder.mainText.text = externalUser.identifier
+        override fun areContentsTheSame(oldItem: ExternalUser, newItem: ExternalUser): Boolean {
+            return oldItem == newItem
         }
     }
+
+    private class UserAdapter : BaseAdapter<ExternalUser, NewMetaViewHolder>(UserDiff()) {
+
+        @SuppressLint("SetTextI18n")
+        override fun onBindViewHolder(holder: NewMetaViewHolder, position: Int) {
+            val item = getItem(position)
+
+            if (item != null) {
+                holder.topLeftText.text = externalUserTypeToName(item.type)
+                holder.mainText.text = item.identifier
+            }
+        }
+
+        override val layoutId = R.layout.meta_item
+
+        override fun createViewHolder(root: View, viewType: Int) = NewMetaViewHolder(root)
+    }
+
 }

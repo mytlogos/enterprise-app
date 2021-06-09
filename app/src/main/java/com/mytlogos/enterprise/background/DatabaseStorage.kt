@@ -1,9 +1,10 @@
 package com.mytlogos.enterprise.background
 
 import androidx.lifecycle.LiveData
-import androidx.paging.PagedList
+import androidx.paging.PagingData
 import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
 import com.mytlogos.enterprise.model.*
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Interface for querying and deleting data.
@@ -32,14 +33,14 @@ interface DatabaseStorage {
     fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
     suspend fun updateProgress(episodeIds: Collection<Int>, progress: Float)
 
-    fun getReadTodayEpisodes(): LiveData<PagedList<ReadEpisode>>
+    fun getReadTodayEpisodes(): Flow<PagingData<ReadEpisode>>
     suspend fun addItemsToList(listId: Int, ids: Collection<Int>)
     fun getListSuggestion(name: String): LiveData<MutableList<MediaList>>
     fun onDownloadAble(): LiveData<Boolean>
     fun removeItemFromList(listId: Int, mediumId: Int)
     fun removeItemFromList(listId: Int, mediumId: Collection<Int>)
     suspend fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>)
-    fun getExternalUser(): LiveData<PagedList<ExternalUser>>
+    fun getExternalUser(): Flow<PagingData<ExternalUser>>
     fun getSpaceMedium(mediumId: Int): SpaceMedium
     fun getMediumType(mediumId: Int): Int
     fun getReleaseLinks(episodeId: Int): List<String>

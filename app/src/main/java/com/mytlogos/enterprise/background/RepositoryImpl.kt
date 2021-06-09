@@ -5,7 +5,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Transformations
-import androidx.paging.PagedList
+import androidx.paging.PagingData
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.NetworkIdentificator
@@ -13,6 +13,7 @@ import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
 import com.mytlogos.enterprise.background.room.RoomStorage
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.preferences.UserPreferences
+import kotlinx.coroutines.flow.Flow
 import org.joda.time.DateTime
 import java.io.IOException
 
@@ -116,10 +117,10 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return storage.checkReload(stat)
     }
 
-    override val readTodayEpisodes: LiveData<PagedList<ReadEpisode>>
+    override val readTodayEpisodes: Flow<PagingData<ReadEpisode>>
         get() = storage.getReadTodayEpisodes()
 
-    override val externalUser: LiveData<PagedList<ExternalUser>>
+    override val externalUser: Flow<PagingData<ExternalUser>>
         get() = storage.getExternalUser()
 
     override fun getSpaceMedium(mediumId: Int): SpaceMedium {
