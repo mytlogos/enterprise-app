@@ -126,8 +126,8 @@ internal class ServerDiscovery {
         // Find the server using UDP broadcast
         //Open a random port to send the package
         try {
-            DatagramSocket().use { c ->
-                c.broadcast = true
+            DatagramChannel.open().use { c ->
+                c.setOption(StandardSocketOptions.SO_BROADCAST, true)
                 val sendData = "DISCOVER_SERVER_REQUEST_ENTERPRISE".toByteArray()
                 val udpServerPort = 3001
                 //Try the some 'normal' ip addresses first
@@ -174,13 +174,18 @@ internal class ServerDiscovery {
                 }
 
                 //Wait for a response
-                val recvBuf = ByteArray(15000)
+                val recvBuf = ByteBuffer.allocate(15000)
+                val serverId = udpServerId.incrementAndGet()
+
                 while (true) {
-                    val receivePacket = DatagramPacket(recvBuf, recvBuf.size)
-                    c.receive(receivePacket)
+                    val sender = c.receive(recvBuf)
+
+                    if (sender !is InetSocketAddress) {
+                        continue
+                    }
 
                     //Check if the message is correct
-                    val message = String(receivePacket.data).trim { it <= ' ' }
+                    val message = String(recvBuf.array()).trim { it <= ' ' }
 
                     // the weird thing is if the message is over 34 bytes long
                     // e.g. 'DISCOVER_SERVER_RESPONSE_ENTERPRISE' the last character will be cut off
@@ -188,7 +193,7 @@ internal class ServerDiscovery {
                     // or java client does not receive correctly
                     if ("ENTERPRISE_DEV" == message) {
                         val server = Server(
-                            receivePacket.address.hostAddress,
+                            sender.hostName,
                             3000,
                             isLocal = true,
                             isDevServer = true
@@ -196,7 +201,7 @@ internal class ServerDiscovery {
                         discoveredServer.add(server)
                     } else if ("ENTERPRISE_PROD" == message) {
                         val server = Server(
-                            receivePacket.address.hostAddress,
+                            sender.hostName,
                             3000,
                             isLocal = true,
                             isDevServer = false
@@ -206,15 +211,17 @@ internal class ServerDiscovery {
                 }
             }
         } catch (ex: IOException) {
-            ex.printStackTrace()
+            if (ex !is ClosedByInterruptException) {
+                ex.printStackTrace()
+            }
         }
     }
 
     @Throws(IOException::class)
-    private fun sendUDPPacket(c: DatagramSocket, data: ByteArray, port: Int, address: InetAddress) {
+    private fun sendUDPPacket(c: DatagramChannel, data: ByteArray, port: Int, address: InetAddress) {
 //        System.out.println("Sending Msg to " + address.getHostAddress() + ":" + port);
-        c.send(DatagramPacket(data, data.size, address, port))
-        c.send(DatagramPacket(data, data.size, address, port))
+        c.send(ByteBuffer.wrap(data), InetSocketAddress(address, port))
+        c.send(ByteBuffer.wrap(data), InetSocketAddress(address, port))
     }
 
     fun isReachable(server: Server?): Boolean {
@@ -223,5 +230,8 @@ internal class ServerDiscovery {
 
     companion object {
         private const val isDev = true
+        private val tcpId = AtomicInteger()
+        private val udpId = AtomicInteger()
+        private val udpServerId = AtomicInteger()
     }
 }
