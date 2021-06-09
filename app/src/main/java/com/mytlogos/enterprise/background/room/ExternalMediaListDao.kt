@@ -40,27 +40,27 @@ interface ExternalMediaListDao : MultiBaseDao<RoomExternalMediaList?> {
     @Query("SELECT mediumId FROM ExternalListMediaJoin WHERE listId=:externalListId")
     suspend fun getExternalListItems(externalListId: Int): List<Int>
 
-    @get:Query("SELECT RoomExternalMediaList.*, " +
-            "(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size " +
-            "FROM RoomExternalMediaList")
+    @get:Query("""SELECT RoomExternalMediaList.*,
+(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size
+FROM RoomExternalMediaList""")
     val externalListViews: LiveData<MutableList<RoomExternListView>>
 
-    @Query("SELECT RoomExternalMediaList.externalListId as listId,RoomExternalMediaList.uuid,url,medium,name,toDownload, " +
-            "(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size " +
-            "FROM RoomExternalMediaList " +
-            "LEFT JOIN " +
-            "(SELECT externalListId,1 as toDownload FROM RoomToDownload WHERE externalListId > 0) " +
-            "as RoomToDownload ON RoomToDownload.externalListId=RoomExternalMediaList.externalListId " +
-            "WHERE RoomExternalMediaList.externalListId=:id")
+    @Query("""SELECT RoomExternalMediaList.externalListId as listId,RoomExternalMediaList.uuid,url,medium,name,toDownload,
+(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size
+FROM RoomExternalMediaList
+LEFT JOIN
+(SELECT externalListId,1 as toDownload FROM RoomToDownload WHERE externalListId > 0)
+as RoomToDownload ON RoomToDownload.externalListId=RoomExternalMediaList.externalListId
+WHERE RoomExternalMediaList.externalListId=:id""")
     fun getExternalListSetting(id: Int): LiveData<ExternalMediaListSetting>
 
-    @Query("SELECT RoomExternalMediaList.externalListId as listId,RoomExternalMediaList.uuid,url,medium,name,toDownload, " +
-            "(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size " +
-            "FROM RoomExternalMediaList " +
-            "LEFT JOIN " +
-            "(SELECT externalListId,1 as toDownload FROM RoomToDownload WHERE externalListId > 0) " +
-            "as RoomToDownload ON RoomToDownload.externalListId=RoomExternalMediaList.externalListId " +
-            "WHERE RoomExternalMediaList.externalListId=:id")
+    @Query("""SELECT RoomExternalMediaList.externalListId as listId,RoomExternalMediaList.uuid,url,medium,name,toDownload,
+(SELECT COUNT(*) FROM ExternalListMediaJoin WHERE RoomExternalMediaList.externalListId=ExternalListMediaJoin.listId) as size
+FROM RoomExternalMediaList
+LEFT JOIN
+(SELECT externalListId,1 as toDownload FROM RoomToDownload WHERE externalListId > 0)
+as RoomToDownload ON RoomToDownload.externalListId=RoomExternalMediaList.externalListId
+WHERE RoomExternalMediaList.externalListId=:id""")
     suspend fun getExternalListSettingNow(id: Int): ExternalMediaListSetting
 
     @Query("SELECT mediumId FROM ExternalListMediaJoin WHERE listId=:externalListId")

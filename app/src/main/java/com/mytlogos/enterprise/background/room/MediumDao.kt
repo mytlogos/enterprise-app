@@ -166,29 +166,29 @@ WHERE listId=:listId ORDER BY title""")
     WHERE RoomPart.mediumId=RoomMedium.mediumId AND RoomEpisode.progress=1    ORDER BY RoomEpisode.combiIndex DESC    LIMIT 1) as currentReadEpisode,(   SELECT episodeId FROM RoomEpisode    INNER JOIN RoomPart ON RoomPart.partId= RoomEpisode.partId    WHERE mediumId=RoomMedium.mediumId    ORDER BY RoomEpisode.combiIndex DESC    LIMIT 1) as currentRead, (   SELECT MAX(RoomEpisode.combiIndex) FROM RoomEpisode    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId     WHERE RoomPart.mediumId=RoomMedium.mediumId) as lastEpisode, (   SELECT MAX(RoomRelease.releaseDate) FROM RoomEpisode    INNER JOIN RoomRelease ON RoomEpisode.episodeId=RoomRelease.episodeId    INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId     WHERE RoomPart.mediumId=RoomMedium.mediumId) as lastUpdated FROM RoomMedium LEFT JOIN (SELECT mediumId,1 as toDownload FROM RoomToDownload WHERE mediumId > 0) as RoomToDownload ON RoomToDownload.mediumId=RoomMedium.mediumId WHERE RoomMedium.mediumId=:mediumId""")
     suspend fun getMediumSettingsNow(mediumId: Int): MediumSetting
 
-    @Query("SELECT title, medium, mediumId FROM RoomMedium " +
-            "WHERE medium=:medium AND INSTR(lower(title), :title) ORDER BY title LIMIT 10")
+    @Query("""SELECT title, medium, mediumId FROM RoomMedium
+WHERE medium=:medium AND INSTR(lower(title), :title) ORDER BY title LIMIT 10""")
     fun getSuggestions(title: String, medium: Int): LiveData<MutableList<SimpleMedium>>
 
     @Query("SELECT title, medium, mediumId FROM RoomMedium WHERE mediumId=:mediumId")
     suspend fun getSimpleMedium(mediumId: Int): SimpleMedium
 
-    @Query("SELECT mediumId, title," +
-            "(" +
-            "   SELECT COUNT(episodeId) FROM RoomEpisode " +
-            "   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId  " +
-            "   WHERE RoomPart.mediumId=:mediumId AND saved=1" +
-            ") as savedEpisodes " +
-            "FROM RoomMedium " +
-            "WHERE mediumId=:mediumId")
+    @Query("""SELECT mediumId, title,
+(
+   SELECT COUNT(episodeId) FROM RoomEpisode
+   INNER JOIN RoomPart ON RoomPart.partId=RoomEpisode.partId
+   WHERE RoomPart.mediumId=:mediumId AND saved=1
+) as savedEpisodes
+FROM RoomMedium
+WHERE mediumId=:mediumId""")
     suspend fun getSpaceMedium(mediumId: Int): SpaceMedium
 
     @Query("SELECT medium FROM RoomMedium WHERE mediumId=:mediumId")
     suspend fun getMediumType(mediumId: Int): Int
 
-    @Query("SELECT mediumId FROM RoomPart " +
-            "INNER JOIN RoomEpisode ON RoomPart.partId=RoomEpisode.partId " +
-            "WHERE RoomEpisode.episodeId=:episodeId " +
-            "LIMIT 1")
+    @Query("""SELECT mediumId FROM RoomPart
+INNER JOIN RoomEpisode ON RoomPart.partId=RoomEpisode.partId
+WHERE RoomEpisode.episodeId=:episodeId
+LIMIT 1""")
     suspend fun getMediumId(episodeId: Int): Int
 }

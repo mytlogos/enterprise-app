@@ -45,27 +45,27 @@ interface MediaListDao : MultiBaseDao<RoomMediaList> {
     @Query("SELECT mediumId FROM MediaListMediaJoin WHERE listId=:listId")
     fun getLiveListItems(listId: Int): LiveData<MutableList<Int>>
 
-    @get:Query("SELECT RoomMediaList.*, " +
-            "(SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size " +
-            "FROM RoomMediaList")
+    @get:Query("""SELECT RoomMediaList.*,
+(SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size
+FROM RoomMediaList""")
     val listViews: LiveData<MutableList<MediaList>>
 
-    @Query("SELECT RoomMediaList.listId,RoomMediaList.uuid,medium,name,toDownload, " +
-            "   (SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size " +
-            "FROM RoomMediaList " +
-            "LEFT JOIN " +
-            "   (SELECT listId,1 as toDownload FROM RoomToDownload WHERE listId > 0) " +
-            "as RoomToDownload ON RoomToDownload.listId=RoomMediaList.listId " +
-            "WHERE RoomMediaList.listId=:id")
+    @Query("""SELECT RoomMediaList.listId,RoomMediaList.uuid,medium,name,toDownload,
+   (SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size
+FROM RoomMediaList
+LEFT JOIN
+   (SELECT listId,1 as toDownload FROM RoomToDownload WHERE listId > 0)
+as RoomToDownload ON RoomToDownload.listId=RoomMediaList.listId
+WHERE RoomMediaList.listId=:id""")
     fun getListSettings(id: Int): LiveData<MediaListSetting>
 
-    @Query("SELECT RoomMediaList.listId,RoomMediaList.uuid,medium,name,toDownload, " +
-            "   (SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size " +
-            "FROM RoomMediaList " +
-            "LEFT JOIN " +
-            "   (SELECT listId,1 as toDownload FROM RoomToDownload WHERE listId > 0) " +
-            "as RoomToDownload ON RoomToDownload.listId=RoomMediaList.listId " +
-            "WHERE RoomMediaList.listId=:id")
+    @Query("""SELECT RoomMediaList.listId,RoomMediaList.uuid,medium,name,toDownload,
+   (SELECT COUNT(*) FROM MediaListMediaJoin WHERE RoomMediaList.listId=MediaListMediaJoin.listId) as size
+FROM RoomMediaList
+LEFT JOIN
+   (SELECT listId,1 as toDownload FROM RoomToDownload WHERE listId > 0)
+as RoomToDownload ON RoomToDownload.listId=RoomMediaList.listId
+WHERE RoomMediaList.listId=:id""")
     suspend fun getListSettingsNow(id: Int): MediaListSetting
 
     @Query("SELECT 1 WHERE :listName IN (SELECT name FROM RoomMediaList)")

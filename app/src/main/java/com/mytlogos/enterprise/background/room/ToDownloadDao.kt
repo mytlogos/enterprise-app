@@ -13,8 +13,8 @@ interface ToDownloadDao : MultiBaseDao<RoomToDownload> {
     @Query("DELETE FROM RoomToDownload WHERE listId is :listId AND externalListId is :externalListId AND mediumId is :mediumId")
     suspend fun deleteToDownload(mediumId: Int?, listId: Int?, externalListId: Int?)
 
-    @Query("SELECT COUNT(toDownloadId) FROM RoomToDownload " +
-            "LEFT JOIN MediaListMediaJoin ON RoomToDownload.listId=MediaListMediaJoin.listId " +
-            "LEFT JOIN ExternalListMediaJoin ON RoomToDownload.externalListId=ExternalListMediaJoin.listId ")
+    @Query("""SELECT COUNT(toDownloadId) FROM RoomToDownload
+LEFT JOIN MediaListMediaJoin ON RoomToDownload.listId=MediaListMediaJoin.listId
+LEFT JOIN ExternalListMediaJoin ON RoomToDownload.externalListId=ExternalListMediaJoin.listId """)
     fun countMediaRows(): LiveData<Int>
 }
