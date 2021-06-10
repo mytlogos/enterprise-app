@@ -146,7 +146,7 @@ abstract class ContentTool internal constructor(
     abstract fun getItemPath(mediumId: Int, dir: File): String?
 
     @Throws(IOException::class)
-    abstract fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int)
+    abstract suspend fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int)
 
     @Synchronized
     open fun mergeExternalAndInternalMedia(toExternal: Boolean) {

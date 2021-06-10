@@ -293,8 +293,8 @@ class EpisodeRepository private constructor(application: Application) {
         return episodeDao.getDownloadableEpisodes(mediumId, limit)
     }
 
-    fun getSavedEpisodes(mediumId: Int): Collection<Int> {
-        return runBlocking { episodeDao.getSavedEpisodes(mediumId) }
+    suspend fun getSavedEpisodes(mediumId: Int): Collection<Int> {
+        return episodeDao.getSavedEpisodes(mediumId)
     }
 
     suspend fun clearFailEpisodes() {

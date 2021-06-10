@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.model.TEXT
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import nl.siegmann.epublib.domain.Book
 import nl.siegmann.epublib.domain.Resource
 import nl.siegmann.epublib.epub.EpubReader
@@ -175,8 +177,9 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
         return null
     }
 
+    @Suppress("BlockingMethodInNonBlockingContext")
     @Throws(IOException::class)
-    override fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) {
+    override suspend fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) = withContext(Dispatchers.IO) {
         if (externalTexts == null) {
             externalTexts = getItemContainers(true)
         }
@@ -187,6 +190,7 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
         val file: File?
         val writeExternal = writeExternal()
         val writeInternal = writeInternal()
+
         if (writeExternal && externalTexts!!.containsKey(mediumId)) {
             file = externalTexts!![mediumId]
             book = loadBook(file)
@@ -204,7 +208,7 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
             book = Book()
         }
         if (file == null) {
-            return
+            return@withContext
         }
         for (episode in episodes) {
             // enable episode identification via Resource

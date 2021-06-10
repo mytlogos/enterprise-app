@@ -7,7 +7,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
 import com.mytlogos.enterprise.R
-import com.mytlogos.enterprise.background.*
+import com.mytlogos.enterprise.background.Repository
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
 import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.background.repository.MediaListRepository
@@ -15,14 +15,14 @@ import com.mytlogos.enterprise.background.repository.ToDownloadRepository
 import com.mytlogos.enterprise.tools.ContentTool
 import com.mytlogos.enterprise.tools.getContentTool
 import com.mytlogos.enterprise.tools.getSupportedContentTools
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.collections.HashSet
 
 class CheckSavedWorker(
     context: Context,
     workerParams: WorkerParameters
-): Worker(context, workerParams) {
+): CoroutineWorker(context, workerParams) {
 
     private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var builder: NotificationCompat.Builder
@@ -57,7 +57,7 @@ class CheckSavedWorker(
     }
 
     @SuppressLint("UseSparseArrays")
-    override fun doWork(): Result {
+    override suspend fun doWork(): Result {
         val application = this.applicationContext as Application
         if (SynchronizeWorker.isRunning(application)
             || DownloadWorker.isRunning(application)
@@ -86,17 +86,13 @@ class CheckSavedWorker(
         for ((mediumType, value) in typeMediumSavedEpisodes) {
             val tool = getContentTool(mediumType, application)
 
-            checkLocalContentFiles(tool, repository, value)
+            checkLocalContentFiles(tool, value)
 
             notificationManager.notify(checkLocalNotificationId, builder.build())
         }
 
         // let notification stay for 10s
-        try {
-            Thread.sleep(10000)
-        } catch (e: InterruptedException) {
-            e.printStackTrace()
-        }
+        delay(10000)
         notificationManager.cancel(checkLocalNotificationId)
         return Result.success()
     }
@@ -106,18 +102,17 @@ class CheckSavedWorker(
      * Initializes [checkedCount] to 0.
      */
     private fun initProgress(typeMediumSavedEpisodes: MutableMap<Int, MutableMap<Int, MutableSet<Int>>>) {
-        mediaToCheck = 0
         checkedCount = 0
-
-        for (map in typeMediumSavedEpisodes.values) {
-            mediaToCheck += map.size
-        }
+        mediaToCheck = typeMediumSavedEpisodes.values.fold(
+            0,
+            { accumulator, map -> accumulator + map.size }
+        )
     }
 
     /**
      * Split the Mappings by `MediumType` of the Medium of the respective MediumIds.
      */
-    private fun splitByType(
+    private suspend fun splitByType(
         mediumSavedEpisodes: MutableMap<Int, MutableSet<Int>>,
         repository: Repository,
     ): MutableMap<Int, MutableMap<Int, MutableSet<Int>>> {
@@ -135,9 +130,8 @@ class CheckSavedWorker(
     /**
      * Update Episode Saved State.
      */
-    private fun checkLocalContentFiles(
+    private suspend fun checkLocalContentFiles(
         tool: ContentTool,
-        repository: Repository,
         mediumSavedEpisodes: Map<Int, MutableSet<Int>>
     ) {
         for ((mediumId, looseIds) in mediumSavedEpisodes) {
@@ -148,7 +142,7 @@ class CheckSavedWorker(
             looseIds.removeAll(savedEpisodes)
 
             if (unSavedIds.isNotEmpty()) {
-                runBlocking { episodeRepository.updateSaved(unSavedIds, false) }
+                episodeRepository.updateSaved(unSavedIds, false)
                 correctedSaveState += unSavedIds.size
             }
 
@@ -163,7 +157,7 @@ class CheckSavedWorker(
                         }
                     }
                     HandleLooseEpisode.UPDATE_STATE -> {
-                        runBlocking { episodeRepository.updateSaved(looseIds, true) }
+                        episodeRepository.updateSaved(looseIds, true)
                         correctedSaveState += looseIds.size
                     }
                 }
@@ -197,7 +191,7 @@ class CheckSavedWorker(
      * Looks up these mappings either internal or external, decided by [externalSpace].
      * Adds empty mappings for non-prohibited media Ids affected by ToDownload.
      */
-    private fun updateSavedEpisodesMapping(
+    private suspend fun updateSavedEpisodesMapping(
         contentTool: ContentTool,
         mediumSavedEpisodes: MutableMap<Int, MutableSet<Int>>,
         externalSpace: Boolean,
@@ -221,9 +215,8 @@ class CheckSavedWorker(
         }
 
         // get the current toDownload List
-        val toDownloadList = runBlocking {
-            ToDownloadRepository.getInstance(applicationContext as Application).getToDownloads()
-        }
+        val toDownloadList = ToDownloadRepository.getInstance(applicationContext as Application).getToDownloads()
+
         val prohibitedMedia: MutableList<Int> = ArrayList()
         val toDownloadMedia: MutableSet<Int> = HashSet()
 
@@ -237,7 +230,7 @@ class CheckSavedWorker(
                 affectedMediaIds.addAll(repository.getExternalListItems(toDownload.externalListId))
             }
             if (toDownload.listId != null) {
-                affectedMediaIds.addAll(runBlocking { mediaListRepository.getListItems(toDownload.listId) })
+                affectedMediaIds.addAll(mediaListRepository.getListItems(toDownload.listId))
             }
 
             if (toDownload.isProhibited) {

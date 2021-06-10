@@ -8,7 +8,6 @@ import com.mytlogos.enterprise.background.room.AbstractDatabase
 import com.mytlogos.enterprise.model.UpdateUser
 import com.mytlogos.enterprise.model.User
 import com.mytlogos.enterprise.tools.SingletonHolder
-import kotlinx.coroutines.runBlocking
 import java.io.IOException
 
 @Suppress("BlockingMethodInNonBlockingContext")
@@ -29,9 +28,9 @@ class UserRepository private constructor(application: Application) {
         TaskManager.runTaskSuspend { userDao.deleteAllUser() }
     }
 
-    fun getUserNow(): User? {
+    suspend fun getUserNow(): User? {
         val converter = RoomConverter()
-        return converter.convert(runBlocking { userDao.getUserNow() })
+        return converter.convert(userDao.getUserNow())
     }
 
     /**

@@ -22,34 +22,34 @@ interface DatabaseStorage {
     fun getPersister(repository: Repository, loadedData: LoadData): ClientModelPersister
     fun isLoading(): Boolean
     fun setLoading(loading: Boolean)
-    fun getLoadData(): LoadData
-    fun getListItems(listId: Int): Collection<Int>
-    fun getExternalListItems(externalListId: Int): Collection<Int>
-    fun insertDanglingMedia(mediaIds: MutableCollection<Int>)
+    suspend fun getLoadData(): LoadData
+    suspend fun getListItems(listId: Int): Collection<Int>
+    suspend fun getExternalListItems(externalListId: Int): Collection<Int>
+    suspend fun insertDanglingMedia(mediaIds: MutableCollection<Int>)
     suspend fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting?
 
     suspend fun getMediumSettingsNow(mediumId: Int): MediumSetting
 
-    fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
+    suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
     suspend fun updateProgress(episodeIds: Collection<Int>, progress: Float)
 
     fun getReadTodayEpisodes(): Flow<PagingData<ReadEpisode>>
     suspend fun addItemsToList(listId: Int, ids: Collection<Int>)
     fun getListSuggestion(name: String): LiveData<MutableList<MediaList>>
     fun onDownloadAble(): LiveData<Boolean>
-    fun removeItemFromList(listId: Int, mediumId: Collection<Int>)
+    suspend fun removeItemFromList(listId: Int, mediumId: Collection<Int>)
     suspend fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>)
     fun getExternalUser(): Flow<PagingData<ExternalUser>>
-    fun getSpaceMedium(mediumId: Int): SpaceMedium
-    fun getMediumType(mediumId: Int): Int
-    fun getReleaseLinks(episodeId: Int): List<String>
-    fun clearLocalMediaData()
-    fun getSimpleMedium(mediumId: Int): SimpleMedium
-    fun syncProgress()
-    fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int>
-    fun insertEditEvent(event: EditEvent)
+    suspend fun getSpaceMedium(mediumId: Int): SpaceMedium
+    suspend fun getMediumType(mediumId: Int): Int
+    suspend fun getReleaseLinks(episodeId: Int): List<String>
+    suspend fun clearLocalMediaData()
+    suspend fun getSimpleMedium(mediumId: Int): SimpleMedium
+    suspend fun syncProgress()
+    suspend fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int>
+    suspend fun insertEditEvent(event: EditEvent)
     suspend fun insertEditEvent(events: Collection<EditEvent>)
-    fun getEditEvents(): MutableList<out EditEvent>
-    fun removeEditEvents(editEvents: Collection<EditEvent>)
-    fun checkReload(parsedStat: ParsedStat): ReloadStat
+    suspend fun getEditEvents(): MutableList<out EditEvent>
+    suspend fun removeEditEvents(editEvents: Collection<EditEvent>)
+    suspend fun checkReload(parsedStat: ParsedStat): ReloadStat
 }

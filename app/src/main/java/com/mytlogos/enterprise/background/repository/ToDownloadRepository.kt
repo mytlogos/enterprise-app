@@ -10,7 +10,6 @@ import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.room.AbstractDatabase
 import com.mytlogos.enterprise.model.ToDownload
 import com.mytlogos.enterprise.tools.SingletonHolder
-import kotlinx.coroutines.runBlocking
 
 @Suppress("BlockingMethodInNonBlockingContext")
 class ToDownloadRepository private constructor(application: Application) {
@@ -41,7 +40,7 @@ class ToDownloadRepository private constructor(application: Application) {
         }
     }
 
-    suspend fun updateToDownload(add: Boolean, toDownload: ToDownload) = runBlocking {
+    suspend fun updateToDownload(add: Boolean, toDownload: ToDownload) {
         if (add) {
             toDownloadDao.insert(RoomConverter().convert(toDownload))
         } else {

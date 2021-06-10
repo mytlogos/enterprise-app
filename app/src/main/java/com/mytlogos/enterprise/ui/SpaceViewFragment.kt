@@ -22,6 +22,9 @@ import com.mytlogos.enterprise.tools.getTextContentTool
 import com.mytlogos.enterprise.tools.getVideoContentTool
 import com.mytlogos.enterprise.tools.humanReadableByteCount
 import com.mytlogos.enterprise.worker.CheckSavedWorker.Companion.checkLocal
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import lecho.lib.hellocharts.listener.PieChartOnValueSelectListener
 import lecho.lib.hellocharts.model.PieChartData
 import lecho.lib.hellocharts.model.SliceValue
@@ -279,18 +282,22 @@ class SpaceViewFragment : BaseFragment() {
             videoNode.children.clear()
             imageNode.children.clear()
             val application = requireActivity().application
-            gatherData(false, getTextContentTool(application), textNode)
-            gatherData(true, getTextContentTool(application), textNode)
-            gatherData(false, getAudioContentTool(application), audioNode)
-            gatherData(true, getAudioContentTool(application), audioNode)
-            gatherData(false, getImageContentTool(application), imageNode)
-            gatherData(true, getImageContentTool(application), imageNode)
-            gatherData(false, getVideoContentTool(application), videoNode)
-            gatherData(true, getVideoContentTool(application), videoNode)
+            runBlocking {
+                coroutineScope {
+                    launch { gatherData(false, getTextContentTool(application), textNode) }
+                    launch { gatherData(true, getTextContentTool(application), textNode) }
+                    launch { gatherData(false, getAudioContentTool(application), audioNode) }
+                    launch { gatherData(true, getAudioContentTool(application), audioNode) }
+                    launch { gatherData(false, getImageContentTool(application), imageNode) }
+                    launch { gatherData(true, getImageContentTool(application), imageNode) }
+                    launch { gatherData(false, getVideoContentTool(application), videoNode) }
+                    launch { gatherData(true, getVideoContentTool(application), videoNode) }
+                }
+            }
             return null
         }
 
-        private fun gatherData(
+        private suspend fun gatherData(
             externalSpace: Boolean,
             contentTool: ContentTool,
             node: SpaceDataNode

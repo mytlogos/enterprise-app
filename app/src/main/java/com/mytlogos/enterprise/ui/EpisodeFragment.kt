@@ -7,13 +7,13 @@ import android.widget.ImageButton
 import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
-import com.mytlogos.enterprise.background.TaskManager.Companion.runCompletableTask
 import com.mytlogos.enterprise.model.DisplayRelease
 import com.mytlogos.enterprise.model.ExternalMediaList
 import com.mytlogos.enterprise.model.MediaList
@@ -26,6 +26,7 @@ import eu.davidea.flexibleadapter.items.IFlexible
 import eu.davidea.flexibleadapter.utils.DrawableUtils
 import eu.davidea.viewholders.FlexibleViewHolder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.Comparator
 
@@ -314,11 +315,9 @@ class EpisodeFragment
                 .menu
                 .add("Open Local")
                 .setOnMenuItemClickListener {
-                    val task = runCompletableTask { instance.getMediumType(episode.mediumId) }
-                    task.whenComplete { type: Int?, _: Throwable? ->
-                        if (type != null) {
-                            openLocal(episode.episodeId, episode.mediumId, type)
-                        }
+                    lifecycleScope.launch {
+                        val mediumType = instance.getMediumType(episode.mediumId)
+                        openLocal(episode.episodeId, episode.mediumId, mediumType)
                     }
                     true
                 }

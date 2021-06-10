@@ -752,20 +752,6 @@ class Client private constructor(private val identificator: NetworkIdentificator
         }
     }
 
-    @Throws(IOException::class)
-    private fun <T, R> query(api: Class<T>, buildCall: BuildCall<T, Call<R>>): Response<R> {
-        return try {
-            val call = this.build(api, buildCall) ?: throw NullPointerException()
-
-            val result = call.execute()
-            setConnected()
-            result
-        } catch (e: NotConnectedException) {
-            setDisconnected()
-            throw NotConnectedException(e)
-        }
-    }
-
     private suspend fun <T, R> querySuspend(api: Class<T>, buildCall: QuerySuspend<T, R>): Response<R> {
         return try {
             this.buildSuspend(api, buildCall).also { setConnected() }
@@ -799,43 +785,6 @@ class Client private constructor(private val identificator: NetworkIdentificator
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build()
-            retrofitMap[api] = retrofit
-        }
-        if (retrofit == null) {
-            throw NullPointerException()
-        }
-
-        val apiImpl = retrofit.create(api)
-
-        return buildCall(apiImpl, path)
-    }
-
-    @Throws(IOException::class)
-    private fun <T, R> build(api: Class<T>, buildCall: BuildCall<T, Call<R>?>): Call<R>? {
-        var retrofit = retrofitMap[api]
-        val path = fullClassPathMap[api]
-                ?: throw IllegalArgumentException("Unknown api class: " + api.canonicalName)
-
-        runBlocking {
-            server = getServer()
-        }
-
-        // FIXME: 29.07.2019 sometimes does not find server even though it is online
-        if (server == null) {
-            throw NotConnectedException("No Server in reach")
-        }
-        if (retrofit == null) {
-            val gson = GsonBuilder()
-                    .registerTypeHierarchyAdapter(DateTime::class.java, DateTimeAdapter())
-                    .create()
-            val client = OkHttpClient.Builder()
-                    .readTimeout(60, TimeUnit.SECONDS)
-                    .build()
-            retrofit = Retrofit.Builder()
-                    .baseUrl(server!!.address)
-                    .client(client)
-                    .addConverterFactory(GsonConverterFactory.create(gson))
-                    .build()
             retrofitMap[api] = retrofit
         }
         if (retrofit == null) {

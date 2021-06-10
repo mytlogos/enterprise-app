@@ -6,7 +6,8 @@ import com.mytlogos.enterprise.background.Repository
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.model.ChapterPage
 import com.mytlogos.enterprise.model.IMAGE
-import com.mytlogos.enterprise.model.MediumType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
@@ -101,8 +102,9 @@ class ImageContentTool internal constructor(
         return null
     }
 
+    @Suppress("BlockingMethodInNonBlockingContext")
     @Throws(IOException::class)
-    override fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) {
+    override suspend fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) = withContext(Dispatchers.IO) {
         if (externalImageMedia == null) {
             externalImageMedia = getItemContainers(true)
         }

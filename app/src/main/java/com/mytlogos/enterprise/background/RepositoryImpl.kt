@@ -26,7 +26,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
     private val loadedData: LoadData
     internal val editService: EditService
 
-    private fun loadLoadedData() {
+    private suspend fun loadLoadedData() {
         val loadData = storage.getLoadData()
         loadedData.media.addAll(loadData.media)
         loadedData.part.addAll(loadData.part)
@@ -53,15 +53,15 @@ class RepositoryImpl private constructor(application: Application) : Repository 
     override val isLoading: Boolean
         get() = storage.isLoading()
 
-    override fun getExternalListItems(externalListId: Int): Collection<Int> {
+    override suspend fun getExternalListItems(externalListId: Int): Collection<Int> {
         return storage.getExternalListItems(externalListId)
     }
 
-    override fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
+    override suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
         return storage.getSimpleEpisodes(ids)
     }
 
-    override fun syncProgress() {
+    override suspend fun syncProgress() {
         storage.syncProgress()
     }
 
@@ -102,7 +102,7 @@ class RepositoryImpl private constructor(application: Application) : Repository 
         return loadedData.externalUser.contains(uuid)
     }
 
-    override fun checkReload(stat: ParsedStat): ReloadStat {
+    override suspend fun checkReload(stat: ParsedStat): ReloadStat {
         return storage.checkReload(stat)
     }
 
@@ -112,28 +112,28 @@ class RepositoryImpl private constructor(application: Application) : Repository 
     override val externalUser: Flow<PagingData<ExternalUser>>
         get() = storage.getExternalUser()
 
-    override fun getSpaceMedium(mediumId: Int): SpaceMedium {
+    override suspend fun getSpaceMedium(mediumId: Int): SpaceMedium {
         return storage.getSpaceMedium(mediumId)
     }
 
-    override fun getMediumType(mediumId: Int): Int {
+    override suspend fun getMediumType(mediumId: Int): Int {
         return storage.getMediumType(mediumId)
     }
 
-    override fun getReleaseLinks(episodeId: Int): List<String> {
+    override suspend fun getReleaseLinks(episodeId: Int): List<String> {
         return storage.getReleaseLinks(episodeId)
     }
 
     override fun clearLocalMediaData(context: Context) {
         UserPreferences.lastSync = DateTime(0)
-        TaskManager.runTask {
+        TaskManager.runTaskSuspend {
             loadedData.part.clear()
             loadedData.episodes.clear()
             storage.clearLocalMediaData()
         }
     }
 
-    override fun getSimpleMedium(mediumId: Int): SimpleMedium {
+    override suspend fun getSimpleMedium(mediumId: Int): SimpleMedium {
         return storage.getSimpleMedium(mediumId)
     }
 

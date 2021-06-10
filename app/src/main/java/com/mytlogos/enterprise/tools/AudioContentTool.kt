@@ -43,7 +43,7 @@ class AudioContentTool internal constructor(internalContentDir: File?, externalC
         throw IllegalStateException("Not yet implemented")
     }
 
-    override fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) {
+    override suspend fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) {
         throw IllegalStateException("Not yet implemented")
     }
 

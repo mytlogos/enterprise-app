@@ -340,13 +340,9 @@ class TocFragment
             return
         }
         if (item.isSaved) {
-            val task = runCompletableTask {
-                instance.getMediumType(mediumId)
-            }
-            task.whenComplete { type: Int?, _: Throwable? ->
-                if (type != null) {
-                    openLocal(item.episodeId, mediumId, type)
-                }
+            lifecycleScope.launch {
+                val mediumType = instance.getMediumType(mediumId)
+                openLocal(item.episodeId, mediumId, mediumType)
             }
         } else {
             val urls = item.releases.mapNotNull(Release::url)

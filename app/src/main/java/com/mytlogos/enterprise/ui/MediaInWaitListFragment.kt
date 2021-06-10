@@ -1,12 +1,11 @@
 package com.mytlogos.enterprise.ui
 
-import android.annotation.SuppressLint
-import android.os.AsyncTask
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.lifecycleScope
 import androidx.paging.PagingData
 import androidx.recyclerview.widget.DiffUtil
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -17,7 +16,7 @@ import com.mytlogos.enterprise.tools.getDomain
 import com.mytlogos.enterprise.viewmodel.MediaInWaitListViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import java.io.IOException
 import java.util.*
 
@@ -87,7 +86,16 @@ class MediaInWaitListFragment : BaseSwipePagingFragment<MediumInWait, MediaInWai
         get() = MediaInWaitListViewModel::class.java
 
     override fun onSwipeRefresh() {
-        LoadingTask().execute()
+        lifecycleScope.launch {
+            try {
+                @Suppress("BlockingMethodInNonBlockingContext")
+                viewModel.loadMediaInWait()
+            } catch (e: IOException) {
+                showToast("Loading went wrong")
+                e.printStackTrace()
+            }
+            (listContainer as SwipeRefreshLayout).isRefreshing = false
+        }
     }
 
     override fun onItemClick(position: Int, item: MediumInWait?) {
@@ -96,28 +104,6 @@ class MediaInWaitListFragment : BaseSwipePagingFragment<MediumInWait, MediaInWai
         }
         mainActivity.switchWindow(MediaInWaitFragment.getInstance(item))
         return
-    }
-
-    @SuppressLint("StaticFieldLeak")
-    private inner class LoadingTask : AsyncTask<Void, Void, Void>() {
-        private var errorMsg: String? = null
-        override fun doInBackground(vararg voids: Void?): Void? {
-            try {
-                runBlocking { viewModel.loadMediaInWait() }
-            } catch (e: IOException) {
-                errorMsg = "Loading went wrong"
-                e.printStackTrace()
-            }
-            return null
-        }
-
-        override fun onPostExecute(aVoid: Void?) {
-            val error = errorMsg
-            if (error != null) {
-                showToast(error)
-            }
-            (listContainer as SwipeRefreshLayout).isRefreshing = false
-        }
     }
 
     override fun createAdapter(): BaseAdapter<MediumInWait, *> {

@@ -642,7 +642,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         persister.persistTocs(inserts)
     }
 
-    private fun cleanUp() {
+    private suspend fun cleanUp() {
         val repository = instance
         repository.syncProgress()
         try {

@@ -394,9 +394,7 @@ internal class EditService(
                         for (id in filteredIds) {
                             events.add(EditEventImpl(id, EPISODE, CHANGE_PROGRESS, null, progress))
                         }
-                        runBlocking {
-                            storage.insertEditEvent(events)
-                        }
+                        storage.insertEditEvent(events)
                         storage.updateProgress(filteredIds, progress)
                         return@async false
                     }

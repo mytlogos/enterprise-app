@@ -16,24 +16,24 @@ interface Repository {
 
     val isLoading: Boolean
 
-    fun getExternalListItems(externalListId: Int): Collection<Int>
+    suspend fun getExternalListItems(externalListId: Int): Collection<Int>
 
     fun onDownloadable(): LiveData<Boolean>
 
     val externalUser: Flow<PagingData<ExternalUser>>
 
-    fun getSpaceMedium(mediumId: Int): SpaceMedium
-    fun getMediumType(mediumId: Int): Int
-    fun getSimpleMedium(mediumId: Int): SimpleMedium
+    suspend fun getSpaceMedium(mediumId: Int): SpaceMedium
+    suspend fun getMediumType(mediumId: Int): Int
+    suspend fun getSimpleMedium(mediumId: Int): SimpleMedium
 
     fun clearLocalMediaData(context: Context)
 
-    fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
+    suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode>
     val readTodayEpisodes: Flow<PagingData<ReadEpisode>>
-    fun getReleaseLinks(episodeId: Int): List<String>
+    suspend fun getReleaseLinks(episodeId: Int): List<String>
     fun updateProgress(episodeId: Int, progress: Float)
 
-    fun syncProgress()
+    suspend fun syncProgress()
 
     fun getClient(): Client
     fun getPersister(): ClientModelPersister
@@ -41,5 +41,5 @@ interface Repository {
     fun isPartLoaded(partId: Int): Boolean
     fun isEpisodeLoaded(episodeId: Int): Boolean
     fun isExternalUserLoaded(uuid: String): Boolean
-    fun checkReload(stat: ParsedStat): ReloadStat
+    suspend fun checkReload(stat: ParsedStat): ReloadStat
 }
