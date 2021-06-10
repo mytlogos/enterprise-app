@@ -19,7 +19,7 @@ import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
 import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.ChapterPage
 import com.mytlogos.enterprise.model.SimpleEpisode
-import com.mytlogos.enterprise.tools.FileTools.getImageContentTool
+import com.mytlogos.enterprise.tools.getImageContentTool
 import eu.davidea.flexibleadapter.FlexibleAdapter
 import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
 import eu.davidea.flexibleadapter.items.IFlexible

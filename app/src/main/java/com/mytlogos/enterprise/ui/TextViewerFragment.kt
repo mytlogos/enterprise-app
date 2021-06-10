@@ -15,7 +15,7 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
 import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.SimpleEpisode
-import com.mytlogos.enterprise.tools.FileTools.textContentTool
+import com.mytlogos.enterprise.tools.textContentTool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

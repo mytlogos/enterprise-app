@@ -36,8 +36,8 @@ class MediaInWaitListViewModel(application: Application) :
     private val filterSortLiveData = MutableLiveData(FilterSort())
 
     @Throws(IOException::class)
-    fun loadMediaInWait() {
-        runBlocking { mediumInWaitRepository.loadMediaInWaitSync() }
+    suspend fun loadMediaInWait() {
+        mediumInWaitRepository.loadMediaInWaitSync()
     }
 
     override fun setSort(sort: Sortings) {

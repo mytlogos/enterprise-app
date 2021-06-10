@@ -96,8 +96,8 @@ interface ClientModelPersister {
     suspend fun persist(toDownload: ToDownload): ClientModelPersister
     suspend fun persistMediaInWait(medium: List<ClientMediumInWait>)
     suspend fun persist(user: ClientSimpleUser?): ClientModelPersister
-    fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>)
-    fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int>
-    fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>)
+    suspend fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>)
+    suspend fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int>
+    suspend fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>)
     suspend fun persistTocs(tocs: Collection<Toc>): ClientModelPersister
 }

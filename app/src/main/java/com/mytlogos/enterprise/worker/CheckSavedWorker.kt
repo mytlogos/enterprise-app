@@ -13,7 +13,8 @@ import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.background.repository.MediaListRepository
 import com.mytlogos.enterprise.background.repository.ToDownloadRepository
 import com.mytlogos.enterprise.tools.ContentTool
-import com.mytlogos.enterprise.tools.FileTools
+import com.mytlogos.enterprise.tools.getContentTool
+import com.mytlogos.enterprise.tools.getSupportedContentTools
 import kotlinx.coroutines.runBlocking
 import java.util.*
 import kotlin.collections.HashSet
@@ -65,7 +66,7 @@ class CheckSavedWorker(
         }
         this.initWork()
 
-        val tools = FileTools.getSupportedContentTools(application)
+        val tools = getSupportedContentTools(application)
         val repository = getInstance(application)
         val mediumSavedEpisodes: MutableMap<Int, MutableSet<Int>> = HashMap()
 
@@ -83,7 +84,7 @@ class CheckSavedWorker(
 
         // check state of saved Episode with their database counterparts by type
         for ((mediumType, value) in typeMediumSavedEpisodes) {
-            val tool = FileTools.getContentTool(mediumType, application)
+            val tool = getContentTool(mediumType, application)
 
             checkLocalContentFiles(tool, repository, value)
 

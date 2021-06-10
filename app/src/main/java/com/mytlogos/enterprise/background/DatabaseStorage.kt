@@ -37,7 +37,6 @@ interface DatabaseStorage {
     suspend fun addItemsToList(listId: Int, ids: Collection<Int>)
     fun getListSuggestion(name: String): LiveData<MutableList<MediaList>>
     fun onDownloadAble(): LiveData<Boolean>
-    fun removeItemFromList(listId: Int, mediumId: Int)
     fun removeItemFromList(listId: Int, mediumId: Collection<Int>)
     suspend fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>)
     fun getExternalUser(): Flow<PagingData<ExternalUser>>

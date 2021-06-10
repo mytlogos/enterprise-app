@@ -13,8 +13,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.mytlogos.enterprise.MainActivity
 import com.mytlogos.enterprise.R
-import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.tools.FileTools.getContentTool
+import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.tools.getContentTool
 import com.mytlogos.enterprise.tools.getDomain
 
 open class BaseFragment : Fragment() {
@@ -113,10 +113,10 @@ open class BaseFragment : Fragment() {
             return
         }
         val fragment: Fragment = when (mediumType) {
-            MediumType.TEXT -> TextViewerFragment.newInstance(episodeId, path)
-            MediumType.AUDIO -> AudioViewerFragment.newInstance(episodeId, path)
-            MediumType.IMAGE -> ImageViewerFragment.newInstance(episodeId, path)
-            MediumType.VIDEO -> VideoViewerFragment.newInstance(episodeId, path)
+            TEXT -> TextViewerFragment.newInstance(episodeId, path)
+            AUDIO -> AudioViewerFragment.newInstance(episodeId, path)
+            IMAGE -> ImageViewerFragment.newInstance(episodeId, path)
+            VIDEO -> VideoViewerFragment.newInstance(episodeId, path)
             else -> throw IllegalArgumentException("Unknown medium type")
         }
         mainActivity.switchWindow(fragment)

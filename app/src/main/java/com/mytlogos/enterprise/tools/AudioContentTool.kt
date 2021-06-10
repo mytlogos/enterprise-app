@@ -1,6 +1,7 @@
 package com.mytlogos.enterprise.tools
 
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
+import com.mytlogos.enterprise.model.AUDIO
 import com.mytlogos.enterprise.model.MediumType
 import java.io.File
 import java.util.regex.Pattern
@@ -8,7 +9,7 @@ import java.util.regex.Pattern
 // TODO: 05.08.2019 implement this class
 class AudioContentTool internal constructor(internalContentDir: File?, externalContentDir: File?) :
     ContentTool(internalContentDir, externalContentDir) {
-    override val medium = MediumType.AUDIO
+    override val medium = AUDIO
 
     override fun isContentMedium(file: File): Boolean {
         throw IllegalStateException("Not yet implemented")

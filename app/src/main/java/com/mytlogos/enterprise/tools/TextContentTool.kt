@@ -3,6 +3,7 @@ package com.mytlogos.enterprise.tools
 import android.annotation.SuppressLint
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.model.MediumType
+import com.mytlogos.enterprise.model.TEXT
 import nl.siegmann.epublib.domain.Book
 import nl.siegmann.epublib.domain.Resource
 import nl.siegmann.epublib.epub.EpubReader
@@ -22,7 +23,7 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
     private var internalTexts: MutableMap<Int, File>? = null
     private var episodePaths: Map<Int, String>? = null
 
-    override val medium = MediumType.TEXT
+    override val medium = TEXT
 
     override fun isContentMedium(file: File): Boolean {
         return file.name.matches(Regex("\\d+\\.epub"))

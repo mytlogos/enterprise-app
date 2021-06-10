@@ -30,9 +30,7 @@ class NewsRepository private constructor(application: Application) {
     }
 
     suspend fun refreshNews(latest: DateTime?) {
-        val news = checkAndGetBody(
-            client.getNews(latest, null)
-        )
+        val news = client.getNews(latest, null).checkAndGetBody()
         RepositoryImpl.instance.getPersister().persistNews(news)
     }
 

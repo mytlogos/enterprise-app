@@ -11,13 +11,13 @@ import androidx.paging.PagingData
 import androidx.recyclerview.widget.DiffUtil
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.mytlogos.enterprise.R
-import com.mytlogos.enterprise.model.MediumInWait
-import com.mytlogos.enterprise.model.MediumType
+import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.tools.getDomain
 import com.mytlogos.enterprise.viewmodel.MediaInWaitListViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.runBlocking
 import java.io.IOException
 import java.util.*
 
@@ -103,7 +103,7 @@ class MediaInWaitListFragment : BaseSwipePagingFragment<MediumInWait, MediaInWai
         private var errorMsg: String? = null
         override fun doInBackground(vararg voids: Void?): Void? {
             try {
-                viewModel.loadMediaInWait()
+                runBlocking { viewModel.loadMediaInWait() }
             } catch (e: IOException) {
                 errorMsg = "Loading went wrong"
                 e.printStackTrace()
@@ -150,10 +150,10 @@ class MediaInWaitListFragment : BaseSwipePagingFragment<MediumInWait, MediaInWai
         override fun onBindViewHolder(holder: NewMetaViewHolder, position: Int) {
             getItem(position)?.let {
                 val mediumType: String = when (it.medium) {
-                    MediumType.AUDIO -> "Audio"
-                    MediumType.IMAGE -> "Bild"
-                    MediumType.TEXT -> "Text"
-                    MediumType.VIDEO -> "Video"
+                    AUDIO -> "Audio"
+                    IMAGE -> "Bild"
+                    TEXT -> "Text"
+                    VIDEO -> "Video"
                     else -> throw IllegalStateException("no valid medium type: ${it.medium}")
                 }
                 val domain = getDomain(it.link)

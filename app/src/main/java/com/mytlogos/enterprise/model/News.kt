@@ -10,7 +10,7 @@ class News @JvmOverloads constructor(
     val id: Int,
     val read: Boolean,
     val url: String, // this is so ugly, but at the moment mediumType is not saved in storage
-    @field:Ignore val mediumType: Int = MediumType.ALL
+    @field:Ignore val mediumType: Int = ALL
 ) {
 
     val timeStampString: String

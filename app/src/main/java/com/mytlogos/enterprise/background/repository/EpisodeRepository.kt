@@ -43,8 +43,7 @@ class EpisodeRepository private constructor(application: Application) {
         } else {
             episodeDao::getDisplayEpisodesPaging
         }
-        return Pager(
-            PagingConfig(50),
+        return transformFlow(
             pagingSourceFactory = {
                 query(
                     filter.saved,
@@ -56,7 +55,7 @@ class EpisodeRepository private constructor(application: Application) {
                     filter.filterListIds.isEmpty()
                 )
             }
-        ).flow
+        )
     }
 
     fun getToc(
@@ -66,8 +65,7 @@ class EpisodeRepository private constructor(application: Application) {
         saved: Byte,
     ): Flow<PagingData<TocEpisode>> {
         val converter = RoomConverter()
-        return Pager(
-            PagingConfig(50),
+        return transformFlow(
             pagingSourceFactory = {
                 if (sortings.sortValue > 0) {
                     episodeDao.getTocEpisodesAsc(mediumId, read, saved)
@@ -75,7 +73,7 @@ class EpisodeRepository private constructor(application: Application) {
                     episodeDao.getTocEpisodesDesc(mediumId, read, saved)
                 }
             }
-        ).flow.map { data -> data.map { converter.convertTocEpisode(it) } }
+        ).map { data -> data.map { converter.convertTocEpisode(it) } }
     }
 
 
@@ -138,7 +136,7 @@ class EpisodeRepository private constructor(application: Application) {
         val loadedData = repositoryImpl.getLoadedData()
 
         coroutineScope {
-            doPartitionedExSuspend(episodeIds) { integers: List<Int> ->
+            episodeIds.doPartitionedExSuspend { integers: List<Int> ->
                 async {
                     val episodes = client.getEpisodes(integers).body()
                         ?: return@async false
@@ -198,7 +196,7 @@ class EpisodeRepository private constructor(application: Application) {
         application: Application,
     ) {
         val medium = mediumDao.getMediumType(mediumId)
-        val contentTool = FileTools.getContentTool(medium, application)
+        val contentTool = getContentTool(medium, application)
         if (!contentTool.isSupported) {
             throw IOException("medium type: $medium is not supported")
         }
@@ -229,7 +227,7 @@ class EpisodeRepository private constructor(application: Application) {
         val progress = if (read) 1f else 0f
 
         coroutineScope {
-            doPartitionedExSuspend(episodeIds) { ids: List<Int> ->
+            episodeIds.doPartitionedExSuspend { ids: List<Int> ->
                 async {
                     val response: Response<Boolean> = client.addProgress(ids, progress)
                     if (!response.isSuccessful || response.body() == null || !response.body()!!) {
@@ -250,11 +248,13 @@ class EpisodeRepository private constructor(application: Application) {
 
     suspend fun updateSaved(episodeIds: Collection<Int>, saved: Boolean) {
         try {
-            doPartitionedEx(episodeIds) { ids: List<Int> ->
-                runBlocking {
-                    episodeDao.updateSaved(ids, saved)
+            coroutineScope {
+                episodeIds.doPartitionedExSuspend { ids: List<Int> ->
+                    async {
+                        episodeDao.updateSaved(ids, saved)
+                        false
+                    }
                 }
-                false
             }
         } catch (e: Exception) {
             e.printStackTrace()

@@ -14,8 +14,8 @@ import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.background.repository.MediaListRepository
 import com.mytlogos.enterprise.background.repository.NotificationRepository
 import com.mytlogos.enterprise.background.repository.ToDownloadRepository
-import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.model.NotificationItem
+import com.mytlogos.enterprise.model.isType
 import com.mytlogos.enterprise.preferences.DownloadPreference
 import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.*
@@ -113,7 +113,7 @@ class DownloadWorker(
         episodeRepository = EpisodeRepository.getInstance(application)
         toDownloadRepository = ToDownloadRepository.getInstance(application)
         mediaListRepository = MediaListRepository.getInstance(application)
-        contentTools = FileTools.getSupportedContentTools(application).associateBy { it.medium }
+        contentTools = getSupportedContentTools(application).associateBy { it.medium }
 
         for (tool in contentTools.values) {
             tool.mergeIfNecessary()
@@ -126,7 +126,7 @@ class DownloadWorker(
             builder.setContentTitle("Server not in reach").notify()
             return Result.failure()
         }
-        if (!FileTools.writable(application)) {
+        if (!writable(application)) {
             builder.setContentTitle("Not enough free space").notify()
             return Result.failure()
         }
@@ -159,7 +159,7 @@ class DownloadWorker(
         val maxSize = sizeLimitMB * 1024.0 * 1024.0
 
         for (tool in contentTools.values) {
-            if (MediumType.isType(type, tool.medium)) {
+            if (isType(type, tool.medium)) {
                 val averageEpisodeSize = tool.getAverageEpisodeSize(id)
                 val path = tool.getItemPath(id)
                 if (path == null || path.isEmpty()) {

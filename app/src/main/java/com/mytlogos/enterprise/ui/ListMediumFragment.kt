@@ -212,7 +212,7 @@ class ListMediumFragment : BasePagingFragment<MediumItem, ListMediaViewModel>() 
         get() = ListMediaViewModel::class.java
 
     override fun createPaged(model: ListMediaViewModel): Flow<PagingData<MediumItem>> {
-        return transformPaging(viewModel.getMedia(listId, isExternal)).asFlow()
+        return viewModel.getMedia(listId, isExternal).transformPaging().asFlow()
     }
 
     override fun createAdapter(): BaseAdapter<MediumItem, *> = MediumAdapter()

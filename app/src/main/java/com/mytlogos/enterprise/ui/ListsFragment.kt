@@ -194,6 +194,6 @@ class ListsFragment
             input.add(TRASH_LIST)
             input
         }
-        return transformPaging(listLiveData).asFlow()
+        return listLiveData.transformPaging().asFlow()
     }
 }

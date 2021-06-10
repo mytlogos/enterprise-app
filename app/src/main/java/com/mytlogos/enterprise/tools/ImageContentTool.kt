@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import com.mytlogos.enterprise.background.Repository
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.model.ChapterPage
+import com.mytlogos.enterprise.model.IMAGE
 import com.mytlogos.enterprise.model.MediumType
 import java.io.*
 import java.net.HttpURLConnection
@@ -23,7 +24,7 @@ class ImageContentTool internal constructor(
     private var internalImageMedia: Map<Int, File>? = null
     private var externalImageMedia: Map<Int, File>? = null
 
-    override val medium = MediumType.IMAGE
+    override val medium = IMAGE
 
     override fun isContentMedium(file: File): Boolean {
         return file.name.matches(Regex("\\d+")) && file.isDirectory

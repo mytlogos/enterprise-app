@@ -12,14 +12,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.TimeAgo
-import com.mytlogos.enterprise.model.MediumSetting
-import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.isType
-import com.mytlogos.enterprise.model.ToDownload
-import com.mytlogos.enterprise.tools.FileTools.isAudioContentSupported
-import com.mytlogos.enterprise.tools.FileTools.isImageContentSupported
-import com.mytlogos.enterprise.tools.FileTools.isTextContentSupported
-import com.mytlogos.enterprise.tools.FileTools.isVideoContentSupported
+import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.tools.isAudioContentSupported
+import com.mytlogos.enterprise.tools.isImageContentSupported
+import com.mytlogos.enterprise.tools.isTextContentSupported
+import com.mytlogos.enterprise.tools.isVideoContentSupported
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
 import kotlinx.coroutines.launch
 import org.joda.time.DateTime
@@ -104,10 +101,10 @@ class MediumSettingFragment : BaseFragment() {
         editName.setOnEditorActionListener { _: TextView?, actionId: Int, event: KeyEvent? ->
             handleEditorEvent(editName, actionId, event)
         }
-        addMediumListener(textMedium, MediumType.TEXT)
-        addMediumListener(imageMedium, MediumType.IMAGE)
-        addMediumListener(videoMedium, MediumType.VIDEO)
-        addMediumListener(audioMedium, MediumType.AUDIO)
+        addMediumListener(textMedium, TEXT)
+        addMediumListener(imageMedium, IMAGE)
+        addMediumListener(videoMedium, VIDEO)
+        addMediumListener(audioMedium, AUDIO)
 
         autoDownload.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
             handleAutoDownloadChanges(isChecked)
@@ -179,10 +176,10 @@ class MediumSettingFragment : BaseFragment() {
             this.setTitle("Settings - " + mediumSetting.getTitle())
             editName.setText(mediumSetting.getTitle())
             editName.inputType = InputType.TYPE_CLASS_TEXT
-            textMedium.isChecked = isType(mediumSetting.medium, MediumType.TEXT)
-            imageMedium.isChecked = isType(mediumSetting.medium, MediumType.IMAGE)
-            videoMedium.isChecked = isType(mediumSetting.medium, MediumType.VIDEO)
-            audioMedium.isChecked = isType(mediumSetting.medium, MediumType.AUDIO)
+            textMedium.isChecked = isType(mediumSetting.medium, TEXT)
+            imageMedium.isChecked = isType(mediumSetting.medium, IMAGE)
+            videoMedium.isChecked = isType(mediumSetting.medium, VIDEO)
+            audioMedium.isChecked = isType(mediumSetting.medium, AUDIO)
             autoDownload.isChecked = mediumSetting.toDownload
             autoDownload.isEnabled = true
             textMedium.isEnabled = true

@@ -2,8 +2,6 @@ package com.mytlogos.enterprise.background.repository
 
 import android.app.Application
 import androidx.lifecycle.LiveData
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
 import com.mytlogos.enterprise.background.ClientModelPersister
@@ -21,6 +19,7 @@ import com.mytlogos.enterprise.model.SimpleMedium
 import com.mytlogos.enterprise.tools.SingletonHolder
 import com.mytlogos.enterprise.tools.Sortings
 import com.mytlogos.enterprise.tools.checkAndGetBody
+import com.mytlogos.enterprise.tools.transformFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.IOException
@@ -71,15 +70,13 @@ class MediumInWaitRepository private constructor(application: Application) {
             mediumInWaitDao::getByAsc
         }
         val converter = RoomConverter()
-        return Pager(
-            PagingConfig(50),
-            pagingSourceFactory = { query(
-                sortValue,
-                filter,
-                mediumFilter,
-                hostFilter
-            )}
-        ).flow.map { it.map(converter::convert) }
+        return transformFlow { query(
+            sortValue,
+            filter,
+            mediumFilter,
+            hostFilter
+        )}
+        .map { it.map(converter::convert) }
     }
 
     suspend fun consumeMediumInWait(
@@ -156,7 +153,7 @@ class MediumInWaitRepository private constructor(application: Application) {
     }
 
     suspend fun loadMediaInWaitSync() {
-        val medium = checkAndGetBody(client.getMediumInWait())
+        val medium = client.getMediumInWait().checkAndGetBody()
 
         if (medium.isNotEmpty()) {
             mediumInWaitDao.clear()

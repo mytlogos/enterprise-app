@@ -20,7 +20,6 @@ import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import java.io.IOException
 import java.util.*
@@ -179,7 +178,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     ) {
         this.notifyIndeterminate("Requesting New Data", removeContent = true)
         val changedEntitiesResponse = client.getNew(lastSync)
-        val changedEntities = checkAndGetBody(changedEntitiesResponse)
+        val changedEntities = changedEntitiesResponse.checkAndGetBody()
         mediaAddedOrUpdated = changedEntities.media.size
         val mediaSize = mediaAddedOrUpdated
         partAddedOrUpdated = changedEntities.parts.size
@@ -281,9 +280,9 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             return
         }
         coroutineScope {
-            doPartitionedRethrowSuspend(missingIds) { ids: List<Int> ->
+            missingIds.doPartitionedRethrowSuspend { ids: List<Int> ->
                 async {
-                    val parents = checkAndGetBody(client.getMedia(ids))
+                    val parents = client.getMedia(ids).checkAndGetBody()
                     val simpleMedia = parents.map { medium: ClientMedium ->
                         ClientSimpleMedium(medium)
                     }
@@ -338,9 +337,9 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             return
         }
         coroutineScope {
-            doPartitionedRethrowSuspend(missingIds) { ids: List<Int> ->
+            missingIds.doPartitionedRethrowSuspend { ids: List<Int> ->
                 async {
-                    val parents = checkAndGetBody(client.getParts(ids))
+                    val parents = client.getParts(ids).checkAndGetBody()
                     persistParts(parents, client, persister, repository)
                     false
                 }
@@ -394,9 +393,9 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             return
         }
         coroutineScope {
-            doPartitionedRethrowSuspend(missingIds) { ids: List<Int> ->
+            missingIds.doPartitionedRethrowSuspend { ids: List<Int> ->
                 async {
-                    val parents = checkAndGetBody(client.getEpisodes(ids))
+                    val parents = client.getEpisodes(ids).checkAndGetBody()
                     persistEpisodes(parents, client, persister, repository)
                     false
                 }
@@ -427,9 +426,9 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             return
         }
         coroutineScope {
-            doPartitionedRethrowSuspend(missingIds) { ids: List<String> ->
+            missingIds.doPartitionedRethrowSuspend { ids: List<String> ->
                 async {
-                    val parents = checkAndGetBody(client.getExternalUser(ids))
+                    val parents = client.getExternalUser(ids).checkAndGetBody()
                     persister.persistExternalUsers(parents)
                     false
                 }
@@ -466,13 +465,13 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     ) {
         notifyIndeterminate("Synchronize Deleted Items", removeContent = false)
 
-        val statBody = checkAndGetBody(client.getStats())
+        val statBody = client.getStats().checkAndGetBody()
         val parsedStat = statBody.parse()
         persister.persist(parsedStat)
         var reloadStat = repository.checkReload(parsedStat)
 
         if (!reloadStat.loadMedium.isEmpty()) {
-            val media = checkAndGetBody(client.getMedia(reloadStat.loadMedium))
+            val media = client.getMedia(reloadStat.loadMedium).checkAndGetBody()
             val simpleMedia = media.map { medium: ClientMedium ->
                 ClientSimpleMedium(medium)
             }
@@ -481,31 +480,32 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         }
 
         if (!reloadStat.loadExUser.isEmpty()) {
-            val users = checkAndGetBody(client.getExternalUser(reloadStat.loadExUser))
+            val users = client.getExternalUser(reloadStat.loadExUser).checkAndGetBody()
             persister.persistExternalUsers(users)
             reloadStat = repository.checkReload(parsedStat)
         }
 
         if (!reloadStat.loadLists.isEmpty()) {
-            val listQuery = checkAndGetBody(client.getLists(reloadStat.loadLists))
+            val listQuery = client.getLists(reloadStat.loadLists).checkAndGetBody()
             persister.persist(listQuery)
             reloadStat = repository.checkReload(parsedStat)
         }
 
         if (!reloadStat.loadPart.isEmpty()) {
-            doPartitionedRethrow(reloadStat.loadPart) { partIds: List<Int> ->
-                runBlocking {
-                    val parts = checkAndGetBody(client.getParts(partIds))
-                    persister.persistParts(parts)
+            coroutineScope {
+                reloadStat.loadPart.doPartitionedRethrowSuspend { partIds: List<Int> ->
+                    async {
+                        val parts = client.getParts(partIds).checkAndGetBody()
+                        persister.persistParts(parts)
+                        false
+                    }
                 }
-                false
             }
             reloadStat = repository.checkReload(parsedStat)
         }
 
         if (!reloadStat.loadPartEpisodes.isEmpty()) {
-            val partStringEpisodes =
-                checkAndGetBody(client.getPartEpisodes(reloadStat.loadPartEpisodes))
+            val partStringEpisodes = client.getPartEpisodes(reloadStat.loadPartEpisodes).checkAndGetBody()
             val partEpisodes: MutableMap<Int, List<Int>> = mapStringToInt(partStringEpisodes)
             val missingEpisodes: MutableCollection<Int> = HashSet()
 
@@ -518,27 +518,29 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             }
 
             if (!missingEpisodes.isEmpty()) {
-                val episodes = checkAndGetBody(
-                    client.getEpisodes(missingEpisodes)
-                )
+                val episodes = client.getEpisodes(missingEpisodes).checkAndGetBody()
                 persistEpisodes(episodes, client, persister, repository)
             }
 
-            doPartitionedRethrow(partEpisodes.keys) { ids: List<Int> ->
-                val currentEpisodes: MutableMap<Int, List<Int>> = HashMap()
-                for (id in ids) {
-                    currentEpisodes[id] =
-                        partEpisodes[id] ?: throw IllegalStateException("Expected List not found")
+            coroutineScope {
+                partEpisodes.keys.doPartitionedRethrowSuspend { ids: List<Int> ->
+                    async {
+                        val currentEpisodes: MutableMap<Int, List<Int>> = HashMap()
+                        for (id in ids) {
+                            currentEpisodes[id] =
+                                partEpisodes[id] ?: throw IllegalStateException("Expected List not found")
+                        }
+                        persister.deleteLeftoverEpisodes(currentEpisodes)
+                        false
+                    }
                 }
-                persister.deleteLeftoverEpisodes(currentEpisodes)
-                false
             }
             reloadStat = repository.checkReload(parsedStat)
         }
 
         if (!reloadStat.loadPartReleases.isEmpty()) {
             val partReleasesResponse = client.getPartReleases(reloadStat.loadPartReleases)
-            val partStringReleases = checkAndGetBody(partReleasesResponse)
+            val partStringReleases = partReleasesResponse.checkAndGetBody()
             val partReleases = mapStringToInt(partStringReleases)
             val missingEpisodes: MutableCollection<Int> = HashSet()
             for ((_, value) in partReleases) {
@@ -549,18 +551,15 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                 }
             }
             if (!missingEpisodes.isEmpty()) {
-                val episodes = checkAndGetBody(
-                    client.getEpisodes(missingEpisodes)
-                )
+                val episodes = client.getEpisodes(missingEpisodes).checkAndGetBody()
                 persistEpisodes(episodes, client, persister, repository)
             }
             val episodesToLoad: Collection<Int> = persister.deleteLeftoverReleases(partReleases)
             if (!episodesToLoad.isEmpty()) {
                 coroutineScope {
-                    doPartitionedRethrowSuspend(episodesToLoad) { ids: List<Int> ->
+                    episodesToLoad.doPartitionedRethrowSuspend { ids: List<Int> ->
                         async {
-                            val episodes =
-                                checkAndGetBody(client.getEpisodes(ids))
+                            val episodes = client.getEpisodes(ids).checkAndGetBody()
                             persistEpisodes(episodes, client, persister, repository)
                             false
                         }
@@ -571,14 +570,14 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         }
         if (!reloadStat.loadMediumTocs.isEmpty()) {
             val mediumTocsResponse = client.getMediumTocs(reloadStat.loadMediumTocs)
-            val mediumTocs = checkAndGetBody(mediumTocsResponse)
+            val mediumTocs = mediumTocsResponse.checkAndGetBody()
             val mediaTocs: MutableMap<Int, MutableList<String>> = HashMap()
             for (mediumToc in mediumTocs) {
                 mediaTocs.computeIfAbsent(mediumToc.mediumId) { ArrayList() }
                     .add(mediumToc.link)
             }
             coroutineScope {
-                doPartitionedRethrowSuspend(mediaTocs.keys) { mediaIds: List<Int> ->
+                mediaTocs.keys.doPartitionedRethrowSuspend { mediaIds: List<Int> ->
                     async {
                         val partitionedMediaTocs: MutableMap<Int, List<String>> = HashMap()
                         for (mediaId in mediaIds) {
@@ -600,9 +599,9 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             partsToLoad.addAll(reloadStat.loadPartEpisodes)
             partsToLoad.addAll(reloadStat.loadPartReleases)
             coroutineScope {
-                doPartitionedRethrowSuspend(partsToLoad) { ids: List<Int> ->
+                partsToLoad.doPartitionedRethrowSuspend { ids: List<Int> ->
                     async {
-                        val parts = checkAndGetBody(client.getParts(ids))
+                        val parts = client.getParts(ids).checkAndGetBody()
                         persistParts(parts, client, persister, repository)
                         false
                     }

@@ -22,10 +22,7 @@ import androidx.recyclerview.selection.StorageStrategy
 import androidx.recyclerview.widget.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mytlogos.enterprise.R
-import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.addMediumType
-import com.mytlogos.enterprise.model.MediumType.isType
-import com.mytlogos.enterprise.model.MediumType.removeMediumType
+import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.*
 import com.mytlogos.enterprise.viewmodel.FilterableViewModel
 import com.mytlogos.enterprise.viewmodel.MediumFilterableViewModel
@@ -335,10 +332,10 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         val builder = AlertDialog.Builder(this.mainActivity)
             .setView(view)
 
-        setMediumCheckbox(view, R.id.text_medium, MediumType.TEXT)
-        setMediumCheckbox(view, R.id.audio_medium, MediumType.AUDIO)
-        setMediumCheckbox(view, R.id.video_medium, MediumType.VIDEO)
-        setMediumCheckbox(view, R.id.image_medium, MediumType.IMAGE)
+        setMediumCheckbox(view, R.id.text_medium, TEXT)
+        setMediumCheckbox(view, R.id.audio_medium, AUDIO)
+        setMediumCheckbox(view, R.id.video_medium, VIDEO)
+        setMediumCheckbox(view, R.id.image_medium, IMAGE)
 
         filterable.onCreateFilter(view, builder)
 
@@ -529,7 +526,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         builder.create().show()
     }
 
-    private fun setMediumCheckbox(view: View, @IdRes boxId: Int, @MediumType.Medium type: Int) {
+    private fun setMediumCheckbox(view: View, @IdRes boxId: Int, @MediumType type: Int) {
         val model = viewModel
         if (model !is MediumFilterableViewModel) {
             return

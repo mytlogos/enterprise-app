@@ -10,17 +10,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.mytlogos.enterprise.R
-import com.mytlogos.enterprise.model.ExternalMediaListSetting
-import com.mytlogos.enterprise.model.MediaListSetting
-import com.mytlogos.enterprise.model.MediumType
-import com.mytlogos.enterprise.model.MediumType.isType
-import com.mytlogos.enterprise.model.MediumType.addMediumType
-import com.mytlogos.enterprise.model.MediumType.removeMediumType
-import com.mytlogos.enterprise.model.ToDownload
-import com.mytlogos.enterprise.tools.FileTools.isAudioContentSupported
-import com.mytlogos.enterprise.tools.FileTools.isImageContentSupported
-import com.mytlogos.enterprise.tools.FileTools.isTextContentSupported
-import com.mytlogos.enterprise.tools.FileTools.isVideoContentSupported
+import com.mytlogos.enterprise.model.*
+import com.mytlogos.enterprise.tools.isAudioContentSupported
+import com.mytlogos.enterprise.tools.isImageContentSupported
+import com.mytlogos.enterprise.tools.isTextContentSupported
+import com.mytlogos.enterprise.tools.isVideoContentSupported
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
 import kotlinx.coroutines.launch
 
@@ -75,10 +69,10 @@ class ListSettings : BaseFragment() {
             handleEditorEvent(editName, actionId, event)
         }
 
-        addMediumListener(textMedium, MediumType.TEXT)
-        addMediumListener(imageMedium, MediumType.IMAGE)
-        addMediumListener(videoMedium, MediumType.VIDEO)
-        addMediumListener(audioMedium, MediumType.AUDIO)
+        addMediumListener(textMedium, TEXT)
+        addMediumListener(imageMedium, IMAGE)
+        addMediumListener(videoMedium, VIDEO)
+        addMediumListener(audioMedium, AUDIO)
 
         autoDownload.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
             handleAutoDownloadChanges(isChecked)
@@ -125,10 +119,10 @@ class ListSettings : BaseFragment() {
             autoDownload.isEnabled = false
         } else {
             editName.setText(listSetting.name)
-            textMedium.isChecked = isType(listSetting.medium, MediumType.TEXT)
-            imageMedium.isChecked = isType(listSetting.medium, MediumType.IMAGE)
-            videoMedium.isChecked = isType(listSetting.medium, MediumType.VIDEO)
-            audioMedium.isChecked = isType(listSetting.medium, MediumType.AUDIO)
+            textMedium.isChecked = isType(listSetting.medium, TEXT)
+            imageMedium.isChecked = isType(listSetting.medium, IMAGE)
+            videoMedium.isChecked = isType(listSetting.medium, VIDEO)
+            audioMedium.isChecked = isType(listSetting.medium, AUDIO)
             autoDownload.isChecked = listSetting.toDownload
 
             if (listSetting.isNameMutable) {

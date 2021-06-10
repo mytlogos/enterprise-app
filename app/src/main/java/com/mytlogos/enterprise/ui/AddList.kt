@@ -10,8 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.RepositoryImpl
-import com.mytlogos.enterprise.model.MediaList
-import com.mytlogos.enterprise.model.MediumType
+import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.viewmodel.AddListViewModel
 import kotlinx.coroutines.launch
 
@@ -63,10 +62,10 @@ class AddList : BaseFragment() {
         }
         var medium = 0
         when {
-            textMedium.isChecked -> medium = medium or MediumType.TEXT
-            audioMedium.isChecked -> medium = medium or MediumType.AUDIO
-            imageMedium.isChecked -> medium = medium or MediumType.IMAGE
-            videoMedium.isChecked -> medium = medium or MediumType.VIDEO
+            textMedium.isChecked -> medium = medium or TEXT
+            audioMedium.isChecked -> medium = medium or AUDIO
+            imageMedium.isChecked -> medium = medium or IMAGE
+            videoMedium.isChecked -> medium = medium or VIDEO
         }
         lifecycleScope.launch {
             val userNow = (RepositoryImpl.instance as RepositoryImpl).getUserNow()

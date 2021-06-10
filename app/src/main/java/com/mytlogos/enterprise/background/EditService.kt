@@ -381,7 +381,7 @@ internal class EditService(
     suspend fun updateRead(episodeIds: Collection<Int>, read: Boolean) {
         val progress = if (read) 1f else 0f
         coroutineScope {
-            doPartitionedExSuspend(episodeIds) { ids: List<Int> ->
+            episodeIds.doPartitionedExSuspend() { ids: List<Int> ->
                 async {
                     if (!client.isClientOnline) {
                         val filteredIds = storage.getReadEpisodes(episodeIds, !read)

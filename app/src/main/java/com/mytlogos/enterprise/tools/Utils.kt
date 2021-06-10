@@ -7,6 +7,7 @@ import androidx.paging.*
 import com.mytlogos.enterprise.background.api.NotConnectedException
 import com.mytlogos.enterprise.background.api.ServerException
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.flow.Flow
 import retrofit2.Response
 import java.io.IOException
 import java.net.URI
@@ -42,9 +43,9 @@ fun externalUserTypeToName(type: Int): String {
     "PagedList is deprecated",
     replaceWith = ReplaceWith("transformPaging")
 )
-fun <E : Any> transform(listLiveData: LiveData<MutableList<E>>): LiveData<PagedList<E>> {
+fun <E : Any> LiveData<MutableList<E>>.transformPaged(): LiveData<PagedList<E>> {
     return Transformations.switchMap(
-        listLiveData
+        this
     ) { input: List<E> ->
         LivePagedListBuilder(
             object : DataSource.Factory<Int, E>() {
@@ -56,18 +57,31 @@ fun <E : Any> transform(listLiveData: LiveData<MutableList<E>>): LiveData<PagedL
     }
 }
 
-
-fun <E : Any> transformPaging(listLiveData: LiveData<MutableList<E>>): LiveData<PagingData<E>> {
-    return listLiveData.map { PagingData.from(it) }
+fun <Key : Any, Value : Any> transformFlow(
+    pagingSourceFactory: () -> PagingSource<Key, Value>
+): Flow<PagingData<Value>> {
+    return Pager(
+        PagingConfig(50),
+        pagingSourceFactory = pagingSourceFactory
+    ).flow
 }
 
+fun <Key : Any, Value : Any> DataSource.Factory<Key, Value>.transformFlow(): Flow<PagingData<Value>> {
+    return Pager(
+        PagingConfig(50),
+        pagingSourceFactory = this.asPagingSourceFactory()
+    ).flow
+}
+
+fun <E : Any> LiveData<MutableList<E>>.transformPaging(): LiveData<PagingData<E>> {
+    return this.map { PagingData.from(it) }
+}
 
 @Throws(Exception::class)
-suspend fun <E : Any> doPartitionedExSuspend(
-    collection: Collection<E>,
+suspend fun <E : Any> Collection<E>.doPartitionedExSuspend(
     consumer: (List<E>) -> Deferred<Boolean?>,
 ) {
-    val list: List<E> = ArrayList(collection)
+    val list: List<E> = ArrayList(this)
     val steps = 100
     var minItem = 0
     var maxItem = minItem + steps
@@ -93,8 +107,8 @@ suspend fun <E : Any> doPartitionedExSuspend(
 
 
 @Throws(Exception::class)
-fun <E : Any> doPartitionedEx(collection: Collection<E>?, consumer: (List<E>) -> Boolean?) {
-    val list: List<E> = ArrayList(collection)
+fun <E : Any> Collection<E>.doPartitionedEx(consumer: (List<E>) -> Boolean?) {
+    val list: List<E> = ArrayList(this)
     val steps = 100
     var minItem = 0
     var maxItem = minItem + steps
@@ -118,12 +132,37 @@ fun <E : Any> doPartitionedEx(collection: Collection<E>?, consumer: (List<E>) ->
     } while (minItem < list.size && maxItem <= list.size)
 }
 
+suspend fun <T : Any> Collection<T>.doPartitionedSuspend(
+    function: (List<T>) -> Deferred<Boolean?>,
+) {
+    val list: List<T> = ArrayList(this)
+    val steps = 100
+    var minItem = 0
+    var maxItem = minItem + steps
+    do {
+        if (maxItem > list.size) {
+            maxItem = list.size
+        }
+        val subList = list.subList(minItem, maxItem)
+        val result = function(subList).await()
 
-fun <E : Any> doPartitioned(
-    collection: Collection<E>?,
+        if (result != null && result) {
+            continue
+        } else if (result == null) {
+            break
+        }
+        minItem += steps
+        maxItem = minItem + steps
+        if (maxItem > list.size) {
+            maxItem = list.size
+        }
+    } while (minItem < list.size && maxItem <= list.size)
+}
+
+fun <E : Any> Collection<E>.doPartitioned(
     consumer: (List<E>) -> Boolean?,
 ) {
-    val list: List<E> = ArrayList(collection)
+    val list: List<E> = ArrayList(this)
     val steps = 100
     var minItem = 0
     var maxItem = minItem + steps
@@ -149,12 +188,11 @@ fun <E : Any> doPartitioned(
 
 
 @Throws(IOException::class)
-fun <T : Any> doPartitionedRethrow(
-    collection: Collection<T>?,
+fun <T : Any> Collection<T>.doPartitionedRethrow(
     functionEx: (List<T>) -> Boolean?,
 ) {
     try {
-        doPartitionedEx(collection, functionEx)
+        this.doPartitionedEx(functionEx)
     } catch (e: NotConnectedException) {
         throw NotConnectedException(e)
     } catch (e: ServerException) {
@@ -168,12 +206,11 @@ fun <T : Any> doPartitionedRethrow(
 
 
 @Throws(IOException::class)
-suspend fun <T : Any> doPartitionedRethrowSuspend(
-    collection: Collection<T>,
+suspend fun <T : Any> Collection<T>.doPartitionedRethrowSuspend(
     functionEx: (List<T>) -> Deferred<Boolean?>,
 ) {
     try {
-        doPartitionedExSuspend(collection, functionEx)
+        doPartitionedExSuspend(functionEx)
     } catch (e: NotConnectedException) {
         throw NotConnectedException(e)
     } catch (e: ServerException) {
@@ -186,21 +223,21 @@ suspend fun <T : Any> doPartitionedRethrowSuspend(
 }
 
 
-fun <T> finishAll(futuresList: Collection<CompletableFuture<T>>): CompletableFuture<List<T>> {
+fun <T> Collection<CompletableFuture<T>>.finishAll(): CompletableFuture<List<T>> {
     val allFuturesResult =
-        CompletableFuture.allOf(*futuresList.toTypedArray<CompletableFuture<*>>())
-    return allFuturesResult.thenApply { futuresList.map { obj: CompletableFuture<T> -> obj.join() }
+        CompletableFuture.allOf(*this.toTypedArray<CompletableFuture<*>>())
+    return allFuturesResult.thenApply {
+        this.map { obj: CompletableFuture<T> -> obj.join() }
     }
 }
 
 
 @Throws(IOException::class)
-fun <T> checkAndGetBody(response: Response<T>): T {
-    val body = response.body()
+fun <T> Response<T>.checkAndGetBody(): T {
+    val body = this.body()
     if (body == null) {
-        val errorMsg = if (response.errorBody() != null) response.errorBody()!!
-            .string() else null
-        throw ServerException(response.code(), errorMsg)
+        val errorMsg = errorBody()?.string()
+        throw ServerException(this.code(), errorMsg)
     }
     return body
 }

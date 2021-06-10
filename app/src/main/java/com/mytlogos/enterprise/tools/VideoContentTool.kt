@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.tools
 
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.model.MediumType
+import com.mytlogos.enterprise.model.VIDEO
 import java.io.File
 import java.util.regex.Pattern
 
@@ -12,7 +13,7 @@ class VideoContentTool internal constructor(internalContentDir: File?, externalC
         throw IllegalStateException("Not yet implemented")
     }
 
-    override val medium = MediumType.VIDEO
+    override val medium = VIDEO
 
     override val isSupported: Boolean
         get() = false

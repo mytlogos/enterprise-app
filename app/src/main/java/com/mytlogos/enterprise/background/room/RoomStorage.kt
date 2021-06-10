@@ -16,8 +16,11 @@ import com.mytlogos.enterprise.background.room.model.*
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.ExternalListMediaJoin
 import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
 import com.mytlogos.enterprise.model.*
-import com.mytlogos.enterprise.tools.doPartitioned
-import com.mytlogos.enterprise.tools.doPartitionedEx
+import com.mytlogos.enterprise.tools.doPartitionedExSuspend
+import com.mytlogos.enterprise.tools.doPartitionedSuspend
+import com.mytlogos.enterprise.tools.transformFlow
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
@@ -153,12 +156,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
     override fun getReadTodayEpisodes(): Flow<PagingData<ReadEpisode>> {
         val converter = RoomConverter()
-        return Pager(
-            PagingConfig(50),
-            pagingSourceFactory = episodeDao.readTodayEpisodes
-                .map(converter::convert)
-                .asPagingSourceFactory(),
-        ).flow
+        return episodeDao.readTodayEpisodes
+            .map(converter::convert)
+            .transformFlow()
     }
 
     override suspend fun addItemsToList(listId: Int, ids: Collection<Int>) {
@@ -196,10 +196,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
         mediumInWaitDao.clear()
     }
 
-    override fun removeItemFromList(listId: Int, mediumId: Int) = runBlocking {
-        mediaListDao.removeJoin(MediaListMediaJoin(listId, mediumId))
-    }
-
     override fun removeItemFromList(listId: Int, mediumId: Collection<Int>) = runBlocking {
         mediaListDao.removeJoin(listId, mediumId)
     }
@@ -215,10 +211,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
     }
 
     override fun getExternalUser(): Flow<PagingData<ExternalUser>> {
-        return Pager(
-            PagingConfig(50),
-            pagingSourceFactory = externalUserDao.all.asPagingSourceFactory()
-        ).flow
+        return externalUserDao.all.transformFlow()
     }
 
     override fun getSpaceMedium(mediumId: Int): SpaceMedium = runBlocking {
@@ -378,9 +371,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     true
                 )
                 try {
-                    doPartitionedEx(episodeIds) { ids: List<Int> ->
-                        runBlocking { episodeDao.updateProgress(ids, 1f, DateTime.now()) }
-                        false
+                    episodeIds.doPartitionedExSuspend { ids: List<Int> ->
+                        async {
+                            episodeDao.updateProgress(ids, 1f, DateTime.now())
+                            false
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -676,30 +671,38 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>) {
+        override suspend fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>) {
             val partIds = partEpisodes.keys
-            val episodes = runBlocking { episodeDao.getEpisodes(partIds) }
-            val deleteEpisodes: MutableList<Int> = LinkedList()
-            episodes.forEach(Consumer { roomPartEpisode: RoomPartEpisode ->
+            val episodes = episodeDao.getEpisodes(partIds)
+            val deleteEpisodes: List<Int> = episodes.mapNotNull { roomPartEpisode ->
                 val episodeIds = partEpisodes[roomPartEpisode.partId]
+
                 if (episodeIds == null || !episodeIds.contains(roomPartEpisode.episodeId)) {
-                    deleteEpisodes.add(roomPartEpisode.episodeId)
+                    return@mapNotNull roomPartEpisode.episodeId
+                } else {
+                    return@mapNotNull null
                 }
-            })
-            doPartitioned(deleteEpisodes) { ids: List<Int> ->
-                runBlocking { episodeDao.deletePerId(ids) }
-                false
+            }
+            coroutineScope {
+                deleteEpisodes.doPartitionedSuspend { ids: List<Int> ->
+                    async {
+                        episodeDao.deletePerId(ids)
+                        false
+                    }
+                }
             }
         }
 
-        override fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int> {
-            val roomReleases = runBlocking { episodeDao.getReleases(partReleases.keys) }
+        override suspend fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int> {
+            val roomReleases = episodeDao.getReleases(partReleases.keys)
             val deleteRelease: MutableList<RoomRelease> = LinkedList()
             val now = DateTime.now()
             val unmatchedReleases: MutableCollection<ClientSimpleRelease> = HashSet()
+
             for (list in partReleases.values) {
                 unmatchedReleases.addAll(list)
             }
+
             roomReleases.forEach(Consumer { release: RoomSimpleRelease ->
                 val releases = partReleases[release.partId]
                 var found = false
@@ -720,14 +723,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (release in unmatchedReleases) {
                 episodesToLoad.add(release.id)
             }
-            runBlocking {
-                episodeDao.deleteBulkRelease(deleteRelease)
-            }
+            episodeDao.deleteBulkRelease(deleteRelease)
             return episodesToLoad
         }
 
-        override fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>) {
-            val previousTocs = runBlocking { tocDao.getTocs(mediaTocs.keys) }
+        override suspend fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>) {
+            val previousTocs = tocDao.getTocs(mediaTocs.keys)
             val removeTocs: MutableList<RoomToc> = ArrayList()
             for (entry in previousTocs) {
                 val currentTocLinks = mediaTocs[entry.mediumId]
@@ -735,9 +736,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     removeTocs.add(entry)
                 }
             }
-            runBlocking {
-                tocDao.deleteBulk(removeTocs)
-            }
+            tocDao.deleteBulk(removeTocs)
         }
 
         override fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
