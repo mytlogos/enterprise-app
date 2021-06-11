@@ -467,131 +467,12 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
 
         val statBody = client.getStats().checkAndGetBody()
         val parsedStat = statBody.parse()
+
+        reloadRun(client, persister, repository, parsedStat)
+
         persister.persist(parsedStat)
-        var reloadStat = repository.checkReload(parsedStat)
 
-        if (!reloadStat.loadMedium.isEmpty()) {
-            val media = client.getMedia(reloadStat.loadMedium).checkAndGetBody()
-            val simpleMedia = media.map { medium: ClientMedium ->
-                ClientSimpleMedium(medium)
-            }
-            persister.persistMedia(simpleMedia)
-            reloadStat = repository.checkReload(parsedStat)
-        }
-
-        if (!reloadStat.loadExUser.isEmpty()) {
-            val users = client.getExternalUser(reloadStat.loadExUser).checkAndGetBody()
-            persister.persistExternalUsers(users)
-            reloadStat = repository.checkReload(parsedStat)
-        }
-
-        if (!reloadStat.loadLists.isEmpty()) {
-            val listQuery = client.getLists(reloadStat.loadLists).checkAndGetBody()
-            persister.persist(listQuery)
-            reloadStat = repository.checkReload(parsedStat)
-        }
-
-        if (!reloadStat.loadPart.isEmpty()) {
-            coroutineScope {
-                reloadStat.loadPart.doPartitionedRethrowSuspend { partIds: List<Int> ->
-                    async {
-                        val parts = client.getParts(partIds).checkAndGetBody()
-                        persister.persistParts(parts)
-                        false
-                    }
-                }
-            }
-            reloadStat = repository.checkReload(parsedStat)
-        }
-
-        if (!reloadStat.loadPartEpisodes.isEmpty()) {
-            val partStringEpisodes = client.getPartEpisodes(reloadStat.loadPartEpisodes).checkAndGetBody()
-            val partEpisodes: MutableMap<Int, List<Int>> = mapStringToInt(partStringEpisodes)
-            val missingEpisodes: MutableCollection<Int> = HashSet()
-
-            for ((_, value) in partEpisodes) {
-                for (episodeId in value) {
-                    if (!repository.isEpisodeLoaded(episodeId)) {
-                        missingEpisodes.add(episodeId)
-                    }
-                }
-            }
-
-            if (!missingEpisodes.isEmpty()) {
-                val episodes = client.getEpisodes(missingEpisodes).checkAndGetBody()
-                persistEpisodes(episodes, client, persister, repository)
-            }
-
-            coroutineScope {
-                partEpisodes.keys.doPartitionedRethrowSuspend { ids: List<Int> ->
-                    async {
-                        val currentEpisodes: MutableMap<Int, List<Int>> = HashMap()
-                        for (id in ids) {
-                            currentEpisodes[id] =
-                                partEpisodes[id] ?: throw IllegalStateException("Expected List not found")
-                        }
-                        persister.deleteLeftoverEpisodes(currentEpisodes)
-                        false
-                    }
-                }
-            }
-            reloadStat = repository.checkReload(parsedStat)
-        }
-
-        if (!reloadStat.loadPartReleases.isEmpty()) {
-            val partReleasesResponse = client.getPartReleases(reloadStat.loadPartReleases)
-            val partStringReleases = partReleasesResponse.checkAndGetBody()
-            val partReleases = mapStringToInt(partStringReleases)
-            val missingEpisodes: MutableCollection<Int> = HashSet()
-            for ((_, value) in partReleases) {
-                for (release in value) {
-                    if (!repository.isEpisodeLoaded(release.id)) {
-                        missingEpisodes.add(release.id)
-                    }
-                }
-            }
-            if (!missingEpisodes.isEmpty()) {
-                val episodes = client.getEpisodes(missingEpisodes).checkAndGetBody()
-                persistEpisodes(episodes, client, persister, repository)
-            }
-            val episodesToLoad: Collection<Int> = persister.deleteLeftoverReleases(partReleases)
-            if (!episodesToLoad.isEmpty()) {
-                coroutineScope {
-                    episodesToLoad.doPartitionedRethrowSuspend { ids: List<Int> ->
-                        async {
-                            val episodes = client.getEpisodes(ids).checkAndGetBody()
-                            persistEpisodes(episodes, client, persister, repository)
-                            false
-                        }
-                    }
-                }
-            }
-            reloadStat = repository.checkReload(parsedStat)
-        }
-        if (!reloadStat.loadMediumTocs.isEmpty()) {
-            val mediumTocsResponse = client.getMediumTocs(reloadStat.loadMediumTocs)
-            val mediumTocs = mediumTocsResponse.checkAndGetBody()
-            val mediaTocs: MutableMap<Int, MutableList<String>> = HashMap()
-            for (mediumToc in mediumTocs) {
-                mediaTocs.computeIfAbsent(mediumToc.mediumId) { ArrayList() }
-                    .add(mediumToc.link)
-            }
-            coroutineScope {
-                mediaTocs.keys.doPartitionedRethrowSuspend { mediaIds: List<Int> ->
-                    async {
-                        val partitionedMediaTocs: MutableMap<Int, List<String>> = HashMap()
-                        for (mediaId in mediaIds) {
-                            partitionedMediaTocs[mediaId] = Objects.requireNonNull<List<String>>(
-                                mediaTocs[mediaId]
-                            )
-                        }
-                        persistTocs(partitionedMediaTocs, persister)
-                        persister.deleteLeftoverTocs(partitionedMediaTocs)
-                        false
-                    }
-                }
-            }
-        }
+        var reloadStat = reloadRun(client, persister, repository, parsedStat)
 
         // as even now some errors crop up, just load all this shit and dump it in 100er steps
         if (!reloadStat.loadPartEpisodes.isEmpty() || !reloadStat.loadPartReleases.isEmpty()) {
@@ -627,6 +508,216 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
             println(msg)
             Log.e("Repository", msg)
         }
+    }
+
+    private suspend fun reloadRun(
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository,
+        parsedStat: ClientStat.ParsedStat,
+    ): ReloadStat {
+        var reloadStat = repository.checkReload(parsedStat)
+
+        if (!reloadStat.loadMedium.isEmpty()) {
+            reloadStat = reloadMedium(client, reloadStat, persister, repository, parsedStat)
+        }
+
+        if (!reloadStat.loadExUser.isEmpty()) {
+            reloadStat = reloadExternalUser(client, reloadStat, persister, repository, parsedStat)
+        }
+
+        if (!reloadStat.loadLists.isEmpty()) {
+            reloadStat = reloadMediaList(client, reloadStat, persister, repository, parsedStat)
+        }
+
+        if (!reloadStat.loadPart.isEmpty()) {
+            reloadStat = reloadParts(reloadStat, client, persister, repository, parsedStat)
+        }
+
+        if (!reloadStat.loadPartEpisodes.isEmpty()) {
+            reloadStat = reloadPartEpisodes(client, reloadStat, repository, persister, parsedStat)
+        }
+
+        if (!reloadStat.loadPartReleases.isEmpty()) {
+            reloadStat = reloadPartReleases(client, reloadStat, repository, persister, parsedStat)
+        }
+
+        if (!reloadStat.loadMediumTocs.isEmpty()) {
+            reloadMediumTocs(client, reloadStat, persister)
+        }
+        return reloadStat
+    }
+
+    private suspend fun reloadMediumTocs(
+        client: Client,
+        reloadStat: ReloadStat,
+        persister: ClientModelPersister,
+    ) {
+        val mediumTocsResponse = client.getMediumTocs(reloadStat.loadMediumTocs)
+        val mediumTocs = mediumTocsResponse.checkAndGetBody()
+        val mediaTocs: MutableMap<Int, MutableList<String>> = HashMap()
+        for (mediumToc in mediumTocs) {
+            mediaTocs.computeIfAbsent(mediumToc.mediumId) { ArrayList() }
+                .add(mediumToc.link)
+        }
+        coroutineScope {
+            mediaTocs.keys.doPartitionedRethrowSuspend { mediaIds: List<Int> ->
+                async {
+                    val partitionedMediaTocs: MutableMap<Int, List<String>> = HashMap()
+                    for (mediaId in mediaIds) {
+                        partitionedMediaTocs[mediaId] = Objects.requireNonNull<List<String>>(
+                            mediaTocs[mediaId]
+                        )
+                    }
+                    persistTocs(partitionedMediaTocs, persister)
+                    persister.deleteLeftoverTocs(partitionedMediaTocs)
+                    false
+                }
+            }
+        }
+    }
+
+    private suspend fun reloadPartReleases(
+        client: Client,
+        reloadStat: ReloadStat,
+        repository: Repository,
+        persister: ClientModelPersister,
+        parsedStat: ClientStat.ParsedStat,
+    ): ReloadStat {
+        val partStringReleases = client.getPartReleases(
+            reloadStat.loadPartReleases
+        ).checkAndGetBody()
+
+        val partReleases = mapStringToInt(partStringReleases)
+        val missingEpisodes: MutableCollection<Int> = HashSet()
+
+        for ((_, value) in partReleases) {
+            for (release in value) {
+                if (!repository.isEpisodeLoaded(release.id)) {
+                    missingEpisodes.add(release.id)
+                }
+            }
+        }
+
+        if (!missingEpisodes.isEmpty()) {
+            val episodes = client.getEpisodes(missingEpisodes).checkAndGetBody()
+            persistEpisodes(episodes, client, persister, repository)
+        }
+
+        val episodesToLoad: Collection<Int> = persister.deleteLeftoverReleases(partReleases)
+
+        if (!episodesToLoad.isEmpty()) {
+            coroutineScope {
+                episodesToLoad.doPartitionedRethrowSuspend { ids: List<Int> ->
+                    async {
+                        val episodes = client.getEpisodes(ids).checkAndGetBody()
+                        persistEpisodes(episodes, client, persister, repository)
+                        false
+                    }
+                }
+            }
+        }
+        return repository.checkReload(parsedStat)
+    }
+
+    private suspend fun reloadPartEpisodes(
+        client: Client,
+        reloadStat: ReloadStat,
+        repository: Repository,
+        persister: ClientModelPersister,
+        parsedStat: ClientStat.ParsedStat,
+    ): ReloadStat {
+        val partStringEpisodes = client.getPartEpisodes(
+            reloadStat.loadPartEpisodes
+        ).checkAndGetBody()
+
+        val partEpisodes: MutableMap<Int, List<Int>> = mapStringToInt(partStringEpisodes)
+        val missingEpisodes: MutableCollection<Int> = HashSet()
+
+        for ((_, value) in partEpisodes) {
+            for (episodeId in value) {
+                if (!repository.isEpisodeLoaded(episodeId)) {
+                    missingEpisodes.add(episodeId)
+                }
+            }
+        }
+
+        if (!missingEpisodes.isEmpty()) {
+            val episodes = client.getEpisodes(missingEpisodes).checkAndGetBody()
+            persistEpisodes(episodes, client, persister, repository)
+        }
+
+        coroutineScope {
+            partEpisodes.keys.doPartitionedRethrowSuspend { ids: List<Int> ->
+                async {
+                    val currentEpisodes: MutableMap<Int, List<Int>> = HashMap()
+                    for (id in ids) {
+                        currentEpisodes[id] =
+                            partEpisodes[id]
+                                ?: throw IllegalStateException("Expected List not found")
+                    }
+                    persister.deleteLeftoverEpisodes(currentEpisodes)
+                    false
+                }
+            }
+        }
+        return repository.checkReload(parsedStat)
+    }
+
+    private suspend fun reloadParts(
+        reloadStat: ReloadStat,
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository,
+        parsedStat: ClientStat.ParsedStat,
+    ): ReloadStat {
+        coroutineScope {
+            reloadStat.loadPart.doPartitionedRethrowSuspend { partIds: List<Int> ->
+                async {
+                    val parts = client.getParts(partIds).checkAndGetBody()
+                    persister.persistParts(parts)
+                    false
+                }
+            }
+        }
+        return repository.checkReload(parsedStat)
+    }
+
+    private suspend fun reloadMediaList(
+        client: Client,
+        reloadStat: ReloadStat,
+        persister: ClientModelPersister,
+        repository: Repository,
+        parsedStat: ClientStat.ParsedStat,
+    ): ReloadStat {
+        val listQuery = client.getLists(reloadStat.loadLists).checkAndGetBody()
+        persister.persist(listQuery)
+        return repository.checkReload(parsedStat)
+    }
+
+    private suspend fun reloadExternalUser(
+        client: Client,
+        reloadStat: ReloadStat,
+        persister: ClientModelPersister,
+        repository: Repository,
+        parsedStat: ClientStat.ParsedStat,
+    ): ReloadStat {
+        val users = client.getExternalUser(reloadStat.loadExUser).checkAndGetBody()
+        persister.persistExternalUsers(users)
+        return repository.checkReload(parsedStat)
+    }
+
+    private suspend fun reloadMedium(
+        client: Client,
+        reloadStat: ReloadStat,
+        persister: ClientModelPersister,
+        repository: Repository,
+        parsedStat: ClientStat.ParsedStat,
+    ): ReloadStat {
+        val media = client.getMedia(reloadStat.loadMedium).checkAndGetBody()
+        val simpleMedia = media.map(::ClientSimpleMedium)
+        persister.persistMedia(simpleMedia)
+        return repository.checkReload(parsedStat)
     }
 
     private suspend fun persistTocs(

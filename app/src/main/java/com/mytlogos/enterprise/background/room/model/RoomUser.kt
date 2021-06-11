@@ -4,8 +4,11 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity
-class RoomUser(val name: String, @field:PrimaryKey val uuid: String, val session: String) {
-
+class RoomUser(
+    @field:PrimaryKey val uuid: String,
+    val name: String,
+    val session: String,
+) {
     override fun toString(): String {
         return super.toString() +
                 "{" +

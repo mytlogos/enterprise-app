@@ -6,15 +6,13 @@ import com.mytlogos.enterprise.background.Repository
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.model.ChapterPage
 import com.mytlogos.enterprise.model.IMAGE
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
 import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
 import java.util.regex.Pattern
 
 class ImageContentTool internal constructor(
@@ -132,68 +130,52 @@ class ImageContentTool internal constructor(
         }
         for (episode in episodes) {
             val content = episode.getContent()
+
             if (content.isEmpty()) {
                 continue
             }
+
             val links = repository!!.getReleaseLinks(episode.episodeId)
-            val writtenFiles: MutableList<File> = ArrayList()
+            val writtenFiles: MutableList<File> = ArrayList(content.size)
+
             downloadPage(content, 0, file, episode.episodeId, links, writtenFiles)
+
             val firstImage = writtenFiles[0]
             val estimatedByteSize = firstImage.length() * content.size
+
             if (!writeable(file, estimatedByteSize)) {
                 if (firstImage.exists() && !firstImage.delete()) {
                     println("could not delete image: " + firstImage.absolutePath)
                 }
                 throw NotEnoughSpaceException()
             }
-            val futures: MutableList<CompletableFuture<Void>> = ArrayList()
-            var page = 1
-            val contentLength = content.size
-            while (page < contentLength) {
-                val tempPage = page
-                futures.add(CompletableFuture.runAsync {
-                    try {
+
+            val executor = Executors.newFixedThreadPool(5)
+            val coroutineScope = CoroutineScope(executor.asCoroutineDispatcher())
+
+            try {
+                (1 until content.size).map { pageNumber ->
+                    coroutineScope.async {
                         downloadPage(content,
-                            tempPage,
+                            pageNumber,
                             file,
                             episode.episodeId,
                             links,
-                            writtenFiles)
-                    } catch (e: IOException) {
-                        throw IllegalStateException(e)
+                            writtenFiles
+                        )
                     }
-                })
-                page++
-            }
-            try {
-                CompletableFuture
-                    .allOf(*futures.toTypedArray<CompletableFuture<*>>())
-                    .whenComplete { _: Void?, throwable: Throwable? ->
-                        if (throwable == null) {
-                            return@whenComplete
-                        }
-                        // first exception is completionException, then the illegalStateException
-                        // followed by notEnoughSpaceException
-                        var cause = throwable.cause
-                        if (cause != null && cause.cause is NotEnoughSpaceException) {
-                            cause = cause.cause
-                            for (writtenFile in writtenFiles) {
-                                if (writtenFile.exists() && !writtenFile.delete()) {
-                                    println("could not delete image: " + writtenFile.absolutePath)
-                                }
-                            }
-                            throw RuntimeException(cause!!.cause)
-                        }
-                        throw RuntimeException(throwable)
+                }.awaitAll()
+            } catch (e: NotEnoughSpaceException) {
+                // try to recover space
+                for (writtenFile in writtenFiles) {
+                    if (writtenFile.exists() && !writtenFile.delete()) {
+                        println("could not delete image: " + writtenFile.absolutePath)
                     }
-                    .get()
-            } catch (e: ExecutionException) {
-                when (e.cause) {
-                    is NotEnoughSpaceException -> throw NotEnoughSpaceException()
-                    is IOException -> throw IOException(e)
-                    else -> e.printStackTrace()
                 }
-            } catch (e: InterruptedException) {
+                throw e
+            } catch (e: IOException) {
+                throw e
+            } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
@@ -215,12 +197,14 @@ class ImageContentTool internal constructor(
             return
         }
         var referer: String? = null
+
         for (releaseUrl in links) {
             if (getDomain(link) == pageLinkDomain) {
                 referer = releaseUrl
                 break
             }
         }
+
         if (referer == null || referer.isEmpty()) {
             // we need a referrer for sites like mangahasu
             return
@@ -231,6 +215,7 @@ class ImageContentTool internal constructor(
             System.err.println("got an invalid link")
             return
         }
+
         val imageFormat: String = when {
             link.lowercase(Locale.getDefault()).endsWith(".png") -> {
                 "png"
@@ -249,21 +234,26 @@ class ImageContentTool internal constructor(
             httpURLConnection.doInput = true
             httpURLConnection.setRequestProperty("Referer", referer)
             httpURLConnection.connect()
+
             var responseCode = httpURLConnection.responseCode
+
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 httpURLConnection = url.openConnection() as HttpURLConnection
                 httpURLConnection.doInput = true
                 httpURLConnection.connect()
                 responseCode = httpURLConnection.responseCode
+
                 if (responseCode != HttpURLConnection.HTTP_OK) {
                     throw IOException("could not get resource successfully: $link")
                 }
             }
-            BufferedInputStream(httpURLConnection.inputStream).use { `in` ->
-                val pageName = String.format("%s-%s.%s", episodeId, page + 1, imageFormat)
+            httpURLConnection.inputStream.buffered().use { inputStream ->
+                val pageName = "$episodeId-${page + 1}.$imageFormat"
                 val image = File(file, pageName)
                 writtenFiles.add(image)
-                saveImageStream(`in`, image)
+
+                // copy web input stream to file output stream
+                FileOutputStream(image).buffered().use(inputStream::copyTo)
             }
         } catch (e: MalformedURLException) {
             e.printStackTrace()
@@ -277,19 +267,9 @@ class ImageContentTool internal constructor(
     }
 
     @Throws(IOException::class)
-    private fun saveImageStream(`in`: InputStream, image: File) {
-        BufferedOutputStream(FileOutputStream(image)).use { outputStream ->
-            var ch: Int
-            while (`in`.read().also { ch = it } != -1) {
-                outputStream.write(ch)
-            }
-        }
-    }
-
-    @Throws(IOException::class)
     private fun saveImageBitmap(`in`: InputStream, image: File) {
         val bitmap = BitmapFactory.decodeStream(`in`)
-        BufferedOutputStream(FileOutputStream(image)).use { outputStream ->
+        FileOutputStream(image).buffered().use { outputStream ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream)
             outputStream.flush()
         }

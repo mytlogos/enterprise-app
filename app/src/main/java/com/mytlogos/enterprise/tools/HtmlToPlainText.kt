@@ -78,7 +78,7 @@ class HtmlToPlainText {
                     append(" ")
                 }
                 name == "a" -> {
-                    append(String.format(" <%s>", node.absUrl("href")))
+                    append(" <${node.absUrl("href")}>")
                 }
                 name == "ul" -> {
                     listNesting--

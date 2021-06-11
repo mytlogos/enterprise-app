@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.ui
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -38,6 +39,7 @@ class MediaInWaitFragment : BaseFragment() {
     private var running = false
     private val selectedInWaits: MutableSet<MediumInWait> = HashSet()
 
+    @SuppressLint("SetTextI18n")
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -52,7 +54,7 @@ class MediaInWaitFragment : BaseFragment() {
 
         val titleView = view.findViewById<TextView>(R.id.title)
         val domain = getDomain(mediumInWait.link)
-        titleView.text = String.format("%s (%s)", mediumInWait.title, domain)
+        titleView.text = "${mediumInWait.title} ($domain)"
         viewModel = ViewModelProvider(this).get(MediumInWaitViewModel::class.java)
 
         val listAdapter = getFlexibleRecyclerAdapter(view, R.id.list)
@@ -288,7 +290,7 @@ class MediaInWaitFragment : BaseFragment() {
             payloads: List<Any>,
         ) {
             val domain = getDomain(mediumInWait.link)
-            val title = String.format("%s (%s)", mediumInWait.title, domain)
+            val title = "${mediumInWait.title} ($domain)"
             holder.textView.text = title
         }
     }
@@ -358,7 +360,7 @@ class MediaInWaitFragment : BaseFragment() {
             payloads: List<Any>,
         ) {
             val domain = getDomain(mediumInWait.link)
-            val title = String.format("%s (%s)", mediumInWait.title, domain)
+            val title = "${mediumInWait.title} ($domain)"
             holder.textView.text = title
         }
 

@@ -8,7 +8,7 @@ class ServerException : IOException {
     val errorMessage: String?
 
     @SuppressLint("DefaultLocale")
-    constructor(responseCode: Int, errorMessage: String?) : super(String.format("No Body, Http-Code %d, ErrorBody: %s", responseCode, errorMessage)) {
+    constructor(responseCode: Int, errorMessage: String?) : super("No Body, Http-Code $responseCode, ErrorBody: $errorMessage") {
         this.responseCode = responseCode
         this.errorMessage = errorMessage
     }

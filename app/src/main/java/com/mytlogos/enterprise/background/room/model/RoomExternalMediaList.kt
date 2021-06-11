@@ -10,42 +10,13 @@ import androidx.room.PrimaryKey
         childColumns = arrayOf("uuid"),
         onDelete = ForeignKey.CASCADE)],
         indices = [Index(value = arrayOf("uuid")), Index(value = arrayOf("externalListId"))])
-class RoomExternalMediaList(
+data class RoomExternalMediaList(
     val uuid: String?,
     @field:PrimaryKey val externalListId: Int,
     val name: String?,
     val medium: Int,
     val url: String?,
 ) {
-    override fun toString(): String {
-        return "RoomExternalMediaList{" +
-                "uuid='" + uuid + '\'' +
-                ", externalListId=" + externalListId +
-                ", name='" + name + '\'' +
-                ", medium=" + medium +
-                ", url='" + url + '\'' +
-                '}'
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || javaClass != other.javaClass) return false
-        val that = other as RoomExternalMediaList
-        if (externalListId != that.externalListId) return false
-        if (medium != that.medium) return false
-        if (uuid != that.uuid) return false
-        return if (name != that.name) false else url == that.url
-    }
-
-    override fun hashCode(): Int {
-        var result = uuid?.hashCode() ?: 0
-        result = 31 * result + externalListId
-        result = 31 * result + (name?.hashCode() ?: 0)
-        result = 31 * result + medium
-        result = 31 * result + (url?.hashCode() ?: 0)
-        return result
-    }
-
     @Entity(primaryKeys = ["listId", "mediumId"],
             foreignKeys = [ForeignKey(entity = RoomMedium::class,
                     parentColumns = arrayOf("mediumId"),
@@ -55,28 +26,8 @@ class RoomExternalMediaList(
                     childColumns = arrayOf("listId"),
                     onDelete = ForeignKey.CASCADE)],
             indices = [Index(value = arrayOf("listId")), Index(value = arrayOf("mediumId"))])
-    class ExternalListMediaJoin(
+    data class ExternalListMediaJoin(
         override val listId: Int,
         override val mediumId: Int,
-    ) : ListMediaJoin {
-        override fun toString(): String {
-            return "ExternalListMediaJoin{" +
-                    "listId=" + listId +
-                    ", mediumId=" + mediumId +
-                    '}'
-        }
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val that = other as ExternalListMediaJoin
-            return if (listId != that.listId) false else mediumId == that.mediumId
-        }
-
-        override fun hashCode(): Int {
-            var result = listId
-            result = 31 * result + mediumId
-            return result
-        }
-    }
+    ) : ListMediaJoin
 }

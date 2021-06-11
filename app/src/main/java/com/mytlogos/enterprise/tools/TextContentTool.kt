@@ -2,7 +2,6 @@ package com.mytlogos.enterprise.tools
 
 import android.annotation.SuppressLint
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
-import com.mytlogos.enterprise.model.MediumType
 import com.mytlogos.enterprise.model.TEXT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -52,20 +51,14 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
         try {
             ZipOutputStream(FileOutputStream(file)).use { stream ->
                 ZipFile(src).use { source ->
-                    val buffer = ByteArray(2048)
                     for (entry in Collections.list(source.entries())) {
                         if (episodePaths.containsValue(entry.name)) {
                             continue
                         }
                         val newEntry = ZipEntry(entry.name)
                         stream.putNextEntry(newEntry)
-                        source.getInputStream(entry).use { `in` ->
-                            while (`in`.available() > 0) {
-                                val read = `in`.read(buffer)
-                                if (read > 0) {
-                                    stream.write(buffer, 0, read)
-                                }
-                            }
+                        source.getInputStream(entry).use { inputStream ->
+                            inputStream.copyTo(stream)
                         }
                         stream.closeEntry()
                     }
@@ -81,6 +74,7 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
 
     override val mediumContainerPattern: Pattern
         get() = Pattern.compile("^(\\d+)\\.epub$")
+
     override val mediumContainerPatternGroup: Int
         get() = 1
 
@@ -300,11 +294,11 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
         var content = arrayContent[0]
         val titleIndex = content.indexOf(episode.getTitle())
         if (titleIndex < 0 || titleIndex > content.length / 3) {
-            content = "<h3>" + episode.getTitle() + "</h3>" + content
+            content = "<h3>${episode.getTitle()}</h3>$content"
         }
         return if (content.matches(Regex("\\s*<html.*>(<head>.*</head>)?<body>.+</body></html>\\s*"))) {
             content
-        } else "<html><head></head><body id=\"" + episode.episodeId + "\">" + content + "</body></html>"
+        } else "<html><head></head><body id=\"${episode.episodeId}\">$content</body></html>"
     }
 
     fun openEpisode(zipFileLink: String?, episodeFile: String?): String {
@@ -317,13 +311,7 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
         try {
             ZipFile(zipFileLink).use { file ->
                 val entry = file.getEntry(episodeFile) ?: return "Invalid Episode Link"
-                val builder = BufferedReader(InputStreamReader(file.getInputStream(entry)))
-                    .lines()
-                    .collect({ StringBuilder() },
-                        { obj: java.lang.StringBuilder, str: String? -> obj.append(str) }) { obj: java.lang.StringBuilder, s: java.lang.StringBuilder? ->
-                        obj.append(s)
-                    }
-                return builder.toString()
+                return file.getInputStream(entry).bufferedReader().readText()
             }
         } catch (e: IOException) {
             e.printStackTrace()

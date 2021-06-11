@@ -215,7 +215,7 @@ class TocFragment
                     .mapNotNull(Release::title)
                     .maxOfOrNull { it } ?: "Not available"
 
-                val hasOnline = item.releases.any { it.url?.isEmpty() ?: false }
+                val hasOnline = item.releases.any { it.url?.isNotBlank() ?: false }
                 val isLocked = item.releases.all(Release::locked)
 
                 holder.textTopLeft.text = index

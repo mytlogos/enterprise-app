@@ -289,7 +289,7 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
             return MetaViewHolder(view, adapter)
         }
 
-        @SuppressLint("DefaultLocale")
+        @SuppressLint("DefaultLocale", "SetTextI18n")
         override fun bindViewHolder(
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: MetaViewHolder,
@@ -300,7 +300,7 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
             // because it would expect a resource id if it is an int
             val currentReadEpisode = if (item.currentReadEpisode < 0) 0 else item.currentReadEpisode
             val lastEpisode = if (item.lastEpisode < 0) 0 else item.lastEpisode
-            holder.topLeftText.text = String.format("%d/%d", currentReadEpisode, lastEpisode)
+            holder.topLeftText.text = "$currentReadEpisode/$lastEpisode"
             val lastUpdated = item.lastUpdated
             val relativeTime: String = if (lastUpdated != null) {
                 TimeAgo.toRelative(lastUpdated, DateTime.now())!!

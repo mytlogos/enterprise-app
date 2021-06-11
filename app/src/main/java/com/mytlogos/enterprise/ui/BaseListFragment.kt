@@ -108,11 +108,11 @@ abstract class BaseListFragment<Value : Any, ViewModel : AndroidViewModel> : Bas
         }
 
         override fun onInserted(position: Int, count: Int) {
-            println(String.format("Position: %s and Count: %s - Inserted", position, count))
+            println("Position: $position and Count: $count - Inserted")
         }
 
         override fun onRemoved(position: Int, count: Int) {
-            println(String.format("Position: %s and Count: %s - Removed", position, count))
+            println("Position: $position and Count: $count - Removed")
         }
     }
     private val pagedListObserver = Observer { items: PagedList<Value> ->

@@ -14,7 +14,7 @@ import org.joda.time.DateTime
             Index(value = arrayOf("partId")), Index(value = arrayOf("episodeId"))
         ]
 )
-class RoomEpisode(
+data class RoomEpisode(
         @field:PrimaryKey val episodeId: Int,
         val progress: Float,
         val readDate: DateTime?,
@@ -22,7 +22,8 @@ class RoomEpisode(
         val totalIndex: Int,
         val partialIndex: Int,
         val combiIndex: Double,
-        val saved: Boolean) {
+        val saved: Boolean
+) {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -33,17 +34,5 @@ class RoomEpisode(
 
     override fun hashCode(): Int {
         return episodeId
-    }
-
-    override fun toString(): String {
-        return "RoomEpisode{" +
-                "id=" + episodeId +
-                ", progress=" + progress +
-                ", readDate=" + readDate +
-                ", partId=" + partId +
-                ", totalIndex=" + totalIndex +
-                ", partialIndex=" + partialIndex +
-                ", saved=" + saved +
-                '}'
     }
 }

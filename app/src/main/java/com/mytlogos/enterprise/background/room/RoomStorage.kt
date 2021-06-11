@@ -274,10 +274,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             localStatMap[localStat.partId] = localStat
             val partstat = partStats.remove(localStat.partId)
             if (partstat == null) {
-                println(String.format(
-                    "Local Part %s does not exist on Server, missing local Part Deletion",
-                    localStat.partId
-                ))
+                println("Local Part ${localStat.partId} does not exist on Server, missing local Part Deletion")
                 continue
             }
             if (partstat.episodeCount != localStat.episodeCount
@@ -597,16 +594,14 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persist(query: ClientListQuery): ClientModelPersister {
-            this.persistMedia(query.media.asList()
-                .map { medium: ClientMedium -> ClientSimpleMedium(medium) })
+        override suspend fun persist(query: ClientListQuery): ClientModelPersister {
+            this.persistMedia(query.media.asList().map(::ClientSimpleMedium))
             this.persist(query.list)
             return this
         }
 
-        override fun persist(query: ClientMultiListQuery): ClientModelPersister {
-            this.persistMedia(query.media.asList()
-                .map { medium: ClientMedium -> ClientSimpleMedium(medium) })
+        override suspend fun persist(query: ClientMultiListQuery): ClientModelPersister {
+            this.persistMedia(query.media.asList().map(::ClientSimpleMedium))
             this.persist(*query.list)
             return this
         }
@@ -812,7 +807,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        private suspend fun <T : ListMediaJoin?> filterListMediumJoins(
+        private suspend fun <T : ListMediaJoin> filterListMediumJoins(
             stat: ParsedStat,
             deletedLists: MutableSet<Int>,
             newJoins: MutableList<T>,
@@ -829,8 +824,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
             val previousListJoinMap: MutableMap<Int, MutableSet<Int>> = HashMap()
             previousListJoins.removeIf { join: T ->
-                previousListJoinMap.computeIfAbsent(join!!.listId) { integer: Int? -> HashSet() }
-                    .add(join.mediumId)
+                previousListJoinMap.computeIfAbsent(join.listId) { HashSet() }.add(join.mediumId)
+
                 val currentListItems = currentJoins[join.listId]
                 if (currentListItems == null) {
                     deletedLists.add(join.listId)

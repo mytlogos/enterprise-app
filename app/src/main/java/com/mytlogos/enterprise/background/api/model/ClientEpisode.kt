@@ -5,7 +5,7 @@ import org.joda.time.DateTime
 /**
  * API Model for Episode.
  */
-class ClientEpisode(
+data class ClientEpisode(
     val id: Int,
     val progress: Float,
     val partId: Int,
@@ -15,19 +15,6 @@ class ClientEpisode(
     val readDate: DateTime?,
     val releases: Array<ClientEpisodeRelease>
 ) {
-    override fun toString(): String {
-        return "ClientEpisode{" +
-                "id=" + id +
-                ", progress=" + progress +
-                ", partId=" + partId +
-                ", totalIndex=" + totalIndex +
-                ", partialIndex=" + partialIndex +
-                ", combiIndex" + combiIndex +
-                ", readDate=" + readDate +
-                ", releases=" + releases.contentToString() +
-                '}'
-    }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false

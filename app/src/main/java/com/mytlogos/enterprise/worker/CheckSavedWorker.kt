@@ -172,16 +172,12 @@ class CheckSavedWorker(
      */
     private fun updateNotificationContentText() {
         builder.setContentTitle(
-            String.format(
-                "Checking Local Content Integrity [%s/%s]",
-                checkedCount,
-                mediaToCheck
-            )
+            "Checking Local Content Integrity [$checkedCount/$mediaToCheck]"
         )
         builder.setStyle(
             NotificationCompat.InboxStyle()
-                .addLine(String.format("Corrected Save State: %s", correctedSaveState))
-                .addLine(String.format("Cleared Loose Episodes: %s", clearedLooseEpisodes))
+                .addLine("Corrected Save State: $correctedSaveState")
+                .addLine("Cleared Loose Episodes: $clearedLooseEpisodes")
         )
         notificationManager.notify(checkLocalNotificationId, builder.build())
     }

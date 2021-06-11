@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.ui
 
+import android.annotation.SuppressLint
 import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
@@ -194,6 +195,7 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
             return ViewHolder(view, adapter)
         }
 
+        @SuppressLint("SetTextI18n")
         override fun bindViewHolder(
             adapter: FlexibleAdapter<IFlexible<*>?>?,
             holder: ViewHolder,
@@ -207,7 +209,7 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
             if (empty) {
                 Glide.with(holder.itemView).clear(holder.imageView)
                 //                holder.imageView.setImageURI(null);
-                holder.emptyText.text = String.format("Page %s is missing", page)
+                holder.emptyText.text = "Page $page is missing"
             } else {
                 holder.emptyText.text = null
                 Glide

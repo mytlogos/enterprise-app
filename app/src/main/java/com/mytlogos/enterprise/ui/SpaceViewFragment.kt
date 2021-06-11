@@ -112,13 +112,14 @@ class SpaceViewFragment : BaseFragment() {
 
         chart.isValueSelectionEnabled = true
         chart.onValueTouchListener = object : PieChartOnValueSelectListener {
+            @SuppressLint("SetTextI18n")
             override fun onValueSelected(arcIndex: Int, value: SliceValue) {
                 val node = sliceValueSpaceDataNodeMap[value] ?: return
                 selectedNode = node
                 viewSelected.isEnabled = node.children.isNotEmpty()
-                selectedTitle.text = String.format("%s (%s MB)", node.name, node.sizeMB)
+                selectedTitle.text = "${node.name} (${node.sizeMB} MB)"
                 selectedTitle.visibility = View.VISIBLE
-                clearBtn.text = String.format("Clear %s", String(value.labelAsChars))
+                clearBtn.text = "Clear ${String(value.labelAsChars)}"
                 clearBtn.isEnabled = true
             }
 

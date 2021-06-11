@@ -421,7 +421,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/list
      */
     @Throws(IOException::class)
-    suspend fun getLists(listIds: Collection<Int?>?): Response<ClientMultiListQuery> {
+    suspend fun getLists(listIds: Collection<Int>?): Response<ClientMultiListQuery> {
         val body = userAuthenticationMap()
         body["listId"] = listIds
         return querySuspend(ListApi::class.java) { apiImpl: ListApi, url: String -> apiImpl.getLists(url, body) }
@@ -764,7 +764,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
     private suspend fun <T, R> buildSuspend(api: Class<T>, buildCall: QuerySuspend<T, R>): Response<R> {
         var retrofit = retrofitMap[api]
         val path = fullClassPathMap[api]
-            ?: throw IllegalArgumentException("Unknown api class: " + api.canonicalName)
+            ?: throw IllegalArgumentException("Unknown api class: ${api.canonicalName}")
         @Suppress("BlockingMethodInNonBlockingContext")
         val localServer = getServer()
         server = localServer

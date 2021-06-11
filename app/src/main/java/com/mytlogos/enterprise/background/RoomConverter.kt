@@ -171,7 +171,7 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             episode.partId,
             episode.totalIndex,
             episode.partialIndex,
-            String.format("%s.%s", episode.totalIndex, episode.partialIndex).toDouble(),
+            "${episode.totalIndex}.${episode.partialIndex}".toDouble(),
             false
         )
     }
@@ -183,11 +183,7 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             episode.partId,
             episode.totalIndex,
             episode.partialIndex,
-            if (episode.combiIndex != 0.0) episode.combiIndex else String.format(
-                "%s.%s",
-                episode.totalIndex,
-                episode.partialIndex
-            ).toDouble(),
+            if (episode.combiIndex != 0.0) episode.combiIndex else "${episode.totalIndex}.${episode.partialIndex}".toDouble(),
             episode.readDate
         )
     }
@@ -195,9 +191,9 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
     fun convert(release: ClientRelease): RoomRelease {
         return RoomRelease(
             release.episodeId,
-            release.getTitle(),
-            release.getUrl(),
-            release.getReleaseDate(),
+            release.title,
+            release.url,
+            release.releaseDate,
             release.isLocked
         )
     }
@@ -267,7 +263,7 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             part.mediumId,
             part.title,
             part.totalIndex,
-            part.partialIndex, String.format("%s.%s", part.totalIndex, part.partialIndex).toDouble()
+            part.partialIndex, "${part.totalIndex}.${part.partialIndex}".toDouble()
         )
     }
 
@@ -340,9 +336,9 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
 
     fun convert(user: ClientSimpleUser): RoomUser {
         return RoomUser(
-            user.getName(),
-            user.getUuid(),
-            user.getSession()
+            user.uuid,
+            user.name,
+            user.session,
         )
     }
 

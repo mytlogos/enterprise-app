@@ -179,8 +179,8 @@ class RepositoryImpl private constructor(application: Application) : Repository 
 
                                 if (clientUser != null) {
                                     instance.client.setAuthentication(
-                                        clientUser.getUuid(),
-                                        clientUser.getSession()
+                                        clientUser.uuid,
+                                        clientUser.session
                                     )
                                 }
                                 instance.persister.persist(clientUser).finish()
