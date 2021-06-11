@@ -424,6 +424,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
     suspend fun getLists(listIds: Collection<Int>?): Response<ClientMultiListQuery> {
         val body = userAuthenticationMap()
         body["listId"] = listIds
+        body["media"] = listOf<Int>()
         return querySuspend(ListApi::class.java) { apiImpl: ListApi, url: String -> apiImpl.getLists(url, body) }
     }
 
