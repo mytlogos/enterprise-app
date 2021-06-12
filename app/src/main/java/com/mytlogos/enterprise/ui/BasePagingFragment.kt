@@ -418,13 +418,15 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     protected interface TextProperty : Property<String>
 
     protected class SimpleTextProperty(
+        @IdRes
         viewId: Int,
         property: KMutableProperty0<String>,
-        showToast: (v: String, duration: Int) -> Unit,
+        @IdRes
         clearViewId: Int = View.NO_ID,
-    ) : SimpleProperty<String>(viewId, property, showToast, clearViewId), TextProperty
+    ) : SimpleProperty<String>(viewId, property, clearViewId), TextProperty
 
     protected class IntTextProperty(
+        @IdRes
         override val viewId: Int,
         val property: KMutableProperty0<Int>,
         val showToast: (v: String, duration: Int) -> Unit,
@@ -440,9 +442,10 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     }
 
     protected open class SimpleProperty<E>(
+        @IdRes
         override val viewId: Int,
         val property: KMutableProperty0<E>,
-        val showToast: (v: String, duration: Int) -> Unit,
+        @IdRes
         override val clearViewId: Int = View.NO_ID,
     ) : Property<E> {
         override fun get(): E = property.get()
@@ -451,6 +454,26 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
 
     protected interface PositionProperty : Property<Int> {
         fun positionalMapping(): IntArray
+    }
+
+    protected class SimplePositionProperty(
+        @IdRes
+        override val viewId: Int,
+        val property: KMutableProperty0<Int>,
+        val values: IntArray = intArrayOf(-1, 0, 1),
+    ) : PositionProperty {
+        override fun positionalMapping(): IntArray {
+            return values
+        }
+
+        override fun get(): Int {
+            return property.get()
+        }
+
+        override fun set(newFilter: Int) {
+            property.set(newFilter)
+        }
+
     }
 
     open fun createFilterable(): Filterable? {

@@ -61,8 +61,8 @@ class EpisodeRepository private constructor(application: Application) {
     fun getToc(
         mediumId: Int,
         sortings: Sortings,
-        read: Byte,
-        saved: Byte,
+        read: Int,
+        saved: Int,
     ): Flow<PagingData<TocEpisode>> {
         val converter = RoomConverter()
         return transformFlow(

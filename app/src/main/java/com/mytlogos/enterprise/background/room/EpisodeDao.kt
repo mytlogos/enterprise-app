@@ -263,7 +263,7 @@ INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId
 INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId
 WHERE RoomMedium.mediumId=:mediumId
 AND (:read < 0 OR (:read == 0 AND progress < 1) OR :read = progress)AND (:saved < 0 OR :saved=saved)ORDER BY RoomEpisode.combiIndex ASC""")
-    fun getTocEpisodesAsc(mediumId: Int, read: Byte, saved: Byte): PagingSource<Int, RoomTocEpisode>
+    fun getTocEpisodesAsc(mediumId: Int, read: Int, saved: Int): PagingSource<Int, RoomTocEpisode>
 
     @Transaction
     @Query("""SELECT RoomEpisode.* FROM RoomEpisode
@@ -273,8 +273,8 @@ WHERE RoomMedium.mediumId=:mediumId
 AND (:read < 0 OR (:read == 0 AND progress < 1) OR :read = progress)AND (:saved < 0 OR :saved=saved)ORDER BY RoomEpisode.combiIndex DESC""")
     fun getTocEpisodesDesc(
         mediumId: Int,
-        read: Byte,
-        saved: Byte,
+        read: Int,
+        saved: Int,
     ): PagingSource<Int, RoomTocEpisode>
 
     @Query("SELECT url FROM RoomRelease WHERE episodeId=:episodeId")

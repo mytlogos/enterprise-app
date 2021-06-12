@@ -218,13 +218,11 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
                         SimpleTextProperty(
                             R.id.title_filter,
                             viewModel::titleFilter,
-                            this@MediumListFragment::showToast,
                             R.id.clear_title,
                         ),
                         SimpleTextProperty(
                             R.id.author_filter,
                             viewModel::authorFilter,
-                            this@MediumListFragment::showToast,
                             R.id.clear_author,
                         ),
                     )

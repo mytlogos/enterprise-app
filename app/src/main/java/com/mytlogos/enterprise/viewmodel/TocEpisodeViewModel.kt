@@ -57,7 +57,7 @@ class TocEpisodeViewModel(application: Application) :
         sortFilterLiveData.value = value!!.copy(sortings = sort)
     }
 
-    var savedFilter: Byte
+    var savedFilter: Int
         get() {
             val value = sortFilterLiveData.value
             return value?.saved ?: -1
@@ -66,7 +66,7 @@ class TocEpisodeViewModel(application: Application) :
             val value = sortFilterLiveData.value
             sortFilterLiveData.value = value!!.copy(saved = savedFilter)
         }
-    var readFilter: Byte
+    var readFilter: Int
         get() {
             val value = sortFilterLiveData.value
             return value?.read ?: -1
@@ -196,13 +196,13 @@ class TocEpisodeViewModel(application: Application) :
          * 0 for false
          * 1 for true
          */
-        val read: Byte = -1,
+        val read: Int = -1,
         /**
          * -1 for ignore
          * 0 for false
          * 1 for true
          */
-        val saved: Byte = -1,
+        val saved: Int = -1,
     )
 
     init {

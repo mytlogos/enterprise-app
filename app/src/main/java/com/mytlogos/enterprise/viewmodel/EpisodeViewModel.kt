@@ -82,7 +82,7 @@ class EpisodeViewModel(
     var host: String
         get() = getFilter().host ?: ""
         set(host) {
-            filter.value = getFilter().copy(host = host)
+            filter.value = getFilter().copy(host = host.lowercase(Locale.getDefault()))
         }
     var isLatestOnly: Boolean
         get() = getFilter().latestOnly

@@ -288,38 +288,9 @@ class TocFragment
         return object : Filterable {
             override val searchFilterProperties: Array<Property<*>>
                 get() = arrayOf(
-                    object : PositionProperty {
-                        override val viewId: Int
-                            get() = R.id.read
-
-                        override fun get(): Int {
-                            return viewModel.readFilter.toInt()
-                        }
-
-                        override fun positionalMapping(): IntArray {
-                            return intArrayOf(1, 0, -1)
-                        }
-
-                        override fun set(newFilter: Int) {
-                            viewModel.readFilter = newFilter.toByte()
-                        }
-                    },
-                    object : PositionProperty {
-                        override val viewId: Int
-                            get() = R.id.saved
-
-                        override fun positionalMapping(): IntArray {
-                            return intArrayOf(1, 0, -1)
-                        }
-
-                        override fun get(): Int {
-                            return viewModel.savedFilter.toInt()
-                        }
-
-                        override fun set(newFilter: Int) {
-                            viewModel.savedFilter = newFilter.toByte()
-                        }
-                    })
+                    SimplePositionProperty(R.id.read, viewModel::readFilter),
+                    SimplePositionProperty(R.id.saved, viewModel::savedFilter),
+                )
             override val filterLayout: Int
                 get() = R.layout.toc_filter
         }

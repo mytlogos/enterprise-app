@@ -115,38 +115,10 @@ class EpisodeFragment
                     viewModel::maxIndex,
                     showToastFunction
                 ),
-                object : TextProperty {
-                    override val viewId = R.id.host_filter
-
-                    override fun get() = viewModel.host
-
-                    override fun set(newFilter: String) {
-                        viewModel.host = newFilter.lowercase(Locale.getDefault())
-                    }
-                },
-                object : PositionProperty {
-                    override val viewId = R.id.read
-
-                    override fun get() = viewModel.read
-
-                    override fun positionalMapping(): IntArray = intArrayOf(1, 0, -1)
-
-                    override fun set(newFilter: Int) {
-                        viewModel.read = newFilter
-                    }
-                },
-                object : PositionProperty {
-                    override val viewId = R.id.saved
-
-                    override fun positionalMapping() = intArrayOf(1, 0, -1)
-
-                    override fun get() = viewModel.saved
-
-                    override fun set(newFilter: Int) {
-                        viewModel.saved = newFilter
-                    }
-                },
-                SimpleProperty(R.id.latest_only, viewModel::isLatestOnly, showToastFunction),
+                SimpleTextProperty(R.id.host_filter, viewModel::host),
+                SimplePositionProperty(R.id.read, viewModel::read),
+                SimplePositionProperty(R.id.saved, viewModel::saved),
+                SimpleProperty(R.id.latest_only, viewModel::isLatestOnly),
             )
 
             override fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {
