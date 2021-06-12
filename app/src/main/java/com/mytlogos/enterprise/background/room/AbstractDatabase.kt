@@ -1,10 +1,7 @@
 package com.mytlogos.enterprise.background.room
 
 import android.content.Context
-import androidx.room.Database
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
+import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mytlogos.enterprise.background.room.model.*
@@ -20,7 +17,7 @@ import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMedi
         RoomFailedEpisode::class, RoomNotification::class, RoomMediumProgress::class,
         RoomMediumPart::class, RoomPartEpisode::class, RoomEditEvent::class, RoomToc::class
    ],
-    version = 19
+    version = 20
 )
 @TypeConverters(Converters::class)
 abstract class AbstractDatabase : RoomDatabase() {
@@ -56,8 +53,6 @@ abstract class AbstractDatabase : RoomDatabase() {
                                         AbstractDatabase::class.java,
                                         DB_Name)
                                 .addMigrations(*migrations())
-                                .fallbackToDestructiveMigrationOnDowngrade()
-                                .fallbackToDestructiveMigration()
                                 .build()
                     }
                 }
@@ -185,6 +180,12 @@ abstract class AbstractDatabase : RoomDatabase() {
                             )
                             database.execSQL("CREATE INDEX index_RoomToc_mediumId ON RoomToc (mediumId);")
                             database.execSQL("CREATE INDEX index_RoomToc_link ON RoomToc (link);")
+                        }
+                    },
+                    object : Migration(19, 20) {
+                        override fun migrate(database: SupportSQLiteDatabase) {
+                            database.execSQL("CREATE INDEX index_RoomRelease_releaseDate ON RoomRelease (releaseDate);")
+                            database.execSQL("CREATE INDEX index_RoomEpisode_combiIndex ON RoomEpisode (combiIndex);")
                         }
                     },
             )

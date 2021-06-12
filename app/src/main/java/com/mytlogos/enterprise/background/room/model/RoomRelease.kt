@@ -17,6 +17,7 @@ import org.joda.time.DateTime
     ],
     indices = [
         Index("episodeId"),
+        Index("releaseDate"),
     ]
 )
 class RoomRelease(

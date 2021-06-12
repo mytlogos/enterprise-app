@@ -19,6 +19,7 @@ import org.joda.time.DateTime
     indices = [
         Index(value = ["partId"]),
         Index(value = ["episodeId"]),
+        Index(value = ["combiIndex"]),
     ]
 )
 data class RoomEpisode(
