@@ -492,19 +492,15 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         }
 
         if (!reloadStat.loadPartEpisodes.isEmpty()) {
-            @SuppressLint("DefaultLocale") val msg = String.format(
-                "Episodes of %d Parts to load even after running once",
-                reloadStat.loadPartEpisodes.size
-            )
+            val size = reloadStat.loadPartEpisodes.size
+            val msg = "Episodes of $size Parts to load even after running once"
             println(msg)
             Log.e("Repository", msg)
         }
 
         if (!reloadStat.loadPartReleases.isEmpty()) {
-            @SuppressLint("DefaultLocale") val msg = String.format(
-                "Releases of %d Parts to load even after running once",
-                reloadStat.loadPartReleases.size
-            )
+            val size = reloadStat.loadPartReleases.size
+            val msg = "Releases of $size Parts to load even after running once"
             println(msg)
             Log.e("Repository", msg)
         }

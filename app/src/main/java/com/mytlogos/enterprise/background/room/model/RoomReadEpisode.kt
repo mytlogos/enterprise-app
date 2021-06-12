@@ -1,8 +1,17 @@
 package com.mytlogos.enterprise.background.room.model
 
 import androidx.room.Relation
+import com.mytlogos.enterprise.model.Indexable
 
-class RoomReadEpisode(val episodeId: Int, val mediumId: Int, val mediumTitle: String, val totalIndex: Int, val partialIndex: Int, @field:Relation(parentColumn = "episodeId", entityColumn = "episodeId") val releases: List<RoomRelease>) {
+class RoomReadEpisode(
+    val episodeId: Int,
+    val mediumId: Int,
+    val mediumTitle: String,
+    override val totalIndex: Int,
+    override val partialIndex: Int,
+    @field:Relation(parentColumn = "episodeId", entityColumn = "episodeId")
+    val releases: List<RoomRelease>,
+) : Indexable {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

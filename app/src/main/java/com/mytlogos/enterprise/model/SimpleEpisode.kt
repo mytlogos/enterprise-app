@@ -2,10 +2,10 @@ package com.mytlogos.enterprise.model
 
 open class SimpleEpisode(
     val episodeId: Int,
-    val totalIndex: Int,
-    val partialIndex: Int,
+    override val totalIndex: Int,
+    override val partialIndex: Int,
     val progress: Float
-) {
+) : Indexable {
     val formattedTitle: String
         get() = if (partialIndex > 0) {
             "#$totalIndex.$partialIndex"

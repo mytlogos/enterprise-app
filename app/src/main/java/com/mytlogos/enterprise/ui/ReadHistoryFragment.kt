@@ -69,14 +69,7 @@ class ReadHistoryFragment
                     .map(Release::title)
                     .orElse("Not available")
 
-                val partialIndex = item.partialIndex
-                val totalIndex = item.totalIndex
-
-                title = if (partialIndex > 0) {
-                    "#$totalIndex.$partialIndex - $title"
-                } else {
-                    "#$totalIndex - $title"
-                }
+                title = "#${item.toIndexString()} - $title"
                 holder.contentView.text = title
             }
         }

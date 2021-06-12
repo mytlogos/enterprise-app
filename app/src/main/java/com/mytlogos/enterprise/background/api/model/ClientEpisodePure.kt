@@ -1,11 +1,21 @@
 package com.mytlogos.enterprise.background.api.model
 
+import com.mytlogos.enterprise.model.Indexable
 import org.joda.time.DateTime
 
 /**
  * API Model for PureEpisode.
  */
-class ClientEpisodePure(val id: Int, val progress: Float, val partId: Int, val totalIndex: Int, val partialIndex: Int, val combiIndex: Double, val readDate: DateTime?, releases: Array<ClientRelease?>?) {
+class ClientEpisodePure(
+    val id: Int,
+    val progress: Float,
+    val partId: Int,
+    override val totalIndex: Int,
+    override val partialIndex: Int,
+    val combiIndex: Double,
+    val readDate: DateTime?,
+    releases: Array<ClientRelease?>?,
+): Indexable {
     override fun toString(): String {
         return "ClientEpisodePure{" +
                 "id=" + id +

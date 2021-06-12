@@ -1,9 +1,9 @@
 package com.mytlogos.enterprise.model
 
-interface Part {
+interface Part : Indexable {
     val partId: Int
     val title: String?
-    val totalIndex: Int
-    val partialIndex: Int
+    override val totalIndex: Int
+    override val partialIndex: Int
     val episodes: List<Int?>?
 }

@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.mytlogos.enterprise.model.Indexable
 import org.joda.time.DateTime
 
 @Entity(
@@ -15,15 +16,15 @@ import org.joda.time.DateTime
         ]
 )
 data class RoomEpisode(
-        @field:PrimaryKey val episodeId: Int,
-        val progress: Float,
-        val readDate: DateTime?,
-        val partId: Int,
-        val totalIndex: Int,
-        val partialIndex: Int,
-        val combiIndex: Double,
-        val saved: Boolean
-) {
+    @field:PrimaryKey val episodeId: Int,
+    val progress: Float,
+    val readDate: DateTime?,
+    val partId: Int,
+    override val totalIndex: Int,
+    override val partialIndex: Int,
+    val combiIndex: Double,
+    val saved: Boolean
+) : Indexable {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

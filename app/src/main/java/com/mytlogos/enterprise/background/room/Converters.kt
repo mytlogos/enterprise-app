@@ -1,17 +1,21 @@
 package com.mytlogos.enterprise.background.room
 
 import androidx.room.TypeConverter
-import com.mytlogos.enterprise.Formatter
+import com.mytlogos.enterprise.formatDateTimeIso
+import com.mytlogos.enterprise.parseDateTime
 import org.joda.time.DateTime
 
+/**
+ * Converter Class for [AbstractDatabase].
+ */
 object Converters {
     @TypeConverter
     fun fromTimeStamp(s: String?): DateTime? {
-        return if (s == null) null else Formatter.parseDateTime(s)
+        return s?.parseDateTime()
     }
 
     @TypeConverter
     fun fromDateTime(dateTime: DateTime?): String? {
-        return dateTime?.toInstant()?.toString()
+        return dateTime?.formatDateTimeIso()
     }
 }

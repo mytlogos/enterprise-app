@@ -171,7 +171,7 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             episode.partId,
             episode.totalIndex,
             episode.partialIndex,
-            "${episode.totalIndex}.${episode.partialIndex}".toDouble(),
+            if (episode.combiIndex != 0.0) episode.combiIndex else episode.toCombiIndex(),
             false
         )
     }
@@ -183,7 +183,7 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             episode.partId,
             episode.totalIndex,
             episode.partialIndex,
-            if (episode.combiIndex != 0.0) episode.combiIndex else "${episode.totalIndex}.${episode.partialIndex}".toDouble(),
+            if (episode.combiIndex != 0.0) episode.combiIndex else episode.toCombiIndex(),
             episode.readDate
         )
     }
@@ -263,7 +263,8 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             part.mediumId,
             part.title,
             part.totalIndex,
-            part.partialIndex, "${part.totalIndex}.${part.partialIndex}".toDouble()
+            part.partialIndex,
+            part.toCombiIndex()
         )
     }
 

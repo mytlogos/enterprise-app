@@ -154,13 +154,7 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
 
             adapter.updateDataSet(flexibles)
 
-            val totalIndex = localCurrentlyReading.totalIndex
-
-            if (localCurrentlyReading.partialIndex > 0) {
-                setTitle("Episode $totalIndex.${localCurrentlyReading.partialIndex}")
-            } else {
-                setTitle("Episode $totalIndex")
-            }
+            setTitle("Episode ${localCurrentlyReading.toIndexString()}")
         } else {
             // TODO: 06.08.2019 display an empty episode indicator?
             println("empty episode")

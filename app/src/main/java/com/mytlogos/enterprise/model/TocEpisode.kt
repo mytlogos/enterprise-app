@@ -7,12 +7,12 @@ data class TocEpisode(
     val episodeId: Int,
     val progress: Float,
     val partId: Int,
-    val partialIndex: Int,
-    val totalIndex: Int,
+    override val partialIndex: Int,
+    override val totalIndex: Int,
     val readDate: DateTime?,
     val isSaved: Boolean,
     val releases: List<Release>
-) : Selectable {
+) : Selectable, Indexable {
     override fun getSelectionKey(): Long = episodeId.toLong()
 
     override fun equals(other: Any?): Boolean {

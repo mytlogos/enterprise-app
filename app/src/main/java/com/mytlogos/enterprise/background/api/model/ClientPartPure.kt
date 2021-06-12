@@ -1,13 +1,21 @@
 package com.mytlogos.enterprise.background.api.model
 
+import com.mytlogos.enterprise.model.Indexable
+
 /**
  * API Model for MinPart.
  */
-class ClientPartPure(val mediumId: Int, val id: Int, val title: String, val totalIndex: Int, val partialIndex: Int) {
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val that = o as ClientPartPure
+class ClientPartPure(
+    val mediumId: Int,
+    val id: Int,
+    val title: String,
+    override val totalIndex: Int,
+    override val partialIndex: Int,
+) : Indexable {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as ClientPartPure
         return id == that.id
     }
 

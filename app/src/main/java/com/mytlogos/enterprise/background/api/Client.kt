@@ -1,7 +1,7 @@
 package com.mytlogos.enterprise.background.api
 
 import com.google.gson.GsonBuilder
-import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
+import com.mytlogos.enterprise.background.api.DateTimeAdapter
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.tools.SingletonHolder
 import kotlinx.coroutines.Dispatchers
@@ -9,7 +9,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.joda.time.DateTime
-import retrofit2.Call
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory

@@ -6,15 +6,15 @@ data class DisplayRelease(
     val episodeId: Int,
     val mediumId: Int,
     val mediumTitle: String,
-    val totalIndex: Int,
-    val partialIndex: Int,
+    override val totalIndex: Int,
+    override val partialIndex: Int,
     val saved: Boolean,
     val read: Boolean,
     val title: String,
     val url: String,
     val releaseDate: DateTime,
     val locked: Boolean
-) {
+): Indexable {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false

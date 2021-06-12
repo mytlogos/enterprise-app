@@ -88,14 +88,7 @@ open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisod
 
         if (localCurrentlyReading != null) {
             currentEpisode = localCurrentlyReading.episodeId
-            val partialIndex = localCurrentlyReading.partialIndex
-            val totalIndex = localCurrentlyReading.totalIndex
-
-            if (partialIndex > 0) {
-                setTitle("Episode $totalIndex.$partialIndex")
-            } else {
-                setTitle("Episode $totalIndex")
-            }
+            setTitle("Episode ${localCurrentlyReading.toIndexString()}")
         } else {
             setTitle("No Episode found")
         }

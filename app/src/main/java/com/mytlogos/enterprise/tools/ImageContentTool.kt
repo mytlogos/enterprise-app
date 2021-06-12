@@ -196,14 +196,7 @@ class ImageContentTool internal constructor(
             System.err.println("invalid url: '$link'")
             return
         }
-        var referer: String? = null
-
-        for (releaseUrl in links) {
-            if (getDomain(link) == pageLinkDomain) {
-                referer = releaseUrl
-                break
-            }
-        }
+        val referer: String? = links.find { getDomain(it) === pageLinkDomain }
 
         if (referer == null || referer.isEmpty()) {
             // we need a referrer for sites like mangahasu

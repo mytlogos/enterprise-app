@@ -4,12 +4,14 @@ import org.joda.time.DateTime
 import org.joda.time.Instant
 import org.joda.time.format.DateTimeFormat
 
-object Formatter {
-    fun formatDateTime(date: DateTime?): String {
-        return DateTimeFormat.forPattern("dd.MM.YYYY HH:mm").print(date)
-    }
+fun DateTime.formatDateTime(): String {
+    return DateTimeFormat.forPattern("dd.MM.YYYY HH:mm").print(this)
+}
 
-    fun parseDateTime(isoDate: String): DateTime {
-        return Instant.parse(isoDate).toDateTime()
-    }
+fun DateTime.formatDateTimeIso(): String {
+    return this.toInstant().toString()
+}
+
+fun String.parseDateTime(): DateTime {
+    return Instant.parse(this).toDateTime()
 }

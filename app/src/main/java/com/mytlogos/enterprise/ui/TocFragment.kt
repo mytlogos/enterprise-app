@@ -437,8 +437,7 @@ class TocFragment
 
             for (tocEpisode in selected) {
                 episodeIds.add(tocEpisode.episodeId)
-                val combiIndex =
-                    ("${tocEpisode.totalIndex}.${tocEpisode.partialIndex}").toDouble()
+                val combiIndex = tocEpisode.toCombiIndex()
                 indices.add(combiIndex)
             }
             try {

@@ -1,7 +1,6 @@
 package com.mytlogos.enterprise.background.api
 
 import com.google.gson.GsonBuilder
-import com.mytlogos.enterprise.background.api.GsonAdapter.DateTimeAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking

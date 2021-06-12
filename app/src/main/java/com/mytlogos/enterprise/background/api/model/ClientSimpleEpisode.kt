@@ -1,11 +1,18 @@
 package com.mytlogos.enterprise.background.api.model
 
-import java.util.*
+import com.mytlogos.enterprise.model.Indexable
 
 /**
  * API Model for SimpleEpisode.
  */
-class ClientSimpleEpisode(val id: Int, val partId: Int, val totalIndex: Int, val partialIndex: Int, val combiIndex: Double, val releases: Array<ClientEpisodeRelease>) {
+class ClientSimpleEpisode(
+    val id: Int,
+    val partId: Int,
+    override val totalIndex: Int,
+    override val partialIndex: Int,
+    val combiIndex: Double,
+    val releases: Array<ClientEpisodeRelease>,
+): Indexable {
     override fun toString(): String {
         return "ClientEpisode{" +
                 "id=" + id +
@@ -17,10 +24,10 @@ class ClientSimpleEpisode(val id: Int, val partId: Int, val totalIndex: Int, val
                 '}'
     }
 
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val that = o as ClientSimpleEpisode
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as ClientSimpleEpisode
         return id == that.id
     }
 
