@@ -4,11 +4,20 @@ import androidx.room.*
 import com.mytlogos.enterprise.model.Part
 import java.util.*
 
-@Entity(foreignKeys = [ForeignKey(entity = RoomMedium::class,
-        onDelete = ForeignKey.SET_NULL,
-        parentColumns = arrayOf("mediumId"),
-        childColumns = arrayOf("mediumId"))],
-        indices = [Index(value = arrayOf("mediumId")), Index(value = arrayOf("partId"))])
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = RoomMedium::class,
+            onDelete = ForeignKey.SET_NULL,
+            parentColumns = ["mediumId"],
+            childColumns = ["mediumId"]
+        )
+    ],
+    indices = [
+        Index(value = ["mediumId"]),
+        Index(value = ["partId"])
+    ]
+)
 data class RoomPart(
     @field:PrimaryKey override val partId: Int,
     val mediumId: Int,

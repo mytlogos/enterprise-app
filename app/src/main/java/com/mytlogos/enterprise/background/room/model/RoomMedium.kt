@@ -6,11 +6,20 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.mytlogos.enterprise.model.Medium
 
-@Entity(foreignKeys = [ForeignKey(parentColumns = arrayOf("episodeId"),
-        childColumns = arrayOf("currentRead"),
-        onDelete = ForeignKey.SET_NULL,
-        entity = RoomEpisode::class)],
-        indices = [Index(value = arrayOf("currentRead")), Index(value = arrayOf("mediumId"))])
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            parentColumns = ["episodeId"],
+            childColumns = ["currentRead"],
+            onDelete = ForeignKey.SET_NULL,
+            entity = RoomEpisode::class
+        )
+    ],
+    indices = [
+        Index(value = ["currentRead"]),
+        Index(value = ["mediumId"])
+    ]
+)
 class RoomMedium(
     override val currentRead: Int?,
     @field:PrimaryKey override val mediumId: Int,
@@ -24,7 +33,7 @@ class RoomMedium(
     override val stateOrigin: Int,
     override val stateTL: Int,
     override val series: String,
-    override val universe: String
+    override val universe: String,
 ) : Medium {
     override fun toString(): String {
         return "RoomMedium{" +

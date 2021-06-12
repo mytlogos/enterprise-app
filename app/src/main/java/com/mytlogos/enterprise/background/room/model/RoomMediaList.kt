@@ -5,12 +5,26 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(foreignKeys = [ForeignKey(entity = RoomUser::class,
-        childColumns = arrayOf("uuid"),
-        parentColumns = arrayOf("uuid"),
-        onDelete = ForeignKey.CASCADE)],
-        indices = [Index(value = arrayOf("uuid")), Index(value = arrayOf("listId"))])
-class RoomMediaList(@field:PrimaryKey val listId: Int, val uuid: String?, val name: String?, val medium: Int) {
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = RoomUser::class,
+            childColumns = ["uuid"],
+            parentColumns = ["uuid"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["uuid"]),
+        Index(value = ["listId"])
+    ]
+)
+class RoomMediaList(
+    @field:PrimaryKey val listId: Int,
+    val uuid: String?,
+    val name: String?,
+    val medium: Int,
+) {
     override fun toString(): String {
         return "RoomMediaList{" +
                 "listId=" + listId +
@@ -38,14 +52,14 @@ class RoomMediaList(@field:PrimaryKey val listId: Int, val uuid: String?, val na
     }
 
     @Entity(primaryKeys = ["listId", "mediumId"],
-            foreignKeys = [ForeignKey(entity = RoomMedium::class,
-                    parentColumns = arrayOf("mediumId"),
-                    childColumns = arrayOf("mediumId"),
-                    onDelete = ForeignKey.CASCADE), ForeignKey(entity = RoomMediaList::class,
-                    parentColumns = arrayOf("listId"),
-                    childColumns = arrayOf("listId"),
-                    onDelete = ForeignKey.CASCADE)],
-            indices = [Index(value = arrayOf("listId")), Index(value = arrayOf("mediumId"))])
+        foreignKeys = [ForeignKey(entity = RoomMedium::class,
+            parentColumns = ["mediumId"],
+            childColumns = ["mediumId"],
+            onDelete = ForeignKey.CASCADE), ForeignKey(entity = RoomMediaList::class,
+            parentColumns = ["listId"],
+            childColumns = ["listId"],
+            onDelete = ForeignKey.CASCADE)],
+        indices = [Index(value = ["listId"]), Index(value = ["mediumId"])])
     class MediaListMediaJoin(override val listId: Int, override val mediumId: Int) : ListMediaJoin {
         override fun toString(): String {
             return "MediaListMediaJoin{" +

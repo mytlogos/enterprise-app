@@ -87,50 +87,25 @@ WHERE saved = 1 AND RoomPart.mediumId =:mediumId
 ORDER BY RoomEpisode.combiIndex""")
     suspend fun getSavedEpisodes(mediumId: Int): List<Int>
 
-    @Query("""SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,
-RoomMedium.mediumId,RoomMedium.title as mediumTitle, 
-CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read, RoomRelease.*
-FROM RoomEpisode 
-INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId 
-INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId 
-INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId 
-WHERE CASE :read 
-WHEN 0 THEN progress < 1
-WHEN 1 THEN progress = 1
-ELSE 1 END 
-AND (:listEmpty OR RoomMedium.mediumId IN (SELECT mediumId FROM MediaListMediaJoin WHERE listId IN (:listIds)))
-AND (:medium = 0 OR (:medium & medium) > 0)
-AND (:saved < 0 OR saved=:saved)
-AND (:minIndex < 0 OR RoomEpisode.combiIndex >= :minIndex)
-AND (:maxIndex < 0 OR RoomEpisode.combiIndex <= :maxIndex)
-ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC""")
-    fun getDisplayEpisodes(
-        saved: Int,
-        read: Int,
-        medium: Int,
-        minIndex: Int,
-        maxIndex: Int,
-        listIds: Collection<Int>,
-        listEmpty: Boolean,
-    ): DataSource.Factory<Int, DisplayRelease>
-
-    @Query("""SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,
-RoomMedium.mediumId,RoomMedium.title as mediumTitle, 
-CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read, RoomRelease.*
-FROM RoomEpisode 
-INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId 
-INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId 
-INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId 
-WHERE CASE :read 
-WHEN 0 THEN progress < 1
-WHEN 1 THEN progress = 1
-ELSE 1 END 
-AND (:listEmpty OR RoomMedium.mediumId IN (SELECT mediumId FROM MediaListMediaJoin WHERE listId IN (:listIds)))
-AND (:medium = 0 OR (:medium & medium) > 0)
-AND (:saved < 0 OR saved=:saved)
-AND (:minIndex < 0 OR RoomEpisode.combiIndex >= :minIndex)
-AND (:maxIndex < 0 OR RoomEpisode.combiIndex <= :maxIndex)
-ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC""")
+    @Query("""
+        SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,
+        RoomMedium.mediumId,RoomMedium.title as mediumTitle, 
+        CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read, RoomRelease.*
+        FROM RoomEpisode 
+        INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId 
+        INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId 
+        INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId 
+        WHERE CASE :read 
+        WHEN 0 THEN progress < 1
+        WHEN 1 THEN progress = 1
+        ELSE 1 END 
+        AND (:listEmpty OR RoomMedium.mediumId IN (SELECT mediumId FROM MediaListMediaJoin WHERE listId IN (:listIds)))
+        AND (:medium = 0 OR (:medium & medium) > 0)
+        AND (:saved < 0 OR saved=:saved)
+        AND (:minIndex < 0 OR RoomEpisode.combiIndex >= :minIndex)
+        AND (:maxIndex < 0 OR RoomEpisode.combiIndex <= :maxIndex)
+        ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC
+    """)
     fun getDisplayEpisodesPaging(
         saved: Int,
         read: Int,
@@ -140,35 +115,6 @@ ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC""")
         listIds: Collection<Int>,
         listEmpty: Boolean,
     ): PagingSource<Int, DisplayRelease>
-
-    @Query("""SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,
-RoomMedium.mediumId,RoomMedium.title as mediumTitle, 
-CASE RoomEpisode.progress WHEN 1 THEN 1 ELSE 0 END as read, RoomRelease.*
-FROM RoomEpisode 
-INNER JOIN RoomRelease ON RoomRelease.episodeId=RoomEpisode.episodeId 
-INNER JOIN RoomPart ON RoomEpisode.partId=RoomPart.partId 
-INNER JOIN RoomMedium ON RoomPart.mediumId=RoomMedium.mediumId 
-WHERE CASE :read 
-WHEN 0 THEN progress < 1
-WHEN 1 THEN progress = 1
-ELSE 1 END 
-AND (:listEmpty OR RoomMedium.mediumId IN (SELECT mediumId FROM MediaListMediaJoin WHERE listId IN (:listIds)))
-AND (:medium = 0 OR (:medium & medium) > 0)
-AND (:saved < 0 OR saved=:saved)
-AND (:minIndex < 0 OR RoomEpisode.combiIndex >= :minIndex)
-AND (:maxIndex < 0 OR RoomEpisode.combiIndex <= :maxIndex)
-GROUP BY RoomEpisode.episodeId 
-ORDER BY RoomRelease.releaseDate DESC, RoomEpisode.combiIndex DESC""")
-    fun getDisplayEpisodesLatestOnly(
-        saved: Int,
-        read: Int,
-        medium: Int,
-        minIndex: Int,
-        maxIndex: Int,
-        listIds: Collection<Int>,
-        listEmpty: Boolean,
-    ): DataSource.Factory<Int, DisplayRelease>
-
 
     @Query("""SELECT RoomEpisode.episodeId, saved, RoomEpisode.partialIndex, RoomEpisode.totalIndex,
 RoomMedium.mediumId,RoomMedium.title as mediumTitle, 

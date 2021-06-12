@@ -11,5 +11,5 @@ data class RoomEditEvent(
     override val eventType: Int,
     override val dateTime: DateTime,
     override val firstValue: String,
-    override val secondValue: String
+    override val secondValue: String,
 ) : EditEvent

@@ -5,11 +5,20 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(foreignKeys = [ForeignKey(entity = RoomExternalUser::class,
-        parentColumns = arrayOf("uuid"),
-        childColumns = arrayOf("uuid"),
-        onDelete = ForeignKey.CASCADE)],
-        indices = [Index(value = arrayOf("uuid")), Index(value = arrayOf("externalListId"))])
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = RoomExternalUser::class,
+            parentColumns = ["uuid"],
+            childColumns = ["uuid"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["uuid"]),
+        Index(value = ["externalListId"])
+    ]
+)
 data class RoomExternalMediaList(
     val uuid: String?,
     @field:PrimaryKey val externalListId: Int,
@@ -18,14 +27,14 @@ data class RoomExternalMediaList(
     val url: String?,
 ) {
     @Entity(primaryKeys = ["listId", "mediumId"],
-            foreignKeys = [ForeignKey(entity = RoomMedium::class,
-                    parentColumns = arrayOf("mediumId"),
-                    childColumns = arrayOf("mediumId"),
-                    onDelete = ForeignKey.CASCADE), ForeignKey(entity = RoomExternalMediaList::class,
-                    parentColumns = arrayOf("externalListId"),
-                    childColumns = arrayOf("listId"),
-                    onDelete = ForeignKey.CASCADE)],
-            indices = [Index(value = arrayOf("listId")), Index(value = arrayOf("mediumId"))])
+        foreignKeys = [ForeignKey(entity = RoomMedium::class,
+            parentColumns = ["mediumId"],
+            childColumns = ["mediumId"],
+            onDelete = ForeignKey.CASCADE), ForeignKey(entity = RoomExternalMediaList::class,
+            parentColumns = ["externalListId"],
+            childColumns = ["listId"],
+            onDelete = ForeignKey.CASCADE)],
+        indices = [Index(value = ["listId"]), Index(value = ["mediumId"])])
     data class ExternalListMediaJoin(
         override val listId: Int,
         override val mediumId: Int,

@@ -4,7 +4,16 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
-@Entity(foreignKeys = [ForeignKey(entity = RoomEpisode::class, parentColumns = arrayOf("episodeId"), childColumns = arrayOf("episodeId"), onDelete = ForeignKey.CASCADE)])
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = RoomEpisode::class,
+            parentColumns = ["episodeId"],
+            childColumns = ["episodeId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
 class RoomFailedEpisode(@field:PrimaryKey val episodeId: Int, val failCount: Int) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

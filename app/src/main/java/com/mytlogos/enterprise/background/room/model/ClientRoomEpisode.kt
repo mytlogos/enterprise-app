@@ -10,7 +10,7 @@ data class ClientRoomEpisode(
     override val totalIndex: Int,
     override val partialIndex: Int,
     val combiIndex: Double,
-    val readDate: DateTime?
+    val readDate: DateTime?,
 ) : Indexable {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

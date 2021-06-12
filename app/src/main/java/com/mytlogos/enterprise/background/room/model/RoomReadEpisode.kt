@@ -3,7 +3,7 @@ package com.mytlogos.enterprise.background.room.model
 import androidx.room.Relation
 import com.mytlogos.enterprise.model.Indexable
 
-class RoomReadEpisode(
+data class RoomReadEpisode(
     val episodeId: Int,
     val mediumId: Int,
     val mediumTitle: String,

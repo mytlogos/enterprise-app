@@ -6,12 +6,19 @@ import androidx.room.Index
 import com.mytlogos.enterprise.model.Release
 import org.joda.time.DateTime
 
-@Entity(primaryKeys = ["episodeId", "url"],
-        foreignKeys = [ForeignKey(entity = RoomEpisode::class,
-                onDelete = ForeignKey.CASCADE,
-                childColumns = arrayOf("episodeId"),
-                parentColumns = arrayOf("episodeId"))],
-        indices = [Index("episodeId")])
+@Entity(
+    primaryKeys = ["episodeId", "url"],
+    foreignKeys = [
+        ForeignKey(entity = RoomEpisode::class,
+            onDelete = ForeignKey.CASCADE,
+            childColumns = ["episodeId"],
+            parentColumns = ["episodeId"]
+        )
+    ],
+    indices = [
+        Index("episodeId"),
+    ]
+)
 class RoomRelease(
     override val episodeId: Int,
     override val title: String,

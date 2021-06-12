@@ -4,7 +4,7 @@ import androidx.room.Relation
 import com.mytlogos.enterprise.model.Indexable
 import org.joda.time.DateTime
 
-class RoomTocEpisode(
+data class RoomTocEpisode(
     val episodeId: Int,
     val progress: Float,
     val partId: Int,
@@ -15,5 +15,5 @@ class RoomTocEpisode(
     @field:Relation(
         parentColumn = "episodeId",
         entityColumn = "episodeId"
-    ) val releases: List<RoomRelease>
+    ) val releases: List<RoomRelease>,
 ) : Indexable

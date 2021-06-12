@@ -5,7 +5,20 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(foreignKeys = [ForeignKey(entity = RoomUser::class, childColumns = arrayOf("userUuid"), parentColumns = arrayOf("uuid"), onDelete = ForeignKey.CASCADE)], indices = [Index(value = arrayOf("uuid")), Index(value = arrayOf("userUuid"))])
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = RoomUser::class,
+            childColumns = ["userUuid"],
+            parentColumns = ["uuid"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["uuid"]),
+        Index(value = ["userUuid"])
+    ]
+)
 data class RoomExternalUser(
     @field:PrimaryKey val uuid: String,
     val userUuid: String,

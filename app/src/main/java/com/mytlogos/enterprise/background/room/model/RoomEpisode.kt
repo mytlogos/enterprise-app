@@ -8,12 +8,18 @@ import com.mytlogos.enterprise.model.Indexable
 import org.joda.time.DateTime
 
 @Entity(
-        foreignKeys = [
-            ForeignKey(entity = RoomPart::class, parentColumns = arrayOf("partId"), childColumns = arrayOf("partId"), onDelete = ForeignKey.CASCADE)
-                      ],
-        indices = [
-            Index(value = arrayOf("partId")), Index(value = arrayOf("episodeId"))
-        ]
+    foreignKeys = [
+        ForeignKey(
+            entity = RoomPart::class,
+            parentColumns = ["partId"],
+            childColumns = ["partId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["partId"]),
+        Index(value = ["episodeId"]),
+    ]
 )
 data class RoomEpisode(
     @field:PrimaryKey val episodeId: Int,
@@ -23,7 +29,7 @@ data class RoomEpisode(
     override val totalIndex: Int,
     override val partialIndex: Int,
     val combiIndex: Double,
-    val saved: Boolean
+    val saved: Boolean,
 ) : Indexable {
 
     override fun equals(other: Any?): Boolean {

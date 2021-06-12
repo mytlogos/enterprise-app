@@ -5,7 +5,19 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(foreignKeys = [ForeignKey(entity = RoomMedium::class, parentColumns = arrayOf("mediumId"), childColumns = arrayOf("mediumId"), onDelete = ForeignKey.CASCADE)], indices = [Index(value = arrayOf("mediumId"))])
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = RoomMedium::class,
+            parentColumns = ["mediumId"],
+            childColumns = ["mediumId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["mediumId"])
+    ]
+)
 class RoomDanglingMedium(@field:PrimaryKey val mediumId: Int) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
