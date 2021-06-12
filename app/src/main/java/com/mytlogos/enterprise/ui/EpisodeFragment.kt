@@ -59,9 +59,6 @@ class EpisodeFragment
     override fun createAdapter(): BaseAdapter<DisplayRelease, ViewHolder> {
         val releaseAdapter = ReleaseAdapter()
         releaseAdapter.holderInit = BaseAdapter.ViewInit { holder: ViewHolder ->
-            holder.itemView.setOnClickListener {
-                releaseAdapter.getItemFrom(holder)?.let(this::onItemClick)
-            }
             holder.optionsButtonView.setOnClickListener {
                 releaseAdapter.getItemFrom(holder)?.let { this.openPopup(holder, it) }
             }
@@ -301,11 +298,13 @@ class EpisodeFragment
         return super.onOptionsItemSelected(item)
     }
 
-    private fun onItemClick(item: DisplayRelease): Boolean {
+    override fun onItemClick(position: Int, item: DisplayRelease?) {
+        if (item == null) {
+            return
+        }
         val mediumId = item.mediumId
         val fragment: TocFragment = TocFragment.newInstance(mediumId)
         mainActivity.switchWindow(fragment)
-        return true
     }
 
     private fun openPopup(holder: ViewHolder, episode: DisplayRelease) {

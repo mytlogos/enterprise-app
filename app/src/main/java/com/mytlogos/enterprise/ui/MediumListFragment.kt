@@ -105,57 +105,30 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
         return view
     }
 
-    private fun onItemLongClick(position: Int) {
+    override fun onItemLongClick(position: Int, item: MediumItem?): Boolean {
         if (!inMoveMediumMode) {
             inMoveMediumMode = true
             println("starting move mode")
             val mode = this.mainActivity.startActionMode(callback)
-
-            getAdapter().getItemAt(position)?.let {
-                selectionTracker.select(it.getSelectionKey())
-            }
             println("mode: $mode")
+            item?.getSelectionKey()?.let(selectionTracker::select)
+            return true
         }
+        return false
     }
 
-    private fun onItemClick(position: Int): Boolean {
-        if (inMoveMediumMode) {
-            return position != RecyclerView.NO_POSITION
-        } else {
-            val item = getAdapter().getItemAt(position) ?: return false
+    override fun onItemClick(position: Int, item: MediumItem?) {
+        if (!inMoveMediumMode && item != null) {
             val fragment: TocFragment = TocFragment.newInstance(item.mediumId)
             mainActivity.switchWindow(fragment, true)
         }
-        return false
     }
 
     override val viewModelClass: Class<MediumViewModel>
         get() = MediumViewModel::class.java
 
     override fun createAdapter(): BaseAdapter<MediumItem, *> {
-        val mediumAdapter = MediumAdapter()
-        mediumAdapter.holderInit = BaseAdapter.ViewInit { holder ->
-            holder.itemView.isLongClickable = true
-
-            // add long click listener on view holder with a bound item
-            holder.itemView.setOnLongClickListener {
-                val position = holder.bindingAdapterPosition
-
-                if (position != RecyclerView.NO_POSITION) {
-                    onItemLongClick(position)
-                }
-                true
-            }
-            // add click listener on view holder with a bound item
-            holder.itemView.setOnClickListener {
-                val position = holder.bindingAdapterPosition
-
-                if (position != RecyclerView.NO_POSITION) {
-                    onItemClick(position)
-                }
-            }
-        }
-        return mediumAdapter
+        return MediumAdapter()
     }
 
     @ExperimentalCoroutinesApi

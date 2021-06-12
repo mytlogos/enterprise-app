@@ -82,8 +82,12 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     private fun initAdapter(): BaseAdapter<Value, *> {
         // Set the adapter
         adapter = createAdapter()
+        val previousInit = adapter.holderInit
         adapter.holderInit = BaseAdapter.ViewInit { holder: RecyclerView.ViewHolder ->
-            holder.itemView.isLongClickable = true
+            if (previousInit != null) {
+                @Suppress("UNCHECKED_CAST")
+                (previousInit as BaseAdapter.ViewInit<RecyclerView.ViewHolder>).init(holder)
+            }
 
             // add long click listener on view holder with a bound item
             holder.itemView.setOnLongClickListener {
