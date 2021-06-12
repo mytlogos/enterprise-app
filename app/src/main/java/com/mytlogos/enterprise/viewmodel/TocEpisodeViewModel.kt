@@ -185,6 +185,10 @@ class TocEpisodeViewModel(application: Application) :
         return combiIndices.fold(Int.MIN_VALUE.toDouble(), ::max)
     }
 
+    suspend fun getMediumTitle(mediumId: Int): String {
+        return episodeRepository.getMediumTitle(mediumId)
+    }
+
     private data class SortFilter(
         val sortings: Sortings = Sortings.INDEX_DESC,
         /**

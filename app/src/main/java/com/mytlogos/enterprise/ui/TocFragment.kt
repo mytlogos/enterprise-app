@@ -171,7 +171,10 @@ class TocFragment
     ): View {
         val view = super.onCreateView(inflater, container, savedInstanceState)
         registerForContextMenu(listView)
-        // TODO: 22.07.2019 set the mediumTitle
+        lifecycleScope.launch {
+            val title = viewModel.getMediumTitle(mediumId)
+            setTitle(title)
+        }
         this.setTitle("Table of Contents")
         viewModel.setMediumId(mediumId)
         return view

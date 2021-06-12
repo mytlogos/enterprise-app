@@ -315,5 +315,9 @@ class EpisodeRepository private constructor(application: Application) {
         failedEpisodesDao.insert(RoomFailedEpisode(episodeId, failedCount))
     }
 
+    suspend fun getMediumTitle(mediumId: Int): String {
+        return mediumDao.getSimpleMedium(mediumId).title
+    }
+
     companion object : SingletonHolder<EpisodeRepository, Application>(::EpisodeRepository)
 }
