@@ -460,7 +460,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         @IdRes
         override val viewId: Int,
         val property: KMutableProperty0<Int>,
-        val values: IntArray = intArrayOf(-1, 0, 1),
+        val values: IntArray = intArrayOf(1, 0, -1),
     ) : PositionProperty {
         override fun positionalMapping(): IntArray {
             return values
