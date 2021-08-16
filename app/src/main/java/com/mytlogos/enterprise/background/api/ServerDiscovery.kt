@@ -26,6 +26,8 @@ internal class ServerDiscovery {
         override fun newThread(r: Runnable?) = Thread(r, "Server-Discovery-${threadFactoryId}-TCP-${id++}")
     })
     private val loudDiscovery = false
+    private val serverApiPort = 3000
+    private val serverDiscoveryPort = 3000
 
     private fun logLoud(msg: Any) {
         if (loudDiscovery) {
@@ -89,7 +91,7 @@ internal class ServerDiscovery {
         val ipv4 = "192.168.1.$local"
         val server = Server(
             ipv4,
-            3000,
+            serverApiPort,
             isLocal = true,
             isDevServer = true
         )
@@ -116,7 +118,7 @@ internal class ServerDiscovery {
             val devResponse = runBlocking { apiImpl.checkDev("api") }
             val isDev = devResponse.body() ?: return null
 
-            return Server(ipv4, 3000, true, isDev)
+            return Server(ipv4, serverApiPort, true, isDev)
         } catch (ignored: IOException) {
         }
         return null
@@ -138,7 +140,7 @@ internal class ServerDiscovery {
             DatagramChannel.open().use { c ->
                 c.setOption(StandardSocketOptions.SO_BROADCAST, true)
                 val sendData = "DISCOVER_SERVER_REQUEST_ENTERPRISE".toByteArray()
-                val udpServerPort = 3001
+                val udpServerPort = serverDiscoveryPort
                 //Try the some 'normal' ip addresses first
                 try {
                     sendUDPPacket(c, sendData, udpServerPort, InetAddress.getLocalHost())
@@ -205,7 +207,7 @@ internal class ServerDiscovery {
                     if ("ENTERPRISE_DEV" == message) {
                         val server = Server(
                             sender.hostName,
-                            3000,
+                            serverApiPort,
                             isLocal = true,
                             isDevServer = true
                         )
@@ -213,7 +215,7 @@ internal class ServerDiscovery {
                     } else if ("ENTERPRISE_PROD" == message) {
                         val server = Server(
                             sender.hostName,
-                            3000,
+                            serverApiPort,
                             isLocal = true,
                             isDevServer = false
                         )
