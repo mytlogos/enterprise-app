@@ -698,7 +698,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 var found = false
                 if (releases != null) {
                     for (simpleRelease in releases) {
-                        if (simpleRelease.id == release.episodeId && simpleRelease.url == release.url) {
+                        if (simpleRelease.episodeId == release.episodeId && simpleRelease.url == release.url) {
                             found = true
                             unmatchedReleases.remove(simpleRelease)
                             break
@@ -711,7 +711,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             })
             val episodesToLoad: MutableCollection<Int> = HashSet()
             for (release in unmatchedReleases) {
-                episodesToLoad.add(release.id)
+                episodesToLoad.add(release.episodeId)
             }
             episodeDao.deleteBulkRelease(deleteRelease)
             return episodesToLoad

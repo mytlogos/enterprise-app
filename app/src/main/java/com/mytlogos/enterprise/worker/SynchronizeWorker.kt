@@ -1,6 +1,5 @@
 package com.mytlogos.enterprise.worker
 
-import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.util.Log
@@ -589,8 +588,8 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
 
         for ((_, value) in partReleases) {
             for (release in value) {
-                if (!repository.isEpisodeLoaded(release.id)) {
-                    missingEpisodes.add(release.id)
+                if (!repository.isEpisodeLoaded(release.episodeId)) {
+                    missingEpisodes.add(release.episodeId)
                 }
             }
         }
