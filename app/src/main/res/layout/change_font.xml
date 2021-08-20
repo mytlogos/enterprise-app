@@ -13,7 +13,8 @@
         android:ems="10"
         android:hint="@string/font"
         android:inputType="numberSigned"
-        android:text="@string/default_zero" />
+        android:text="@string/default_zero"
+        android:importantForAutofill="no" />
 
     <ImageButton
         android:id="@+id/increment_font"

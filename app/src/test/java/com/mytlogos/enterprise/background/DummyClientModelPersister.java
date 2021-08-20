@@ -4,7 +4,6 @@ import com.mytlogos.enterprise.background.api.model.ClientEpisode;
 import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
 import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUserPure;
 import com.mytlogos.enterprise.background.api.model.ClientListQuery;
 import com.mytlogos.enterprise.background.api.model.ClientMediaList;
 import com.mytlogos.enterprise.background.api.model.ClientMedium;

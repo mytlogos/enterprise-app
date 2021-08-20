@@ -252,4 +252,7 @@
     <string name="yes">Yes</string>
     <string name="saved_status">Saved Status</string>
     <string name="filter_from_lists">Filter from Lists</string>
+    <string name="check_saved_now">Check Saved Now</string>
+    <string name="name_of_the_list">Name of the List</string>
+    <string name="name_of_the_medium">Name of the Medium</string>
 </resources>
