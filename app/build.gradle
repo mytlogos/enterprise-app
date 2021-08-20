@@ -86,7 +86,7 @@ dependencies {
         exclude group: 'org.slf4j'
         exclude group: 'xmlpull'
     }
-    implementation 'org.slf4j:slf4j-android:1.7.25'
+    implementation 'org.slf4j:slf4j-android:1.7.32'
     implementation 'com.github.barteksc:android-pdf-viewer:2.8.2'
 
     def lifecycle_version = '2.3.1'
