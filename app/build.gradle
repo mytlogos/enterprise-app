@@ -74,7 +74,7 @@ dependencies {
     implementation 'eu.davidea:flexible-adapter-livedata:1.0.0-b3'
     implementation 'com.squareup.retrofit2:retrofit:2.6.2'
     implementation 'com.squareup.retrofit2:converter-gson:2.6.2'
-    implementation 'joda-time:joda-time:2.10.1'
+    implementation 'joda-time:joda-time:2.10.10'
     // jsoup HTML parser library @ https://jsoup.org/
     implementation 'org.jsoup:jsoup:1.13.1'
     // https://mvnrepository.com/artifact/org.apache.commons/commons-text
