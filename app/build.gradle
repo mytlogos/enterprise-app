@@ -80,7 +80,7 @@ dependencies {
     // https://mvnrepository.com/artifact/org.apache.commons/commons-text
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.7'
     implementation 'com.github.bumptech.glide:glide:4.12.0'
-    annotationProcessor 'com.github.bumptech.glide:compiler:4.10.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
 
     implementation('nl.siegmann.epublib:epublib-core:3.1') {
         exclude group: 'org.slf4j'
