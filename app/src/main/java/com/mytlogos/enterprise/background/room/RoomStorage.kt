@@ -379,18 +379,18 @@ class RoomStorage(application: Application) : DatabaseStorage {
     private inner class RoomPersister(private val loadedData: LoadData) : ClientModelPersister {
         private val generator: LoadWorkGenerator = LoadWorkGenerator(loadedData)
 
-        override fun persistEpisodes(episodes: Collection<ClientEpisode>): ClientModelPersister {
+        override suspend fun persistEpisodes(episodes: Collection<ClientEpisode>): ClientModelPersister {
             val filteredEpisodes = generator.filterEpisodes(episodes)
             return this.persist(filteredEpisodes)
         }
 
-        override fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister {
+        override suspend fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister {
             val converter = RoomConverter(loadedData)
             episodeDao.insertBulkRelease(converter.convertReleases(releases))
             return this
         }
 
-        override fun persist(filteredEpisodes: FilteredEpisodes): ClientModelPersister {
+        override suspend fun persist(filteredEpisodes: FilteredEpisodes): ClientModelPersister {
             val converter = RoomConverter(loadedData)
             val list = converter.convertEpisodes(filteredEpisodes.newEpisodes)
             val update = converter.convertEpisodesClient(filteredEpisodes.updateEpisodes)
@@ -413,14 +413,14 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistMediaLists(mediaLists: List<ClientMediaList>): ClientModelPersister {
+        override suspend fun persistMediaLists(mediaLists: List<ClientMediaList>): ClientModelPersister {
             val filteredMediaList = generator.filterMediaLists(mediaLists)
             val converter = RoomConverter(loadedData)
             return this.persist(filteredMediaList, converter)
         }
 
-        override fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister {
-            val uuid = runBlocking { getUserNow()!!.uuid }
+        override suspend fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister {
+            val uuid = getUserNow()!!.uuid
             return persistMediaLists(mediaLists.map { value: ClientUserList ->
                 ClientMediaList(
                     uuid,
@@ -432,11 +432,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
             })
         }
 
-        override fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister {
+        override suspend fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister {
             return this.persist(filteredMediaList, RoomConverter(loadedData))
         }
 
-        private fun persist(
+        private suspend fun persist(
             filteredMediaList: FilteredMediaList,
             converter: RoomConverter,
         ): ClientModelPersister {
@@ -452,17 +452,17 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList>): ClientModelPersister {
+        override suspend fun persistExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList>): ClientModelPersister {
             val filteredExtMediaList = generator.filterExternalMediaLists(externalMediaLists)
             val converter = RoomConverter(loadedData)
             return this.persist(filteredExtMediaList, converter)
         }
 
-        override fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister {
+        override suspend fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister {
             return this.persist(filteredExtMediaList, RoomConverter(loadedData))
         }
 
-        private fun persist(
+        private suspend fun persist(
             filteredExtMediaList: FilteredExtMediaList,
             converter: RoomConverter,
         ): ClientModelPersister {
@@ -478,17 +478,17 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistExternalUsers(externalUsers: List<ClientExternalUser>): ClientModelPersister {
+        override suspend fun persistExternalUsers(externalUsers: List<ClientExternalUser>): ClientModelPersister {
             val filteredExternalUser = generator.filterExternalUsers(externalUsers)
             return this.persist(filteredExternalUser)
         }
 
-        override fun persist(filteredExternalUser: FilteredExternalUser): ClientModelPersister {
+        override suspend fun persist(filteredExternalUser: FilteredExternalUser): ClientModelPersister {
             val converter = RoomConverter(loadedData)
             return this.persist(filteredExternalUser, converter)
         }
 
-        private fun persist(
+        private suspend fun persist(
             filteredExternalUser: FilteredExternalUser,
             converter: RoomConverter,
         ): ClientModelPersister {
@@ -506,12 +506,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistMedia(media: Collection<ClientSimpleMedium>): ClientModelPersister {
+        override suspend fun persistMedia(media: Collection<ClientSimpleMedium>): ClientModelPersister {
             val filteredMedia = generator.filterSimpleMedia(media)
             return persist(filteredMedia)
         }
 
-        override fun persist(filteredMedia: FilteredMedia): ClientModelPersister {
+        override suspend fun persist(filteredMedia: FilteredMedia): ClientModelPersister {
             val converter = RoomConverter(loadedData)
             val newMedia = converter.convertSimpleMedia(filteredMedia.newMedia)
             val updatedMedia = converter.convertSimpleMedia(filteredMedia.updateMedia)
@@ -530,7 +530,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistNews(news: Collection<ClientNews>): ClientModelPersister {
+        override suspend fun persistNews(news: Collection<ClientNews>): ClientModelPersister {
             val newNews: MutableList<RoomNews> = ArrayList()
             val updatedNews: MutableList<RoomNews> = ArrayList()
             val converter = RoomConverter()
@@ -552,12 +552,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistParts(parts: Collection<ClientPart>): ClientModelPersister {
+        override suspend fun persistParts(parts: Collection<ClientPart>): ClientModelPersister {
             val filteredParts = generator.filterParts(parts)
             return persist(filteredParts)
         }
 
-        override fun persist(filteredParts: FilteredParts): ClientModelPersister {
+        override suspend fun persist(filteredParts: FilteredParts): ClientModelPersister {
             val converter = RoomConverter()
             val newParts = converter.convertParts(filteredParts.newParts)
             val updatedParts = converter.convertParts(filteredParts.updateParts)
@@ -572,7 +572,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistReadEpisodes(readEpisodes: Collection<ClientReadEpisode>): ClientModelPersister {
+        override suspend fun persistReadEpisodes(readEpisodes: Collection<ClientReadEpisode>): ClientModelPersister {
             val filteredReadEpisodes = generator.filterReadEpisodes(readEpisodes)
             return this.persist(filteredReadEpisodes)
         }
@@ -602,7 +602,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister {
+        override suspend fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister {
             val roomToDownloads = RoomConverter().convertToDownload(toDownloads)
 
             toDownloadDao.insertBulk(roomToDownloads)
@@ -610,7 +610,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persist(user: ClientUpdateUser): ClientModelPersister {
+        override suspend fun persist(user: ClientUpdateUser): ClientModelPersister {
             val value = userLiveData.value
                 ?: throw IllegalArgumentException("cannot update user if none is stored in the database")
             require(user.uuid == value.uuid) { "cannot update user which do not share the same uuid" }
@@ -631,11 +631,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persistMediaInWait(medium: List<ClientMediumInWait>) = runBlocking {
+        override suspend fun persistMediaInWait(medium: List<ClientMediumInWait>) {
             mediumInWaitDao.insertBulk(RoomConverter().convertClientMediaInWait(medium))
         }
 
-        override fun persist(user: ClientSimpleUser?): ClientModelPersister {
+        override suspend fun persist(user: ClientSimpleUser?): ClientModelPersister {
             // short cut version
             if (user == null) {
                 deleteAllUser()
@@ -725,7 +725,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             tocDao.deleteBulk(removeTocs)
         }
 
-        override fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
+        override suspend fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
             val roomTocs = RoomConverter().convertToc(tocs)
 
             tocDao.insertBulk(roomTocs)
@@ -733,7 +733,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persist(clientUser: ClientUser?): ClientModelPersister {
+        override suspend fun persist(clientUser: ClientUser?): ClientModelPersister {
             // short cut version
             if (clientUser == null) {
                 deleteAllUser()
@@ -759,7 +759,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return this
         }
 
-        override fun persist(stat: ParsedStat): ClientModelPersister {
+        override suspend fun persist(stat: ParsedStat): ClientModelPersister {
             /*
              * Remove any Join not defined in stat.lists
              * Remove any Join not defined in stat.exLists
