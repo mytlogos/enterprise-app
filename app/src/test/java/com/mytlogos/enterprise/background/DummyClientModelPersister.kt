@@ -1,687 +1,367 @@
-package com.mytlogos.enterprise.background;
+package com.mytlogos.enterprise.background
 
-import com.mytlogos.enterprise.background.api.model.ClientEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientEpisodeRelease;
-import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientListQuery;
-import com.mytlogos.enterprise.background.api.model.ClientMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientMedium;
-import com.mytlogos.enterprise.background.api.model.ClientMediumInWait;
-import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery;
-import com.mytlogos.enterprise.background.api.model.ClientNews;
-import com.mytlogos.enterprise.background.api.model.ClientPart;
-import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleRelease;
-import com.mytlogos.enterprise.background.api.model.ClientSimpleUser;
-import com.mytlogos.enterprise.background.api.model.ClientStat;
-import com.mytlogos.enterprise.background.api.model.ClientUpdateUser;
-import com.mytlogos.enterprise.background.api.model.ClientUser;
-import com.mytlogos.enterprise.background.api.model.ClientUserList;
-import com.mytlogos.enterprise.background.resourceLoader.DependantValue;
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator;
-import com.mytlogos.enterprise.background.resourceLoader.LoadWorker;
-import com.mytlogos.enterprise.background.room.model.RoomEpisode;
-import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList;
-import com.mytlogos.enterprise.background.room.model.RoomExternalUser;
-import com.mytlogos.enterprise.background.room.model.RoomMediaList;
-import com.mytlogos.enterprise.background.room.model.RoomMedium;
-import com.mytlogos.enterprise.background.room.model.RoomNews;
-import com.mytlogos.enterprise.background.room.model.RoomPart;
-import com.mytlogos.enterprise.background.room.model.RoomToDownload;
-import com.mytlogos.enterprise.model.ToDownload;
-import com.mytlogos.enterprise.model.Toc;
+import com.mytlogos.enterprise.background.api.model.*
+import com.mytlogos.enterprise.background.api.model.ClientStat.ParsedStat
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator
+import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator.*
+import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.ExternalListMediaJoin
+import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
+import com.mytlogos.enterprise.background.room.model.RoomNews
+import com.mytlogos.enterprise.background.room.model.RoomToDownload
+import com.mytlogos.enterprise.model.ToDownload
+import com.mytlogos.enterprise.model.Toc
+import java.util.*
+import java.util.stream.Collectors
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+class DummyClientModelPersister(val loadedData: LoadData, val repository: Repository) :
+    ClientModelPersister {
 
-public class DummyClientModelPersister implements ClientModelPersister {
-    private final Collection<ClientConsumer<?>> consumer = new ArrayList<>();
-    private final LoadData loadedData;
-    private final LoadData updatedData;
-    private final LoadData deletedData;
-    private final Repository repository;
-    private final LoadWorkGenerator generator;
-    private boolean userUpdated = false;
-    private boolean userDeleted = false;
-    private boolean userInserted = false;
-    private List<RoomExternalMediaList.ExternalListMediaJoin> externalListMediaJoins = new ArrayList<>();
-    private List<RoomExternalMediaList.ExternalListMediaJoin> clearedExternalListMediaJoins = new ArrayList<>();
-    private List<Integer> clearedExternalList = new ArrayList<>();
-    private List<RoomMediaList.MediaListMediaJoin> listMediaJoins = new ArrayList<>();
-    private List<RoomMediaList.MediaListMediaJoin> clearedListMediaJoins = new ArrayList<>();
-    private List<Integer> clearedListMedia = new ArrayList<>();
-    private List<ClientEpisodeRelease> savedReleases = new ArrayList<ClientEpisodeRelease>();
-    private List<RoomToDownload> savedToDownloads = new ArrayList<>();
+    val updatedData: LoadData
+    val deletedData: LoadData
+    val generator: LoadWorkGenerator
+    var isUserUpdated = false
+        private set
+    var isUserDeleted = false
+        private set
+    var isUserInserted = false
+        private set
+    private val externalListMediaJoins: MutableList<ExternalListMediaJoin> = ArrayList()
+    val clearedExternalListMediaJoins: List<ExternalListMediaJoin> = ArrayList()
+    private val clearedExternalList: MutableList<Int> = ArrayList()
+    private val listMediaJoins: MutableList<MediaListMediaJoin> = ArrayList()
+    val clearedListMediaJoins: List<MediaListMediaJoin> = ArrayList()
+    private val clearedListMedia: MutableList<Int> = ArrayList()
+    private val savedReleases: MutableList<ClientEpisodeRelease> = ArrayList()
+    private val savedToDownloads: MutableList<RoomToDownload> = ArrayList()
 
-    public DummyClientModelPersister(LoadData loadedData, Repository repository) {
-        this.loadedData = loadedData;
-        this.repository = repository;
-        this.generator = new LoadWorkGenerator(loadedData);
-        this.initConsumer();
-        this.updatedData = new LoadData();
-        this.deletedData = new LoadData();
+    fun persistEpisodes(episodes: Collection<ClientEpisode?>?): ClientModelPersister {
+        // TODO: implement dummy
+        return this
     }
 
-    private void initConsumer() {
-        consumer.add(new ClientConsumer<ClientReadEpisode>() {
-            @Override
-            public Class<ClientReadEpisode> getType() {
-                return ClientReadEpisode.class;
-            }
-
-            @Override
-            public void consume(Collection<ClientReadEpisode> clientEpisodes) {
-                DummyClientModelPersister.this.persistReadEpisodes(clientEpisodes);
-            }
-        });
-        consumer.add(new ClientConsumer<ClientEpisode>() {
-            @Override
-            public Class<ClientEpisode> getType() {
-                return ClientEpisode.class;
-            }
-
-            @Override
-            public void consume(Collection<ClientEpisode> clientEpisodes) {
-                DummyClientModelPersister.this.persistEpisodes(clientEpisodes);
-            }
-        });
-        consumer.add(new ClientConsumer<ClientPart>() {
-            @Override
-            public Class<ClientPart> getType() {
-                return ClientPart.class;
-            }
-
-            @Override
-            public void consume(Collection<ClientPart> parts) {
-                DummyClientModelPersister.this.persistParts(parts);
-            }
-        });
-        consumer.add(new ClientConsumer<ClientMedium>() {
-            @Override
-            public Class<ClientMedium> getType() {
-                return ClientMedium.class;
-            }
-
-            @Override
-            public void consume(Collection<ClientMedium> media) {
-                DummyClientModelPersister.this.persistMedia(media.stream().map(ClientSimpleMedium::new).collect(Collectors.toList()));
-            }
-        });
-        consumer.add(new ClientConsumer<RoomMediaList.MediaListMediaJoin>() {
-            @Override
-            public Class<RoomMediaList.MediaListMediaJoin> getType() {
-                return RoomMediaList.MediaListMediaJoin.class;
-            }
-
-            @Override
-            public void consume(Collection<RoomMediaList.MediaListMediaJoin> joins) {
-                DummyClientModelPersister.this.listMediaJoins.addAll(joins);
-            }
-        });
-        consumer.add(new ClientConsumer<RoomExternalMediaList.ExternalListMediaJoin>() {
-            @Override
-            public Class<RoomExternalMediaList.ExternalListMediaJoin> getType() {
-                return RoomExternalMediaList.ExternalListMediaJoin.class;
-            }
-
-            @Override
-            public void consume(Collection<RoomExternalMediaList.ExternalListMediaJoin> joins) {
-                DummyClientModelPersister.this.externalListMediaJoins.addAll(joins);
-            }
-        });
-        consumer.add(new ClientConsumer<ClientExternalMediaList>() {
-            @Override
-            public Class<ClientExternalMediaList> getType() {
-                return ClientExternalMediaList.class;
-            }
-
-            @Override
-            public void consume(Collection<ClientExternalMediaList> extLists) {
-                DummyClientModelPersister.this.persistExternalMediaLists(extLists);
-            }
-        });
-        consumer.add(new ClientConsumer<ClientMediaList>() {
-            @Override
-            public Class<ClientMediaList> getType() {
-                return ClientMediaList.class;
-            }
-
-            @Override
-            public void consume(Collection<ClientMediaList> lists) {
-                DummyClientModelPersister.this.persistMediaLists(new ArrayList<>(lists));
-            }
-        });
-        consumer.add(new ClientConsumer<ClientExternalUser>() {
-            @Override
-            public Class<ClientExternalUser> getType() {
-                return ClientExternalUser.class;
-            }
-
-            @Override
-            public void consume(Collection<ClientExternalUser> extUsers) {
-                DummyClientModelPersister.this.persistExternalUsers(new ArrayList<>(extUsers));
-            }
-        });
+    fun persistReleases(releases: Collection<ClientRelease?>?): ClientModelPersister? {
+        return null
     }
 
-    @Override
-    public Collection<com.mytlogos.enterprise.background.ClientConsumer<?>> getConsumer() {
-        return consumer;
-    }
-
-    @Override
-    public ClientModelPersister persistEpisodes(Collection<ClientEpisode> episodes) {
-        LoadWorkGenerator.FilteredEpisodes filteredEpisodes = this.generator.filterEpisodes(episodes);
-        LoadWorker worker = this.repository.getLoadWorker();
-
-        for (LoadWorkGenerator.IntDependency<ClientEpisode> dependency : filteredEpisodes.partDependencies) {
-            worker.addIntegerIdTask(
-                    dependency.id,
-                    new DependantValue(
-                            dependency.dependency,
-                            dependency.dependency.getId(),
-                            worker.EPISODE_LOADER
-                    ),
-                    worker.PART_LOADER
-            );
+    override suspend fun persist(filteredEpisodes: FilteredEpisodes): ClientModelPersister {
+        val converter = RoomConverter(loadedData)
+        val list = converter.convertEpisodes(filteredEpisodes.newEpisodes)
+        val update = converter.convertEpisodes(filteredEpisodes.updateEpisodes)
+        for ((episodeId) in list) {
+            loadedData.episodes.add(episodeId)
         }
-        return this.persist(filteredEpisodes);
-    }
-
-    @Override
-    public ClientModelPersister persistReleases(Collection<ClientRelease> releases) {
-        return null;
-    }
-
-    @Override
-    public ClientModelPersister persist(LoadWorkGenerator.FilteredEpisodes filteredEpisodes) {
-        RoomConverter converter = new RoomConverter(this.loadedData);
-
-        List<RoomEpisode> list = converter.convertEpisodes(filteredEpisodes.newEpisodes);
-        List<RoomEpisode> update = converter.convertEpisodes(filteredEpisodes.updateEpisodes);
-
-        for (RoomEpisode episode : list) {
-            this.loadedData.getEpisodes().add(episode.getEpisodeId());
+        for ((episodeId) in update) {
+            updatedData.episodes.add(episodeId)
         }
-        for (RoomEpisode episode : update) {
-            this.updatedData.getEpisodes().add(episode.getEpisodeId());
-        }
-        this.savedReleases.addAll(filteredEpisodes.releases);
-        return this;
+        savedReleases.addAll(filteredEpisodes.releases)
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistMediaLists(List<ClientMediaList> mediaLists) {
-        RoomConverter converter = new RoomConverter(this.loadedData);
-        LoadWorkGenerator.FilteredMediaList filteredMediaList = this.generator.filterMediaLists(mediaLists);
-
-        LoadWorker worker = this.repository.getLoadWorker();
-
-        for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : filteredMediaList.mediumDependencies) {
-            int tmpListId = 0;
-            if (!dependency.dependency.isEmpty()) {
-                tmpListId = dependency.dependency.get(0).listId;
-            }
-            int listId = tmpListId;
-            worker.addIntegerIdTask(
-                    dependency.id,
-                    new DependantValue(
-                            converter.convertListJoin(dependency.dependency),
-                            () -> this.clearedListMedia.add(listId)
-                    ),
-                    worker.MEDIUM_LOADER
-            );
-        }
-
-        return this.persist(filteredMediaList);
+    fun persistMediaLists(mediaLists: List<ClientMediaList>?): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistUserLists(List<ClientUserList> mediaLists) {
-        String uuid = repository.getUser().getValue().getUuid();
-        return this.persistMediaLists(mediaLists.stream().map(value -> new ClientMediaList(
+    override suspend fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister {
+        val uuid = repository.user.value!!.uuid
+        return this.persistMediaLists(mediaLists.stream().map { value: ClientUserList ->
+            ClientMediaList(
                 uuid,
-                value.getId(),
-                value.getName(),
-                value.getMedium(),
+                value.id,
+                value.name,
+                value.medium,
                 null
-        )).collect(Collectors.toList()));
+            )
+        }.collect(Collectors.toList()))
     }
 
-    @Override
-    public ClientModelPersister persist(LoadWorkGenerator.FilteredMediaList filteredMediaList) {
-        RoomConverter converter = new RoomConverter(this.loadedData);
+    override suspend fun persistExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList>): ClientModelPersister {
+        TODO("Not yet implemented")
+    }
 
-        List<RoomMediaList> list = converter.convertMediaList(filteredMediaList.newList);
-        List<RoomMediaList> update = converter.convertMediaList(filteredMediaList.updateList);
-        List<RoomMediaList.MediaListMediaJoin> joins = converter.convertListJoin(filteredMediaList.joins);
-        List<Integer> clearListJoin = filteredMediaList.clearJoins;
+    override suspend fun persistExternalUsers(externalUsers: List<ClientExternalUser>): ClientModelPersister {
+        TODO("Not yet implemented")
+    }
 
+    override suspend fun persistMedia(media: Collection<ClientSimpleMedium>): ClientModelPersister {
+        TODO("Not yet implemented")
+    }
 
-        for (RoomMediaList mediaList : update) {
-            this.updatedData.getMediaList().add(mediaList.listId);
+    override suspend fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister {
+        val converter = RoomConverter(loadedData)
+        val list = converter.convertMediaList(filteredMediaList.newList)
+        val update = converter.convertMediaList(filteredMediaList.updateList)
+        val joins = converter.convertListJoin(filteredMediaList.joins)
+        val clearListJoin: List<Int> = filteredMediaList.clearJoins
+        for (mediaList in update) {
+            updatedData.mediaList.add(mediaList.listId)
         }
-        this.clearedListMedia.addAll(clearListJoin);
+        clearedListMedia.addAll(clearListJoin)
         // then add all up-to-date joins
-        this.listMediaJoins.addAll(joins);
-
-        for (RoomMediaList mediaList : list) {
-            this.loadedData.getMediaList().add(mediaList.listId);
+        listMediaJoins.addAll(joins)
+        for (mediaList in list) {
+            loadedData.mediaList.add(mediaList.listId)
         }
-        return this;
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistExternalMediaLists(Collection<ClientExternalMediaList> externalMediaLists) {
-        LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList = this.generator.filterExternalMediaLists(externalMediaLists);
-        RoomConverter converter = new RoomConverter(this.loadedData);
-
-        LoadWorker worker = this.repository.getLoadWorker();
-
-        for (LoadWorkGenerator.Dependency<String, ClientExternalMediaList> dependency : filteredExtMediaList.userDependencies) {
-            worker.addStringIdTask(
-                    dependency.id,
-                    new DependantValue(
-                            converter.convert(dependency.dependency),
-                            dependency.dependency.getId(),
-                            worker.EXTERNAL_MEDIALIST_LOADER
-                    ),
-                    worker.EXTERNAL_USER_LOADER
-            );
-        }
-        for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : filteredExtMediaList.mediumDependencies) {
-            int tmpListId = 0;
-            if (!dependency.dependency.isEmpty()) {
-                tmpListId = dependency.dependency.get(0).listId;
-            }
-            int listId = tmpListId;
-            worker.addIntegerIdTask(
-                    dependency.id,
-                    new DependantValue(
-                            converter.convertExListJoin(dependency.dependency),
-                            () -> this.clearedExternalList.add(listId)
-                    ),
-                    worker.MEDIUM_LOADER
-            );
-        }
-        return this.persist(filteredExtMediaList);
+    fun persistExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList?>?): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(LoadWorkGenerator.FilteredExtMediaList filteredExtMediaList) {
-        RoomConverter converter = new RoomConverter(this.loadedData);
-
-        List<RoomExternalMediaList> list = converter.convertExternalMediaList(filteredExtMediaList.newList);
-        List<RoomExternalMediaList> update = converter.convertExternalMediaList(filteredExtMediaList.updateList);
-
-        List<RoomExternalMediaList.ExternalListMediaJoin> joins = converter.convertExListJoin(filteredExtMediaList.joins);
-        List<Integer> clearListJoin = filteredExtMediaList.clearJoins;
-
-        this.clearedExternalList.addAll(clearListJoin);
-        this.externalListMediaJoins.addAll(joins);
-
-        for (RoomExternalMediaList mediaList : list) {
-            this.loadedData.getExternalMediaList().add(mediaList.externalListId);
+    override suspend fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister {
+        val converter = RoomConverter(loadedData)
+        val list = converter.convertExternalMediaList(filteredExtMediaList.newList)
+        val update = converter.convertExternalMediaList(filteredExtMediaList.updateList)
+        val joins = converter.convertExListJoin(filteredExtMediaList.joins)
+        val clearListJoin: List<Int> = filteredExtMediaList.clearJoins
+        clearedExternalList.addAll(clearListJoin)
+        externalListMediaJoins.addAll(joins)
+        for ((_, externalListId) in list) {
+            loadedData.externalMediaList.add(externalListId)
         }
-        for (RoomExternalMediaList mediaList : update) {
-            this.updatedData.getExternalMediaList().add(mediaList.externalListId);
+        for ((_, externalListId) in update) {
+            updatedData.externalMediaList.add(externalListId)
         }
-        return this;
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistExternalUsers(List<ClientExternalUser> externalUsers) {
-        LoadWorkGenerator.FilteredExternalUser filteredExternalUser = this.generator.filterExternalUsers(externalUsers);
-
-        RoomConverter converter = new RoomConverter(this.loadedData);
-        LoadWorker worker = this.repository.getLoadWorker();
-
-        for (LoadWorkGenerator.IntDependency<List<LoadWorkGenerator.ListJoin>> dependency : filteredExternalUser.mediumDependencies) {
-            int tmpListId = 0;
-            if (!dependency.dependency.isEmpty()) {
-                tmpListId = dependency.dependency.get(0).listId;
-            }
-            int listId = tmpListId;
-            worker.addIntegerIdTask(
-                    dependency.id,
-                    new DependantValue(
-                            converter.convertExListJoin(dependency.dependency),
-                            () -> this.clearedExternalList.add(listId)
-                    ),
-                    worker.MEDIUM_LOADER
-            );
-        }
-        return this.persist(filteredExternalUser);
+    fun persistExternalUsers(externalUsers: List<ClientExternalUser?>?): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(LoadWorkGenerator.FilteredExternalUser filteredExternalUser) {
-        RoomConverter converter = new RoomConverter(this.loadedData);
-
-        List<RoomExternalUser> list = converter.convertExternalUser(filteredExternalUser.newUser);
-        List<RoomExternalUser> update = converter.convertExternalUser(filteredExternalUser.updateUser);
-
-        List<RoomExternalMediaList> externalMediaLists = converter.convertExternalMediaList(filteredExternalUser.newList);
-        List<RoomExternalMediaList> updateExternalMediaLists = converter.convertExternalMediaList(filteredExternalUser.updateList);
-
-        List<RoomExternalMediaList.ExternalListMediaJoin> extListMediaJoin = converter.convertExListJoin(filteredExternalUser.joins);
-        List<Integer> clearListJoin = filteredExternalUser.clearJoins;
-
-        this.clearedExternalList.addAll(clearListJoin);
-        this.externalListMediaJoins.addAll(extListMediaJoin);
-
-        for (RoomExternalUser user : list) {
-            this.loadedData.getExternalUser().add(user.uuid);
+    override suspend fun persist(filteredExternalUser: FilteredExternalUser): ClientModelPersister {
+        val converter = RoomConverter(loadedData)
+        val list = converter.convertExternalUser(filteredExternalUser.newUser)
+        val update = converter.convertExternalUser(filteredExternalUser.updateUser)
+        val externalMediaLists = converter.convertExternalMediaList(filteredExternalUser.newList)
+        val updateExternalMediaLists =
+            converter.convertExternalMediaList(filteredExternalUser.updateList)
+        val extListMediaJoin = converter.convertExListJoin(filteredExternalUser.joins)
+        val clearListJoin: List<Int> = filteredExternalUser.clearJoins
+        clearedExternalList.addAll(clearListJoin)
+        externalListMediaJoins.addAll(extListMediaJoin)
+        for ((uuid) in list) {
+            loadedData.externalUser.add(uuid)
         }
-        for (RoomExternalUser user : update) {
-            this.updatedData.getExternalUser().add(user.uuid);
+        for ((uuid) in update) {
+            updatedData.externalUser.add(uuid)
         }
-
-        for (RoomExternalMediaList mediaList : externalMediaLists) {
-            this.loadedData.getExternalMediaList().add(mediaList.externalListId);
+        for ((_, externalListId) in externalMediaLists) {
+            loadedData.externalMediaList.add(externalListId)
         }
-        for (RoomExternalMediaList mediaList : updateExternalMediaLists) {
-            this.updatedData.getExternalMediaList().add(mediaList.externalListId);
+        for ((_, externalListId) in updateExternalMediaLists) {
+            updatedData.externalMediaList.add(externalListId)
         }
-        return this;
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistMedia(Collection<ClientSimpleMedium> media) {
-        LoadWorkGenerator.FilteredMedia filteredMedia = this.generator.filterSimpleMedia(media);
-
-        LoadWorker worker = this.repository.getLoadWorker();
-
-        for (LoadWorkGenerator.IntDependency<ClientMedium> dependency : filteredMedia.episodeDependencies) {
-            worker.addIntegerIdTask(
-                    dependency.id,
-                    new DependantValue(
-                            dependency.dependency,
-                            dependency.dependency.getId(),
-                            worker.MEDIUM_LOADER
-                    ),
-                    worker.EPISODE_LOADER
-            );
-        }
-        for (Integer part : filteredMedia.unloadedParts) {
-            worker.addIntegerIdTask(part, null, worker.PART_LOADER);
-        }
-        return this.persist(filteredMedia);
+    fun persistMedia(media: Collection<ClientSimpleMedium?>?): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(LoadWorkGenerator.FilteredMedia filteredMedia) {
-        RoomConverter converter = new RoomConverter(this.loadedData);
-
-        List<RoomMedium> list = converter.convertSimpleMedia(filteredMedia.newMedia);
-        List<RoomMedium> update = converter.convertSimpleMedia(filteredMedia.updateMedia);
-
-        for (RoomMedium medium : list) {
-            this.loadedData.getMedia().add(medium.getMediumId());
+    override suspend fun persist(filteredMedia: FilteredMedia): ClientModelPersister {
+        val converter = RoomConverter(loadedData)
+        val list = converter.convertSimpleMedia(filteredMedia.newMedia)
+        val update = converter.convertSimpleMedia(filteredMedia.updateMedia)
+        for (medium in list) {
+            loadedData.media.add(medium.mediumId)
         }
-        for (RoomMedium medium : update) {
-            this.updatedData.getMedia().add(medium.getMediumId());
+        for (medium in update) {
+            updatedData.media.add(medium.mediumId)
         }
-        return this;
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistNews(Collection<ClientNews> news) {
-        List<RoomNews> list = new ArrayList<>();
-        List<RoomNews> update = new ArrayList<>();
-        RoomConverter converter = new RoomConverter();
-
-        for (ClientNews clientNews : news) {
-            RoomNews roomNews = converter.convert(clientNews);
-            if (this.generator.isNewsLoaded(clientNews.getId())) {
-                update.add(roomNews);
+    override suspend fun persistNews(news: Collection<ClientNews>): ClientModelPersister {
+        val list: MutableList<RoomNews> = ArrayList()
+        val update: MutableList<RoomNews> = ArrayList()
+        val converter = RoomConverter()
+        for (clientNews in news) {
+            val roomNews = converter.convert(clientNews)
+            if (generator.isNewsLoaded(clientNews.id)) {
+                update.add(roomNews)
             } else {
-                list.add(roomNews);
+                list.add(roomNews)
             }
         }
-        for (RoomNews roomNews : list) {
-            this.loadedData.getNews().add(roomNews.getNewsId());
+        for ((newsId) in list) {
+            loadedData.news.add(newsId)
         }
-        for (RoomNews roomNews : update) {
-            this.updatedData.getNews().add(roomNews.getNewsId());
+        for ((newsId) in update) {
+            updatedData.news.add(newsId)
         }
-        return this;
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistParts(Collection<ClientPart> parts) {
-        LoadWorkGenerator.FilteredParts filteredParts = this.generator.filterParts(parts);
+    override suspend fun persistParts(parts: Collection<ClientPart>): ClientModelPersister {
+        TODO("Not yet implemented")
+    }
 
-        LoadWorker worker = this.repository.getLoadWorker();
+    override suspend fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister {
+        TODO("Not yet implemented")
+    }
 
-        for (LoadWorkGenerator.IntDependency<ClientPart> dependency : filteredParts.mediumDependencies) {
-            worker.addIntegerIdTask(
-                    dependency.id,
-                    new DependantValue(
-                            dependency.dependency,
-                            dependency.dependency.getId(),
-                            worker.PART_LOADER
-                    ),
-                    worker.MEDIUM_LOADER
-            );
+    override suspend fun persistReadEpisodes(readEpisodes: Collection<ClientReadEpisode>): ClientModelPersister {
+        TODO("Not yet implemented")
+    }
+
+    fun persistParts(parts: Collection<ClientPart?>?): ClientModelPersister {
+        return this
+    }
+
+    override suspend fun persist(filteredParts: FilteredParts): ClientModelPersister {
+        val converter = RoomConverter()
+        val list = converter.convertParts(filteredParts.newParts)
+        val update = converter.convertParts(filteredParts.updateParts)
+        for (part in list) {
+            loadedData.part.add(part.partId)
         }
-        return this.persist(filteredParts);
-    }
-
-    @Override
-    public ClientModelPersister persist(LoadWorkGenerator.FilteredParts filteredParts) {
-        RoomConverter converter = new RoomConverter();
-
-        List<RoomPart> list = converter.convertParts(filteredParts.newParts);
-        List<RoomPart> update = converter.convertParts(filteredParts.updateParts);
-
-        for (RoomPart part : list) {
-            this.loadedData.getPart().add(part.getPartId());
+        for (part in update) {
+            updatedData.part.add(part.partId)
         }
-        for (RoomPart part : update) {
-            this.updatedData.getPart().add(part.getPartId());
+        this.persistEpisodes(filteredParts.episodes)
+        return this
+    }
+
+    override suspend fun persist(stat: ParsedStat): ClientModelPersister {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun persist(toDownload: ToDownload): ClientModelPersister {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun persist(filteredReadEpisodes: FilteredReadEpisodes): ClientModelPersister {
+        for ((episodeId) in filteredReadEpisodes.episodeList) {
+            updatedData.episodes.add(episodeId)
         }
-        this.persistEpisodes(filteredParts.episodes);
-        return this;
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes) {
-        for (ClientReadEpisode readEpisode : filteredReadEpisodes.episodeList) {
-            this.updatedData.getEpisodes().add(readEpisode.getEpisodeId());
-        }
-        return this;
+    fun persistReadEpisodes(readEpisodes: Collection<ClientReadEpisode?>?): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistReadEpisodes(Collection<ClientReadEpisode> readEpisodes) {
-        LoadWorkGenerator.FilteredReadEpisodes filteredReadEpisodes = this.generator.filterReadEpisodes(readEpisodes);
-        LoadWorker worker = this.repository.getLoadWorker();
-
-        for (LoadWorkGenerator.IntDependency dependency : filteredReadEpisodes.dependencies) {
-            worker.addIntegerIdTask(
-                    dependency.id,
-                    new DependantValue(dependency.dependency),
-                    worker.EPISODE_LOADER
-            );
-        }
-        for (ClientReadEpisode readEpisode : filteredReadEpisodes.episodeList) {
-            this.updatedData.getEpisodes().add(readEpisode.getEpisodeId());
-        }
-        return this;
+    fun persist(stat: ParsedStat?): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(ClientStat.ParsedStat stat) {
-        return this;
+    override suspend fun persist(query: ClientListQuery): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(ClientListQuery query) {
-        this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
-        this.persist(query.getList());
-        return this;
+    override suspend fun persist(query: ClientMultiListQuery): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(ClientMultiListQuery query) {
-        this.persist(Arrays.stream(query.getMedia()).map(ClientSimpleMedium::new).toArray(ClientSimpleMedium[]::new));
-        this.persist(query.getList());
-        return this;
+    fun persistToDownloads(toDownloads: Collection<ToDownload?>?): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public ClientModelPersister persistToDownloads(Collection<ToDownload> toDownloads) {
-        List<RoomToDownload> roomToDownloads = new RoomConverter().convertToDownload(toDownloads);
-        this.savedToDownloads.addAll(roomToDownloads);
-        return this;
+    fun persist(user: ClientUpdateUser?): ClientModelPersister {
+        isUserUpdated = true
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(ClientUpdateUser user) {
-        this.userUpdated = true;
-        return this;
+    fun persist(toDownload: ToDownload?): ClientModelPersister {
+        savedToDownloads.add(RoomConverter().convert(toDownload!!))
+        return this
     }
 
-    @Override
-    public ClientModelPersister persist(ToDownload toDownload) {
-        this.savedToDownloads.add(new RoomConverter().convert(toDownload));
-        return this;
+    fun persistMediaInWait(medium: List<ClientMediumInWait?>?) {}
+
+    override suspend fun persist(user: ClientSimpleUser?): ClientModelPersister {
+        return this
     }
 
-    @Override
-    public void persistMediaInWait(List<ClientMediumInWait> medium) {
-
+    override suspend fun persistEpisodes(episodes: Collection<ClientEpisode>): ClientModelPersister {
+        TODO("Not yet implemented")
     }
 
-    @Override
-    public ClientModelPersister persist(ClientSimpleUser user) {
-        return null;
+    override suspend fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister {
+        TODO("Not yet implemented")
     }
 
-    @Override
-    public void deleteLeftoverEpisodes(Map<Integer, List<Integer>> partEpisodes) {
-
+    override suspend fun persistMediaLists(mediaLists: List<ClientMediaList>): ClientModelPersister {
+        TODO("Not yet implemented")
     }
 
-    @Override
-    public Collection<Integer> deleteLeftoverReleases(Map<Integer, List<ClientSimpleRelease>> partReleases) {
-
-        return null;
+    fun deleteLeftoverEpisodes(partEpisodes: Map<Int?, List<Int?>?>?) {}
+    fun deleteLeftoverReleases(partReleases: Map<Int?, List<ClientSimpleRelease?>?>?): Collection<Int>? {
+        return null
     }
 
-    @Override
-    public void deleteLeftoverTocs(Map<Integer, List<String>> mediaTocs) {
+    fun deleteLeftoverTocs(mediaTocs: Map<Int?, List<String?>?>?) {}
 
+    fun persistTocs(tocs: Collection<Toc?>?): ClientModelPersister? {
+        return null
     }
 
-    @Override
-    public ClientModelPersister persistTocs(Collection<? extends Toc> tocs) {
-        return null;
-    }
-
-    @Override
-    public ClientModelPersister persist(ClientUser clientUser) {
+    override suspend fun persist(clientUser: ClientUser?): ClientModelPersister {
         // short cut version
         if (clientUser == null) {
-            this.userDeleted = true;
-            return this;
+            isUserDeleted = true
+            return this
         }
-
-        LoadWorker worker = this.repository.getLoadWorker();
-
-        for (int clientReadChapter : clientUser.getUnreadChapter()) {
-            if (!this.generator.isEpisodeLoaded(clientReadChapter)) {
-                worker.addIntegerIdTask(clientReadChapter, null, worker.EPISODE_LOADER);
-            }
-        }
-
-        this.userInserted = true;
-
-        // persist lists
-        this.persist(clientUser.getLists());
-        // persist externalUser
-        this.persist(clientUser.getExternalUser());
-        // persist loaded unread News
-        this.persist(clientUser.getUnreadNews());
-        // persist/update media with data
-        this.persist(clientUser.getReadToday());
-        return this;
+        isUserInserted = true
+        return this
     }
 
-    @Override
-    public void finish() {
-        this.repository.getLoadWorker().work();
+    override suspend fun persist(user: ClientUpdateUser): ClientModelPersister {
+        TODO("Not yet implemented")
     }
 
-    public LoadData getLoadedData() {
-        return loadedData;
+    override fun finish() {
+
     }
 
-    public LoadData getUpdatedData() {
-        return updatedData;
+    override suspend fun persistMediaInWait(medium: List<ClientMediumInWait>) {
+        TODO("Not yet implemented")
     }
 
-    public LoadData getDeletedData() {
-        return deletedData;
+    override suspend fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>) {
+        TODO("Not yet implemented")
     }
 
-    public Repository getRepository() {
-        return repository;
+    override suspend fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int> {
+        TODO("Not yet implemented")
     }
 
-    public LoadWorkGenerator getGenerator() {
-        return generator;
+    override suspend fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>) {
+        TODO("Not yet implemented")
     }
 
-    public boolean isUserUpdated() {
-        return userUpdated;
+    override suspend fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
+        TODO("Not yet implemented")
     }
 
-    public boolean isUserDeleted() {
-        return userDeleted;
+    fun getExternalListMediaJoins(): List<ExternalListMediaJoin> {
+        return externalListMediaJoins
     }
 
-    public boolean isUserInserted() {
-        return userInserted;
+    fun getClearedExternalList(): List<Int> {
+        return clearedExternalList
     }
 
-    public List<RoomExternalMediaList.ExternalListMediaJoin> getExternalListMediaJoins() {
-        return externalListMediaJoins;
+    fun getListMediaJoins(): List<MediaListMediaJoin> {
+        return listMediaJoins
     }
 
-    public List<RoomExternalMediaList.ExternalListMediaJoin> getClearedExternalListMediaJoins() {
-        return clearedExternalListMediaJoins;
+    fun getClearedListMedia(): List<Int> {
+        return clearedListMedia
     }
 
-    public List<Integer> getClearedExternalList() {
-        return clearedExternalList;
+    fun getSavedReleases(): List<ClientEpisodeRelease> {
+        return savedReleases
     }
 
-    public List<RoomMediaList.MediaListMediaJoin> getListMediaJoins() {
-        return listMediaJoins;
+    fun getSavedToDownloads(): List<RoomToDownload> {
+        return savedToDownloads
     }
 
-    public List<RoomMediaList.MediaListMediaJoin> getClearedListMediaJoins() {
-        return clearedListMediaJoins;
-    }
-
-    public List<Integer> getClearedListMedia() {
-        return clearedListMedia;
-    }
-
-    public List<ClientEpisodeRelease> getSavedReleases() {
-        return savedReleases;
-    }
-
-    public List<RoomToDownload> getSavedToDownloads() {
-        return savedToDownloads;
+    init {
+        generator = LoadWorkGenerator(loadedData)
+        updatedData = LoadData()
+        deletedData = LoadData()
     }
 }

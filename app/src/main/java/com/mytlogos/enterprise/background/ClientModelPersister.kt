@@ -7,7 +7,7 @@ import com.mytlogos.enterprise.model.ToDownload
 import com.mytlogos.enterprise.model.Toc
 
 interface ClientModelPersister {
-    fun getConsumer(): Collection<ClientConsumer<*>>
+
     suspend fun persist(vararg episode: ClientEpisode): ClientModelPersister {
         return persistEpisodes(listOf(*episode))
     }

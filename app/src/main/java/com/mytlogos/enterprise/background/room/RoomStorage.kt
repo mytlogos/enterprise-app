@@ -379,10 +379,6 @@ class RoomStorage(application: Application) : DatabaseStorage {
     private inner class RoomPersister(private val loadedData: LoadData) : ClientModelPersister {
         private val generator: LoadWorkGenerator = LoadWorkGenerator(loadedData)
 
-        override fun getConsumer(): Collection<ClientConsumer<*>> {
-            return emptyList()
-        }
-
         override fun persistEpisodes(episodes: Collection<ClientEpisode>): ClientModelPersister {
             val filteredEpisodes = generator.filterEpisodes(episodes)
             return this.persist(filteredEpisodes)

@@ -1,113 +1,99 @@
-package com.mytlogos.enterprise.background.resourceLoader;
+package com.mytlogos.enterprise.background.resourceLoader
 
-import com.mytlogos.enterprise.DataGenerator;
-import com.mytlogos.enterprise.background.LoadData;
-import com.mytlogos.enterprise.background.api.model.ClientEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientExternalMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientExternalUser;
-import com.mytlogos.enterprise.background.api.model.ClientMediaList;
-import com.mytlogos.enterprise.background.api.model.ClientMedium;
-import com.mytlogos.enterprise.background.api.model.ClientNews;
-import com.mytlogos.enterprise.background.api.model.ClientPart;
-import com.mytlogos.enterprise.background.api.model.ClientReadEpisode;
-import com.mytlogos.enterprise.background.api.model.ClientUser;
+import com.mytlogos.enterprise.DataGenerator
+import com.mytlogos.enterprise.Utils
+import com.mytlogos.enterprise.background.LoadData
+import com.mytlogos.enterprise.background.api.model.*
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static com.mytlogos.enterprise.Utils.containsMediumId;
-
-class LoadWorkGeneratorTest {
-    private LoadWorkGenerator generator;
-    private LoadData loadedData;
-    private ClientUser clientUser;
-    private List<ClientPart> parts;
-    private List<ClientEpisode> episodes;
-    private List<ClientMediaList> mediaLists;
-    private List<ClientExternalUser> externalUser;
-    private List<ClientMedium> media;
-    private List<ClientNews> news;
-    private List<ClientReadEpisode> readEpisodes;
-    private List<ClientExternalMediaList> extMediaLists;
+internal class LoadWorkGeneratorTest {
+    private var generator: LoadWorkGenerator? = null
+    private var loadedData: LoadData? = null
+    private val clientUser: ClientUser? = null
+    private var parts: List<ClientPart>? = null
+    private var episodes: List<ClientEpisode>? = null
+    private var mediaLists: List<ClientMediaList>? = null
+    private var externalUser: List<ClientExternalUser>? = null
+    private var media: List<ClientMedium>? = null
+    private var news: List<ClientNews>? = null
+    private var readEpisodes: List<ClientReadEpisode>? = null
+    private var extMediaLists: List<ClientExternalMediaList>? = null
 
     @BeforeEach
-    void setUp() {
-        this.loadedData = new LoadData();
-        this.generator = new LoadWorkGenerator(this.loadedData);
-        DataGenerator dataGenerator = new DataGenerator();
-        dataGenerator.generateCompleteTestData();
-
-        this.externalUser = dataGenerator.getExternalUser();
-        this.mediaLists = dataGenerator.getMediaLists();
-        this.extMediaLists = dataGenerator.getExtMediaLists();
-        this.episodes = dataGenerator.getEpisodes();
-        this.parts = dataGenerator.getParts();
-        this.media = dataGenerator.getMedia();
-        this.news = dataGenerator.getNews();
-        this.readEpisodes = dataGenerator.getReadEpisodes();
+    fun setUp() {
+        loadedData = LoadData()
+        generator = LoadWorkGenerator(loadedData!!)
+        val dataGenerator = DataGenerator()
+        dataGenerator.generateCompleteTestData()
+        externalUser = dataGenerator.externalUser
+        mediaLists = dataGenerator.mediaLists
+        extMediaLists = dataGenerator.extMediaLists
+        episodes = dataGenerator.episodes
+        parts = dataGenerator.parts
+        media = dataGenerator.media
+        news = dataGenerator.news
+        readEpisodes = dataGenerator.readEpisodes
     }
 
     @Test
-    void filterReadEpisodes() {
-        LoadWorkGenerator.FilteredReadEpisodes readEpisodes = this.generator.filterReadEpisodes(this.readEpisodes);
-
-        for (ClientReadEpisode episode : this.readEpisodes) {
-            if (this.loadedData.getEpisodes().contains(episode.getEpisodeId())) {
-                Assertions.assertTrue(readEpisodes.episodeList.contains(episode));
+    fun filterReadEpisodes() {
+        val readEpisodes = generator!!.filterReadEpisodes(readEpisodes!!)
+        for (episode in this.readEpisodes!!) {
+            if (loadedData!!.episodes.contains(episode.episodeId)) {
+                Assertions.assertTrue(readEpisodes.episodeList.contains(episode))
             } else {
-                boolean found = false;
-                for (LoadWorkGenerator.IntDependency<ClientReadEpisode> dependency : readEpisodes.dependencies) {
-                    if (dependency.id == episode.getEpisodeId()) {
-                        found = true;
-                        break;
+                var found = false
+                for (dependency in readEpisodes.dependencies) {
+                    if (dependency.id == episode.episodeId) {
+                        found = true
+                        break
                     }
                 }
-                Assertions.assertTrue(found);
+                Assertions.assertTrue(found)
             }
         }
     }
 
     @Test
-    void filterParts() {
-        LoadWorkGenerator.FilteredParts parts = this.generator.filterParts(this.parts);
-
-        for (LoadWorkGenerator.IntDependency<ClientPart> dependency : parts.mediumDependencies) {
-            Assertions.assertTrue(containsMediumId(this.media, dependency.id));
-            Assertions.assertEquals(dependency.dependency.getMediumId(), dependency.id);
+    fun filterParts() {
+        val parts = generator!!.filterParts(parts!!)
+        for (dependency in parts.mediumDependencies) {
+            Assertions.assertTrue(Utils.containsMediumId(
+                media, dependency.id))
+            Assertions.assertEquals(dependency.dependency.mediumId, dependency.id)
         }
-        for (ClientPart part : parts.newParts) {
-            Assertions.assertFalse(this.loadedData.getPart().contains(part.getId()));
+        for (part in parts.newParts) {
+            Assertions.assertFalse(loadedData!!.part.contains(part.id))
         }
-        for (ClientPart part : parts.updateParts) {
-            Assertions.assertTrue(this.loadedData.getPart().contains(part.getId()));
+        for (part in parts.updateParts) {
+            Assertions.assertTrue(loadedData!!.part.contains(part.id))
         }
     }
 
     @Test
-    void filterEpisodes() {
-        Assertions.fail("not yet implemented");
+    fun filterEpisodes() {
+        Assertions.fail<Any>("not yet implemented")
     }
 
     @Test
-    void filterMedia() {
-        Assertions.fail("not yet implemented");
+    fun filterMedia() {
+        Assertions.fail<Any>("not yet implemented")
     }
 
     @Test
-    void filterMediaLists() {
-        Assertions.fail("not yet implemented");
+    fun filterMediaLists() {
+        Assertions.fail<Any>("not yet implemented")
     }
 
     @Test
-    void filterExternalMediaLists() {
-        Assertions.fail("not yet implemented");
+    fun filterExternalMediaLists() {
+        Assertions.fail<Any>("not yet implemented")
     }
 
     @Test
-    void filterExternalUsers() {
-        Assertions.fail("not yet implemented");
+    fun filterExternalUsers() {
+        Assertions.fail<Any>("not yet implemented")
     }
 }
