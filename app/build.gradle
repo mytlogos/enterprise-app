@@ -65,7 +65,7 @@ dependencies {
     implementation 'com.github.lecho:hellocharts-library:1.5.8@aar'
     implementation "androidx.paging:paging-runtime-ktx:3.0.1"
 
-    def work_version = "2.5.0"
+    def work_version = "2.6.0"
     implementation "androidx.work:work-runtime:$work_version"
 
     // Using JCenter
