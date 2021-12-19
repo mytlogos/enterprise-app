@@ -13,7 +13,9 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.SettingsFragment
 import com.mytlogos.enterprise.model.HomeStats
 import com.mytlogos.enterprise.viewmodel.UserViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@ExperimentalCoroutinesApi
 class Home : BaseFragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -22,7 +24,6 @@ class Home : BaseFragment() {
     ): View? {
         val view = inflater.inflate(R.layout.home, container, false)
         this.addClickListener(view, R.id.chapter, EpisodeFragment())
-        this.addClickListener(view, R.id.news, NewsFragment())
         this.addClickListener(view, R.id.history, ReadHistoryFragment())
         this.addClickListener(view, R.id.list, ListsFragment())
         this.addClickListener(view, R.id.medium, MediumListFragment())

@@ -16,8 +16,10 @@ import com.mytlogos.enterprise.tools.isImageContentSupported
 import com.mytlogos.enterprise.tools.isTextContentSupported
 import com.mytlogos.enterprise.tools.isVideoContentSupported
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
+@ExperimentalCoroutinesApi
 class ListSettings : BaseFragment() {
     private lateinit var listsViewModel: ListsViewModel
     private lateinit var liveListSettings: LiveData<out MediaListSetting>

@@ -22,6 +22,7 @@ import com.mytlogos.enterprise.tools.getTextContentTool
 import com.mytlogos.enterprise.tools.getVideoContentTool
 import com.mytlogos.enterprise.tools.humanReadableByteCount
 import com.mytlogos.enterprise.worker.CheckSavedWorker.Companion.checkLocal
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -32,6 +33,7 @@ import lecho.lib.hellocharts.view.PieChartView
 import java.io.File
 import java.util.*
 
+@ExperimentalCoroutinesApi
 class SpaceViewFragment : BaseFragment() {
     private val sliceValueSpaceDataNodeMap: MutableMap<SliceValue, SpaceDataNode> = HashMap()
     private val textNode = SpaceDataNode("Books", 0)

@@ -1,7 +1,6 @@
 package com.mytlogos.enterprise.ui
 
 import android.annotation.SuppressLint
-import android.graphics.Color
 import android.os.Bundle
 import android.view.*
 import androidx.lifecycle.Transformations
@@ -12,9 +11,10 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.ExternalMediaList
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.requireSupportActionBar
+import com.mytlogos.enterprise.tools.setDefaultSelectableBackgroundCompat
 import com.mytlogos.enterprise.tools.transformPaging
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
-import eu.davidea.flexibleadapter.utils.DrawableUtils
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import java.net.URI
 import java.util.*
@@ -23,6 +23,7 @@ import java.util.regex.Pattern
 /**
  * A fragment representing a list of [MediaList].
  */
+@ExperimentalCoroutinesApi
 class ListsFragment
 /**
  * Mandatory empty constructor for the fragment manager to instantiate the
@@ -151,11 +152,7 @@ class ListsFragment
                 holder.topRightText.text = getDenominator(it)
                 holder.mainText.text = it.name
 
-                val drawable = DrawableUtils.getSelectableBackgroundCompat(
-                    Color.WHITE,  // normal background
-                    Color.GRAY,  // pressed background
-                    Color.BLACK) // ripple color
-                DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
+                holder.itemView.setDefaultSelectableBackgroundCompat()
             }
         }
     }

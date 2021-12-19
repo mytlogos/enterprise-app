@@ -17,14 +17,12 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.getDomain
 import com.mytlogos.enterprise.viewmodel.MediumInWaitViewModel
-import eu.davidea.flexibleadapter.FlexibleAdapter
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
-import eu.davidea.flexibleadapter.items.IFilterable
-import eu.davidea.flexibleadapter.items.IFlexible
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
-import java.io.Serializable
 import java.util.*
+import kotlin.collections.ArrayList
 
+@ExperimentalCoroutinesApi
 class MediaInWaitFragment : BaseFragment() {
     private val NO_LIST = MediaList("", -1, "Don't add to List", 0, 0)
     private var selectedMedium: SimpleMedium? = null
@@ -57,36 +55,27 @@ class MediaInWaitFragment : BaseFragment() {
         titleView.text = "${mediumInWait.title} ($domain)"
         viewModel = ViewModelProvider(this).get(MediumInWaitViewModel::class.java)
 
-        val listAdapter = getFlexibleRecyclerAdapter(view, R.id.list)
-        val mediumSuggestAdapter = getFlexibleRecyclerAdapter(view, R.id.medium_suggestions)
-        val mediumInWaitSuggestAdapter =
-            getFlexibleRecyclerAdapter(view, R.id.medium_in_wait_suggestions)
+        val listAdapter = createRecyclerAdapter(view, R.id.list) { MediumInWaitAdapter(closable = true) }
+        val mediumSuggestAdapter = createRecyclerAdapter(view, R.id.medium_suggestions) { MediumAdapter() }
+        val mediumInWaitSuggestAdapter = createRecyclerAdapter(view, R.id.medium_in_wait_suggestions) { MediumInWaitAdapter() }
 
-        mediumSuggestAdapter.addListener(FlexibleAdapter.OnItemClickListener { _: View?, position: Int ->
+        mediumSuggestAdapter.addItemClickListener { position: Int ->
             val flexible =
-                mediumSuggestAdapter.getItem(position)!! as? FlexibleMedium
-                    ?: return@OnItemClickListener false
-            selectedMedium = flexible.medium
-            searchMediumView.setQuery(flexible.medium.title, false)
-            false
-        })
+                mediumSuggestAdapter.getItemAt(position)!! as? SimpleMedium
+                    ?: return@addItemClickListener
+            selectedMedium = flexible
+            searchMediumView.setQuery(flexible.title, false)
+        }
 
-        mediumInWaitSuggestAdapter.addListener(FlexibleAdapter.OnItemClickListener { _: View?, position: Int ->
-            val flexible =
-                mediumInWaitSuggestAdapter.getItem(position)!! as? FlexibleMediumInWaitSuggestion
-                    ?: return@OnItemClickListener false
-            var filter = mediumInWaitSuggestAdapter.getFilter(
-                MediumInWaitSimpleFilter::class.java)
-            if (filter == null) {
-                filter = MediumInWaitSimpleFilter()
-            }
-            filter.filterOut.add(flexible.mediumInWait)
-            selectedInWaits.add(flexible.mediumInWait)
-            listAdapter.addItem(FlexibleMediumInWait(flexible.mediumInWait))
-            mediumInWaitSuggestAdapter.setFilter(filter)
-            mediumInWaitSuggestAdapter.filterItems()
-            false
-        })
+        mediumInWaitSuggestAdapter.addItemClickListener { position: Int ->
+            val similarMediumInWait =
+                mediumInWaitSuggestAdapter.getItemAt(position)!! as? MediumInWait
+                    ?: return@addItemClickListener
+
+            selectedInWaits.add(similarMediumInWait)
+            listAdapter.addItem(similarMediumInWait)
+            mediumInWaitSuggestAdapter.ignoreItems(listAdapter.currentItems)
+        }
 
         searchMediumView = view.findViewById(R.id.search_medium_view)
         searchMediumView.setOnQueryTextListener(searchMediumListener())
@@ -115,30 +104,18 @@ class MediaInWaitFragment : BaseFragment() {
         val similarMediaInWait = viewModel.getSimilarMediaInWait(mediumInWait)
         similarMediaInWait.observe(viewLifecycleOwner, { mediumInWaits: MutableList<MediumInWait> ->
             mediumInWaits.addAll(selectedInWaits)
-            val flexibles: List<IFlexible<*>> = mediumInWaits.mapNotNull {
-                return@mapNotNull if (it != mediumInWait) {
-                    FlexibleMediumInWait(it)
-                } else null
-            }
-
-            listAdapter.updateDataSet(flexibles)
+            listAdapter.setItems(mediumInWaits)
         })
         val inWaitSuggestions = viewModel.getMediumInWaitSuggestions(mediumInWait.medium)
         inWaitSuggestions.observe(viewLifecycleOwner, { mediumInWaits: List<MediumInWait> ->
-            mediumInWaitSuggestAdapter.updateDataSet(
-                mediumInWaits.map(::FlexibleMediumInWaitSuggestion)
-            )
+            mediumInWaitSuggestAdapter.setItems(ArrayList(mediumInWaits))
         })
 
         val mediumSuggestions = viewModel.getMediumSuggestions(mediumInWait.medium)
         mediumSuggestions.observe(viewLifecycleOwner, { medium: List<SimpleMedium> ->
-            mediumSuggestAdapter.updateDataSet(medium.map(::FlexibleMedium))
+            mediumSuggestAdapter.setItems(ArrayList(medium))
         })
         return view
-    }
-
-    private class MediumInWaitSimpleFilter : Serializable {
-        val filterOut: MutableSet<MediumInWait> = HashSet()
     }
 
     private fun searchMediumListener(): SearchView.OnQueryTextListener {
@@ -177,7 +154,7 @@ class MediaInWaitFragment : BaseFragment() {
         }
     }
 
-    private fun process(listAdapter: FlexibleAdapter<IFlexible<*>>) {
+    private fun process(listAdapter: MediumInWaitAdapter) {
         if (running) {
             return
         }
@@ -185,11 +162,7 @@ class MediaInWaitFragment : BaseFragment() {
 
         if (addMedium.isChecked) {
             val items = listAdapter.currentItems
-            val mediumInWaits: List<MediumInWait> = items.mapNotNull {
-                return@mapNotNull if (it is FlexibleMediumInWait) {
-                    it.mediumInWait
-                } else null
-            }
+            val mediumInWaits: List<MediumInWait> = items
 
             var item: MediaList? = listSelect.selectedItem as MediaList?
 
@@ -219,11 +192,7 @@ class MediaInWaitFragment : BaseFragment() {
                 return
             }
             val items = listAdapter.currentItems
-            val mediumInWaits: MutableList<MediumInWait> = items.mapNotNull {
-                return@mapNotNull if (it is FlexibleMediumInWait) {
-                    it.mediumInWait
-                } else null
-            }.toMutableList()
+            val mediumInWaits: MutableList<MediumInWait> = items.toMutableList()
             mediumInWaits.add(mediumInWait)
 
             lifecycleScope.launch {
@@ -244,7 +213,7 @@ class MediaInWaitFragment : BaseFragment() {
         }
     }
 
-    private fun getFlexibleRecyclerAdapter(view: View, @IdRes id: Int): FlexibleAdapter<IFlexible<*>> {
+    private fun <T : RecyclerView.Adapter<*>> createRecyclerAdapter(view: View, @IdRes id: Int, create: () -> T): T {
         val recyclerView: RecyclerView = view.findViewById(id)
         // Set the adapter
         val context = view.context
@@ -254,120 +223,109 @@ class MediaInWaitFragment : BaseFragment() {
         val decoration = DividerItemDecoration(context, layoutManager.orientation)
         recyclerView.addItemDecoration(decoration)
 
-        val adapter = FlexibleAdapter<IFlexible<*>>(null)
+        val adapter = create()
         recyclerView.adapter = adapter
         return adapter
     }
 
-    private class FlexibleMediumInWait(val mediumInWait: MediumInWait) :
-        AbstractFlexibleItem<CloseableTextViewHolder>() {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val that = other as FlexibleMediumInWait
-            return mediumInWait == that.mediumInWait
+    private class MediumInWaitAdapter(val closable: Boolean = false): RecyclerView.Adapter<CloseableTextViewHolder>(), ItemPositionable<MediumInWait> {
+        private lateinit var itemClickListener: (position: Int) -> Unit
+        private var items: MutableList<MediumInWait> = ArrayList()
+        private var ignoreItems: List<MediumInWait> = ArrayList()
+
+        val currentItems: List<MediumInWait>
+            get() = items
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CloseableTextViewHolder {
+            val root = LayoutInflater.from(parent.context).inflate(
+                if (closable) R.layout.closeable_item else R.layout.text_only_item,
+                parent,
+                false
+            )
+            val holder = CloseableTextViewHolder(root, removeCallback = { position -> items.removeAt(position) }, closable)
+            root.setOnClickListener { itemClickListener(holder.bindingAdapterPosition) }
+            return holder
         }
 
-        override fun hashCode(): Int {
-            return mediumInWait.hashCode()
+        override fun onBindViewHolder(holder: CloseableTextViewHolder, position: Int) {
+            getItemAt(position)?.let {
+                val domain = getDomain(it.link)
+                val title = "${it.title} ($domain)"
+                holder.textView.text = title
+            }
         }
 
-        override fun getLayoutRes(): Int {
-            return R.layout.closeable_item
+        @SuppressLint("NotifyDataSetChanged")
+        fun setItems(items: MutableList<MediumInWait>) {
+            this.items = items
+            this.items.removeAll(this.ignoreItems)
+            this.notifyDataSetChanged()
         }
 
-        override fun createViewHolder(
-            view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>,
-        ): CloseableTextViewHolder {
-            return CloseableTextViewHolder(view, adapter)
+        override fun getItemCount(): Int {
+            return items.size
         }
 
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: CloseableTextViewHolder,
-            position: Int,
-            payloads: List<Any>,
-        ) {
-            val domain = getDomain(mediumInWait.link)
-            val title = "${mediumInWait.title} ($domain)"
-            holder.textView.text = title
+        override fun getItemAt(position: Int): MediumInWait? {
+            if (position >= 0 && position < items.size) {
+                return items[position]
+            }
+            return null
         }
-    }
-
-    private class FlexibleMedium(val medium: SimpleMedium) :
-        AbstractFlexibleItem<CloseableTextViewHolder>() {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val that = other as FlexibleMedium
-            return medium == that.medium
+        fun addItemClickListener(itemClickListener: (position: Int) -> Unit) {
+            this.itemClickListener = itemClickListener
         }
 
-        override fun hashCode(): Int {
-            return medium.hashCode()
+        fun addItem(mediumInWait: MediumInWait) {
+            this.items.add(mediumInWait)
+            this.notifyItemInserted(this.items.size)
         }
 
-        override fun getLayoutRes(): Int {
-            return R.layout.text_only_item
-        }
-
-        override fun createViewHolder(
-            view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>,
-        ): CloseableTextViewHolder {
-            return CloseableTextViewHolder(view, adapter)
-        }
-
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: CloseableTextViewHolder,
-            position: Int,
-            payloads: List<Any>,
-        ) {
-            holder.textView.text = medium.title
+        fun ignoreItems(ignore: List<MediumInWait>) {
+            this.items.removeAll(ignore)
+            this.ignoreItems = ignore
         }
     }
 
-    private class FlexibleMediumInWaitSuggestion(val mediumInWait: MediumInWait) :
-        AbstractFlexibleItem<CloseableTextViewHolder>(), IFilterable<MediumInWaitSimpleFilter?> {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val that = other as FlexibleMediumInWaitSuggestion
-            return mediumInWait == that.mediumInWait
+    private class MediumAdapter: RecyclerView.Adapter<CloseableTextViewHolder>(), ItemPositionable<SimpleMedium> {
+        private var items: MutableList<SimpleMedium> = ArrayList()
+        private lateinit var itemClickListener: (position: Int) -> Unit
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CloseableTextViewHolder {
+            val root = LayoutInflater.from(parent.context).inflate(
+                R.layout.text_only_item,
+                parent,
+                false
+            )
+            val holder = CloseableTextViewHolder(root, removeCallback = { position -> items.removeAt(position) }, false)
+            root.setOnClickListener { itemClickListener(holder.bindingAdapterPosition) }
+            return holder
         }
 
-        override fun hashCode(): Int {
-            return mediumInWait.hashCode()
+        override fun onBindViewHolder(holder: CloseableTextViewHolder, position: Int) {
+            getItemAt(position)?.let {
+                holder.textView.text = it.title
+            }
         }
 
-        override fun getLayoutRes(): Int {
-            return R.layout.text_only_item
+        @SuppressLint("NotifyDataSetChanged")
+        fun setItems(items: MutableList<SimpleMedium>) {
+            this.items = items
+            this.notifyDataSetChanged()
         }
 
-        override fun createViewHolder(
-            view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>,
-        ): CloseableTextViewHolder {
-            return CloseableTextViewHolder(view, adapter)
+        override fun getItemCount(): Int {
+            return this.items.size
         }
 
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: CloseableTextViewHolder,
-            position: Int,
-            payloads: List<Any>,
-        ) {
-            val domain = getDomain(mediumInWait.link)
-            val title = "${mediumInWait.title} ($domain)"
-            holder.textView.text = title
+        override fun getItemAt(position: Int): SimpleMedium? {
+            if (position >= 0 && position < items.size) {
+                return items[position]
+            }
+            return null
         }
-
-        override fun filter(constraint: MediumInWaitSimpleFilter?): Boolean {
-            return if (constraint == null) {
-                true
-            } else !constraint.filterOut.contains(mediumInWait)
+        fun addItemClickListener(itemClickListener: (position: Int) -> Unit) {
+            this.itemClickListener = itemClickListener
         }
     }
 

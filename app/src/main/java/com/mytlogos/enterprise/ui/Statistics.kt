@@ -10,10 +10,12 @@ import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 import com.mytlogos.enterprise.R
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 /**
  *
  */
+@ExperimentalCoroutinesApi
 class Statistics : BaseFragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,

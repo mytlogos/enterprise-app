@@ -12,10 +12,12 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.tools.ScrollHideHelper
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.*
 
+@ExperimentalCoroutinesApi
 abstract class ViewerFragment<T> : BaseFragment() {
     private val scrollHideHelper = ScrollHideHelper()
     private lateinit var navigationView: View

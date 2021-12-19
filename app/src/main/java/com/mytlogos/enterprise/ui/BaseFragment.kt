@@ -16,7 +16,9 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.getContentTool
 import com.mytlogos.enterprise.tools.getDomain
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@ExperimentalCoroutinesApi
 open class BaseFragment : Fragment() {
     protected fun setTitle(title: String?) {
         mainActivity.setTitle(title)

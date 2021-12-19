@@ -27,6 +27,7 @@ import com.mytlogos.enterprise.tools.*
 import com.mytlogos.enterprise.viewmodel.FilterableViewModel
 import com.mytlogos.enterprise.viewmodel.MediumFilterableViewModel
 import com.mytlogos.enterprise.viewmodel.SortableViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -34,6 +35,7 @@ import java.util.*
 import java.util.function.Consumer
 import kotlin.reflect.KMutableProperty0
 
+@ExperimentalCoroutinesApi
 abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : BaseFragment() {
 
     private lateinit var fragmentRoot: ViewGroup
@@ -173,7 +175,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
 
     abstract class BaseAdapter<Value : Any, ViewHolder : RecyclerView.ViewHolder>(
         diff: DiffUtil.ItemCallback<Value>,
-    ) : PagingDataAdapter<Value, ViewHolder>(diff) {
+    ) : PagingDataAdapter<Value, ViewHolder>(diff), ItemPositionable<Value> {
 
         lateinit var selectionTracker: SelectionTracker<Long>
 
@@ -183,7 +185,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
 
         open var holderInit: ViewInit<in ViewHolder>? = null
 
-        fun getItemAt(position: Int) = super.getItem(position)
+        override fun getItemAt(position: Int) = super.getItem(position)
 
         fun getItemFrom(holder: ViewHolder): Value? {
             val position = holder.bindingAdapterPosition
@@ -429,7 +431,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         @IdRes
         override val viewId: Int,
         val property: KMutableProperty0<Int>,
-        val showToast: (v: String, duration: Int) -> Unit,
+        val showToast: ShowToast,
     ) : TextProperty {
         override fun get(): String = property.get().toString()
         override fun set(newFilter: String) {
@@ -581,6 +583,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
 
     abstract val viewModelClass: Class<ViewModel>
 
+    @ExperimentalCoroutinesApi
     abstract fun createPaged(model: ViewModel): Flow<PagingData<Value>>
 
     /**
@@ -629,3 +632,5 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
         return ViewModelProvider(this).get(viewModelClass)
     }
 }
+
+typealias ShowToast = (v: String, duration: Int) -> Unit

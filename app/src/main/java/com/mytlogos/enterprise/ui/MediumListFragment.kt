@@ -2,7 +2,6 @@ package com.mytlogos.enterprise.ui
 
 import android.annotation.SuppressLint
 import android.content.DialogInterface
-import android.graphics.Color
 import android.os.*
 import android.view.*
 import android.widget.*
@@ -10,24 +9,20 @@ import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.RecyclerView
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.TimeAgo
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.requireSupportActionBar
 import com.mytlogos.enterprise.tools.Sortings
+import com.mytlogos.enterprise.tools.setDefaultSelectableBackgroundCompat
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
 import com.mytlogos.enterprise.viewmodel.MediumViewModel
-import eu.davidea.flexibleadapter.FlexibleAdapter
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
-import eu.davidea.flexibleadapter.items.IFlexible
-import eu.davidea.flexibleadapter.utils.DrawableUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
-import org.joda.time.DateTime
 import java.util.*
 import kotlin.math.max
 
+@ExperimentalCoroutinesApi
 class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
     private var inMoveMediumMode = false
 
@@ -160,12 +155,7 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
                 holder.topRightText.text = relativeTime
                 holder.mainText.text = item.title
 
-                val drawable = DrawableUtils.getSelectableBackgroundCompat(
-                    Color.WHITE,  // normal background
-                    Color.GRAY,  // pressed background
-                    Color.BLACK) // ripple color
-                DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
-
+                holder.itemView.setDefaultSelectableBackgroundCompat()
                 holder.itemView.isActivated = selectionTracker.isSelected(item.getSelectionKey())
             } else {
                 holder.itemView.isActivated = false
@@ -227,64 +217,6 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
                         ),
                     )
                 }
-        }
-    }
-
-    internal class FlexibleMediumItem(val item: MediumItem) :
-        AbstractFlexibleItem<MetaViewHolder>() {
-
-        init {
-            this.isDraggable = false
-            this.isSwipeable = false
-            this.isSelectable = true
-        }
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is FlexibleMediumItem) return false
-            return item.mediumId == other.item.mediumId
-        }
-
-        override fun hashCode(): Int {
-            return item.mediumId
-        }
-
-        override fun getLayoutRes(): Int {
-            return R.layout.meta_item
-        }
-
-        override fun createViewHolder(
-            view: View,
-            adapter: FlexibleAdapter<IFlexible<*>>,
-        ): MetaViewHolder {
-            return MetaViewHolder(view, adapter)
-        }
-
-        @SuppressLint("DefaultLocale", "SetTextI18n")
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: MetaViewHolder,
-            position: Int,
-            payloads: List<Any>,
-        ) {
-            // transform news id (int) to a string,
-            // because it would expect a resource id if it is an int
-            val currentReadEpisode = if (item.currentReadEpisode < 0) 0 else item.currentReadEpisode
-            val lastEpisode = if (item.lastEpisode < 0) 0 else item.lastEpisode
-            holder.topLeftText.text = "$currentReadEpisode/$lastEpisode"
-            val lastUpdated = item.lastUpdated
-            val relativeTime: String = if (lastUpdated != null) {
-                TimeAgo.toRelative(lastUpdated, DateTime.now())!!
-            } else {
-                "No Updates"
-            }
-            holder.topRightText.text = relativeTime
-            holder.mainText.text = item.title
-            val drawable = DrawableUtils.getSelectableBackgroundCompat(
-                Color.WHITE,  // normal background
-                Color.GRAY,  // pressed background
-                Color.BLACK) // ripple color
-            DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
         }
     }
 }

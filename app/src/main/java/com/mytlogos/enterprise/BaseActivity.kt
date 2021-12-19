@@ -15,8 +15,9 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.navigation.NavigationView
 import com.mytlogos.enterprise.ui.Home
 import com.mytlogos.enterprise.ui.ListsFragment
-import com.mytlogos.enterprise.ui.NewsFragment
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@ExperimentalCoroutinesApi
 abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
     private lateinit var progressView: View
 
@@ -56,7 +57,6 @@ abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationIt
                 fragment = Home()
                 addToBackStack = false
             }
-            R.id.news -> fragment = NewsFragment()
             R.id.logout -> {
             }
             R.id.lists -> fragment = ListsFragment()

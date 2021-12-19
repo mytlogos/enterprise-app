@@ -15,17 +15,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
-import com.mytlogos.enterprise.background.TaskManager.Companion.runCompletableTask
 import com.mytlogos.enterprise.model.ActionCount
 import com.mytlogos.enterprise.model.Release
 import com.mytlogos.enterprise.model.TocEpisode
 import com.mytlogos.enterprise.requireSupportActionBar
-import com.mytlogos.enterprise.tools.SelectableViewHolder
-import com.mytlogos.enterprise.tools.Sortings
-import com.mytlogos.enterprise.tools.getKeyFrom
-import com.mytlogos.enterprise.tools.getPositionFrom
+import com.mytlogos.enterprise.tools.*
 import com.mytlogos.enterprise.viewmodel.TocEpisodeViewModel
-import eu.davidea.flexibleadapter.utils.DrawableUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -38,6 +33,7 @@ import kotlin.math.min
  *
  *
  */
+@ExperimentalCoroutinesApi
 class TocFragment
 /**
  * Mandatory empty constructor for the fragment manager to instantiate the
@@ -229,11 +225,7 @@ class TocFragment
                 holder.openLocalIcon.alpha = if (item.isSaved) 1f else 0.25f
                 holder.openBrowserIcon.alpha = if (hasOnline) 1f else 0.25f
 
-                val drawable = DrawableUtils.getSelectableBackgroundCompat(
-                    Color.WHITE,  // normal background
-                    Color.GRAY,  // pressed background
-                    Color.BLACK) // ripple color
-                DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
+                holder.itemView.setDefaultSelectableBackgroundCompat()
                 holder.itemView.isActivated = selectionTracker.isSelected(item.getSelectionKey())
             } else {
                 holder.itemView.isActivated = false
@@ -333,6 +325,7 @@ class TocFragment
         return false
     }
 
+    @ExperimentalCoroutinesApi
     private fun displayActionModeActions() {
         if (actionType == null) {
             System.err.println("not action type selected")

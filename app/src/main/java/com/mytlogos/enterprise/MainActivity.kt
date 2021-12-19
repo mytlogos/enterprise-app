@@ -42,9 +42,11 @@ import com.mytlogos.enterprise.worker.DownloadWorker.Companion.enqueueDownloadTa
 import com.mytlogos.enterprise.worker.DownloadWorker.Companion.stopWorker
 import com.mytlogos.enterprise.worker.DownloadWorker.Companion.watchDatabase
 import com.mytlogos.enterprise.worker.SynchronizeWorker.Companion.enqueueOneTime
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import java.util.*
 
+@ExperimentalCoroutinesApi
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener,
     PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
     private val preferenceChangeListener =
@@ -266,7 +268,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 fragment = Home()
                 addToBackStack = false
             }
-            R.id.news -> fragment = NewsFragment()
             R.id.logout -> logout()
             R.id.lists -> fragment = ListsFragment()
             R.id.medium -> fragment = MediumListFragment()

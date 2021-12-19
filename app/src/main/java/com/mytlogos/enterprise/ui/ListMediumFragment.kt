@@ -3,7 +3,6 @@ package com.mytlogos.enterprise.ui
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.DialogInterface
-import android.graphics.Color
 import android.os.*
 import android.view.*
 import android.widget.*
@@ -16,15 +15,17 @@ import com.mytlogos.enterprise.TimeAgo
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.requireSupportActionBar
 import com.mytlogos.enterprise.tools.Sortings
+import com.mytlogos.enterprise.tools.setDefaultSelectableBackgroundCompat
 import com.mytlogos.enterprise.tools.transformPaging
 import com.mytlogos.enterprise.viewmodel.ListMediaViewModel
 import com.mytlogos.enterprise.viewmodel.ListsViewModel
-import eu.davidea.flexibleadapter.utils.DrawableUtils
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.max
 
+@ExperimentalCoroutinesApi
 class ListMediumFragment : BasePagingFragment<MediumItem, ListMediaViewModel>() {
     private var listId = 0
     private var isExternal = false
@@ -243,12 +244,7 @@ class ListMediumFragment : BasePagingFragment<MediumItem, ListMediaViewModel>() 
                 holder.topRightText.text = relativeTime
                 holder.mainText.text = item.title
 
-                val drawable = DrawableUtils.getSelectableBackgroundCompat(
-                    Color.WHITE,  // normal background
-                    Color.GRAY,  // pressed background
-                    Color.BLACK) // ripple color
-                DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
-
+                holder.itemView.setDefaultSelectableBackgroundCompat()
                 holder.itemView.isActivated = selectionTracker.isSelected(item.getSelectionKey())
             } else {
                 holder.itemView.isActivated = false

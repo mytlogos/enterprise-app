@@ -13,12 +13,14 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.ReadEpisode
 import com.mytlogos.enterprise.model.Release
 import com.mytlogos.enterprise.viewmodel.ReadEpisodeViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import java.util.*
 
 /**
  * A fragment representing a list of Items.
  */
+@ExperimentalCoroutinesApi
 class ReadHistoryFragment
 /**
  * Mandatory empty constructor for the fragment manager to instantiate the

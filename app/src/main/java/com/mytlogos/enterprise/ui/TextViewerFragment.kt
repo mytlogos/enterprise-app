@@ -223,7 +223,7 @@ open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisod
          */
         fun newInstance(startEpisode: Int, zipFile: String): TextViewerFragment {
             val fragment: TextViewerFragment = if (zipFile.endsWith(".pdf")) {
-                PdfViewerFragment()
+                throw NotImplementedError("Pdf Viewer is not implemented!")
             } else {
                 TextViewerFragment()
             }

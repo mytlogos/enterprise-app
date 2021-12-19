@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.core.view.allViews
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -21,17 +22,17 @@ import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.ChapterPage
 import com.mytlogos.enterprise.model.SimpleEpisode
 import com.mytlogos.enterprise.tools.getImageContentTool
-import eu.davidea.flexibleadapter.FlexibleAdapter
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
-import eu.davidea.flexibleadapter.items.IFlexible
-import eu.davidea.viewholders.FlexibleViewHolder
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.math.abs
 
+@ExperimentalCoroutinesApi
 class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>() {
-    private lateinit var adapter: FlexibleAdapter<IFlexible<ViewHolder>>
+    private lateinit var adapter: ImageAdapter
+    private lateinit var recyclerView: RecyclerView
 
     override val layoutRes: Int
         get() = R.layout.image_reader_fragment
@@ -48,11 +49,7 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
         val decoration = DividerItemDecoration(requireContext(), manager.orientation)
         recyclerView.addItemDecoration(decoration)
 
-        adapter = FlexibleAdapter(null)
-        adapter.addListener(FlexibleAdapter.OnItemClickListener { _: View?, _: Int ->
-            toggleReadingMode()
-            false
-        })
+        adapter = ImageAdapter { toggleReadingMode() }
 
         recyclerView.adapter = adapter
         recyclerView.setOnScrollChangeListener { _: View?, scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int ->
@@ -87,14 +84,15 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
     }
 
     override fun calculateProgressByScroll(scrollY: Int, scrollX: Int): Float {
-        val childCount = adapter.recyclerView.childCount
+        val childCount = this.recyclerView.childCount
         if (childCount == 0) {
             return 0.0f
         }
+        this.recyclerView.childCount
         val visibleChildren: MutableList<View> = ArrayList()
 
         for (i in 0 until childCount) {
-            val child = adapter.recyclerView.getChildAt(i) ?: continue
+            val child = this.recyclerView.getChildAt(i) ?: continue
             val height = child.height
 
             if (height > 0) {
@@ -121,13 +119,8 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
         if (lastVisibleRect == null || lastVisibleView!!.height <= 0) {
             return 0.0f
         }
-        var lastVisiblePosition = -1
-        for (holder in adapter.allBoundViewHolders) {
-            if (holder.frontView === lastVisibleView) {
-                lastVisiblePosition = holder.flexibleAdapterPosition
-                break
-            }
-        }
+        val viewHolder = recyclerView.findContainingViewHolder(lastVisibleView)
+        val lastVisiblePosition = viewHolder?.bindingAdapterPosition ?: -1
         val itemCount = adapter.itemCount
         var viewedItems = 0
 
@@ -147,12 +140,12 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
 
         if (localCurrentlyReading != null) {
             currentEpisode = localCurrentlyReading.episodeId
-            val flexibles: MutableList<IFlexible<ViewHolder>> = localCurrentlyReading
+            val flexibles: MutableList<String> = localCurrentlyReading
                 .pageMap
-                .map { (index, page) -> ImageItem(page.path, index) }
+                .map { (_, page) -> page.path }
                 .toMutableList()
 
-            adapter.updateDataSet(flexibles)
+            adapter.setItems(flexibles)
 
             setTitle("Episode ${localCurrentlyReading.toIndexString()}")
         } else {
@@ -162,48 +155,30 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
         onLoadFinished()
     }
 
-    private class ImageItem(
-        private val imagePath: String,
-        private val page: Int,
-    ) : AbstractFlexibleItem<ViewHolder>() {
+    private class ImageAdapter(val clickListener: () -> Unit) : RecyclerView.Adapter<ViewHolder>(), ItemPositionable<String> {
+        private var items: List<String> = ArrayList()
 
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val imageItem = other as ImageItem
-            return imagePath == imageItem.imagePath
-        }
-
-        override fun hashCode(): Int {
-            return imagePath.hashCode()
-        }
-
-        override fun getLayoutRes(): Int {
-            return R.layout.image_item
-        }
-
-        override fun createViewHolder(
-            view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>,
-        ): ViewHolder {
-            return ViewHolder(view, adapter)
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val root = LayoutInflater.from(parent.context).inflate(
+                R.layout.image_item,
+                parent,
+                false
+            )
+            root.setOnClickListener { clickListener() }
+            return ViewHolder(root)
         }
 
         @SuppressLint("SetTextI18n")
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: ViewHolder,
-            position: Int,
-            payloads: List<Any>,
-        ) {
-            val empty = imagePath.isEmpty()
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val imagePath = getItemAt(position)
+
+            val empty = imagePath.isNullOrEmpty()
             holder.emptyText.visibility = if (empty) View.VISIBLE else View.GONE
             holder.imageView.visibility = if (empty) View.GONE else View.VISIBLE
 
             if (empty) {
                 Glide.with(holder.itemView).clear(holder.imageView)
-                //                holder.imageView.setImageURI(null);
-                holder.emptyText.text = "Page $page is missing"
+                holder.emptyText.text = "Page $position is missing"
             } else {
                 holder.emptyText.text = null
                 Glide
@@ -212,20 +187,30 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
                     .format(DecodeFormat.PREFER_ARGB_8888)
                     .override(Target.SIZE_ORIGINAL)
                     .into(holder.imageView)
-                //                holder.imageView.setImageURI(Uri.fromFile(new File(this.imagePath)));
             }
+        }
+
+        @SuppressLint("NotifyDataSetChanged")
+        fun setItems(items: List<String>) {
+            this.items = items
+            this.notifyDataSetChanged()
+        }
+
+        override fun getItemCount(): Int {
+            return this.items.size
+        }
+
+        override fun getItemAt(position: Int): String? {
+            if (position >= 0 && position < items.size) {
+                return items[position]
+            }
+            return null
         }
     }
 
-    private class ViewHolder(view: View, adapter: FlexibleAdapter<*>) :
-        FlexibleViewHolder(view, adapter) {
+    private class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val imageView: ImageView = view.findViewById(R.id.image) as ImageView
         val emptyText: TextView = view.findViewById(R.id.empty_view) as TextView
-
-        init {
-            emptyText.setOnClickListener(this)
-            imageView.setOnClickListener(this)
-        }
     }
 
     class ReadableEpisode(

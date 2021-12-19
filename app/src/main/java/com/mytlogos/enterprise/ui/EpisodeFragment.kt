@@ -1,13 +1,18 @@
 package com.mytlogos.enterprise.ui
 
-import android.graphics.Color
+import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Bundle
 import android.view.*
 import android.widget.ImageButton
 import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.selection.SelectionPredicates
+import androidx.recyclerview.selection.SelectionTracker
+import androidx.recyclerview.selection.StorageStrategy
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -17,22 +22,20 @@ import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
 import com.mytlogos.enterprise.model.DisplayRelease
 import com.mytlogos.enterprise.model.ExternalMediaList
 import com.mytlogos.enterprise.model.MediaList
+import com.mytlogos.enterprise.tools.DetailsLookup
+import com.mytlogos.enterprise.tools.SimpleItemKeyProvider
 import com.mytlogos.enterprise.tools.getDomain
 import com.mytlogos.enterprise.viewmodel.EpisodeViewModel
-import eu.davidea.flexibleadapter.FlexibleAdapter
-import eu.davidea.flexibleadapter.SelectableAdapter
-import eu.davidea.flexibleadapter.items.AbstractFlexibleItem
-import eu.davidea.flexibleadapter.items.IFlexible
-import eu.davidea.flexibleadapter.utils.DrawableUtils
-import eu.davidea.viewholders.FlexibleViewHolder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.Comparator
+import kotlin.collections.ArrayList
 
 /**
  * A fragment representing a List of DisplayReleases.
  */
+@ExperimentalCoroutinesApi
 class EpisodeFragment
 /**
  * Mandatory empty constructor for the fragment manager to instantiate the
@@ -41,7 +44,6 @@ class EpisodeFragment
     : BasePagingFragment<DisplayRelease, EpisodeViewModel>() {
     private lateinit var episodeViewModel: EpisodeViewModel
 
-    @ExperimentalCoroutinesApi
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -101,160 +103,179 @@ class EpisodeFragment
         override fun createViewHolder(root: View, viewType: Int) = ViewHolder(root)
     }
 
-    override fun createFilterable(): Filterable {
-        val showToastFunction = this::showToast
-        return object : Filterable {
-            override val searchFilterProperties: Array<Property<*>> = arrayOf(
-                IntTextProperty(
-                    R.id.minIndex,
-                    viewModel::minIndex,
-                    showToastFunction
-                ),
-                IntTextProperty(
-                    R.id.maxIndex,
-                    viewModel::maxIndex,
-                    showToastFunction
-                ),
-                SimpleTextProperty(R.id.host_filter, viewModel::host),
-                SimplePositionProperty(R.id.read, viewModel::read),
-                SimplePositionProperty(R.id.saved, viewModel::saved),
-                SimpleProperty(R.id.latest_only, viewModel::isLatestOnly),
-            )
+    private class EpisodeFilterable(showToastFunction: ShowToast, val viewModel: EpisodeViewModel, val context: Context, val lifecycleOwner: LifecycleOwner) : Filterable {
+        override val searchFilterProperties: Array<Property<*>> = arrayOf(
+            IntTextProperty(
+                R.id.minIndex,
+                viewModel::minIndex,
+                showToastFunction
+            ),
+            IntTextProperty(
+                R.id.maxIndex,
+                viewModel::maxIndex,
+                showToastFunction
+            ),
+            SimpleTextProperty(R.id.host_filter, viewModel::host),
+            SimplePositionProperty(R.id.read, viewModel::read),
+            SimplePositionProperty(R.id.saved, viewModel::saved),
+            SimpleProperty(R.id.latest_only, viewModel::isLatestOnly),
+        )
 
-            override fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {
-                val recycler: RecyclerView = view.findViewById(R.id.listsFilter) as RecyclerView
-                val lists = viewModel.internLists
-                val layoutManager = LinearLayoutManager(requireContext())
-                recycler.layoutManager = layoutManager
+        override fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {
+            val recycler: RecyclerView = view.findViewById(R.id.listsFilter) as RecyclerView
+            val lists = viewModel.internLists
+            val layoutManager = LinearLayoutManager(context)
+            recycler.layoutManager = layoutManager
 
-                val decoration = DividerItemDecoration(requireContext(), layoutManager.orientation)
-                recycler.addItemDecoration(decoration)
+            val decoration = DividerItemDecoration(context, layoutManager.orientation)
+            recycler.addItemDecoration(decoration)
 
-                val flexibleAdapter = FlexibleAdapter<IFlexible<*>>(null)
-                updateRecycler(flexibleAdapter, lists.value)
-                lists.observe(this@EpisodeFragment,
-                    { mediaLists: MutableList<MediaList> ->
-                        updateRecycler(flexibleAdapter,
-                            mediaLists)
-                    })
+            val selectionTracker = SelectionTracker.Builder(
+                "MediaListSelection",
+                recycler,
+                SimpleItemKeyProvider(recycler),
+                DetailsLookup(recycler),
+                StorageStrategy.createLongStorage(),
+            ).withSelectionPredicate(SelectionPredicates.createSelectAnything()).build()
 
-                flexibleAdapter.mode = SelectableAdapter.Mode.MULTI
-                flexibleAdapter.addListener(FlexibleAdapter.OnItemClickListener { _: View?, position: Int ->
-                    flexibleAdapter.toggleSelection(position)
-                    val listIds: MutableList<Int> = ArrayList()
-
-                    for (selectedPosition in flexibleAdapter.selectedPositions) {
-                        val item =
-                            flexibleAdapter.getItem(selectedPosition, FlexibleListItem::class.java)
-                        item?.let { listIds.add(it.mediaList.listId) }
-                    }
-
-                    viewModel.filterListIds = listIds
-                    sortFlexibleList(flexibleAdapter)
-                    true
+            val adapter = ListAdapter(selectionTracker)
+            this.updateRecycler(adapter, lists.value)
+            lists.observe(this.lifecycleOwner,
+                { mediaLists: MutableList<MediaList> ->
+                    updateRecycler(adapter, mediaLists)
                 })
 
-                recycler.adapter = flexibleAdapter
-            }
-
-            fun updateRecycler(
-                flexibleAdapter: FlexibleAdapter<IFlexible<*>>,
-                mediaLists: MutableList<MediaList>?,
-            ) {
-                println("List: $mediaLists")
-                if (mediaLists == null) {
-                    return
+            selectionTracker.addObserver(object : SelectionTracker.SelectionObserver<Long>() {
+                override fun onSelectionChanged() {
+                    val selectedIds = selectionTracker.selection.map { it.toInt() }
+                    viewModel.filterListIds = selectedIds
+                    adapter.sortItems(selectedIds)
                 }
-                val flexibles: MutableList<IFlexible<*>> =
-                    mediaLists.map(::FlexibleListItem).toMutableList()
+            })
 
-                this.sortFlexibleList(flexibleAdapter, flexibles)
+            recycler.adapter = adapter
+        }
+
+        fun updateRecycler(
+            adapter: ListAdapter,
+            mediaLists: MutableList<MediaList>?,
+        ) {
+            println("List: $mediaLists")
+
+            if (mediaLists == null) {
+                return
             }
 
-            private fun sortFlexibleList(
-                flexibleAdapter: FlexibleAdapter<IFlexible<*>>,
-                flexibles: MutableList<IFlexible<*>> = flexibleAdapter.currentItems.toMutableList(),
-            ) {
-                val listIds = viewModel.filterListIds
+            this.sortFlexibleList(adapter, mediaLists)
+        }
 
-                flexibles.sortWith(Comparator { o1: IFlexible<*>, o2: IFlexible<*> ->
-                    val item1 = o1 as FlexibleListItem
-                    val item2 = o2 as FlexibleListItem
+        private fun sortFlexibleList(
+            adapter: ListAdapter,
+            flexibles: MutableList<MediaList>,
+        ) {
+            val listIds = viewModel.filterListIds
 
-                    val selected1 = listIds.contains(item1.mediaList.listId)
-                    val selected2 = listIds.contains(item2.mediaList.listId)
+            flexibles.sortWith(Comparator { o1: MediaList, o2: MediaList ->
+                val selected1 = listIds.contains(o1.listId)
+                val selected2 = listIds.contains(o2.listId)
+
+                return@Comparator if (selected1 == selected2) {
+                    o1.name.compareTo(o2.name)
+                } else {
+                    if (selected1) -1 else 1
+                }
+            })
+
+            adapter.setItems(flexibles)
+        }
+
+        override val filterLayout: Int
+            get() = R.layout.filter_unread_episode_layout
+
+        private class ListAdapter(val selectionTracker: SelectionTracker<Long>) : RecyclerView.Adapter<TextOnlyViewHolder>(), ItemPositionable<MediaList> {
+            private var items: MutableList<MediaList> = ArrayList()
+
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TextOnlyViewHolder {
+                val root = LayoutInflater.from(parent.context).inflate(
+                    R.layout.text_only_item,
+                    parent,
+                    false
+                )
+                val holder =  TextOnlyViewHolder(root)
+                root.setOnClickListener(View.OnClickListener {
+                    val position = holder.bindingAdapterPosition
+
+                    if (position != RecyclerView.NO_POSITION) {
+                        val item = this.getItemAt(position)
+
+                        if (item != null) {
+                            selectionTracker.select(item.getSelectionKey())
+                        } else {
+                            println("EpisodeFragment: Trying to select a null MediaList item!")
+                        }
+                    }
+                })
+                return holder
+            }
+
+            @SuppressLint("NotifyDataSetChanged")
+            fun setItems(items: MutableList<MediaList>) {
+                this.items = items
+                this.notifyDataSetChanged()
+            }
+
+            @SuppressLint("NotifyDataSetChanged")
+            fun sortItems(selectedIds: List<Int>) {
+                this.items.sortWith(Comparator { o1: MediaList, o2: MediaList ->
+                    val selected1 = selectedIds.contains(o1.listId)
+                    val selected2 = selectedIds.contains(o2.listId)
 
                     return@Comparator if (selected1 == selected2) {
-                        item1.mediaList.name.compareTo(item2.mediaList.name)
+                        o1.name.compareTo(o2.name)
                     } else {
                         if (selected1) -1 else 1
                     }
                 })
+                this.notifyDataSetChanged()
+            }
 
-                flexibleAdapter.updateDataSet(flexibles)
-
-                // update selection
-                for (i in 0 until flexibles.size) {
-                    val item = flexibles[i] as FlexibleListItem
-
-                    if (listIds.contains(item.mediaList.listId)) {
-                        flexibleAdapter.addSelection(i)
-                    } else {
-                        flexibleAdapter.removeSelection(i)
-                    }
+            override fun onBindViewHolder(holder: TextOnlyViewHolder, position: Int) {
+                getItemAt(position)?.let {
+                    val listSource = if (it is ExternalMediaList) "External" else "Internal"
+                    val title = "${it.name} ($listSource)"
+                    holder.textView.text = title
                 }
             }
 
-            override val filterLayout: Int
-                get() = R.layout.filter_unread_episode_layout
+            override fun getItemCount(): Int {
+                return this.items.size
+            }
+
+            override fun getItemAt(position: Int): MediaList? {
+                if (position < 0 || this.items.size <= position) return null
+                return this.items[position]
+            }
+
         }
-    }
 
-    private data class FlexibleListItem(val mediaList: MediaList) :
-        AbstractFlexibleItem<TextOnlyViewHolder>() {
-
-        override fun getLayoutRes(): Int {
-            return R.layout.text_only_item
-        }
-
-        override fun createViewHolder(
+        private class TextOnlyViewHolder(
             view: View,
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-        ): TextOnlyViewHolder {
-            return TextOnlyViewHolder(view, adapter)
-        }
+        ) : RecyclerView.ViewHolder(view) {
+            val textView: TextView = view as TextView
 
-        override fun bindViewHolder(
-            adapter: FlexibleAdapter<IFlexible<*>?>?,
-            holder: TextOnlyViewHolder,
-            position: Int,
-            payloads: List<Any>,
-        ) {
-            val listSource = if (mediaList is ExternalMediaList) "External" else "Internal"
-            val title = "${mediaList.name} ($listSource)"
-            holder.textView.text = title
-
-            val drawable = DrawableUtils.getSelectableBackgroundCompat(
-                Color.WHITE, // normal background
-                Color.GRAY,  // pressed background
-                Color.BLACK, // ripple color
-            )
-            DrawableUtils.setBackgroundCompat(holder.itemView, drawable)
+            init {
+                val params = textView.layoutParams as ViewGroup.MarginLayoutParams
+                params.setMargins(0, 0, 0, 0)
+                textView.textSize = 15f
+                textView.requestLayout()
+            }
         }
     }
 
-    private class TextOnlyViewHolder(
-        view: View,
-        adapter: FlexibleAdapter<*>?,
-    ) : FlexibleViewHolder(view, adapter) {
-        val textView: TextView = view as TextView
 
-        init {
-            val params = textView.layoutParams as ViewGroup.MarginLayoutParams
-            params.setMargins(0, 0, 0, 0)
-            textView.textSize = 15f
-            textView.requestLayout()
-        }
+
+    override fun createFilterable(): Filterable {
+        return EpisodeFilterable(this::showToast, viewModel, requireContext(), this.viewLifecycleOwner)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {

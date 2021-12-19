@@ -68,10 +68,6 @@ dependencies {
     def work_version = "2.5.0"
     implementation "androidx.work:work-runtime:$work_version"
 
-    // Using JCenter
-    implementation 'eu.davidea:flexible-adapter:5.1.0'
-    implementation 'eu.davidea:flexible-adapter-ui:1.0.0'
-    implementation 'eu.davidea:flexible-adapter-livedata:1.0.0-b3'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'joda-time:joda-time:2.10.10'
@@ -87,7 +83,6 @@ dependencies {
         exclude group: 'xmlpull'
     }
     implementation 'org.slf4j:slf4j-android:1.7.32'
-    implementation 'com.github.barteksc:android-pdf-viewer:2.8.2'
 
     def lifecycle_version = '2.3.1'
     implementation "androidx.lifecycle:lifecycle-common-java8:$lifecycle_version"

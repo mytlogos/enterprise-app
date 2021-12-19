@@ -8,9 +8,11 @@ import androidx.recyclerview.widget.DiffUtil
 import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.model.NotificationItem
 import com.mytlogos.enterprise.viewmodel.NotificationViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
+@ExperimentalCoroutinesApi
 class NotificationFragment : BasePagingFragment<NotificationItem, NotificationViewModel>() {
     override fun onCreateView(
         inflater: LayoutInflater,

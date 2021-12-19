@@ -8,8 +8,11 @@ import androidx.recyclerview.selection.ItemKeyProvider
 import androidx.recyclerview.selection.SelectionTracker.SelectionPredicate
 import androidx.recyclerview.widget.RecyclerView
 import com.mytlogos.enterprise.ui.BasePagingFragment
+import com.mytlogos.enterprise.ui.ItemPositionable
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 
+@ExperimentalCoroutinesApi
 class SimpleItemKeyProvider(
     private val recyclerView: RecyclerView,
 ) :
@@ -17,7 +20,7 @@ class SimpleItemKeyProvider(
 
     override fun getKey(position: Int): Long? {
         val adapter = recyclerView.adapter
-        if (adapter !is BasePagingFragment.BaseAdapter<*, *>) {
+        if (adapter !is ItemPositionable<*>) {
             return null
         }
         return getKeyFrom(position, adapter)
@@ -25,7 +28,9 @@ class SimpleItemKeyProvider(
 
     override fun getPosition(key: Long): Int = getPositionFrom(key, recyclerView)
 }
-fun getKeyFrom(position: Int, adapter: BasePagingFragment.BaseAdapter<*, *>): Long? {
+
+@ExperimentalCoroutinesApi
+fun getKeyFrom(position: Int, adapter: ItemPositionable<*>): Long? {
     val item = adapter.getItemAt(position)
 
     return if (item is Selectable) {
@@ -33,6 +38,7 @@ fun getKeyFrom(position: Int, adapter: BasePagingFragment.BaseAdapter<*, *>): Lo
     } else null
 }
 
+@ExperimentalCoroutinesApi
 fun getPositionFrom(key: Long, recyclerView: RecyclerView): Int {
     val viewHolder = recyclerView.findViewHolderForItemId(key)
     val position = viewHolder?.layoutPosition
@@ -44,7 +50,7 @@ fun getPositionFrom(key: Long, recyclerView: RecyclerView): Int {
         val childViewHolder = recyclerView.getChildViewHolder(child)
         val adapter = childViewHolder.bindingAdapter
 
-        if (adapter !is BasePagingFragment.BaseAdapter<*, *>) {
+        if (adapter !is ItemPositionable<*>) {
             continue
         }
 
@@ -86,13 +92,14 @@ interface Selectable {
 
 internal open class SelectableViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
+    @ExperimentalCoroutinesApi
     fun getItemDetails(): ItemDetailsLookup.ItemDetails<Long> {
         return object : ItemDetailsLookup.ItemDetails<Long>() {
             override fun getPosition(): Int = bindingAdapterPosition
 
             override fun getSelectionKey(): Long? {
                 return bindingAdapter?.let {
-                    if (it !is BasePagingFragment.BaseAdapter<*, *>) {
+                    if (it !is ItemPositionable<*>) {
                         return@let null
                     }
                     val position = bindingAdapterPosition
@@ -112,6 +119,7 @@ internal open class SelectableViewHolder(view: View) : RecyclerView.ViewHolder(v
     }
 }
 
+@ExperimentalCoroutinesApi
 internal class DetailsLookup(private val mRecyclerView: RecyclerView) : ItemDetailsLookup<Long>() {
 
     override fun getItemDetails(e: MotionEvent): ItemDetails<Long>? {
