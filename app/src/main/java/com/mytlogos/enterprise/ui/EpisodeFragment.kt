@@ -130,6 +130,16 @@ class EpisodeFragment
             val decoration = DividerItemDecoration(context, layoutManager.orientation)
             recycler.addItemDecoration(decoration)
 
+            val adapter = ListAdapter()
+            this.updateRecycler(adapter, lists.value)
+
+            lists.observe(this.lifecycleOwner,
+                { mediaLists: MutableList<MediaList> ->
+                    updateRecycler(adapter, mediaLists)
+                })
+
+            recycler.adapter = adapter
+
             val selectionTracker = SelectionTracker.Builder(
                 "MediaListSelection",
                 recycler,
@@ -138,13 +148,7 @@ class EpisodeFragment
                 StorageStrategy.createLongStorage(),
             ).withSelectionPredicate(SelectionPredicates.createSelectAnything()).build()
 
-            val adapter = ListAdapter(selectionTracker)
-            this.updateRecycler(adapter, lists.value)
-            lists.observe(this.lifecycleOwner,
-                { mediaLists: MutableList<MediaList> ->
-                    updateRecycler(adapter, mediaLists)
-                })
-
+            adapter.selectionTracker = selectionTracker
             selectionTracker.addObserver(object : SelectionTracker.SelectionObserver<Long>() {
                 override fun onSelectionChanged() {
                     val selectedIds = selectionTracker.selection.map { it.toInt() }
@@ -152,8 +156,6 @@ class EpisodeFragment
                     adapter.sortItems(selectedIds)
                 }
             })
-
-            recycler.adapter = adapter
         }
 
         fun updateRecycler(
@@ -192,8 +194,9 @@ class EpisodeFragment
         override val filterLayout: Int
             get() = R.layout.filter_unread_episode_layout
 
-        private class ListAdapter(val selectionTracker: SelectionTracker<Long>) : RecyclerView.Adapter<TextOnlyViewHolder>(), ItemPositionable<MediaList> {
+        private class ListAdapter() : RecyclerView.Adapter<TextOnlyViewHolder>(), ItemPositionable<MediaList> {
             private var items: MutableList<MediaList> = ArrayList()
+            lateinit var selectionTracker: SelectionTracker<Long>
 
             override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TextOnlyViewHolder {
                 val root = LayoutInflater.from(parent.context).inflate(
