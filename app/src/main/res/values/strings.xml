@@ -256,4 +256,5 @@
     <string name="name_of_the_list">Name of the List</string>
     <string name="name_of_the_medium">Name of the Medium</string>
     <string name="scroll_helper">Scroll helper</string>
+    <string name="mark_read">Mark read</string>
 </resources>

@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisode>() {
     private lateinit var textDisplay: TextView
     private lateinit var scrollView: ScrollView
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?,
@@ -108,6 +109,7 @@ open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisod
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.font) {
             changeFont()
+            return true
         }
         return super.onOptionsItemSelected(item)
     }

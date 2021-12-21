@@ -1,9 +1,7 @@
 package com.mytlogos.enterprise.ui
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.annotation.IdRes
@@ -81,6 +79,19 @@ abstract class ViewerFragment<T> : BaseFragment() {
             scrollView = localScrollView
         }
         return view
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.viewer_menu, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.read) {
+            this.updateProgress(1.0f)
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     open fun onScroll(scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int) {

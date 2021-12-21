@@ -6,6 +6,7 @@
         <entry key="app/src/main/res/drawable-anydpi/ic_arrow_left_dark.xml" value="0.38229166666666664" />
         <entry key="app/src/main/res/drawable/ic_launcher_background.xml" value="0.38229166666666664" />
         <entry key="app/src/main/res/drawable/ic_launcher_foreground.xml" value="0.38229166666666664" />
+        <entry key="app/src/main/res/layout/activity_login_register.xml" value="0.2866847826086957" />
         <entry key="app/src/main/res/layout/closeable_item.xml" value="0.20520833333333333" />
         <entry key="app/src/main/res/layout/flexible_header.xml" value="0.20520833333333333" />
         <entry key="app/src/main/res/layout/fragment_reader_pdf.xml" value="0.2866847826086957" />
@@ -16,6 +17,8 @@
         <entry key="app/src/main/res/layout/swipe_list.xml" value="0.20520833333333333" />
         <entry key="app/src/main/res/layout/viewer_layout.xml" value="0.19010416666666666" />
         <entry key="app/src/main/res/menu/activity_main_drawer.xml" value="0.36614583333333334" />
+        <entry key="app/src/main/res/menu/text_viewer_menu.xml" value="0.36614583333333334" />
+        <entry key="app/src/main/res/menu/viewer_menu.xml" value="0.36614583333333334" />
         <entry key="app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" value="0.38229166666666664" />
       </map>
     </option>
