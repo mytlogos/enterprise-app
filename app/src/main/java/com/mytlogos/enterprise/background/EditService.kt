@@ -381,7 +381,7 @@ internal class EditService(
     suspend fun updateRead(episodeIds: Collection<Int>, read: Boolean) {
         val progress = if (read) 1f else 0f
         coroutineScope {
-            episodeIds.doPartitionedExSuspend() { ids: List<Int> ->
+            episodeIds.doPartitionedExSuspend { ids: List<Int> ->
                 async {
                     if (!client.isClientOnline) {
                         val filteredIds = storage.getReadEpisodes(episodeIds, !read)
@@ -446,7 +446,7 @@ internal class EditService(
         try {
             // to prevent duplicates
             val items = storage.getListItems(listId)
-            ids.removeAll(items)
+            ids.removeAll(items.toSet())
 
             // adding nothing cannot fail
             if (ids.isEmpty()) {
@@ -482,7 +482,7 @@ internal class EditService(
         try {
             // to prevent duplicates
             val items = storage.getListItems(listId)
-            ids.removeAll(items)
+            ids.removeAll(items.toSet())
 
             // adding nothing cannot fail
             if (ids.isEmpty()) {

@@ -139,7 +139,7 @@ class CheckSavedWorker(
             val savedEpisodes = episodeRepository.getSavedEpisodes(mediumId)
             val unSavedIds: MutableSet<Int> = HashSet(savedEpisodes)
             unSavedIds.removeAll(looseIds)
-            looseIds.removeAll(savedEpisodes)
+            looseIds.removeAll(savedEpisodes.toSet().toSet())
 
             if (unSavedIds.isNotEmpty()) {
                 episodeRepository.updateSaved(unSavedIds, false)
@@ -235,7 +235,7 @@ class CheckSavedWorker(
                 toDownloadMedia.addAll(affectedMediaIds)
             }
         }
-        toDownloadMedia.removeAll(prohibitedMedia)
+        toDownloadMedia.removeAll(prohibitedMedia.toSet())
 
         for (mediumId in toDownloadMedia) {
             mediumSavedEpisodes.putIfAbsent(mediumId, HashSet())

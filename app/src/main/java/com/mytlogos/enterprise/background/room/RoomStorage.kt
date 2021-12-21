@@ -122,8 +122,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
     override suspend fun insertDanglingMedia(mediaIds: MutableCollection<Int>) {
         val listMedia = mediaListDao.getAllLinkedMedia()
         val externalListMedia = externalMediaListDao.getAllLinkedMedia()
-        mediaIds.removeAll(listMedia)
-        mediaIds.removeAll(externalListMedia)
+        mediaIds.removeAll(listMedia.toSet())
+        mediaIds.removeAll(externalListMedia.toSet())
         if (mediaIds.isEmpty()) {
             return
         }

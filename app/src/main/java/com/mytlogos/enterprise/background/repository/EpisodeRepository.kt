@@ -125,7 +125,7 @@ class EpisodeRepository private constructor(application: Application) {
         val filteredParts = generator.filterParts(partBody)
 
         persister.persist(filteredParts)
-        partIds.removeAll(loadedPartIds)
+        partIds.removeAll(loadedPartIds.toSet())
         partDao.deletePerId(partIds)
     }
 
@@ -151,7 +151,7 @@ class EpisodeRepository private constructor(application: Application) {
                         loadedIds.add(episode.id)
                     }
                     val ids = ArrayList(integers)
-                    ids.removeAll(loadedIds)
+                    ids.removeAll(loadedIds.toSet())
                     episodeDao.deletePerId(ids)
                     false
                 }

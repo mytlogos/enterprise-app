@@ -47,7 +47,7 @@
             android:src="@drawable/ic_arrow_down_bright"
             app:fabCustomSize="35dp"
             app:pressedTranslationZ="12dp"
-            android:contentDescription="TODO" />
+            android:contentDescription="@string/scroll_helper" />
     </LinearLayout>
 
 </RelativeLayout>

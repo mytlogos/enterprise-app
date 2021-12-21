@@ -16,9 +16,9 @@ import java.util.stream.Collectors
 class DummyClientModelPersister(val loadedData: LoadData, val repository: Repository) :
     ClientModelPersister {
 
-    val updatedData: LoadData
-    val deletedData: LoadData
-    val generator: LoadWorkGenerator
+    val updatedData: LoadData = LoadData()
+    val deletedData: LoadData = LoadData()
+    val generator: LoadWorkGenerator = LoadWorkGenerator(loadedData)
     var isUserUpdated = false
         private set
     var isUserDeleted = false
@@ -359,9 +359,4 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
         return savedToDownloads
     }
 
-    init {
-        generator = LoadWorkGenerator(loadedData)
-        updatedData = LoadData()
-        deletedData = LoadData()
-    }
 }

@@ -125,7 +125,7 @@ class MediaListRepository private constructor(application: Application) {
     suspend fun moveMediaToList(oldListId: Int, newListId: Int, ids: MutableCollection<Int>): Boolean {
         // to prevent duplicates
         val items = mediaListDao.getListItems(newListId)
-        ids.removeAll(items)
+        ids.removeAll(items.toSet())
 
         // adding nothing cannot fail
         if (ids.isEmpty()) {

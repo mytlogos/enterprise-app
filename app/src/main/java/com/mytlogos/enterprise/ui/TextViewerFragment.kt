@@ -17,14 +17,16 @@ import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.SimpleEpisode
 import com.mytlogos.enterprise.tools.textContentTool
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * A simple [Fragment] subclass.
+ * A simple [ViewerFragment] subclass.
  * Use the [TextViewerFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
+@ExperimentalCoroutinesApi
 open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisode>() {
     private lateinit var textDisplay: TextView
     private lateinit var scrollView: ScrollView

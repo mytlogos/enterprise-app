@@ -194,7 +194,7 @@ class EpisodeFragment
         override val filterLayout: Int
             get() = R.layout.filter_unread_episode_layout
 
-        private class ListAdapter() : RecyclerView.Adapter<TextOnlyViewHolder>(), ItemPositionable<MediaList> {
+        private class ListAdapter : RecyclerView.Adapter<TextOnlyViewHolder>(), ItemPositionable<MediaList> {
             private var items: MutableList<MediaList> = ArrayList()
             lateinit var selectionTracker: SelectionTracker<Long>
 
@@ -205,7 +205,7 @@ class EpisodeFragment
                     false
                 )
                 val holder =  TextOnlyViewHolder(root)
-                root.setOnClickListener(View.OnClickListener {
+                root.setOnClickListener {
                     val position = holder.bindingAdapterPosition
 
                     if (position != RecyclerView.NO_POSITION) {
@@ -217,7 +217,7 @@ class EpisodeFragment
                             println("EpisodeFragment: Trying to select a null MediaList item!")
                         }
                     }
-                })
+                }
                 return holder
             }
 

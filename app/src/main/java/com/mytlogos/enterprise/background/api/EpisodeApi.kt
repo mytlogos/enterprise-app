@@ -1,7 +1,6 @@
 package com.mytlogos.enterprise.background.api
 
 import com.mytlogos.enterprise.background.api.model.ClientEpisode
-import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.*
 

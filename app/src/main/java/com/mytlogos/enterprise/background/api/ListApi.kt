@@ -3,7 +3,6 @@ package com.mytlogos.enterprise.background.api
 import com.mytlogos.enterprise.background.api.model.ClientListQuery
 import com.mytlogos.enterprise.background.api.model.ClientMediaList
 import com.mytlogos.enterprise.background.api.model.ClientMultiListQuery
-import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.*
 

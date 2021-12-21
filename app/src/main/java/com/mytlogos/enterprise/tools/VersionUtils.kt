@@ -21,16 +21,12 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Build.VERSION_CODES
-import java.util.*
 
 
 /**
  * Modified short Version of Original FlexibleAdapter Library File "FlexibleUtils".
  *
  * @author Davide Steduto
- * @see DrawableUtils
- *
- * @see LayoutUtils
  *
  * @since 27/01/2016 Created in main package
  * <br></br>17/12/2017 Moved into UI package

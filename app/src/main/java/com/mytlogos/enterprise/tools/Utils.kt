@@ -38,25 +38,6 @@ fun externalUserTypeToName(type: Int): String {
     }
 }
 
-
-@Deprecated(
-    "PagedList is deprecated",
-    replaceWith = ReplaceWith("transformPaging")
-)
-fun <E : Any> LiveData<MutableList<E>>.transformPaged(): LiveData<PagedList<E>> {
-    return Transformations.switchMap(
-        this
-    ) { input: List<E> ->
-        LivePagedListBuilder(
-            object : DataSource.Factory<Int, E>() {
-                override fun create(): DataSource<Int, E> {
-                    return StaticDataSource(input)
-                }
-            }, 1000
-        ).build()
-    }
-}
-
 fun <Key : Any, Value : Any> transformFlow(
     pagingSourceFactory: () -> PagingSource<Key, Value>
 ): Flow<PagingData<Value>> {
@@ -240,19 +221,4 @@ fun <T> Response<T>.checkAndGetBody(): T {
         throw ServerException(this.code(), errorMsg)
     }
     return body
-}
-
-
-private class StaticDataSource<E : Any>(
-    private val data: List<E>,
-) : PageKeyedDataSource<Int, E>() {
-    override fun loadInitial(
-        params: LoadInitialParams<Int>,
-        callback: LoadInitialCallback<Int, E>,
-    ) {
-        callback.onResult(data, null, null)
-    }
-
-    override fun loadBefore(params: LoadParams<Int>, callback: LoadCallback<Int, E>) {}
-    override fun loadAfter(params: LoadParams<Int>, callback: LoadCallback<Int, E>) {}
 }

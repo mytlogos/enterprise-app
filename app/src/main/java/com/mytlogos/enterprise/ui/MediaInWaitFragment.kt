@@ -24,7 +24,6 @@ import kotlin.collections.ArrayList
 
 @ExperimentalCoroutinesApi
 class MediaInWaitFragment : BaseFragment() {
-    private val NO_LIST = MediaList("", -1, "Don't add to List", 0, 0)
     private var selectedMedium: SimpleMedium? = null
     private lateinit var mediumInWait: MediumInWait
     private lateinit var viewModel: MediumInWaitViewModel
@@ -258,7 +257,7 @@ class MediaInWaitFragment : BaseFragment() {
         @SuppressLint("NotifyDataSetChanged")
         fun setItems(items: MutableList<MediumInWait>) {
             this.items = items
-            this.items.removeAll(this.ignoreItems)
+            this.items.removeAll(this.ignoreItems.toSet())
             this.notifyDataSetChanged()
         }
 
@@ -282,7 +281,7 @@ class MediaInWaitFragment : BaseFragment() {
         }
 
         fun ignoreItems(ignore: List<MediumInWait>) {
-            this.items.removeAll(ignore)
+            this.items.removeAll(ignore.toSet())
             this.ignoreItems = ignore
         }
     }
@@ -331,6 +330,7 @@ class MediaInWaitFragment : BaseFragment() {
 
     companion object {
         private const val MEDIUM_IN_WAIT = "MEDIUM_IN_WAIT"
+        private val NO_LIST = MediaList("", -1, "Don't add to List", 0, 0)
 
         fun getInstance(inWait: MediumInWait): MediaInWaitFragment {
             val bundle = Bundle()

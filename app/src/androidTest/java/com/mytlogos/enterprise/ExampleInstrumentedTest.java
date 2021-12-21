@@ -1,5 +1,11 @@
 package com.mytlogos.enterprise;
 
+import static org.junit.Assert.assertEquals;
+
+import android.content.Context;
+
+import androidx.test.platform.app.InstrumentationRegistry;
+
 import org.junit.Test;
 
 /**
@@ -12,8 +18,8 @@ public class ExampleInstrumentedTest {
     @Test
     public void useAppContext() {
         // Context of the app under test.
-//        Context appContext = InstrumentationRegistry.getTargetContext();
-//
-//        assertEquals("com.mytlogos.enterprise", appContext.getPackageName());
+        Context appContext = InstrumentationRegistry.getInstrumentation().getContext();
+
+        assertEquals("com.mytlogos.enterprise", appContext.getPackageName());
     }
 }
