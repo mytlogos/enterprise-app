@@ -68,8 +68,10 @@ class MediumListFragment : BasePagingFragment<MediumItem, MediumViewModel>() {
                     }.toMutableList()
 
                 lifecycleScope.launch {
-                    val success = listsViewModel.addMediumToList(list.listId, selectedMediaIds)
-                    val text = if (success) {
+                    val success = runCatching {
+                        listsViewModel.addMediumToList(list.listId, selectedMediaIds)
+                    }
+                    val text = if (success.getOrDefault(false)) {
                         mode.finish()
                         // TODO: 29.07.2019 replace toast with undoable snackbar
                         "Added ${selectedMediaIds.size} Media to ${list.name}"

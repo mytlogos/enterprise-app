@@ -75,7 +75,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
 
         this.changeSelectionMode(SelectionMode.IDLE)
 
-        viewLifecycleOwner.lifecycleScope.launch {
+        lifecycleScope.launchWhenCreated {
             createPaged(viewModel).collectLatest { adapter.submitData(it) }
         }
         return fragmentRoot

@@ -69,14 +69,22 @@ open class TextViewerFragment(private val defaultDispatcher: CoroutineDispatcher
         }
         lifecycleScope.launch {
             val bookTool = textContentTool
-            val text: CharSequence
 
-            withContext(defaultDispatcher) {
-                val data = bookTool.openEpisode(currentBook, localCurrentlyReading.file)
-                text = processData(data)
+            val result = runCatching {
+                withContext(defaultDispatcher) {
+                    val data = bookTool.openEpisode(currentBook, localCurrentlyReading.file)
+                    return@withContext processData(data)
+                }
             }
-            displayData(text)
-            onLoadFinished()
+
+            val text: CharSequence? = result.getOrNull()
+
+            if (text != null) {
+                displayData(text)
+                onLoadFinished()
+            } else {
+                showToast("Cloud not load Episode")
+            }
         }
     }
 

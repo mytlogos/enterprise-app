@@ -152,7 +152,7 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
             // perform the user login attempt.
             showProgress(true)
             authenticating = true
-            lifecycleScope.launch { authenticate(emailUserName, password) }
+            lifecycleScope.launch { runCatching { authenticate(emailUserName, password) } }
         }
     }
 
@@ -215,7 +215,9 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
         addEmailsToAutoComplete(emails)
     }
 
-    override fun onLoaderReset(cursorLoader: Loader<Cursor>) { /* no-op*/ }
+    override fun onLoaderReset(cursorLoader: Loader<Cursor>) { /* no-op*/
+    }
+
     private fun addEmailsToAutoComplete(emailAddressCollection: List<String>) {
         //Create adapter to tell the AutoCompleteTextView what to show in its dropdown list.
         val adapter = ArrayAdapter(

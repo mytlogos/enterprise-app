@@ -226,7 +226,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             }
             R.id.reset_fail_counter -> {
                 lifecycleScope.launch {
-                    EpisodeRepository.getInstance(application).clearFailEpisodes()
+                    runCatching {
+                        EpisodeRepository.getInstance(application).clearFailEpisodes()
+                    }
                 }
                 selected = true
             }

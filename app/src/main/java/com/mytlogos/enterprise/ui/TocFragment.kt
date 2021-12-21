@@ -168,10 +168,17 @@ class TocFragment
         val view = super.onCreateView(inflater, container, savedInstanceState)
         registerForContextMenu(listView)
         lifecycleScope.launch {
-            val title = viewModel.getMediumTitle(mediumId)
-            setTitle(title)
+            val result = runCatching {
+                viewModel.getMediumTitle(mediumId)
+            }
+            val title = result.getOrNull()
+
+            if (title != null) {
+                setTitle(title)
+            } else {
+                setTitle("Table of Contents")
+            }
         }
-        this.setTitle("Table of Contents")
         viewModel.setMediumId(mediumId)
         return view
     }
@@ -307,8 +314,10 @@ class TocFragment
         }
         if (item.isSaved) {
             lifecycleScope.launch {
-                val mediumType = instance.getMediumType(mediumId)
-                openLocal(item.episodeId, mediumId, mediumType)
+                runCatching {
+                    val mediumType = instance.getMediumType(mediumId)
+                    openLocal(item.episodeId, mediumId, mediumType)
+                }
             }
         } else {
             val urls = item.releases.mapNotNull(Release::url)

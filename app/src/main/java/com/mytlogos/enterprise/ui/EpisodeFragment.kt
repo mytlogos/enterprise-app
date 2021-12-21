@@ -311,8 +311,10 @@ class EpisodeFragment
                 .add("Open Local")
                 .setOnMenuItemClickListener {
                     lifecycleScope.launch {
-                        val mediumType = instance.getMediumType(episode.mediumId)
-                        openLocal(episode.episodeId, episode.mediumId, mediumType)
+                        runCatching {
+                            val mediumType = instance.getMediumType(episode.mediumId)
+                            openLocal(episode.episodeId, episode.mediumId, mediumType)
+                        }
                     }
                     true
                 }

@@ -12,8 +12,10 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.background.RepositoryImpl
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.viewmodel.AddListViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
+@ExperimentalCoroutinesApi
 class AddList : BaseFragment() {
     private lateinit var mViewModel: AddListViewModel
     private lateinit var autoDownload: SwitchCompat
@@ -68,7 +70,10 @@ class AddList : BaseFragment() {
             videoMedium.isChecked -> medium = medium or VIDEO
         }
         lifecycleScope.launch {
-            val userNow = (RepositoryImpl.instance as RepositoryImpl).getUserNow()
+            val userNowResult = runCatching {
+                (RepositoryImpl.instance as RepositoryImpl).getUserNow()
+            }
+            val userNow = userNowResult.getOrNull()
 
             if (userNow == null) {
                 showToast("User not authenticated")

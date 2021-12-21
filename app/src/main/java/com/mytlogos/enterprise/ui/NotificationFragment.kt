@@ -34,7 +34,7 @@ class NotificationFragment : BasePagingFragment<NotificationItem, NotificationVi
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.clear_notifications) {
-            lifecycleScope.launch { viewModel.clearNotifications() }
+            lifecycleScope.launch { runCatching { viewModel.clearNotifications() } }
             return true
         }
         return super.onOptionsItemSelected(item)

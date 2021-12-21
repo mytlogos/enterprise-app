@@ -66,9 +66,9 @@ class ListMediumFragment : BasePagingFragment<MediumItem, ListMediaViewModel>() 
             val size = selectedMediaIds.size
 
             lifecycleScope.launch {
-                val success = viewModel.removeMedia(listId, selectedMediaIds)
+                val success = runCatching { viewModel.removeMedia(listId, selectedMediaIds) }
 
-                val text: String = if (!success) {
+                val text: String = if (!success.getOrDefault(false)) {
                     "Could not delete $size Media from List '$listTitle'"
                 } else {
                     mode.finish()
@@ -103,12 +103,14 @@ class ListMediumFragment : BasePagingFragment<MediumItem, ListMediaViewModel>() 
                 val selectedMediaIds = getSelectedItems().map { it.mediumId }.toMutableList()
 
                 lifecycleScope.launch {
-                    val success = listsViewModel.moveMediumToList(
-                        listId,
-                        list.listId,
-                        selectedMediaIds
-                    )
-                    val text = if (!success) {
+                    val success = runCatching {
+                        listsViewModel.moveMediumToList(
+                            listId,
+                            list.listId,
+                            selectedMediaIds
+                        )
+                    }
+                    val text = if (success.getOrDefault(false)) {
                         "Could not move Media to List '" + list.name + "'"
                     } else {
                         mode.finish()
