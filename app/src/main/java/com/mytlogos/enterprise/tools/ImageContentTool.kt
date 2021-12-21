@@ -8,6 +8,7 @@ import com.mytlogos.enterprise.model.ChapterPage
 import com.mytlogos.enterprise.model.IMAGE
 import kotlinx.coroutines.*
 import java.io.*
+import java.lang.NullPointerException
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
@@ -128,6 +129,10 @@ class ImageContentTool internal constructor(
                 throw IOException("could not create image medium directory")
             }
         }
+        if (file == null) {
+            throw NullPointerException("Image Medium Directory is not set")
+        }
+
         for (episode in episodes) {
             val content = episode.getContent()
 
@@ -136,8 +141,14 @@ class ImageContentTool internal constructor(
             }
 
             val links = repository!!.getReleaseLinks(episode.episodeId)
+
+            if (links.isEmpty()) {
+                throw IllegalStateException("Cannot download an episode without any release links")
+            }
+
             val writtenFiles: MutableList<File> = ArrayList(content.size)
 
+            // download a single image first to roughly estimate the end size
             downloadPage(content, 0, file, episode.episodeId, links, writtenFiles)
 
             val firstImage = writtenFiles[0]
@@ -181,32 +192,40 @@ class ImageContentTool internal constructor(
         }
     }
 
+    /**
+     * Download an Image.
+     *
+     * @param content array with at least [page] items
+     * @param page an index in the boundary of [content]
+     * @param file the parent directory of the downloaded file
+     * @param episodeId a valid episodeId, to mark the page file
+     * @param links links of the episode from which the page comes from
+     * @param writtenFiles a list from which the the file of the image will be appended on success
+     */
     @Throws(IOException::class)
     private fun downloadPage(
         content: Array<String>,
         page: Int,
-        file: File?,
+        file: File,
         episodeId: Int,
         links: List<String>,
         writtenFiles: MutableList<File>
     ) {
         val link = content[page]
         val pageLinkDomain = getDomain(link)
-        if (pageLinkDomain == null) {
-            System.err.println("invalid url: '$link'")
-            return
-        }
-        val referer: String? = links.find { getDomain(it) === pageLinkDomain }
+            ?: throw IllegalArgumentException("invalid url: '$link', could not find domain")
 
-        if (referer == null || referer.isEmpty()) {
+        // try to find a link with a common domain
+        val referer: String? = links.find { getDomain(it)?.let { domain -> pageLinkDomain.contains(domain) } ?: false }
+
+        if (referer.isNullOrBlank()) {
             // we need a referrer for sites like mangahasu
-            return
+            throw IllegalStateException("Could not find referer")
         }
         // TODO: 06.08.2019 instead of continuing maybe create an empty image file to signal
         //  the reader that this page is explicitly missing?
         if (link.isEmpty()) {
-            System.err.println("got an invalid link")
-            return
+            throw IllegalStateException("Link is empty")
         }
 
         val imageFormat: String = when {
