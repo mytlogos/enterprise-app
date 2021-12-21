@@ -324,6 +324,15 @@ class EpisodeFragment
                 this.openInBrowser(episode.url)
                 true
             }
+        if (!episode.read) {
+            popupMenu
+                .menu
+                .add("Mark read")
+                .setOnMenuItemClickListener {
+                    instance.updateProgress(episode.episodeId, 1.0f)
+                    true
+                }
+        }
         popupMenu.show()
     }
 
