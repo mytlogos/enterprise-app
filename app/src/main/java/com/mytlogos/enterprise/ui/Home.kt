@@ -41,7 +41,6 @@ class Home : BaseFragment() {
             })
         val viewModel = ViewModelProvider(this).get(UserViewModel::class.java)
         val unreadChapter = view.findViewById(R.id.unread_chapter) as TextView
-        val unreadNews = view.findViewById(R.id.unread_news) as TextView
         val readToday = view.findViewById(R.id.read_today) as TextView
         val readTotal = view.findViewById(R.id.read_total) as TextView
         val internalLists = view.findViewById(R.id.internal_lists) as TextView
@@ -61,7 +60,6 @@ class Home : BaseFragment() {
             }
             unreadChapter.text =
                 getString(R.string.unread_chapter_value, user?.unreadChapterCount ?: 0)
-            unreadNews.text = getString(R.string.unread_news_value, user?.unreadNewsCount ?: 0)
             readToday.text = getString(R.string.current_read, user?.readTodayCount ?: 0)
             readTotal.text = getString(R.string.total_read, user?.readTotalCount ?: 0)
             internalLists.text = getString(R.string.internal_lists, user?.internalLists ?: 0)
