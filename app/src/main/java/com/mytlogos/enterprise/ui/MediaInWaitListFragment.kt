@@ -32,8 +32,6 @@ class MediaInWaitListFragment : BaseSwipePagingFragment<MediumInWait, MediaInWai
 
     override fun createFilterable(): Filterable {
         return object : Filterable {
-            override fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {}
-
             override val filterLayout: Int
                 get() = R.layout.filter_medium_in_wait_layout
 

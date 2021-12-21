@@ -238,15 +238,15 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
                 property.set(values[position])
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onNothingSelected(parent: AdapterView<*>?) { /* not required */ }
         }
     }
 
     private fun setEditText(editText: EditText, property: TextProperty) {
         editText.setText(property.get())
         editText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {/* not required */}
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {/* not required */}
             override fun afterTextChanged(s: Editable) {
                 property.set(s.toString())
             }
@@ -297,7 +297,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     }
 
     open fun onItemClick(position: Int, item: Value?) {
-
+        // no-op by default
     }
 
     open fun onItemLongClick(position: Int, item: Value?): Boolean = false
@@ -395,13 +395,13 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
     }
 
     interface Filterable {
-        fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {}
+        fun onCreateFilter(view: View, builder: AlertDialog.Builder?) {/* no-op */}
 
         val filterLayout: Int
 
         val searchFilterProperties: Array<Property<*>>?
 
-        fun onResetFilter() {}
+        fun onResetFilter() {/* no-op */}
     }
 
     interface Property<E> {
@@ -510,7 +510,7 @@ abstract class BasePagingFragment<Value : Any, ViewModel : AndroidViewModel> : B
                 consumer.accept(valueMap[item])
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onNothingSelected(parent: AdapterView<*>?) {/* not required */}
         }
     }
 

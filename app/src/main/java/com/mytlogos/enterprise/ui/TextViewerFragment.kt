@@ -16,10 +16,7 @@ import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
 import com.mytlogos.enterprise.background.repository.EpisodeRepository
 import com.mytlogos.enterprise.model.SimpleEpisode
 import com.mytlogos.enterprise.tools.textContentTool
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 
 /**
  * A simple [ViewerFragment] subclass.
@@ -27,7 +24,7 @@ import kotlinx.coroutines.withContext
  * create an instance of this fragment.
  */
 @ExperimentalCoroutinesApi
-open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisode>() {
+open class TextViewerFragment(private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default) : ViewerFragment<TextViewerFragment.ReadableEpisode>() {
     private lateinit var textDisplay: TextView
     private lateinit var scrollView: ScrollView
 
@@ -74,7 +71,7 @@ open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisod
             val bookTool = textContentTool
             val text: CharSequence
 
-            withContext(Dispatchers.Default) {
+            withContext(defaultDispatcher) {
                 val data = bookTool.openEpisode(currentBook, localCurrentlyReading.file)
                 text = processData(data)
             }
@@ -205,7 +202,7 @@ open class TextViewerFragment : ViewerFragment<TextViewerFragment.ReadableEpisod
                     return@launch
                 }
                 val text: CharSequence
-                withContext(Dispatchers.Default) {
+                withContext(defaultDispatcher) {
                     val data = bookTool.openEpisode(currentBook, currentlyReading!!.file)
                     text = processData(data)
                 }

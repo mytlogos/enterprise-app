@@ -2,7 +2,6 @@ package com.mytlogos.enterprise.tools
 
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.model.AUDIO
-import com.mytlogos.enterprise.model.MediumType
 import java.io.File
 import java.util.regex.Pattern
 

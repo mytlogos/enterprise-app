@@ -12,7 +12,7 @@ class RoomListUser(val uuid: String, val listId: Int) {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false
         val that = other as RoomListUser
-        return if (listId != that.listId) false else uuid == that.uuid
+        return listId == that.listId && uuid == that.uuid
     }
 
     override fun hashCode(): Int {

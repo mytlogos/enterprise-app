@@ -10,7 +10,7 @@ class RoomNotification(val title: String, val description: String, val dateTime:
         if (other == null || javaClass != other.javaClass) return false
         val that = other as RoomNotification
         if (title != that.title) return false
-        return if (description != that.description) false else dateTime == that.dateTime
+        return description == that.description && dateTime == that.dateTime
     }
 
     override fun hashCode(): Int {

@@ -17,7 +17,7 @@ class MediumInWaitViewModel(application: Application) : FilterableViewModel(appl
     private val mediumInWaitRepository by lazy { MediumInWaitRepository.getInstance(application) }
     private val mediaListRepository by lazy { MediaListRepository.getInstance(application) }
 
-    override fun resetFilter() {}
+    override fun resetFilter() { /* no-op */ }
 
     fun getInternalLists(): LiveData<MutableList<MediaList>> {
         return mediaListRepository.internLists

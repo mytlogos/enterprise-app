@@ -51,6 +51,7 @@ abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationIt
         var activityClass: Class<out Activity?>? = null
         var fragment: Fragment? = null
         var addToBackStack = true
+        var selected = false
 
         when (item.itemId) {
             R.id.home -> {
@@ -58,13 +59,14 @@ abstract class BaseActivity : AppCompatActivity(), NavigationView.OnNavigationIt
                 addToBackStack = false
             }
             R.id.logout -> {
+                // TODO: implement logout
+                selected = true
             }
             R.id.lists -> fragment = ListsFragment()
             R.id.add_medium -> activityClass = AddMediumActivity::class.java
             R.id.add_list -> activityClass = AddListActivity::class.java
             R.id.settings -> fragment = SettingsFragment()
         }
-        var selected = false
         if (activityClass != null) {
             val intent = Intent(this, activityClass)
             this.startActivity(intent)

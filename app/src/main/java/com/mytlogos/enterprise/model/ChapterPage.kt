@@ -5,7 +5,7 @@ data class ChapterPage(val episodeId: Int, val page: Int, val path: String) {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false
         val that = other as ChapterPage
-        return if (episodeId != that.episodeId) false else page == that.page
+        return episodeId == that.episodeId && page == that.page
     }
 
     override fun hashCode(): Int {

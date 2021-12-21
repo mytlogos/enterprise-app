@@ -3,7 +3,6 @@ package com.mytlogos.enterprise.background.api
 import com.mytlogos.enterprise.background.api.model.ClientMedium
 import com.mytlogos.enterprise.background.api.model.ClientMediumInWait
 import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium
-import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.*
 

@@ -278,15 +278,6 @@ class ImageContentTool internal constructor(
         }
     }
 
-    @Throws(IOException::class)
-    private fun saveImageBitmap(`in`: InputStream, image: File) {
-        val bitmap = BitmapFactory.decodeStream(`in`)
-        FileOutputStream(image).buffered().use { outputStream ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 0, outputStream)
-            outputStream.flush()
-        }
-    }
-
     override fun mergeExternalAndInternalMedium(
         toExternal: Boolean,
         source: File,

@@ -12,7 +12,7 @@ data class MediumInWait(
         if (other == null || javaClass != other.javaClass) return false
         val that = other as MediumInWait
         if (medium != that.medium) return false
-        return if (title != that.title) false else link == that.link
+        return title == that.title && link == that.link
     }
 
     override fun hashCode(): Int {

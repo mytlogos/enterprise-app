@@ -1,15 +1,13 @@
 package com.mytlogos.enterprise.background.api
 
 import com.google.gson.GsonBuilder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import org.joda.time.DateTime
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
+import java.lang.Runnable
 import java.net.*
 import java.nio.ByteBuffer
 import java.nio.channels.ClosedByInterruptException
@@ -18,7 +16,7 @@ import java.util.*
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class ServerDiscovery {
+internal class ServerDiscovery(private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) {
     private val maxAddress = 50
     private val executor = Executors.newFixedThreadPool(maxAddress, object : ThreadFactory {
         var id = 0
@@ -35,7 +33,7 @@ internal class ServerDiscovery {
         }
     }
 
-    suspend fun discover(broadcastAddress: InetAddress?): Server? = withContext(Dispatchers.IO) {
+    suspend fun discover(broadcastAddress: InetAddress?): Server? = withContext(ioDispatcher) {
         val discoveredServer = Collections.synchronizedSet(HashSet<Server>())
         val futures: MutableList<Future<Server?>> = ArrayList()
 
@@ -120,8 +118,8 @@ internal class ServerDiscovery {
 
             return Server(ipv4, serverApiPort, true, isDev)
         } catch (ignored: IOException) {
+            return null
         }
-        return null
     }
 
     /**

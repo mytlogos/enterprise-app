@@ -1,7 +1,6 @@
 package com.mytlogos.enterprise.tools
 
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.Transformations
 import androidx.lifecycle.map
 import androidx.paging.*
 import com.mytlogos.enterprise.background.api.NotConnectedException
@@ -18,7 +17,7 @@ import java.util.regex.Pattern
 fun getDomain(url: String?): String? {
     val host = URI.create(url).host ?: return null
     val matcher = Pattern.compile("(www\\.)?(.+?)/?").matcher(host)
-    var domain: String
+    var domain: String?
     if (matcher.matches()) {
         domain = matcher.group(2)
         val index = domain.indexOf("/")

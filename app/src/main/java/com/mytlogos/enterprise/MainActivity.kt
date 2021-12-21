@@ -251,7 +251,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private fun clearLocalMediaData() {
         AlertDialog.Builder(this)
             .setTitle("Are you sure you want to clear local Media Data?")
-            .setPositiveButton("Yes") { dialog: DialogInterface?, which: Int ->
+            .setPositiveButton("Yes") { _, _ ->
                 instance.clearLocalMediaData(this)
                 enqueueOneTime(this.application)
             }
@@ -336,9 +336,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     private fun handlePreferences(preferences: SharedPreferences, key: String) {
         val downloadKey = "auto-download"
-        if (key == downloadKey) {
-            if (preferences.getBoolean(downloadKey, false)) {
-            }
+        if (key == downloadKey && preferences.getBoolean(downloadKey, false)) {
+            // TODO: implement auto-download preference
         }
     }
 

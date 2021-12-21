@@ -59,11 +59,11 @@ class MediaInWaitFragment : BaseFragment() {
         val mediumInWaitSuggestAdapter = createRecyclerAdapter(view, R.id.medium_in_wait_suggestions) { MediumInWaitAdapter() }
 
         mediumSuggestAdapter.addItemClickListener { position: Int ->
-            val flexible =
+            val simpleMedium =
                 mediumSuggestAdapter.getItemAt(position)!! as? SimpleMedium
                     ?: return@addItemClickListener
-            selectedMedium = flexible
-            searchMediumView.setQuery(flexible.title, false)
+            selectedMedium = simpleMedium
+            searchMediumView.setQuery(simpleMedium.title, false)
         }
 
         mediumInWaitSuggestAdapter.addItemClickListener { position: Int ->

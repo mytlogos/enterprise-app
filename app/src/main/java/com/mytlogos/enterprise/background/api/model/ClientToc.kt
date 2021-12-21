@@ -22,7 +22,7 @@ class ClientToc(
     override fun equals(o: Any?): Boolean {
         if (this === o) return true
         if (o !is ClientToc) return false
-        return if (mediumId != o.mediumId) false else link == o.link
+        return mediumId == o.mediumId && link == o.link
     }
 
     override fun toString(): String {

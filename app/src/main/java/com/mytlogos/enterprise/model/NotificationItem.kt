@@ -11,7 +11,7 @@ data class NotificationItem(
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false
         val that = other as NotificationItem
-        return if (title != that.title) false else dateTime == that.dateTime
+        return title == that.title && dateTime == that.dateTime
     }
 
     override fun hashCode(): Int {

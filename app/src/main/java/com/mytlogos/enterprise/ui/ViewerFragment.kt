@@ -2,7 +2,6 @@ package com.mytlogos.enterprise.ui
 
 import android.os.Bundle
 import android.view.*
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.annotation.IdRes
 import androidx.annotation.LayoutRes
@@ -129,7 +128,7 @@ abstract class ViewerFragment<T> : BaseFragment() {
     open val scrolledViewId: Int
         get() = View.NO_ID
 
-    open fun seekFromProgress(progress: Float) {}
+    open fun seekFromProgress(progress: Float) { /* no-op */ }
 
     /**
      * Progress with value of 0 to 1.

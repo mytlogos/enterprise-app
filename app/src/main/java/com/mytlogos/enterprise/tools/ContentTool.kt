@@ -201,7 +201,8 @@ abstract class ContentTool internal constructor(
     }
 
     fun removeAll() {
-        if (this.internalContentDir != null) {
+        val internalContentDir = this.internalContentDir
+        if (internalContentDir != null) {
             for (file in internalContentDir.listFiles()) {
                 if (file.isDirectory) {
                     deleteDir(file)
@@ -211,6 +212,7 @@ abstract class ContentTool internal constructor(
                 }
             }
         }
+        val externalContentDir = externalContentDir
         if (externalContentDir != null) {
             for (file in externalContentDir.listFiles()) {
                 if (file.isDirectory) {

@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import com.mytlogos.enterprise.background.api.DateTimeAdapter
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.tools.SingletonHolder
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -19,7 +20,7 @@ import java.util.concurrent.TimeUnit
 typealias BuildCall<T, R> = (apiImpl: T, url: String) -> R
 typealias QuerySuspend<T, R> = suspend (apiImpl: T, url: String) -> Response<R>
 
-class Client private constructor(private val identificator: NetworkIdentificator) {
+class Client private constructor(private val identificator: NetworkIdentificator, private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) {
     companion object: SingletonHolder<Client, NetworkIdentificator>(::Client)
 
     private val retrofitMap: MutableMap<Class<*>, Retrofit?> = HashMap()
@@ -261,7 +262,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
      * API: GET /api/user/download
      */
     suspend fun downloadEpisodes(episodeIds: Collection<Int?>?): Response<List<ClientDownloadedEpisode>> {
-        return withContext(Dispatchers.IO) {
+        return withContext(this.ioDispatcher) {
             val body = userAuthenticationMap()
             body["episode"] = episodeIds
             return@withContext querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String ->
@@ -807,6 +808,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
                     return true
                 }
             } catch (ignored: NotConnectedException) {
+                /* ignored */
             }
             setDisconnected()
             return false
@@ -814,7 +816,7 @@ class Client private constructor(private val identificator: NetworkIdentificator
 
     @Synchronized
     @Throws(NotConnectedException::class)
-    private suspend fun getServer(): Server? = withContext(Dispatchers.IO) {
+    private suspend fun getServer(): Server? = withContext(ioDispatcher) {
         val ssid = identificator.sSID
 
         if (ssid.isEmpty()) {

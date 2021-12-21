@@ -3,6 +3,7 @@ package com.mytlogos.enterprise.tools
 import android.annotation.SuppressLint
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
 import com.mytlogos.enterprise.model.TEXT
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import nl.siegmann.epublib.domain.Book
@@ -18,7 +19,7 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import kotlin.collections.HashMap
 
-class TextContentTool internal constructor(internalContentDir: File?, externalContentDir: File?) :
+class TextContentTool internal constructor(internalContentDir: File?, externalContentDir: File?, private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) :
     ContentTool(internalContentDir, externalContentDir) {
     private var externalTexts: MutableMap<Int, File>? = null
     private var internalTexts: MutableMap<Int, File>? = null
@@ -173,7 +174,7 @@ class TextContentTool internal constructor(internalContentDir: File?, externalCo
 
     @Suppress("BlockingMethodInNonBlockingContext")
     @Throws(IOException::class)
-    override suspend fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) = withContext(Dispatchers.IO) {
+    override suspend fun saveContent(episodes: Collection<ClientDownloadedEpisode>, mediumId: Int) = withContext(ioDispatcher) {
         if (externalTexts == null) {
             externalTexts = getItemContainers(true)
         }

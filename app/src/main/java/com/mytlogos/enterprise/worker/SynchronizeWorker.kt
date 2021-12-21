@@ -19,6 +19,7 @@ import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import org.joda.time.DateTime
 import java.io.IOException
 import java.util.*
@@ -731,11 +732,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
     private suspend fun cleanUp() {
         val repository = instance
         repository.syncProgress()
-        try {
-            Thread.sleep(10000)
-        } catch (e: InterruptedException) {
-            e.printStackTrace()
-        }
+        delay(10000)
         notificationManager.cancel(syncNotificationId)
         uuid = null
     }

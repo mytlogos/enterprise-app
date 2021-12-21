@@ -24,5 +24,5 @@ class ListMediaViewModel(application: Application) : AndroidViewModel(applicatio
         return mediaListRepository.removeItemFromList(listId, mediumId)
     }
 
-    fun setSort(sortings: Sortings?) {}
+    fun setSort(sortings: Sortings?) {/* TODO: implement sortings */}
 }

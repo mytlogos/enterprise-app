@@ -77,7 +77,7 @@ class Home : BaseFragment() {
 
     private fun addClickListener(view: View, viewId: Int, activityClass: Class<*>) {
         val group: View = view.findViewById(viewId)
-        group.setOnClickListener { v: View? ->
+        group.setOnClickListener {
             val activity = mainActivity
             val intent = Intent(activity, activityClass)
             startActivity(intent)

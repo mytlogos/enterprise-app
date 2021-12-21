@@ -21,7 +21,7 @@ data class DisplayRelease(
         val that = other as DisplayRelease
         if (episodeId != that.episodeId) return false
         if (locked != that.locked) return false
-        return if (url != that.url) false else releaseDate == that.releaseDate
+        return url == that.url && releaseDate == that.releaseDate
     }
 
     override fun hashCode(): Int {

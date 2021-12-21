@@ -105,10 +105,8 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
         requestCode: Int, permissions: Array<String>,
         grantResults: IntArray,
     ) {
-        if (requestCode == REQUEST_READ_CONTACTS) {
-            if (grantResults.size == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                populateAutoComplete()
-            }
+        if (requestCode == REQUEST_READ_CONTACTS && grantResults.size == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            populateAutoComplete()
         }
     }
 
@@ -217,7 +215,7 @@ open class LoginFragment : Fragment(), LoaderManager.LoaderCallbacks<Cursor> {
         addEmailsToAutoComplete(emails)
     }
 
-    override fun onLoaderReset(cursorLoader: Loader<Cursor>) {}
+    override fun onLoaderReset(cursorLoader: Loader<Cursor>) { /* no-op*/ }
     private fun addEmailsToAutoComplete(emailAddressCollection: List<String>) {
         //Create adapter to tell the AutoCompleteTextView what to show in its dropdown list.
         val adapter = ArrayAdapter(

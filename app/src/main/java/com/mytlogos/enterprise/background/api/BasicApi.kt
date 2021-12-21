@@ -2,7 +2,6 @@ package com.mytlogos.enterprise.background.api
 
 import com.mytlogos.enterprise.background.api.model.ClientSimpleUser
 import com.mytlogos.enterprise.background.api.model.ClientUser
-import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.*
 

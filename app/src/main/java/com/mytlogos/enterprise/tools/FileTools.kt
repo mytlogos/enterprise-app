@@ -204,18 +204,18 @@ fun getContentTool(mediumType: Int, application: Application): ContentTool {
 }
 
 fun writeInternal(application: Application): Boolean {
-    return isWriteable(application, getInternalAppDir(application))
+    return isWriteable(getInternalAppDir(application))
 }
 
 fun writeExternal(application: Application): Boolean {
-    return isWriteable(application, getExternalAppDir(application))
+    return isWriteable(getExternalAppDir(application))
 }
 
 fun writable(application: Application): Boolean {
     return writeExternal(application) || writeInternal(application)
 }
 
-private fun isWriteable(application: Application, dir: File?): Boolean {
+private fun isWriteable(dir: File?): Boolean {
     return dir != null && getFreeMBSpace(dir) >= minMBSpaceAvailable
 }
 

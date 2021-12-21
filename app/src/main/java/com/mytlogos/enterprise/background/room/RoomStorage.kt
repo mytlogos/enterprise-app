@@ -849,7 +849,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             return previousListJoins
         }
 
-        override fun finish() {}
+        override fun finish() { /* no-op */ }
 
     }
 }

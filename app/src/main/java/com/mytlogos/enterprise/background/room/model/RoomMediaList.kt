@@ -40,7 +40,7 @@ class RoomMediaList(
         val that = o as RoomMediaList
         if (listId != that.listId) return false
         if (medium != that.medium) return false
-        return if (uuid != that.uuid) false else name == that.name
+        return uuid == that.uuid && name == that.name
     }
 
     override fun hashCode(): Int {
@@ -72,7 +72,7 @@ class RoomMediaList(
             if (this === o) return true
             if (o == null || javaClass != o.javaClass) return false
             val that = o as MediaListMediaJoin
-            return if (listId != that.listId) false else mediumId == that.mediumId
+            return listId == that.listId && mediumId == that.mediumId
         }
 
         override fun hashCode(): Int {

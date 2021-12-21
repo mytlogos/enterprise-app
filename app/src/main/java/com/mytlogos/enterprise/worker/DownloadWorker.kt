@@ -28,7 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class DownloadWorker(
     context: Context,
-    workerParams: WorkerParameters
+    workerParams: WorkerParameters,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): CoroutineWorker(context, workerParams) {
     private val downloadNotificationId = 0x100
     private val notificationManager: NotificationManagerCompat
@@ -365,7 +366,7 @@ class DownloadWorker(
         )
     }
 
-    private suspend fun saveEpisodes(data: SavePackage) = withContext(Dispatchers.IO) {
+    private suspend fun saveEpisodes(data: SavePackage) = withContext(ioDispatcher) {
         @Suppress("BlockingMethodInNonBlockingContext")
         data.contentTool.saveContent(data.toSave, data.mediumId)
         val currentlySavedEpisodes = data.toSave.map { it.episodeId }
@@ -484,7 +485,7 @@ class DownloadWorker(
      * Each Package contains at most [maxPackageSize] Episode Ids.
      * Ignores Episodes which are already marked as saved.
      */
-    private suspend fun createDownloadPackagesFlow(episodeIds: Set<MediumDownload>): Flow<DownloadPackage> = flow {
+    private fun createDownloadPackagesFlow(episodeIds: Set<MediumDownload>): Flow<DownloadPackage> = flow {
             val savedEpisodes = episodeRepository.getAllSavedEpisodes()
             val savedIds = savedEpisodes.toSet()
 

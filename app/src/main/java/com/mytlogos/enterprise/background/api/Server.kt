@@ -34,7 +34,7 @@ internal data class Server(
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false
         val server = other as Server
-        return if (port != server.port) false else ipv4 == server.ipv4
+        return port == server.port && ipv4 == server.ipv4
     }
 
     override fun hashCode(): Int {
