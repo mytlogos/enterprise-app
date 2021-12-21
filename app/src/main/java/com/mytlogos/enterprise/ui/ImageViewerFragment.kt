@@ -8,7 +8,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
-import androidx.core.view.allViews
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -50,14 +49,7 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
         recyclerView.addItemDecoration(decoration)
 
         adapter = ImageAdapter { toggleReadingMode() }
-
         recyclerView.adapter = adapter
-        recyclerView.setOnScrollChangeListener { _: View?, scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int ->
-            onScroll(scrollX,
-                scrollY,
-                oldScrollX,
-                oldScrollY)
-        }
         loadEpisodes()
         return view
     }
@@ -84,6 +76,10 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
     }
 
     override fun calculateProgressByScroll(scrollY: Int, scrollX: Int): Float {
+        // may be called before ImageViewerFragment::onCreateView has finished, so ignore this
+        if (!this::recyclerView.isInitialized) {
+            return 0.0f
+        }
         val childCount = this.recyclerView.childCount
         if (childCount == 0) {
             return 0.0f
@@ -183,7 +179,7 @@ class ImageViewerFragment : ViewerFragment<ImageViewerFragment.ReadableEpisode?>
                 holder.emptyText.text = null
                 Glide
                     .with(holder.itemView)
-                    .load(Uri.fromFile(File(imagePath)))
+                    .load(Uri.fromFile(File(imagePath!!)))
                     .format(DecodeFormat.PREFER_ARGB_8888)
                     .override(Target.SIZE_ORIGINAL)
                     .into(holder.imageView)

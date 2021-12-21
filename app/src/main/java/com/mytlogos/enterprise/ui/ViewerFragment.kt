@@ -12,11 +12,29 @@ import com.mytlogos.enterprise.R
 import com.mytlogos.enterprise.tools.ScrollHideHelper
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayout
 import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection
+import com.omadahealth.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.*
 
+/**
+ * An abstract ViewerFragment for Media.
+ *
+ * Flow:
+ *
+ * (ViewerFragment|SubClass):onCreateView
+ *  - init views and listeners
+ *
+ * e.g. User scrolls
+ *  -> onScroll gets called
+ *
+ * SubClass:onScroll
+ * SubClass:seekFromProgress
+ * SubClass:calculateProgressByScroll
+ * SubClass:getProgressDescription
+ * SubClass:updateViewProgress
+ */
 @ExperimentalCoroutinesApi
 abstract class ViewerFragment<T> : BaseFragment() {
     private val scrollHideHelper = ScrollHideHelper()
@@ -45,23 +63,20 @@ abstract class ViewerFragment<T> : BaseFragment() {
         navigationView = view.findViewById(R.id.navigation)
         appbar = requireActivity().findViewById(R.id.appbar)
 
-        swipeLayout.setOnRefreshListener { direction: SwipyRefreshLayoutDirection ->
-            navigateEpisode(direction)
-        }
+        swipeLayout.setOnRefreshListener(this@ViewerFragment::navigateEpisode)
         progressView = view.findViewById(R.id.progress) as TextView
 
-        (view.findViewById(R.id.left_nav) as View)
-            .setOnClickListener { navigateEpisode(SwipyRefreshLayoutDirection.TOP) }
-        (view.findViewById(R.id.right_nav) as View)
-            .setOnClickListener { navigateEpisode(SwipyRefreshLayoutDirection.BOTTOM) }
+        (view.findViewById(R.id.left_nav) as View).setOnClickListener { navigateEpisode(TOP) }
+        (view.findViewById(R.id.right_nav) as View).setOnClickListener { navigateEpisode(BOTTOM) }
 
         if (scrolledViewId != View.NO_ID) {
-            val localScrollView: ScrollView = view.findViewById(scrolledViewId)
+            val localScrollView: View = view.findViewById(scrolledViewId)
             localScrollView.setOnScrollChangeListener { _: View?, scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int ->
                 onScroll(scrollX,
                     scrollY,
                     oldScrollX,
-                    oldScrollY)
+                    oldScrollY
+                )
             }
             scrollView = localScrollView
         }
@@ -185,8 +200,8 @@ abstract class ViewerFragment<T> : BaseFragment() {
         } else {
             var index = readableEpisodes.indexOf(currentlyReading)
             when (direction) {
-                SwipyRefreshLayoutDirection.TOP -> index--
-                SwipyRefreshLayoutDirection.BOTTOM -> index++
+                TOP -> index--
+                BOTTOM -> index++
                 else -> {
                     println("Unknown swipe direction in TextViewerFragment, neither top or bottom")
                     return

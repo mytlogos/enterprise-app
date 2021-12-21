@@ -9,9 +9,12 @@
         <entry key="app/src/main/res/layout/closeable_item.xml" value="0.20520833333333333" />
         <entry key="app/src/main/res/layout/flexible_header.xml" value="0.20520833333333333" />
         <entry key="app/src/main/res/layout/fragment_reader_pdf.xml" value="0.2866847826086957" />
+        <entry key="app/src/main/res/layout/fragment_reader_text.xml" value="0.2866847826086957" />
         <entry key="app/src/main/res/layout/home.xml" value="0.3641304347826087" />
+        <entry key="app/src/main/res/layout/image_reader_fragment.xml" value="0.19010416666666666" />
         <entry key="app/src/main/res/layout/normal_list.xml" value="0.20520833333333333" />
         <entry key="app/src/main/res/layout/swipe_list.xml" value="0.20520833333333333" />
+        <entry key="app/src/main/res/layout/viewer_layout.xml" value="0.19010416666666666" />
         <entry key="app/src/main/res/menu/activity_main_drawer.xml" value="0.36614583333333334" />
         <entry key="app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" value="0.38229166666666664" />
       </map>
