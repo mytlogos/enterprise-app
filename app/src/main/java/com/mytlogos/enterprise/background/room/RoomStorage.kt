@@ -17,13 +17,16 @@ import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.Exter
 import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
 import com.mytlogos.enterprise.model.*
 import com.mytlogos.enterprise.tools.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import org.joda.time.DateTime
 import java.util.*
 import java.util.function.Consumer
 
-class RoomStorage(application: Application) : DatabaseStorage {
+class RoomStorage(application: Application, private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) : DatabaseStorage {
     private val userDao: UserDao
     private val newsDao: NewsDao
     private val episodeDao: EpisodeDao
@@ -70,9 +73,9 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return userLiveData
     }
 
-    override suspend fun getUserNow(): User? {
+    override suspend fun getUserNow(): User? = withContext(ioDispatcher) {
         val converter = RoomConverter()
-        return converter.convert(userDao.getUserNow())
+        return@withContext converter.convert(userDao.getUserNow())
     }
 
     override fun getHomeStats(): LiveData<HomeStats> {
@@ -95,7 +98,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         this.loading = loading
     }
 
-    override suspend fun getLoadData(): LoadData {
+    override suspend fun getLoadData(): LoadData = withContext(ioDispatcher) {
         // todo maybe load this asynchronous?
         val data = LoadData()
         data.episodes.addAll(episodeDao.loaded())
@@ -105,43 +108,43 @@ class RoomStorage(application: Application) : DatabaseStorage {
         data.externalMediaList.addAll(externalMediaListDao.loaded())
         data.externalUser.addAll(externalUserDao.loaded())
         data.mediaList.addAll(mediaListDao.loaded())
-        return data
+        return@withContext data
     }
 
-    override suspend fun getListItems(listId: Int): Collection<Int> {
-        return mediaListDao.getListItems(listId)
+    override suspend fun getListItems(listId: Int): Collection<Int> = withContext(ioDispatcher) {
+        return@withContext mediaListDao.getListItems(listId)
     }
 
-    override suspend fun getExternalListItems(externalListId: Int): Collection<Int> {
-        return externalMediaListDao.getExternalListItems(externalListId)
+    override suspend fun getExternalListItems(externalListId: Int): Collection<Int> = withContext(ioDispatcher) {
+        return@withContext externalMediaListDao.getExternalListItems(externalListId)
     }
 
-    override suspend fun insertDanglingMedia(mediaIds: MutableCollection<Int>) {
+    override suspend fun insertDanglingMedia(mediaIds: MutableCollection<Int>) = withContext(ioDispatcher) {
         val listMedia = mediaListDao.getAllLinkedMedia()
         val externalListMedia = externalMediaListDao.getAllLinkedMedia()
         mediaIds.removeAll(listMedia.toSet())
         mediaIds.removeAll(externalListMedia.toSet())
         if (mediaIds.isEmpty()) {
-            return
+            return@withContext
         }
         RoomConverter().convertToDangling(mediaIds).doChunked(roomDanglingDao::insertBulk)
     }
 
-    override suspend fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting {
-        return if (isExternal) {
+    override suspend fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting = withContext(ioDispatcher) {
+        return@withContext if (isExternal) {
             externalMediaListDao.getExternalListSettingNow(id)
         } else mediaListDao.getListSettingsNow(id)
     }
 
-    override suspend fun getMediumSettingsNow(mediumId: Int): MediumSetting {
-        return mediumDao.getMediumSettingsNow(mediumId)
+    override suspend fun getMediumSettingsNow(mediumId: Int): MediumSetting = withContext(ioDispatcher) {
+        return@withContext mediumDao.getMediumSettingsNow(mediumId)
     }
 
-    override suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
-        return ids.mapChunked { episodeDao.getSimpleEpisodes(it) }
+    override suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> = withContext(ioDispatcher) {
+        return@withContext ids.mapChunked { episodeDao.getSimpleEpisodes(it) }
     }
 
-    override suspend fun updateProgress(episodeIds: Collection<Int>, progress: Float) {
+    override suspend fun updateProgress(episodeIds: Collection<Int>, progress: Float) = withContext(ioDispatcher) {
         val now = DateTime.now()
         episodeIds.doChunked { episodeDao.updateProgress(it, progress, now) }
     }
@@ -153,7 +156,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             .transformFlow()
     }
 
-    override suspend fun addItemsToList(listId: Int, ids: Collection<Int>) {
+    override suspend fun addItemsToList(listId: Int, ids: Collection<Int>) = withContext(ioDispatcher) {
         val joins: MutableList<MediaListMediaJoin> = ArrayList()
         for (id in ids) {
             joins.add(MediaListMediaJoin(listId, id))
@@ -188,11 +191,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
         mediumInWaitDao.clear()
     }
 
-    override suspend fun removeItemFromList(listId: Int, mediumId: Collection<Int>) {
+    override suspend fun removeItemFromList(listId: Int, mediumId: Collection<Int>) = withContext(ioDispatcher) {
         mediumId.doChunked { mediaListDao.removeJoin(listId, it) }
     }
 
-    override suspend fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>) {
+    override suspend fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>) = withContext(ioDispatcher) {
         val oldJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
         val newJoins: MutableCollection<MediaListMediaJoin> = ArrayList()
         for (id in ids) {
@@ -206,19 +209,19 @@ class RoomStorage(application: Application) : DatabaseStorage {
         return externalUserDao.all.transformFlow()
     }
 
-    override suspend fun getSpaceMedium(mediumId: Int): SpaceMedium {
-        return mediumDao.getSpaceMedium(mediumId)
+    override suspend fun getSpaceMedium(mediumId: Int): SpaceMedium = withContext(ioDispatcher) {
+        return@withContext mediumDao.getSpaceMedium(mediumId)
     }
 
-    override suspend fun getMediumType(mediumId: Int): Int {
-        return mediumDao.getMediumType(mediumId)
+    override suspend fun getMediumType(mediumId: Int): Int = withContext(ioDispatcher) {
+        return@withContext mediumDao.getMediumType(mediumId)
     }
 
-    override suspend fun getReleaseLinks(episodeId: Int): List<String> {
-        return episodeDao.getReleaseLinks(episodeId)
+    override suspend fun getReleaseLinks(episodeId: Int): List<String> = withContext(ioDispatcher) {
+        return@withContext episodeDao.getReleaseLinks(episodeId)
     }
 
-    override suspend fun clearLocalMediaData() {
+    override suspend fun clearLocalMediaData() = withContext(ioDispatcher) {
         failedEpisodesDao.clearAll()
         episodeDao.clearAllReleases()
         episodeDao.clearAll()
@@ -228,36 +231,36 @@ class RoomStorage(application: Application) : DatabaseStorage {
         clearMediaInWait()
     }
 
-    override suspend fun getSimpleMedium(mediumId: Int): SimpleMedium {
-        return mediumDao.getSimpleMedium(mediumId)
+    override suspend fun getSimpleMedium(mediumId: Int): SimpleMedium = withContext(ioDispatcher) {
+        return@withContext mediumDao.getSimpleMedium(mediumId)
     }
 
-    override suspend fun insertEditEvent(event: EditEvent) {
+    override suspend fun insertEditEvent(event: EditEvent) = withContext(ioDispatcher) {
         val converter = RoomConverter()
         val roomEditEvent = converter.convert(event)
         editDao.insert(roomEditEvent)
     }
 
-    override suspend fun insertEditEvent(events: Collection<EditEvent>) {
+    override suspend fun insertEditEvent(events: Collection<EditEvent>) = withContext(ioDispatcher) {
         val converter = RoomConverter()
         val roomEditEvent = converter.convertEditEvents(events)
         roomEditEvent.doChunked(editDao::insertBulk)
     }
 
-    override suspend fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int> {
-        return episodeIds.mapChunked { episodeDao.getReadEpisodes(it, read) }
+    override suspend fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int> = withContext(ioDispatcher) {
+        return@withContext episodeIds.mapChunked { episodeDao.getReadEpisodes(it, read) }
     }
 
-    override suspend fun getEditEvents(): MutableList<out EditEvent> {
-        return editDao.all
+    override suspend fun getEditEvents(): MutableList<out EditEvent> = withContext(ioDispatcher) {
+        return@withContext editDao.all
     }
 
-    override suspend fun removeEditEvents(editEvents: Collection<EditEvent>) {
+    override suspend fun removeEditEvents(editEvents: Collection<EditEvent>) = withContext(ioDispatcher) {
         val converter = RoomConverter()
         converter.convertEditEvents(editEvents).doChunked(editDao::deleteBulk)
     }
 
-    override suspend fun checkReload(parsedStat: ParsedStat): ReloadStat {
+    override suspend fun checkReload(parsedStat: ParsedStat): ReloadStat = withContext(ioDispatcher) {
         val roomStats = episodeDao.getStat()
         val partStats: MutableMap<Int, Partstat> = HashMap()
         for (value in parsedStat.media.values) {
@@ -283,7 +286,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
         }
         val loadPart: MutableSet<Int> = HashSet()
-        val loadData = this.getLoadData()
+        val loadData = this@RoomStorage.getLoadData()
         for ((partId, remotePartStat) in partStats) {
             val localPartStat = localStatMap[partId]
             if (localPartStat == null) {
@@ -331,7 +334,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 }
             }
         }
-        return ReloadStat(loadEpisode,
+        return@withContext ReloadStat(loadEpisode,
             loadRelease,
             loadMediumTocs,
             missingMedia,
@@ -340,7 +343,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             loadUser)
     }
 
-    override suspend fun syncProgress() = coroutineScope {
+    override suspend fun syncProgress() = withContext(ioDispatcher) {
         val all = mediumProgressDao.getComparison()
         for (comparison in all) {
             if (comparison.currentMaxReadIndex != 0.0) {
@@ -368,21 +371,21 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
     }
 
-    private inner class RoomPersister(private val loadedData: LoadData) : ClientModelPersister {
+    private inner class RoomPersister(private val loadedData: LoadData, private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) : ClientModelPersister {
         private val generator: LoadWorkGenerator = LoadWorkGenerator(loadedData)
 
-        override suspend fun persistEpisodes(episodes: Collection<ClientEpisode>): ClientModelPersister {
+        override suspend fun persistEpisodes(episodes: Collection<ClientEpisode>): ClientModelPersister = withContext(ioDispatcher) {
             val filteredEpisodes = generator.filterEpisodes(episodes)
-            return this.persist(filteredEpisodes)
+            return@withContext this@RoomPersister.persist(filteredEpisodes)
         }
 
-        override suspend fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister {
+        override suspend fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister = withContext(ioDispatcher) {
             val converter = RoomConverter(loadedData)
             converter.convertReleases(releases).doChunked(episodeDao::insertBulkRelease)
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persist(filteredEpisodes: FilteredEpisodes): ClientModelPersister {
+        override suspend fun persist(filteredEpisodes: FilteredEpisodes): ClientModelPersister = withContext(ioDispatcher) {
             val converter = RoomConverter(loadedData)
             val list = converter.convertEpisodes(filteredEpisodes.newEpisodes)
             val update = converter.convertEpisodesClient(filteredEpisodes.updateEpisodes)
@@ -402,18 +405,18 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     value.releaseDate
                 )
             })
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistMediaLists(mediaLists: List<ClientMediaList>): ClientModelPersister {
+        override suspend fun persistMediaLists(mediaLists: List<ClientMediaList>): ClientModelPersister = withContext(ioDispatcher) {
             val filteredMediaList = generator.filterMediaLists(mediaLists)
             val converter = RoomConverter(loadedData)
-            return this.persist(filteredMediaList, converter)
+            return@withContext this@RoomPersister.persist(filteredMediaList, converter)
         }
 
-        override suspend fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister {
+        override suspend fun persistUserLists(mediaLists: List<ClientUserList>): ClientModelPersister = withContext(ioDispatcher) {
             val uuid = getUserNow()!!.uuid
-            return persistMediaLists(mediaLists.map { value: ClientUserList ->
+            return@withContext persistMediaLists(mediaLists.map { value: ClientUserList ->
                 ClientMediaList(
                     uuid,
                     value.id,
@@ -424,14 +427,14 @@ class RoomStorage(application: Application) : DatabaseStorage {
             })
         }
 
-        override suspend fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister {
-            return this.persist(filteredMediaList, RoomConverter(loadedData))
+        override suspend fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister = withContext(ioDispatcher) {
+            return@withContext this@RoomPersister.persist(filteredMediaList, RoomConverter(loadedData))
         }
 
         private suspend fun persist(
             filteredMediaList: FilteredMediaList,
             converter: RoomConverter,
-        ): ClientModelPersister {
+        ): ClientModelPersister = withContext(ioDispatcher) {
             val list = converter.convertMediaList(filteredMediaList.newList)
             val update = converter.convertMediaList(filteredMediaList.updateList)
 
@@ -441,23 +444,23 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (mediaList in list) {
                 loadedData.mediaList.add(mediaList.listId)
             }
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList>): ClientModelPersister {
+        override suspend fun persistExternalMediaLists(externalMediaLists: Collection<ClientExternalMediaList>): ClientModelPersister = withContext(ioDispatcher) {
             val filteredExtMediaList = generator.filterExternalMediaLists(externalMediaLists)
             val converter = RoomConverter(loadedData)
-            return this.persist(filteredExtMediaList, converter)
+            return@withContext this@RoomPersister.persist(filteredExtMediaList, converter)
         }
 
-        override suspend fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister {
-            return this.persist(filteredExtMediaList, RoomConverter(loadedData))
+        override suspend fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister = withContext(ioDispatcher) {
+            return@withContext this@RoomPersister.persist(filteredExtMediaList, RoomConverter(loadedData))
         }
 
         private suspend fun persist(
             filteredExtMediaList: FilteredExtMediaList,
             converter: RoomConverter,
-        ): ClientModelPersister {
+        ): ClientModelPersister = withContext(ioDispatcher) {
             val list = converter.convertExternalMediaList(filteredExtMediaList.newList)
             val update = converter.convertExternalMediaList(filteredExtMediaList.updateList)
 
@@ -467,23 +470,23 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (mediaList in list) {
                 loadedData.externalMediaList.add(mediaList.externalListId)
             }
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistExternalUsers(externalUsers: List<ClientExternalUser>): ClientModelPersister {
+        override suspend fun persistExternalUsers(externalUsers: List<ClientExternalUser>): ClientModelPersister = withContext(ioDispatcher) {
             val filteredExternalUser = generator.filterExternalUsers(externalUsers)
-            return this.persist(filteredExternalUser)
+            return@withContext this@RoomPersister.persist(filteredExternalUser)
         }
 
-        override suspend fun persist(filteredExternalUser: FilteredExternalUser): ClientModelPersister {
+        override suspend fun persist(filteredExternalUser: FilteredExternalUser): ClientModelPersister = withContext(ioDispatcher) {
             val converter = RoomConverter(loadedData)
-            return this.persist(filteredExternalUser, converter)
+            return@withContext this@RoomPersister.persist(filteredExternalUser, converter)
         }
 
         private suspend fun persist(
             filteredExternalUser: FilteredExternalUser,
             converter: RoomConverter,
-        ): ClientModelPersister {
+        ): ClientModelPersister = withContext(ioDispatcher) {
             val newUser = converter.convertExternalUser(filteredExternalUser.newUser)
             val updatedUser = converter.convertExternalUser(filteredExternalUser.updateUser)
 
@@ -495,15 +498,15 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
             persistExternalMediaLists(filteredExternalUser.newList)
             persistExternalMediaLists(filteredExternalUser.updateList)
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistMedia(media: Collection<ClientSimpleMedium>): ClientModelPersister {
+        override suspend fun persistMedia(media: Collection<ClientSimpleMedium>): ClientModelPersister = withContext(ioDispatcher) {
             val filteredMedia = generator.filterSimpleMedia(media)
-            return persist(filteredMedia)
+            return@withContext persist(filteredMedia)
         }
 
-        override suspend fun persist(filteredMedia: FilteredMedia): ClientModelPersister {
+        override suspend fun persist(filteredMedia: FilteredMedia): ClientModelPersister = withContext(ioDispatcher) {
             val converter = RoomConverter(loadedData)
             val newMedia = converter.convertSimpleMedia(filteredMedia.newMedia)
             val updatedMedia = converter.convertSimpleMedia(filteredMedia.updateMedia)
@@ -519,10 +522,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (medium in newMedia) {
                 loadedData.media.add(medium.mediumId)
             }
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistNews(news: Collection<ClientNews>): ClientModelPersister {
+        override suspend fun persistNews(news: Collection<ClientNews>): ClientModelPersister = withContext(ioDispatcher) {
             val newNews: MutableList<RoomNews> = ArrayList()
             val updatedNews: MutableList<RoomNews> = ArrayList()
             val converter = RoomConverter()
@@ -541,15 +544,15 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (roomNews in newNews) {
                 loadedData.news.add(roomNews.newsId)
             }
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistParts(parts: Collection<ClientPart>): ClientModelPersister {
+        override suspend fun persistParts(parts: Collection<ClientPart>): ClientModelPersister = withContext(ioDispatcher) {
             val filteredParts = generator.filterParts(parts)
-            return persist(filteredParts)
+            return@withContext persist(filteredParts)
         }
 
-        override suspend fun persist(filteredParts: FilteredParts): ClientModelPersister {
+        override suspend fun persist(filteredParts: FilteredParts): ClientModelPersister = withContext(ioDispatcher) {
             val converter = RoomConverter()
             val newParts = converter.convertParts(filteredParts.newParts)
             val updatedParts = converter.convertParts(filteredParts.updateParts)
@@ -561,15 +564,15 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 loadedData.part.add(part.partId)
             }
             persistEpisodes(filteredParts.episodes)
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistReadEpisodes(readEpisodes: Collection<ClientReadEpisode>): ClientModelPersister {
+        override suspend fun persistReadEpisodes(readEpisodes: Collection<ClientReadEpisode>): ClientModelPersister = withContext(ioDispatcher) {
             val filteredReadEpisodes = generator.filterReadEpisodes(readEpisodes)
-            return this.persist(filteredReadEpisodes)
+            return@withContext this@RoomPersister.persist(filteredReadEpisodes)
         }
 
-        override suspend fun persist(filteredReadEpisodes: FilteredReadEpisodes): ClientModelPersister {
+        override suspend fun persist(filteredReadEpisodes: FilteredReadEpisodes): ClientModelPersister = withContext(ioDispatcher) {
 
             for (readEpisode in filteredReadEpisodes.episodeList) {
                 episodeDao.updateProgress(
@@ -579,59 +582,59 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 )
             }
 
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persist(query: ClientListQuery): ClientModelPersister {
-            this.persistMedia(query.media.asList().map(::ClientSimpleMedium))
-            this.persist(query.list)
-            return this
+        override suspend fun persist(query: ClientListQuery): ClientModelPersister = withContext(ioDispatcher) {
+            this@RoomPersister.persistMedia(query.media.asList().map(::ClientSimpleMedium))
+            this@RoomPersister.persist(query.list)
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persist(query: ClientMultiListQuery): ClientModelPersister {
-            this.persistMedia(query.media.asList().map(::ClientSimpleMedium))
-            this.persist(*query.list)
-            return this
+        override suspend fun persist(query: ClientMultiListQuery): ClientModelPersister = withContext(ioDispatcher) {
+            this@RoomPersister.persistMedia(query.media.asList().map(::ClientSimpleMedium))
+            this@RoomPersister.persist(*query.list)
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister {
+        override suspend fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister = withContext(ioDispatcher) {
             val roomToDownloads = RoomConverter().convertToDownload(toDownloads)
 
             roomToDownloads.doChunked(toDownloadDao::insertBulk)
 
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persist(user: ClientUpdateUser): ClientModelPersister {
+        override suspend fun persist(user: ClientUpdateUser): ClientModelPersister = withContext(ioDispatcher) {
             val value = userLiveData.value
                 ?: throw IllegalArgumentException("cannot update user if none is stored in the database")
             require(user.uuid == value.uuid) { "cannot update user which do not share the same uuid" }
             // at the moment the only thing that can change for the user on client side is the name
             if (user.name == value.name) {
-                return this
+                return@withContext this@RoomPersister
             }
 
             userDao.update(RoomUser(user.name, value.uuid, value.session))
 
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persist(toDownload: ToDownload): ClientModelPersister {
+        override suspend fun persist(toDownload: ToDownload): ClientModelPersister = withContext(ioDispatcher) {
 
             toDownloadDao.insert(RoomConverter().convert(toDownload))
 
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persistMediaInWait(medium: List<ClientMediumInWait>) {
+        override suspend fun persistMediaInWait(medium: List<ClientMediumInWait>) = withContext(ioDispatcher) {
             RoomConverter().convertClientMediaInWait(medium).doChunked(mediumInWaitDao::insertBulk)
         }
 
-        override suspend fun persist(user: ClientSimpleUser?): ClientModelPersister {
+        override suspend fun persist(user: ClientSimpleUser?): ClientModelPersister = withContext(ioDispatcher) {
             // short cut version
             if (user == null) {
                 deleteAllUser()
-                return this
+                return@withContext this@RoomPersister
             }
             val converter = RoomConverter()
             val newRoomUser = converter.convert(user)
@@ -646,10 +649,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 userDao.insert(newRoomUser)
             }
 
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>) {
+        override suspend fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>) = withContext(ioDispatcher) {
             val episodes = partEpisodes.keys.mapChunked { episodeDao.getEpisodes(it) }
             val deleteEpisodes: List<Int> = episodes.mapNotNull { roomPartEpisode ->
                 val episodeIds = partEpisodes[roomPartEpisode.partId]
@@ -663,7 +666,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             deleteEpisodes.doChunked(episodeDao::deletePerId)
         }
 
-        override suspend fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int> {
+        override suspend fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int> = withContext(ioDispatcher) {
             val roomReleases = partReleases.keys.mapChunked { episodeDao.getReleases(it) }
             val deleteRelease: MutableList<RoomRelease> = LinkedList()
             val now = DateTime.now()
@@ -694,10 +697,10 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 episodesToLoad.add(release.episodeId)
             }
             deleteRelease.doChunked(episodeDao::deleteBulkRelease)
-            return episodesToLoad
+            return@withContext episodesToLoad
         }
 
-        override suspend fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>) {
+        override suspend fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>) = withContext(ioDispatcher) {
             val previousTocs = mediaTocs.keys.mapChunked { tocDao.getTocs(it) }
             val removeTocs: MutableList<RoomToc> = ArrayList()
             for (entry in previousTocs) {
@@ -709,19 +712,19 @@ class RoomStorage(application: Application) : DatabaseStorage {
             removeTocs.doChunked(tocDao::deleteBulk)
         }
 
-        override suspend fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
+        override suspend fun persistTocs(tocs: Collection<Toc>): ClientModelPersister = withContext(ioDispatcher) {
             val roomTocs = RoomConverter().convertToc(tocs)
 
             roomTocs.doChunked(tocDao::insertBulk)
 
-            return this
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persist(clientUser: ClientUser?): ClientModelPersister {
+        override suspend fun persist(clientUser: ClientUser?): ClientModelPersister = withContext(ioDispatcher) {
             // short cut version
             if (clientUser == null) {
                 deleteAllUser()
-                return this
+                return@withContext this@RoomPersister
             }
             val converter = RoomConverter()
             val newRoomUser = converter.convert(clientUser)
@@ -737,13 +740,13 @@ class RoomStorage(application: Application) : DatabaseStorage {
             }
 
             // persist lists
-            this.persist(*clientUser.lists)
+            this@RoomPersister.persist(*clientUser.lists)
             // persist externalUser
-            this.persist(*clientUser.externalUser)
-            return this
+            this@RoomPersister.persist(*clientUser.externalUser)
+            return@withContext this@RoomPersister
         }
 
-        override suspend fun persist(stat: ParsedStat): ClientModelPersister {
+        override suspend fun persist(stat: ParsedStat): ClientModelPersister = withContext(ioDispatcher) {
             /*
              * Remove any Join not defined in stat.lists
              * Remove any Join not defined in stat.exLists
@@ -784,7 +787,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             deletedExLists.doChunked(externalMediaListDao::delete)
             deletedLists.doChunked(mediaListDao::delete)
             deletedExUser.doChunked(externalUserDao::delete)
-            return this
+            return@withContext this@RoomPersister
         }
 
         private suspend fun <T : ListMediaJoin> filterListMediumJoins(
@@ -792,7 +795,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             deletedLists: MutableSet<Int>,
             newJoins: MutableList<T>,
             external: Boolean,
-        ): List<T> {
+        ): List<T> = withContext(ioDispatcher) {
             val previousListJoins: MutableList<T>
             val currentJoins: Map<Int, List<Int>>
             if (external) {
@@ -830,7 +833,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     }
                 }
             }
-            return previousListJoins
+            return@withContext previousListJoins
         }
 
         override fun finish() { /* no-op */ }

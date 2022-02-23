@@ -21,9 +21,7 @@ import com.mytlogos.enterprise.model.Toc
 import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.checkAndGetBody
 import com.mytlogos.enterprise.tools.doPartitionedRethrowSuspend
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import org.joda.time.DateTime
 import java.io.IOException
 import java.util.*
@@ -468,7 +466,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         persister: ClientModelPersister,
         repository: Repository,
 
-    ) {
+    ) = withContext(Dispatchers.IO) {
         notifyIndeterminate("Synchronize Deleted Items", removeContent = false)
         Log.i("Synchronize", "Sync added or deleted Items")
         var query: QueryItems
@@ -534,9 +532,10 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                 mediaTocs.computeIfAbsent(mediumToc.mediumId) { ArrayList() }.add(mediumToc.link)
             }
 
-            persistTocs(mediaTocs, persister)
+            println("I am deleting leftover tocs")
             persister.deleteLeftoverTocs(mediaTocs)
 
+            println("I am checking reload")
             reloadStat = repository.checkReload(parsedStat)
             query = QueryItems(
                 episodes = episodesToLoad,
@@ -548,7 +547,9 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                 mediaTocs = reloadStat.loadMediumTocs.toList(),
                 mediaLists = reloadStat.loadLists.toList(),
             )
+            println("I ending current try $triesLeft")
         }
+        println("I am notifying")
         if (!query.isEmpty()) {
             Log.e("Synchronize","Still Items to load after 3 tries")
         } else {
