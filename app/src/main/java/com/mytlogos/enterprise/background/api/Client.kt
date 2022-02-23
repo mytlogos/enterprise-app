@@ -1,7 +1,6 @@
 package com.mytlogos.enterprise.background.api
 
 import com.google.gson.GsonBuilder
-import com.mytlogos.enterprise.background.api.DateTimeAdapter
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.tools.SingletonHolder
 import kotlinx.coroutines.CoroutineDispatcher
@@ -9,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import org.joda.time.DateTime
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -778,8 +778,12 @@ class Client private constructor(private val identificator: NetworkIdentificator
             val gson = GsonBuilder()
                 .registerTypeHierarchyAdapter(DateTime::class.java, DateTimeAdapter())
                 .create()
+            val logger = HttpLoggingInterceptor()
+            logger.setLevel(HttpLoggingInterceptor.Level.BASIC)
+
             val client = OkHttpClient.Builder()
                 .readTimeout(60, TimeUnit.SECONDS)
+                .addInterceptor(logger)
                 .build()
             retrofit = Retrofit.Builder()
                 .baseUrl(localServer.address)
