@@ -5,14 +5,21 @@ import org.joda.time.DateTime
 /**
  * API Model for EpisodeRelease.
  */
-class ClientEpisodeRelease(val episodeId: Int, val tocId: Int, val title: String, val url: String, val isLocked: Boolean, val releaseDate: DateTime) {
+class ClientEpisodeRelease(
+    val episodeId: Int,
+    val tocId: Int,
+    val title: String,
+    val url: String,
+    val locked: Boolean,
+    val releaseDate: DateTime,
+) {
 
     override fun toString(): String {
         return "ClientRelease{" +
                 "id=" + episodeId +
                 ", title='" + title + '\'' +
                 ", url='" + url + '\'' +
-                ", locked='" + isLocked + '\'' +
+                ", locked='" + locked + '\'' +
                 ", releaseDate=" + releaseDate +
                 ", tocId=" + tocId +
                 '}'
@@ -23,7 +30,7 @@ class ClientEpisodeRelease(val episodeId: Int, val tocId: Int, val title: String
         if (o == null || javaClass != o.javaClass) return false
         val that = o as ClientEpisodeRelease
         if (episodeId != that.episodeId) return false
-        if (isLocked != that.isLocked) return false
+        if (locked != that.locked) return false
         if (title != that.title) return false
         if (url != that.url) return false
         return releaseDate == that.releaseDate
@@ -33,7 +40,7 @@ class ClientEpisodeRelease(val episodeId: Int, val tocId: Int, val title: String
         var result = episodeId
         result = 31 * result + title.hashCode()
         result = 31 * result + url.hashCode()
-        result = 31 * result + if (isLocked) 1 else 0
+        result = 31 * result + if (locked) 1 else 0
         result = 31 * result + releaseDate.hashCode()
         return result
     }

@@ -194,7 +194,7 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             release.title,
             release.url,
             release.releaseDate,
-            release.isLocked
+            release.locked
         )
     }
 
@@ -204,7 +204,7 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
             release.title,
             release.url,
             release.releaseDate,
-            release.isLocked
+            release.locked
         )
     }
 

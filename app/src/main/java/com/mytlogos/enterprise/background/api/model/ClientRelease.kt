@@ -9,6 +9,6 @@ data class ClientRelease(
     val episodeId: Int,
     val title: String,
     val url: String,
-    val isLocked: Boolean,
+    val locked: Boolean,
     val releaseDate: DateTime
 )
