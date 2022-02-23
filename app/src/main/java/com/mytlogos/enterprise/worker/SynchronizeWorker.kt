@@ -7,16 +7,20 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
 import com.mytlogos.enterprise.R
-import com.mytlogos.enterprise.background.*
+import com.mytlogos.enterprise.background.ClientModelPersister
+import com.mytlogos.enterprise.background.ReloadStat
+import com.mytlogos.enterprise.background.Repository
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.getInstance
 import com.mytlogos.enterprise.background.RepositoryImpl.Companion.instance
+import com.mytlogos.enterprise.background.SimpleToc
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.NotConnectedException
 import com.mytlogos.enterprise.background.api.ServerException
 import com.mytlogos.enterprise.background.api.model.*
 import com.mytlogos.enterprise.model.Toc
 import com.mytlogos.enterprise.preferences.UserPreferences
-import com.mytlogos.enterprise.tools.*
+import com.mytlogos.enterprise.tools.checkAndGetBody
+import com.mytlogos.enterprise.tools.doPartitionedRethrowSuspend
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -157,7 +161,7 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         val lastSync = UserPreferences.lastSync
         syncChanged(lastSync, client, persister, repository)
         UserPreferences.lastSync = DateTime.now()
-        syncDeleted(client, persister, repository)
+        syncDeletedMassive(client, persister, repository)
         return false
     }
 
@@ -455,6 +459,101 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
                 )
             }.toMutableList()
         persistExternalLists(unPure, client, persister, repository)
+    }
+
+
+    @Throws(IOException::class)
+    private suspend fun syncDeletedMassive(
+        client: Client,
+        persister: ClientModelPersister,
+        repository: Repository,
+
+    ) {
+        notifyIndeterminate("Synchronize Deleted Items", removeContent = false)
+        Log.i("Synchronize", "Sync added or deleted Items")
+        var query: QueryItems
+        val statBody = client.getStats().checkAndGetBody()
+        val parsedStat = statBody.parse()
+        var reloadStat = repository.checkReload(parsedStat)
+
+        query = QueryItems(
+            externalUser = reloadStat.loadExUser.toList(),
+            partReleases = reloadStat.loadPartReleases.toList(),
+            partEpisodes = reloadStat.loadPartEpisodes.toList(),
+            parts = reloadStat.loadPart.toList(),
+            media = reloadStat.loadMedium.toList(),
+            mediaTocs = reloadStat.loadMediumTocs.toList(),
+            mediaLists = reloadStat.loadLists.toList(),
+        )
+
+        for (triesLeft in 0..2) {
+            Log.i("Synchronize", "Sync Delete Try $triesLeft")
+            // try at most 3 times to sync added or deleted items
+            if (query.isEmpty()) {
+                break
+            }
+
+            val result = client.query(query).checkAndGetBody()
+
+            println("I am persisting Media")
+            persister.persistMedia(result.media)
+            println("I am persisting Tocs")
+            persister.persistTocs(result.tocs)
+            println("I am persisting MediaTocs")
+            persister.persistTocs(result.mediaTocs)
+            println("I am persisting Parts")
+            persister.persistParts(result.parts)
+            println("I am persisting Episodes")
+            persister.persistEpisodes(result.episodes)
+            println("I am persisting EpisodeReleases")
+            persister.persistReleases(result.episodeReleases)
+            println("I am persisting ExternalUsers")
+            persister.persistExternalUsers(result.externalUser)
+            println("I am persisting ExternalMediaLists")
+            persister.persistExternalMediaLists(result.externalMediaLists)
+            println("I am persisting MediaLists")
+            persister.persistMediaLists(result.mediaLists)
+            println("I am persisting PartEpisodes")
+
+            val partEpisodes = mapStringToInt(result.partEpisodes)
+            val partReleases = mapStringToInt(result.partReleases)
+            persister.deleteLeftoverEpisodes(partEpisodes)
+            val episodesToLoad = persister.deleteLeftoverReleases(partReleases).toMutableList()
+
+            for ((_, value) in partReleases) {
+                for (release in value) {
+                    if (!repository.isEpisodeLoaded(release.episodeId)) {
+                        episodesToLoad.add(release.episodeId)
+                    }
+                }
+            }
+
+            val mediaTocs: MutableMap<Int, MutableList<String>> = HashMap()
+
+            for (mediumToc in result.mediaTocs) {
+                mediaTocs.computeIfAbsent(mediumToc.mediumId) { ArrayList() }.add(mediumToc.link)
+            }
+
+            persistTocs(mediaTocs, persister)
+            persister.deleteLeftoverTocs(mediaTocs)
+
+            reloadStat = repository.checkReload(parsedStat)
+            query = QueryItems(
+                episodes = episodesToLoad,
+                externalUser = reloadStat.loadExUser.toList(),
+                partReleases = reloadStat.loadPartReleases.toList(),
+                partEpisodes = reloadStat.loadPartEpisodes.toList(),
+                parts = reloadStat.loadPart.toList(),
+                media = reloadStat.loadMedium.toList(),
+                mediaTocs = reloadStat.loadMediumTocs.toList(),
+                mediaLists = reloadStat.loadLists.toList(),
+            )
+        }
+        if (!query.isEmpty()) {
+            Log.e("Synchronize","Still Items to load after 3 tries")
+        } else {
+            Log.i("Synchronize", "No Items to load after 3 tries")
+        }
     }
 
     @Throws(IOException::class)

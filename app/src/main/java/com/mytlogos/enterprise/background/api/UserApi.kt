@@ -37,4 +37,7 @@ internal interface UserApi {
 
     @POST("{start}/toc")
     suspend fun  addToc(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Response<Boolean>
+
+    @POST("{start}/load")
+    suspend fun  query(@Path(value = "start", encoded = true) url: String, @Body body: MutableMap<String, Any?>): Response<QueryItemsResult>
 }

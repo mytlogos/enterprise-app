@@ -736,6 +736,17 @@ class Client private constructor(private val identificator: NetworkIdentificator
         return querySuspend(EpisodeApi::class.java) { apiImpl: EpisodeApi, url: String -> apiImpl.deleteEpisode(url, body) }
     }
 
+    /**
+     * Query for all Items via Ids.
+     * API: POST /api/user/load
+     */
+    @Throws(IOException::class)
+    suspend fun query(query: QueryItems): Response<QueryItemsResult> {
+        val body = userAuthenticationMap()
+        body["items"] = query
+        return querySuspend(UserApi::class.java) { apiImpl: UserApi, url: String -> apiImpl.query(url, body) }
+    }
+
     private fun setConnected() {
         println("connected")
         if (disconnectedSince != null) {
