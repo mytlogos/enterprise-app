@@ -10,9 +10,9 @@ import kotlinx.coroutines.flow.Flow
 import retrofit2.Response
 import java.io.IOException
 import java.net.URI
-import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
+import kotlin.collections.ArrayList
 
 fun getDomain(url: String?): String? {
     val host = URI.create(url).host ?: return null
@@ -83,6 +83,39 @@ suspend fun <E : Any> Collection<E>.doPartitionedExSuspend(
             maxItem = list.size
         }
     } while (minItem < list.size && maxItem <= list.size)
+}
+
+@Throws(Exception::class)
+suspend fun <E : Any, R: Any> Collection<E>.mapPartitionedExSuspend(
+    consumer: (List<E>) -> Deferred<Pair<List<R>, Boolean?>>,
+): List<R> {
+    val list: List<E> = ArrayList(this)
+    val result: MutableList<R> = ArrayList()
+    val steps = 100
+    var minItem = 0
+    var maxItem = minItem + steps
+
+    do {
+        if (maxItem > list.size) {
+            maxItem = list.size
+        }
+        val subList = list.subList(minItem, maxItem)
+        val (midResult, retry) = consumer(subList).await()
+        result.addAll(midResult)
+
+        if (retry == true) {
+            continue
+        } else if (retry == null) {
+            break
+        }
+        minItem += steps
+        maxItem = minItem + steps
+        if (maxItem > list.size) {
+            maxItem = list.size
+        }
+    } while (minItem < list.size && maxItem <= list.size)
+
+    return result
 }
 
 
@@ -199,6 +232,41 @@ suspend fun <T : Any> Collection<T>.doPartitionedRethrowSuspend(
         throw IOException(e)
     } catch (e: Exception) {
         throw RuntimeException(e)
+    }
+}
+
+@Throws(IOException::class)
+suspend fun <T : Any, R: Any> Collection<T>.mapPartitionedSuspend(
+    functionEx: (List<T>) -> Deferred<Pair<List<R>, Boolean?>>,
+): List<R> {
+    try {
+        return this.mapPartitionedExSuspend(functionEx)
+    } catch (e: IOException) {
+        throw e
+    } catch (e: Exception) {
+        throw RuntimeException(e)
+    }
+}
+
+suspend fun <T : Any, R: Any> Collection<T>.mapChunked(
+    functionEx: suspend (List<T>) -> List<R>,
+): List<R> {
+    val that = this
+    val result = ArrayList<R>()
+
+    for (chunk in that.chunked(100)) {
+        result.addAll(functionEx(chunk))
+    }
+
+    return result
+}
+
+suspend fun <T : Any> Collection<T>.doChunked(
+    functionEx: suspend (List<T>) -> Unit,
+) {
+    val that = this
+    for (chunk in that.chunked(100)) {
+        functionEx(chunk)
     }
 }
 

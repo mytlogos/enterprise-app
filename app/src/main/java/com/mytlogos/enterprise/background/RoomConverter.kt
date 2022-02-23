@@ -100,8 +100,8 @@ class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData =
         return this.convert(medium) { inWait: MediumInWait -> this.convert(inWait) }
     }
 
-    fun convertEditEvents(events: Collection<EditEvent>?): Collection<RoomEditEvent?> {
-        return this.convert(events) { event: EditEvent? -> this.convert(event) }
+    fun convertEditEvents(events: Collection<EditEvent>): Collection<RoomEditEvent> {
+        return this.convert(events) { event: EditEvent -> this.convert(event) }.filterNotNull()
     }
 
     fun convertToc(tocs: Collection<Toc>): List<RoomToc> {

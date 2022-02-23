@@ -16,10 +16,7 @@ import com.mytlogos.enterprise.background.room.model.*
 import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.ExternalListMediaJoin
 import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
 import com.mytlogos.enterprise.model.*
-import com.mytlogos.enterprise.tools.doPartitionedExSuspend
-import com.mytlogos.enterprise.tools.doPartitionedSuspend
-import com.mytlogos.enterprise.tools.transformFlow
-import kotlinx.coroutines.async
+import com.mytlogos.enterprise.tools.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import org.joda.time.DateTime
@@ -127,8 +124,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         if (mediaIds.isEmpty()) {
             return
         }
-        val converter = RoomConverter()
-        roomDanglingDao.insertBulk(converter.convertToDangling(mediaIds))
+        RoomConverter().convertToDangling(mediaIds).doChunked { roomDanglingDao.insertBulk(it) }
     }
 
     override suspend fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting {
@@ -142,11 +138,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
     }
 
     override suspend fun getSimpleEpisodes(ids: Collection<Int>): List<SimpleEpisode> {
-        return episodeDao.getSimpleEpisodes(ids)
+        return ids.mapChunked { episodeDao.getSimpleEpisodes(it) }
     }
 
     override suspend fun updateProgress(episodeIds: Collection<Int>, progress: Float) {
-        episodeDao.updateProgress(episodeIds, progress, DateTime.now())
+        val now = DateTime.now()
+        episodeIds.doChunked { episodeDao.updateProgress(it, progress, now) }
     }
 
     override fun getReadTodayEpisodes(): Flow<PagingData<ReadEpisode>> {
@@ -161,7 +158,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         for (id in ids) {
             joins.add(MediaListMediaJoin(listId, id))
         }
-        mediaListDao.addJoin(joins)
+        joins.doChunked { mediaListDao.addJoin(it) }
     }
 
     override fun getListSuggestion(name: String): LiveData<MutableList<MediaList>> {
@@ -192,7 +189,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
     }
 
     override suspend fun removeItemFromList(listId: Int, mediumId: Collection<Int>) {
-        mediaListDao.removeJoin(listId, mediumId)
+        mediumId.doChunked { mediaListDao.removeJoin(listId, it) }
     }
 
     override suspend fun moveItemsToList(oldListId: Int, newListId: Int, ids: Collection<Int>) {
@@ -244,11 +241,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
     override suspend fun insertEditEvent(events: Collection<EditEvent>) {
         val converter = RoomConverter()
         val roomEditEvent = converter.convertEditEvents(events)
-        editDao.insertBulk(roomEditEvent)
+        roomEditEvent.doChunked { editDao.insertBulk(it) }
     }
 
     override suspend fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int> {
-        return episodeDao.getReadEpisodes(episodeIds, read)
+        return episodeIds.mapChunked { episodeDao.getReadEpisodes(it, read) }
     }
 
     override suspend fun getEditEvents(): MutableList<out EditEvent> {
@@ -257,7 +254,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
     override suspend fun removeEditEvents(editEvents: Collection<EditEvent>) {
         val converter = RoomConverter()
-        editDao.deleteBulk(converter.convertEditEvents(editEvents))
+        converter.convertEditEvents(editEvents).doChunked { editDao.deleteBulk(it) }
     }
 
     override suspend fun checkReload(parsedStat: ParsedStat): ReloadStat {
@@ -363,12 +360,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     true
                 )
                 try {
-                    episodeIds.doPartitionedExSuspend { ids: List<Int> ->
-                        async {
-                            episodeDao.updateProgress(ids, 1f, DateTime.now())
-                            false
-                        }
-                    }
+                    episodeIds.doChunked { episodeDao.updateProgress(it, 1f, DateTime.now()) }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -386,7 +378,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override suspend fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister {
             val converter = RoomConverter(loadedData)
-            episodeDao.insertBulkRelease(converter.convertReleases(releases))
+            converter.convertReleases(releases).doChunked { episodeDao.insertBulkRelease(it) }
             return this
         }
 
@@ -395,8 +387,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val list = converter.convertEpisodes(filteredEpisodes.newEpisodes)
             val update = converter.convertEpisodesClient(filteredEpisodes.updateEpisodes)
 
-            episodeDao.insertBulk(list)
-            episodeDao.updateBulkClient(update)
+            list.doChunked { episodeDao.insertBulk(it) }
+            update.doChunked { episodeDao.updateBulkClient(it) }
 
             for (episode in list) {
                 loadedData.episodes.add(episode.episodeId)
@@ -406,7 +398,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     value.episodeId,
                     value.title,
                     value.url,
-                    value.isLocked,
+                    value.locked,
                     value.releaseDate
                 )
             })
@@ -443,8 +435,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val list = converter.convertMediaList(filteredMediaList.newList)
             val update = converter.convertMediaList(filteredMediaList.updateList)
 
-            mediaListDao.insertBulk(list)
-            mediaListDao.updateBulk(update)
+            list.doChunked { mediaListDao.insertBulk(it) }
+            update.doChunked { mediaListDao.updateBulk(it) }
 
             for (mediaList in list) {
                 loadedData.mediaList.add(mediaList.listId)
@@ -469,8 +461,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val list = converter.convertExternalMediaList(filteredExtMediaList.newList)
             val update = converter.convertExternalMediaList(filteredExtMediaList.updateList)
 
-            externalMediaListDao.insertBulk(list)
-            externalMediaListDao.updateBulk(update)
+            list.doChunked { externalMediaListDao.insertBulk(it) }
+            update.doChunked { externalMediaListDao.updateBulk(it) }
 
             for (mediaList in list) {
                 loadedData.externalMediaList.add(mediaList.externalListId)
@@ -495,8 +487,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val newUser = converter.convertExternalUser(filteredExternalUser.newUser)
             val updatedUser = converter.convertExternalUser(filteredExternalUser.updateUser)
 
-            externalUserDao.insertBulk(newUser)
-            externalUserDao.updateBulk(updatedUser)
+            newUser.doChunked { externalUserDao.insertBulk(it) }
+            updatedUser.doChunked { externalUserDao.updateBulk(it) }
 
             for (user in newUser) {
                 loadedData.externalUser.add(user.uuid)
@@ -517,12 +509,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val updatedMedia = converter.convertSimpleMedia(filteredMedia.updateMedia)
 
             try {
-                mediumDao.insertBulk(newMedia)
+                newMedia.doChunked { mediumDao.insertBulk(newMedia) }
             } catch (e: SQLiteConstraintException) {
                 e.printStackTrace()
                 throw e
             }
-            mediumDao.updateBulk(updatedMedia)
+            updatedMedia.doChunked { mediumDao.updateBulk(updatedMedia) }
 
             for (medium in newMedia) {
                 loadedData.media.add(medium.mediumId)
@@ -543,8 +535,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 }
             }
 
-            newsDao.insertNews(newNews)
-            newsDao.updateNews(updatedNews)
+            newNews.doChunked { newsDao.insertNews(it) }
+            updatedNews.doChunked { newsDao.updateNews(it) }
 
             for (roomNews in newNews) {
                 loadedData.news.add(roomNews.newsId)
@@ -562,8 +554,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val newParts = converter.convertParts(filteredParts.newParts)
             val updatedParts = converter.convertParts(filteredParts.updateParts)
 
-            partDao.insertBulk(newParts)
-            partDao.updateBulk(updatedParts)
+            newParts.doChunked { partDao.insertBulk(newParts) }
+            updatedParts.doChunked { partDao.updateBulk(updatedParts) }
 
             for (part in newParts) {
                 loadedData.part.add(part.partId)
@@ -605,7 +597,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         override suspend fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister {
             val roomToDownloads = RoomConverter().convertToDownload(toDownloads)
 
-            toDownloadDao.insertBulk(roomToDownloads)
+            roomToDownloads.doChunked { toDownloadDao.insertBulk(roomToDownloads) }
 
             return this
         }
@@ -632,7 +624,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
 
         override suspend fun persistMediaInWait(medium: List<ClientMediumInWait>) {
-            mediumInWaitDao.insertBulk(RoomConverter().convertClientMediaInWait(medium))
+            RoomConverter().convertClientMediaInWait(medium).doChunked { mediumInWaitDao.insertBulk(it) }
         }
 
         override suspend fun persist(user: ClientSimpleUser?): ClientModelPersister {
@@ -658,8 +650,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
 
         override suspend fun deleteLeftoverEpisodes(partEpisodes: Map<Int, List<Int>>) {
-            val partIds = partEpisodes.keys
-            val episodes = episodeDao.getEpisodes(partIds)
+            val episodes = partEpisodes.keys.mapChunked { episodeDao.getEpisodes(it) }
             val deleteEpisodes: List<Int> = episodes.mapNotNull { roomPartEpisode ->
                 val episodeIds = partEpisodes[roomPartEpisode.partId]
 
@@ -669,18 +660,11 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     return@mapNotNull null
                 }
             }
-            coroutineScope {
-                deleteEpisodes.doPartitionedSuspend { ids: List<Int> ->
-                    async {
-                        episodeDao.deletePerId(ids)
-                        false
-                    }
-                }
-            }
+            deleteEpisodes.doChunked { ids: List<Int> -> episodeDao.deletePerId(ids) }
         }
 
         override suspend fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int> {
-            val roomReleases = episodeDao.getReleases(partReleases.keys)
+            val roomReleases = partReleases.keys.mapChunked { episodeDao.getReleases(it) }
             val deleteRelease: MutableList<RoomRelease> = LinkedList()
             val now = DateTime.now()
             val unmatchedReleases: MutableCollection<ClientSimpleRelease> = HashSet()
@@ -709,12 +693,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (release in unmatchedReleases) {
                 episodesToLoad.add(release.episodeId)
             }
-            episodeDao.deleteBulkRelease(deleteRelease)
+            deleteRelease.doChunked { episodeDao.deleteBulkRelease(it) }
             return episodesToLoad
         }
 
         override suspend fun deleteLeftoverTocs(mediaTocs: Map<Int, List<String>>) {
-            val previousTocs = tocDao.getTocs(mediaTocs.keys)
+            val previousTocs = mediaTocs.keys.mapChunked { tocDao.getTocs(it) }
             val removeTocs: MutableList<RoomToc> = ArrayList()
             for (entry in previousTocs) {
                 val currentTocLinks = mediaTocs[entry.mediumId]
@@ -722,13 +706,13 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     removeTocs.add(entry)
                 }
             }
-            tocDao.deleteBulk(removeTocs)
+            removeTocs.doChunked { tocDao.deleteBulk(it) }
         }
 
         override suspend fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
             val roomTocs = RoomConverter().convertToc(tocs)
 
-            tocDao.insertBulk(roomTocs)
+            roomTocs.doChunked { tocDao.insertBulk(it) }
 
             return this
         }
@@ -793,13 +777,13 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     deletedExLists.add(roomListUser.listId)
                 }
             }
-            externalMediaListDao.removeJoin(toDeleteExternalJoins)
-            mediaListDao.removeJoin(toDeleteInternalJoins)
-            externalMediaListDao.addJoin(newExternalJoins)
-            mediaListDao.addJoin(newInternalJoins)
-            externalMediaListDao.delete(deletedExLists)
-            mediaListDao.delete(deletedLists)
-            externalUserDao.delete(deletedExUser)
+            toDeleteExternalJoins.doChunked { externalMediaListDao.removeJoin(it) }
+            toDeleteInternalJoins.doChunked { mediaListDao.removeJoin(it) }
+            newExternalJoins.doChunked { externalMediaListDao.addJoin(it) }
+            newInternalJoins.doChunked { mediaListDao.addJoin(it) }
+            deletedExLists.doChunked { externalMediaListDao.delete(it) }
+            deletedLists.doChunked { mediaListDao.delete(it) }
+            deletedExUser.doChunked { externalUserDao.delete(it) }
             return this
         }
 
