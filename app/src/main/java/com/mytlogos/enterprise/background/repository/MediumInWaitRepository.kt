@@ -6,13 +6,15 @@ import androidx.paging.PagingData
 import androidx.paging.map
 import com.mytlogos.enterprise.background.ClientModelPersister
 import com.mytlogos.enterprise.background.RepositoryImpl
-import com.mytlogos.enterprise.background.RoomConverter
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.model.ClientMediumInWait
 import com.mytlogos.enterprise.background.api.model.ClientSimpleMedium
+import com.mytlogos.enterprise.background.fromRoom
 import com.mytlogos.enterprise.background.room.AbstractDatabase
 import com.mytlogos.enterprise.background.room.model.RoomMediaList
+import com.mytlogos.enterprise.background.room.model.RoomMediumInWait
+import com.mytlogos.enterprise.background.toRoomInWait
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.model.MediumInWait
 import com.mytlogos.enterprise.model.SimpleMedium
@@ -69,14 +71,13 @@ class MediumInWaitRepository private constructor(application: Application) {
         } else {
             mediumInWaitDao::getByAsc
         }
-        val converter = RoomConverter()
         return transformFlow { query(
             sortValue,
             filter,
             mediumFilter,
             hostFilter
         )}
-        .map { it.map(converter::convert) }
+        .map { it.map(RoomMediumInWait::fromRoom) }
     }
 
     suspend fun consumeMediumInWait(
@@ -93,8 +94,7 @@ class MediumInWaitRepository private constructor(application: Application) {
         return try {
             val success = client.consumeMediumInWait(selectedMedium.mediumId, others).body()
             if (success != null && success) {
-                val converter = RoomConverter()
-                mediumInWaitDao.deleteBulk(converter.convertMediaInWait(mediumInWaits))
+                mediumInWaitDao.deleteBulk(mediumInWaits.toRoomInWait())
                 true
             } else {
                 false
@@ -139,8 +139,7 @@ class MediumInWaitRepository private constructor(application: Application) {
             toDelete.add(mediumInWait)
             toDelete.addAll(mediumInWaits)
 
-            val converter = RoomConverter()
-            mediumInWaitDao.deleteBulk(converter.convertMediaInWait(toDelete))
+            mediumInWaitDao.deleteBulk(toDelete.toRoomInWait())
 
             if (listId > 0) {
                 mediaListDao.addJoin(listOf(RoomMediaList.MediaListMediaJoin(listId, listId)))

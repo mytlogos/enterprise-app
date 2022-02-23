@@ -7,373 +7,384 @@ import com.mytlogos.enterprise.background.room.model.RoomExternalMediaList.Exter
 import com.mytlogos.enterprise.background.room.model.RoomMediaList.MediaListMediaJoin
 import com.mytlogos.enterprise.model.*
 import java.util.*
-import java.util.function.Function
 
-class RoomConverter @JvmOverloads constructor(private val loadedData: LoadData = LoadData()) {
-    fun convertExternalMediaList(mediaLists: Collection<ClientExternalMediaList>?): List<RoomExternalMediaList> {
-        return this.convert(mediaLists) { mediaList: ClientExternalMediaList ->
-            this.convert(
-                mediaList
-            )
-        }
+fun Collection<ClientExternalMediaList>?.externalListToRoom(): List<RoomExternalMediaList> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertMediaList(mediaLists: Collection<ClientMediaList>?): List<RoomMediaList> {
-        return this.convert(mediaLists) { mediaList: ClientMediaList -> this.convert(mediaList) }
+fun Collection<ClientMediaList>?.listToRoom(): List<RoomMediaList> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertExternalUser(mediaLists: Collection<ClientExternalUser>?): List<RoomExternalUser> {
-        return this.convert(mediaLists) { user: ClientExternalUser -> this.convert(user) }
+fun Collection<ClientExternalUser>?.externalUserToRoom(): List<RoomExternalUser> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertExListJoin(mediaLists: Collection<ListJoin>?): List<ExternalListMediaJoin> {
-        return this.convert(mediaLists) { join: ListJoin -> convertToExtListJoin(join) }
+fun Collection<ListJoin>?.toRoomExternalJoin(): List<ExternalListMediaJoin> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoomExternalJoin() }
+}
 
-    fun convertListJoin(joins: Collection<ListJoin>?): List<MediaListMediaJoin> {
-        return this.convert(joins) { mediaList: ListJoin -> convertToListJoin(mediaList) }
+fun Collection<ListJoin>?.toRoomJoin(): List<MediaListMediaJoin> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoomJoin() }
+}
 
-    fun convertEpisodes(episodes: Collection<ClientEpisode>?): List<RoomEpisode> {
-        return this.convert(episodes) { episode: ClientEpisode -> this.convert(episode) }
+fun Collection<ClientEpisode>?.toRoomEpisode(): List<RoomEpisode> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertEpisodesClient(episodes: Collection<ClientEpisode>?): List<ClientRoomEpisode> {
-        return this.convert(episodes) { episode: ClientEpisode -> convertClient(episode) }
+fun Collection<ClientEpisode>?.toRoomClientEpisode(): List<ClientRoomEpisode> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toClientRoom() }
+}
 
-    fun convertEpisodeReleases(releases: Collection<ClientEpisodeRelease>?): List<RoomRelease> {
-        return this.convert(releases) { release: ClientEpisodeRelease -> this.convert(release) }
+fun Collection<ClientEpisodeRelease>?.episodeToRoomRelease(): List<RoomRelease> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertReleases(releases: Collection<ClientRelease>?): List<RoomRelease> {
-        return this.convert(releases) { release: ClientRelease -> this.convert(release) }
+fun Collection<ClientRelease>?.toRoomRelease(): List<RoomRelease> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertMedia(media: Collection<ClientMedium>): List<RoomMedium> {
-        val mediumList: MutableList<RoomMedium> = ArrayList(media.size)
-        for (medium in media) {
-            val currentRead = medium.currentRead
-            val curredRead = if (loadedData.episodes.contains(currentRead)) currentRead else null
-            mediumList.add(this.convert(medium, curredRead))
-        }
-        return mediumList
+fun Collection<ClientMedium>.toRoomMedium(loadedData: LoadData): List<RoomMedium> {
+    return this.map {
+        val currentRead = if (loadedData.episodes.contains(it.currentRead)) it.currentRead else null
+        it.toRoom(currentRead)
     }
+}
 
-    fun convertSimpleMedia(media: Collection<ClientSimpleMedium>): List<RoomMedium> {
-        val mediumList: MutableList<RoomMedium> = ArrayList(media.size)
-        for (medium in media) {
-            mediumList.add(this.convert(medium))
-        }
-        return mediumList
+fun Collection<ClientSimpleMedium>.simpleToRoomMedium(): List<RoomMedium> {
+    return this.map { it.toRoom() }
+}
+
+fun Collection<ClientPart>?.toRoomPart(): List<RoomPart> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertParts(parts: Collection<ClientPart>?): List<RoomPart> {
-        return this.convert(parts) { part: ClientPart -> this.convert(part) }
+fun Collection<ToDownload>?.toRoomToDownload(): List<RoomToDownload> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertToDownload(toDownloads: Collection<ToDownload>?): List<RoomToDownload> {
-        return this.convert(toDownloads) { toDownload: ToDownload -> this.convert(toDownload) }
+fun Collection<RoomToDownload>?.fromRoomToDownload(): List<ToDownload> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertRoomToDownload(roomToDownloads: Collection<RoomToDownload>?): List<ToDownload> {
-        return this.convert(roomToDownloads) { roomToDownload: RoomToDownload ->
-            this.convert(
-                roomToDownload
-            )
-        }
+fun Collection<ClientMediumInWait>?.clientToRoomInWait(): Collection<RoomMediumInWait> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { it.toRoom() }
+}
 
-    fun convertClientMediaInWait(media: Collection<ClientMediumInWait>?): Collection<RoomMediumInWait> {
-        return this.convert(media) { medium: ClientMediumInWait -> this.convert(medium) }
+fun Collection<Int>?.toRoomDangling(): Collection<RoomDanglingMedium> {
+    if (this == null) {
+        return emptyList()
     }
+    return this.map { RoomDanglingMedium(it) }
+}
 
-    fun convertToDangling(mediaIds: Collection<Int>?): Collection<RoomDanglingMedium> {
-        return this.convert(mediaIds) { mediumId: Int? ->
-            RoomDanglingMedium(
-                mediumId!!
-            )
-        }
-    }
+fun Collection<MediumInWait>.toRoomInWait(): Collection<RoomMediumInWait> {
+    return this.map { it.toRoom() }
+}
 
-    fun convertMediaInWait(medium: Collection<MediumInWait>): Collection<RoomMediumInWait> {
-        return this.convert(medium) { inWait: MediumInWait -> this.convert(inWait) }
-    }
+fun Collection<EditEvent>.toRoomEditEvent(): Collection<RoomEditEvent> {
+    return this.mapNotNull { it.toRoom() }
+}
 
-    fun convertEditEvents(events: Collection<EditEvent>): Collection<RoomEditEvent> {
-        return this.convert(events) { event: EditEvent -> this.convert(event) }.filterNotNull()
-    }
+fun Collection<Toc>.toRoomToc(): List<RoomToc> {
+    return this.map { it.toRoom() }
+}
 
-    fun convertToc(tocs: Collection<Toc>): List<RoomToc> {
-        return this.convert(tocs) { toc: Toc -> this.convert(toc) }
-    }
+private fun Toc.toRoom(): RoomToc {
+    return if (this is RoomToc) this else RoomToc(
+        this.mediumId,
+        this.link
+    )
+}
 
-    private fun <R, T> convert(values: Collection<T>?, converter: Function<T, R>): List<R> {
-        val list: MutableList<R> = ArrayList()
-        if (values == null) {
-            return list
-        }
-        for (t in values) {
-            list.add(converter.apply(t))
-        }
-        return list
-    }
+fun MediumInWait.toRoom(): RoomMediumInWait {
+    return RoomMediumInWait(
+        this.title,
+        this.medium,
+        this.link
+    )
+}
 
-    private fun convert(toc: Toc): RoomToc {
-        return if (toc is RoomToc) toc else RoomToc(
-            toc.mediumId,
-            toc.link
+fun RoomDisplayEpisode?.fromRoom(): DisplayEpisode? {
+    return this?.fromRoomNonNull()
+}
+
+fun RoomDisplayEpisode.fromRoomNonNull(): DisplayEpisode {
+    return DisplayEpisode(
+        this.episodeId,
+        this.mediumId,
+        this.mediumTitle,
+        this.totalIndex,
+        this.partialIndex,
+        this.saved,
+        this.read,
+        ArrayList<Release>(this.releases)
+    )
+}
+
+fun ListJoin.toRoomExternalJoin(): ExternalListMediaJoin {
+    return ExternalListMediaJoin(
+        this.listId, this.mediumId
+    )
+}
+
+fun ListJoin.toRoomJoin(): MediaListMediaJoin {
+    return MediaListMediaJoin(
+        this.listId, this.mediumId
+    )
+}
+
+fun ClientEpisode.toRoom(): RoomEpisode {
+    return RoomEpisode(
+        this.id,
+        this.progress,
+        this.readDate,
+        this.partId,
+        this.totalIndex,
+        this.partialIndex,
+        if (this.combiIndex != 0.0) this.combiIndex else this.toCombiIndex(),
+        false
+    )
+}
+
+fun ClientEpisode.toClientRoom(): ClientRoomEpisode {
+    return ClientRoomEpisode(
+        this.id,
+        this.progress,
+        this.partId,
+        this.totalIndex,
+        this.partialIndex,
+        if (this.combiIndex != 0.0) this.combiIndex else this.toCombiIndex(),
+        this.readDate
+    )
+}
+
+fun ClientRelease.toRoom(): RoomRelease {
+    return RoomRelease(
+        this.episodeId,
+        this.title,
+        this.url,
+        this.releaseDate,
+        this.locked
+    )
+}
+
+fun ClientEpisodeRelease.toRoom(): RoomRelease {
+    return RoomRelease(
+        this.episodeId,
+        this.title,
+        this.url,
+        this.releaseDate,
+        this.locked
+    )
+}
+
+fun ClientExternalUser.toRoom(): RoomExternalUser {
+    return RoomExternalUser(
+        this.getUuid(), this.localUuid, this.identifier,
+        this.type
+    )
+}
+
+fun ClientMediaList.toRoom(): RoomMediaList {
+    return RoomMediaList(
+        this.id,
+        this.userUuid,
+        this.name,
+        this.medium
+    )
+}
+
+fun ClientExternalMediaList.toRoom(): RoomExternalMediaList {
+    return RoomExternalMediaList(
+        this.uuid, this.id, this.name,
+        this.medium, this.url
+    )
+}
+
+fun ClientMedium.toRoom(curredRead: Int?): RoomMedium {
+    return RoomMedium(
+        curredRead, this.id, this.countryOfOrigin ?: "",
+        this.languageOfOrigin ?: "", this.author ?: "", this.title,
+        this.medium, this.artist ?: "", this.lang ?: "",
+        this.stateOrigin, this.stateTL, this.series ?: "",
+        this.universe ?: ""
+    )
+}
+
+fun ClientSimpleMedium.toRoom(): RoomMedium {
+    return RoomMedium(
+        null, this.id, this.countryOfOrigin ?: "",
+        this.languageOfOrigin ?: "", this.author ?: "", this.title,
+        this.medium, this.artist ?: "", this.lang ?: "",
+        this.stateOrigin, this.stateTL, this.series ?: "",
+        this.universe ?: ""
+    )
+}
+
+fun ClientNews.toRoom(): RoomNews {
+    return RoomNews(
+        this.id, this.isRead,
+        this.title, this.date,
+        this.link
+    )
+}
+
+fun ClientPart.toRoom(): RoomPart {
+    return RoomPart(
+        this.id,
+        this.mediumId,
+        this.title,
+        this.totalIndex,
+        this.partialIndex,
+        this.toCombiIndex()
+    )
+}
+
+fun ToDownload.toRoom(): RoomToDownload {
+    return RoomToDownload(
+        0, this.isProhibited,
+        this.mediumId,
+        this.listId,
+        this.externalListId
+    )
+}
+
+fun RoomToDownload.toRoom(): ToDownload {
+    return ToDownload(
+        this.prohibited,
+        this.mediumId,
+        this.listId,
+        this.externalListId
+    )
+}
+
+fun ClientUser.toRoom(): RoomUser {
+    return RoomUser(
+        this.name,
+        this.uuid,
+        this.session
+    )
+}
+
+fun ClientMediumInWait.toRoom(): RoomMediumInWait {
+    return RoomMediumInWait(
+        this.title,
+        this.medium,
+        this.link
+    )
+}
+
+fun RoomEpisode.fromRoom(): Episode {
+    return Episode(
+        this.episodeId,
+        this.progress,
+        this.partId,
+        this.partialIndex,
+        this.totalIndex,
+        this.readDate,
+        this.saved
+    )
+}
+
+fun RoomMediumInWait.fromRoom(): MediumInWait {
+    return MediumInWait(
+        this.title,
+        this.medium,
+        this.link
+    )
+}
+
+fun RoomTocEpisode.fromRoom(): TocEpisode {
+    return TocEpisode(
+        this.episodeId,
+        this.progress,
+        this.partId,
+        this.partialIndex,
+        this.totalIndex,
+        this.readDate,
+        this.saved,
+        ArrayList<Release>(this.releases)
+    )
+}
+
+fun ClientSimpleUser.toRoom(): RoomUser {
+    return RoomUser(
+        this.uuid,
+        this.name,
+        this.session,
+    )
+}
+
+fun RoomReadEpisode.fromRoom(): ReadEpisode {
+    return ReadEpisode(
+        this.episodeId,
+        this.mediumId,
+        this.mediumTitle,
+        this.totalIndex,
+        this.partialIndex,
+        ArrayList<Release>(this.releases)
+    )
+}
+
+fun EditEvent?.toRoom(): RoomEditEvent? {
+    return when (this) {
+        null -> null
+        is RoomEditEvent -> this
+        else -> RoomEditEvent(
+            this.id,
+            this.objectType,
+            this.eventType,
+            this.dateTime,
+            this.firstValue,
+            this.secondValue
         )
     }
+}
 
-    fun convert(inWait: MediumInWait): RoomMediumInWait {
-        return RoomMediumInWait(
-            inWait.title,
-            inWait.medium,
-            inWait.link
-        )
-    }
-
-    fun convertRoomEpisode(episode: RoomDisplayEpisode?): DisplayEpisode? {
-        return if (episode == null) null else this.convertRoomEpisodeNonNull(episode)
-    }
-
-    fun convertRoomEpisodeNonNull(episode: RoomDisplayEpisode): DisplayEpisode {
-        return DisplayEpisode(
-            episode.episodeId,
-            episode.mediumId,
-            episode.mediumTitle,
-            episode.totalIndex,
-            episode.partialIndex,
-            episode.saved,
-            episode.read,
-            ArrayList<Release>(episode.releases)
-        )
-    }
-
-    fun convertToExtListJoin(join: ListJoin): ExternalListMediaJoin {
-        return ExternalListMediaJoin(
-            join.listId, join.mediumId
-        )
-    }
-
-    fun convertToListJoin(mediaList: ListJoin): MediaListMediaJoin {
-        return MediaListMediaJoin(
-            mediaList.listId, mediaList.mediumId
-        )
-    }
-
-    fun convert(episode: ClientEpisode): RoomEpisode {
-        return RoomEpisode(
-            episode.id,
-            episode.progress,
-            episode.readDate,
-            episode.partId,
-            episode.totalIndex,
-            episode.partialIndex,
-            if (episode.combiIndex != 0.0) episode.combiIndex else episode.toCombiIndex(),
-            false
-        )
-    }
-
-    fun convertClient(episode: ClientEpisode): ClientRoomEpisode {
-        return ClientRoomEpisode(
-            episode.id,
-            episode.progress,
-            episode.partId,
-            episode.totalIndex,
-            episode.partialIndex,
-            if (episode.combiIndex != 0.0) episode.combiIndex else episode.toCombiIndex(),
-            episode.readDate
-        )
-    }
-
-    fun convert(release: ClientRelease): RoomRelease {
-        return RoomRelease(
-            release.episodeId,
-            release.title,
-            release.url,
-            release.releaseDate,
-            release.locked
-        )
-    }
-
-    fun convert(release: ClientEpisodeRelease): RoomRelease {
-        return RoomRelease(
-            release.episodeId,
-            release.title,
-            release.url,
-            release.releaseDate,
-            release.locked
-        )
-    }
-
-    fun convert(user: ClientExternalUser): RoomExternalUser {
-        return RoomExternalUser(
-            user.getUuid(), user.localUuid, user.identifier,
-            user.type
-        )
-    }
-
-    fun convert(mediaList: ClientMediaList): RoomMediaList {
-        return RoomMediaList(
-            mediaList.id, mediaList.userUuid, mediaList.name,
-            mediaList.medium
-        )
-    }
-
-    fun convert(mediaList: ClientExternalMediaList): RoomExternalMediaList {
-        return RoomExternalMediaList(
-            mediaList.uuid, mediaList.id, mediaList.name,
-            mediaList.medium, mediaList.url
-        )
-    }
-
-    fun convert(medium: ClientMedium, curredRead: Int?): RoomMedium {
-        return RoomMedium(
-            curredRead, medium.id, medium.countryOfOrigin ?: "",
-            medium.languageOfOrigin ?: "", medium.author ?: "", medium.title,
-            medium.medium, medium.artist ?: "", medium.lang ?: "",
-            medium.stateOrigin, medium.stateTL, medium.series ?: "",
-            medium.universe ?: ""
-        )
-    }
-
-    fun convert(medium: ClientSimpleMedium): RoomMedium {
-        return RoomMedium(
-            null, medium.id, medium.countryOfOrigin ?: "",
-            medium.languageOfOrigin ?: "", medium.author ?: "", medium.title,
-            medium.medium, medium.artist ?: "", medium.lang ?: "",
-            medium.stateOrigin, medium.stateTL, medium.series ?: "",
-            medium.universe ?: ""
-        )
-    }
-
-    fun convert(news: ClientNews): RoomNews {
-        return RoomNews(
-            news.id, news.isRead,
-            news.title, news.date,
-            news.link
-        )
-    }
-
-    fun convert(part: ClientPart): RoomPart {
-        return RoomPart(
-            part.id,
-            part.mediumId,
-            part.title,
-            part.totalIndex,
-            part.partialIndex,
-            part.toCombiIndex()
-        )
-    }
-
-    fun convert(toDownload: ToDownload): RoomToDownload {
-        return RoomToDownload(
-            0, toDownload.isProhibited,
-            toDownload.mediumId,
-            toDownload.listId,
-            toDownload.externalListId
-        )
-    }
-
-    fun convert(roomToDownload: RoomToDownload): ToDownload {
-        return ToDownload(
-            roomToDownload.prohibited,
-            roomToDownload.mediumId,
-            roomToDownload.listId,
-            roomToDownload.externalListId
-        )
-    }
-
-    fun convert(user: ClientUser): RoomUser {
-        return RoomUser(
-            user.name,
-            user.uuid,
-            user.session
-        )
-    }
-
-    fun convert(medium: ClientMediumInWait): RoomMediumInWait {
-        return RoomMediumInWait(
-            medium.title,
-            medium.medium,
-            medium.link
-        )
-    }
-
-    fun convert(roomEpisode: RoomEpisode): Episode {
-        return Episode(
-            roomEpisode.episodeId,
-            roomEpisode.progress,
-            roomEpisode.partId,
-            roomEpisode.partialIndex,
-            roomEpisode.totalIndex,
-            roomEpisode.readDate,
-            roomEpisode.saved
-        )
-    }
-
-    fun convert(input: RoomMediumInWait): MediumInWait {
-        return MediumInWait(
-            input.title,
-            input.medium,
-            input.link
-        )
-    }
-
-    fun convertTocEpisode(roomTocEpisode: RoomTocEpisode): TocEpisode {
-        return TocEpisode(
-            roomTocEpisode.episodeId,
-            roomTocEpisode.progress,
-            roomTocEpisode.partId,
-            roomTocEpisode.partialIndex,
-            roomTocEpisode.totalIndex,
-            roomTocEpisode.readDate,
-            roomTocEpisode.saved,
-            ArrayList<Release>(roomTocEpisode.releases)
-        )
-    }
-
-    fun convert(user: ClientSimpleUser): RoomUser {
-        return RoomUser(
-            user.uuid,
-            user.name,
-            user.session,
-        )
-    }
-
-    fun convert(input: RoomReadEpisode): ReadEpisode {
-        return ReadEpisode(
-            input.episodeId,
-            input.mediumId,
-            input.mediumTitle,
-            input.totalIndex,
-            input.partialIndex,
-            ArrayList<Release>(input.releases)
-        )
-    }
-
-    fun convert(event: EditEvent?): RoomEditEvent? {
-        return when (event) {
-            null -> null
-            is RoomEditEvent -> event
-            else -> RoomEditEvent(
-                event.id,
-                event.objectType,
-                event.eventType,
-                event.dateTime,
-                event.firstValue,
-                event.secondValue
-            )
-        }
-    }
-
-    fun convert(user: RoomUser?): User? {
-        return if (user == null) null else User(
-            user.uuid,
-            user.session,
-            user.name
-        )
-    }
+fun RoomUser?.fromRoom(): User? {
+    return if (this == null) null else User(
+        this.uuid,
+        this.session,
+        this.name
+    )
 }

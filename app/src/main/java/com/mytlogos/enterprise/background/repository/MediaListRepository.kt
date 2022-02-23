@@ -5,13 +5,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import com.mytlogos.enterprise.background.EditService
 import com.mytlogos.enterprise.background.RepositoryImpl
-import com.mytlogos.enterprise.background.RoomConverter
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.model.ClientMinList
 import com.mytlogos.enterprise.background.room.AbstractDatabase
 import com.mytlogos.enterprise.background.room.model.RoomExternListView
 import com.mytlogos.enterprise.background.room.model.RoomMediaList
+import com.mytlogos.enterprise.background.toRoom
 import com.mytlogos.enterprise.model.ExternalMediaList
 import com.mytlogos.enterprise.model.MediaList
 import com.mytlogos.enterprise.model.MediaListSetting
@@ -114,7 +114,7 @@ class MediaListRepository private constructor(application: Application) {
                 clientMediaList.id,
                 null
             )
-            toDownloadDao.insert(RoomConverter().convert(toDownload))
+            toDownloadDao.insert(toDownload.toRoom())
         }
     }
 

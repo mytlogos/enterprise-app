@@ -4,10 +4,10 @@ import android.app.Application
 import android.content.Context
 import androidx.paging.*
 import com.mytlogos.enterprise.background.RepositoryImpl
-import com.mytlogos.enterprise.background.RoomConverter
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.api.model.ClientDownloadedEpisode
+import com.mytlogos.enterprise.background.fromRoom
 import com.mytlogos.enterprise.background.resourceLoader.LoadWorkGenerator
 import com.mytlogos.enterprise.background.room.AbstractDatabase
 import com.mytlogos.enterprise.background.room.model.RoomFailedEpisode
@@ -64,7 +64,6 @@ class EpisodeRepository private constructor(application: Application) {
         read: Int,
         saved: Int,
     ): Flow<PagingData<TocEpisode>> {
-        val converter = RoomConverter()
         return transformFlow(
             pagingSourceFactory = {
                 if (sortings.sortValue > 0) {
@@ -73,7 +72,7 @@ class EpisodeRepository private constructor(application: Application) {
                     episodeDao.getTocEpisodesDesc(mediumId, read, saved)
                 }
             }
-        ).map { data -> data.map { converter.convertTocEpisode(it) } }
+        ).map { data -> data.map { it.fromRoom() } }
     }
 
 

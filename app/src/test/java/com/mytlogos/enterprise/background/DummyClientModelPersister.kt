@@ -44,9 +44,8 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
     }
 
     override suspend fun persist(filteredEpisodes: FilteredEpisodes): ClientModelPersister {
-        val converter = RoomConverter(loadedData)
-        val list = converter.convertEpisodes(filteredEpisodes.newEpisodes)
-        val update = converter.convertEpisodes(filteredEpisodes.updateEpisodes)
+        val list = filteredEpisodes.newEpisodes.toRoomEpisode()
+        val update = filteredEpisodes.updateEpisodes.toRoomEpisode()
         for ((episodeId) in list) {
             loadedData.episodes.add(episodeId)
         }
@@ -87,10 +86,9 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
     }
 
     override suspend fun persist(filteredMediaList: FilteredMediaList): ClientModelPersister {
-        val converter = RoomConverter(loadedData)
-        val list = converter.convertMediaList(filteredMediaList.newList)
-        val update = converter.convertMediaList(filteredMediaList.updateList)
-        val joins = converter.convertListJoin(filteredMediaList.joins)
+        val list = filteredMediaList.newList.listToRoom()
+        val update = filteredMediaList.updateList.listToRoom()
+        val joins = filteredMediaList.joins.toRoomJoin()
         val clearListJoin: List<Int> = filteredMediaList.clearJoins
         for (mediaList in update) {
             updatedData.mediaList.add(mediaList.listId)
@@ -109,10 +107,9 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
     }
 
     override suspend fun persist(filteredExtMediaList: FilteredExtMediaList): ClientModelPersister {
-        val converter = RoomConverter(loadedData)
-        val list = converter.convertExternalMediaList(filteredExtMediaList.newList)
-        val update = converter.convertExternalMediaList(filteredExtMediaList.updateList)
-        val joins = converter.convertExListJoin(filteredExtMediaList.joins)
+        val list = filteredExtMediaList.newList.externalListToRoom()
+        val update = filteredExtMediaList.updateList.externalListToRoom()
+        val joins = filteredExtMediaList.joins.toRoomExternalJoin()
         val clearListJoin: List<Int> = filteredExtMediaList.clearJoins
         clearedExternalList.addAll(clearListJoin)
         externalListMediaJoins.addAll(joins)
@@ -130,13 +127,11 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
     }
 
     override suspend fun persist(filteredExternalUser: FilteredExternalUser): ClientModelPersister {
-        val converter = RoomConverter(loadedData)
-        val list = converter.convertExternalUser(filteredExternalUser.newUser)
-        val update = converter.convertExternalUser(filteredExternalUser.updateUser)
-        val externalMediaLists = converter.convertExternalMediaList(filteredExternalUser.newList)
-        val updateExternalMediaLists =
-            converter.convertExternalMediaList(filteredExternalUser.updateList)
-        val extListMediaJoin = converter.convertExListJoin(filteredExternalUser.joins)
+        val list = filteredExternalUser.newUser.externalUserToRoom()
+        val update = filteredExternalUser.updateUser.externalUserToRoom()
+        val externalMediaLists = filteredExternalUser.newList.externalListToRoom()
+        val updateExternalMediaLists = filteredExternalUser.updateList.externalListToRoom()
+        val extListMediaJoin = filteredExternalUser.joins.toRoomExternalJoin()
         val clearListJoin: List<Int> = filteredExternalUser.clearJoins
         clearedExternalList.addAll(clearListJoin)
         externalListMediaJoins.addAll(extListMediaJoin)
@@ -160,9 +155,8 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
     }
 
     override suspend fun persist(filteredMedia: FilteredMedia): ClientModelPersister {
-        val converter = RoomConverter(loadedData)
-        val list = converter.convertSimpleMedia(filteredMedia.newMedia)
-        val update = converter.convertSimpleMedia(filteredMedia.updateMedia)
+        val list = filteredMedia.newMedia.simpleToRoomMedium()
+        val update = filteredMedia.updateMedia.simpleToRoomMedium()
         for (medium in list) {
             loadedData.media.add(medium.mediumId)
         }
@@ -175,9 +169,8 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
     override suspend fun persistNews(news: Collection<ClientNews>): ClientModelPersister {
         val list: MutableList<RoomNews> = ArrayList()
         val update: MutableList<RoomNews> = ArrayList()
-        val converter = RoomConverter()
         for (clientNews in news) {
-            val roomNews = converter.convert(clientNews)
+            val roomNews = clientNews.toRoom()
             if (generator.isNewsLoaded(clientNews.id)) {
                 update.add(roomNews)
             } else {
@@ -210,9 +203,8 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
     }
 
     override suspend fun persist(filteredParts: FilteredParts): ClientModelPersister {
-        val converter = RoomConverter()
-        val list = converter.convertParts(filteredParts.newParts)
-        val update = converter.convertParts(filteredParts.updateParts)
+        val list = filteredParts.newParts.toRoomPart()
+        val update = filteredParts.updateParts.toRoomPart()
         for (part in list) {
             loadedData.part.add(part.partId)
         }
@@ -260,11 +252,6 @@ class DummyClientModelPersister(val loadedData: LoadData, val repository: Reposi
 
     fun persist(user: ClientUpdateUser?): ClientModelPersister {
         isUserUpdated = true
-        return this
-    }
-
-    fun persist(toDownload: ToDownload?): ClientModelPersister {
-        savedToDownloads.add(RoomConverter().convert(toDownload!!))
         return this
     }
 

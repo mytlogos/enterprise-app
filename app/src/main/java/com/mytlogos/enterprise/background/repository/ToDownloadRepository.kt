@@ -1,10 +1,8 @@
 package com.mytlogos.enterprise.background.repository
 
 import android.app.Application
-import com.mytlogos.enterprise.background.ClientModelPersister
+import com.mytlogos.enterprise.background.*
 import com.mytlogos.enterprise.background.EditService
-import com.mytlogos.enterprise.background.RepositoryImpl
-import com.mytlogos.enterprise.background.RoomConverter
 import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
 import com.mytlogos.enterprise.background.api.Client
 import com.mytlogos.enterprise.background.room.AbstractDatabase
@@ -23,7 +21,7 @@ class ToDownloadRepository private constructor(application: Application) {
 
 
     suspend fun getToDownloads(): List<ToDownload> {
-        return RoomConverter().convertRoomToDownload(toDownloadDao.getAll())
+        return toDownloadDao.getAll().fromRoomToDownload()
     }
 
     suspend fun addToDownload(toDownload: ToDownload) {
@@ -31,7 +29,7 @@ class ToDownloadRepository private constructor(application: Application) {
     }
 
     suspend fun removeToDownloads(toDownloads: Collection<ToDownload>) {
-        for (toDownload in RoomConverter().convertToDownload(toDownloads)) {
+        for (toDownload in toDownloads.toRoomToDownload()) {
             toDownloadDao.deleteToDownload(
                 toDownload.mediumId ?: 0,
                 toDownload.listId ?: 0,
@@ -42,7 +40,7 @@ class ToDownloadRepository private constructor(application: Application) {
 
     suspend fun updateToDownload(add: Boolean, toDownload: ToDownload) {
         if (add) {
-            toDownloadDao.insert(RoomConverter().convert(toDownload))
+            toDownloadDao.insert(toDownload.toRoom())
         } else {
             toDownloadDao.deleteToDownload(
                 toDownload.mediumId,

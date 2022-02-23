@@ -29,8 +29,7 @@ class UserRepository private constructor(application: Application) {
     }
 
     suspend fun getUserNow(): User? {
-        val converter = RoomConverter()
-        return converter.convert(userDao.getUserNow())
+        return userDao.getUserNow().fromRoom()
     }
 
     /**
