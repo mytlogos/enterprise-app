@@ -124,7 +124,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         if (mediaIds.isEmpty()) {
             return
         }
-        RoomConverter().convertToDangling(mediaIds).doChunked { roomDanglingDao.insertBulk(it) }
+        RoomConverter().convertToDangling(mediaIds).doChunked(roomDanglingDao::insertBulk)
     }
 
     override suspend fun getListSettingNow(id: Int, isExternal: Boolean): MediaListSetting {
@@ -158,7 +158,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         for (id in ids) {
             joins.add(MediaListMediaJoin(listId, id))
         }
-        joins.doChunked { mediaListDao.addJoin(it) }
+        joins.doChunked(mediaListDao::addJoin)
     }
 
     override fun getListSuggestion(name: String): LiveData<MutableList<MediaList>> {
@@ -241,7 +241,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
     override suspend fun insertEditEvent(events: Collection<EditEvent>) {
         val converter = RoomConverter()
         val roomEditEvent = converter.convertEditEvents(events)
-        roomEditEvent.doChunked { editDao.insertBulk(it) }
+        roomEditEvent.doChunked(editDao::insertBulk)
     }
 
     override suspend fun getReadEpisodes(episodeIds: Collection<Int>, read: Boolean): List<Int> {
@@ -254,7 +254,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
     override suspend fun removeEditEvents(editEvents: Collection<EditEvent>) {
         val converter = RoomConverter()
-        converter.convertEditEvents(editEvents).doChunked { editDao.deleteBulk(it) }
+        converter.convertEditEvents(editEvents).doChunked(editDao::deleteBulk)
     }
 
     override suspend fun checkReload(parsedStat: ParsedStat): ReloadStat {
@@ -378,7 +378,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
 
         override suspend fun persistReleases(releases: Collection<ClientRelease>): ClientModelPersister {
             val converter = RoomConverter(loadedData)
-            converter.convertReleases(releases).doChunked { episodeDao.insertBulkRelease(it) }
+            converter.convertReleases(releases).doChunked(episodeDao::insertBulkRelease)
             return this
         }
 
@@ -387,8 +387,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val list = converter.convertEpisodes(filteredEpisodes.newEpisodes)
             val update = converter.convertEpisodesClient(filteredEpisodes.updateEpisodes)
 
-            list.doChunked { episodeDao.insertBulk(it) }
-            update.doChunked { episodeDao.updateBulkClient(it) }
+            list.doChunked(episodeDao::insertBulk)
+            update.doChunked(episodeDao::updateBulkClient)
 
             for (episode in list) {
                 loadedData.episodes.add(episode.episodeId)
@@ -435,8 +435,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val list = converter.convertMediaList(filteredMediaList.newList)
             val update = converter.convertMediaList(filteredMediaList.updateList)
 
-            list.doChunked { mediaListDao.insertBulk(it) }
-            update.doChunked { mediaListDao.updateBulk(it) }
+            list.doChunked(mediaListDao::insertBulk)
+            update.doChunked(mediaListDao::updateBulk)
 
             for (mediaList in list) {
                 loadedData.mediaList.add(mediaList.listId)
@@ -461,8 +461,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val list = converter.convertExternalMediaList(filteredExtMediaList.newList)
             val update = converter.convertExternalMediaList(filteredExtMediaList.updateList)
 
-            list.doChunked { externalMediaListDao.insertBulk(it) }
-            update.doChunked { externalMediaListDao.updateBulk(it) }
+            list.doChunked(externalMediaListDao::insertBulk)
+            update.doChunked(externalMediaListDao::updateBulk)
 
             for (mediaList in list) {
                 loadedData.externalMediaList.add(mediaList.externalListId)
@@ -487,8 +487,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val newUser = converter.convertExternalUser(filteredExternalUser.newUser)
             val updatedUser = converter.convertExternalUser(filteredExternalUser.updateUser)
 
-            newUser.doChunked { externalUserDao.insertBulk(it) }
-            updatedUser.doChunked { externalUserDao.updateBulk(it) }
+            newUser.doChunked(externalUserDao::insertBulk)
+            updatedUser.doChunked(externalUserDao::updateBulk)
 
             for (user in newUser) {
                 loadedData.externalUser.add(user.uuid)
@@ -509,12 +509,12 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val updatedMedia = converter.convertSimpleMedia(filteredMedia.updateMedia)
 
             try {
-                newMedia.doChunked { mediumDao.insertBulk(newMedia) }
+                newMedia.doChunked(mediumDao::insertBulk)
             } catch (e: SQLiteConstraintException) {
                 e.printStackTrace()
                 throw e
             }
-            updatedMedia.doChunked { mediumDao.updateBulk(updatedMedia) }
+            updatedMedia.doChunked(mediumDao::updateBulk)
 
             for (medium in newMedia) {
                 loadedData.media.add(medium.mediumId)
@@ -535,8 +535,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
                 }
             }
 
-            newNews.doChunked { newsDao.insertNews(it) }
-            updatedNews.doChunked { newsDao.updateNews(it) }
+            newNews.doChunked(newsDao::insertNews)
+            updatedNews.doChunked(newsDao::updateNews)
 
             for (roomNews in newNews) {
                 loadedData.news.add(roomNews.newsId)
@@ -554,8 +554,8 @@ class RoomStorage(application: Application) : DatabaseStorage {
             val newParts = converter.convertParts(filteredParts.newParts)
             val updatedParts = converter.convertParts(filteredParts.updateParts)
 
-            newParts.doChunked { partDao.insertBulk(newParts) }
-            updatedParts.doChunked { partDao.updateBulk(updatedParts) }
+            newParts.doChunked(partDao::insertBulk)
+            updatedParts.doChunked(partDao::updateBulk)
 
             for (part in newParts) {
                 loadedData.part.add(part.partId)
@@ -597,7 +597,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         override suspend fun persistToDownloads(toDownloads: Collection<ToDownload>): ClientModelPersister {
             val roomToDownloads = RoomConverter().convertToDownload(toDownloads)
 
-            roomToDownloads.doChunked { toDownloadDao.insertBulk(roomToDownloads) }
+            roomToDownloads.doChunked(toDownloadDao::insertBulk)
 
             return this
         }
@@ -624,7 +624,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
         }
 
         override suspend fun persistMediaInWait(medium: List<ClientMediumInWait>) {
-            RoomConverter().convertClientMediaInWait(medium).doChunked { mediumInWaitDao.insertBulk(it) }
+            RoomConverter().convertClientMediaInWait(medium).doChunked(mediumInWaitDao::insertBulk)
         }
 
         override suspend fun persist(user: ClientSimpleUser?): ClientModelPersister {
@@ -660,7 +660,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     return@mapNotNull null
                 }
             }
-            deleteEpisodes.doChunked { ids: List<Int> -> episodeDao.deletePerId(ids) }
+            deleteEpisodes.doChunked(episodeDao::deletePerId)
         }
 
         override suspend fun deleteLeftoverReleases(partReleases: Map<Int, List<ClientSimpleRelease>>): Collection<Int> {
@@ -693,7 +693,7 @@ class RoomStorage(application: Application) : DatabaseStorage {
             for (release in unmatchedReleases) {
                 episodesToLoad.add(release.episodeId)
             }
-            deleteRelease.doChunked { episodeDao.deleteBulkRelease(it) }
+            deleteRelease.doChunked(episodeDao::deleteBulkRelease)
             return episodesToLoad
         }
 
@@ -706,13 +706,13 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     removeTocs.add(entry)
                 }
             }
-            removeTocs.doChunked { tocDao.deleteBulk(it) }
+            removeTocs.doChunked(tocDao::deleteBulk)
         }
 
         override suspend fun persistTocs(tocs: Collection<Toc>): ClientModelPersister {
             val roomTocs = RoomConverter().convertToc(tocs)
 
-            roomTocs.doChunked { tocDao.insertBulk(it) }
+            roomTocs.doChunked(tocDao::insertBulk)
 
             return this
         }
@@ -777,13 +777,13 @@ class RoomStorage(application: Application) : DatabaseStorage {
                     deletedExLists.add(roomListUser.listId)
                 }
             }
-            toDeleteExternalJoins.doChunked { externalMediaListDao.removeJoin(it) }
-            toDeleteInternalJoins.doChunked { mediaListDao.removeJoin(it) }
-            newExternalJoins.doChunked { externalMediaListDao.addJoin(it) }
-            newInternalJoins.doChunked { mediaListDao.addJoin(it) }
-            deletedExLists.doChunked { externalMediaListDao.delete(it) }
-            deletedLists.doChunked { mediaListDao.delete(it) }
-            deletedExUser.doChunked { externalUserDao.delete(it) }
+            toDeleteExternalJoins.doChunked(externalMediaListDao::removeJoin)
+            toDeleteInternalJoins.doChunked(mediaListDao::removeJoin)
+            newExternalJoins.doChunked(externalMediaListDao::addJoin)
+            newInternalJoins.doChunked(mediaListDao::addJoin)
+            deletedExLists.doChunked(externalMediaListDao::delete)
+            deletedLists.doChunked(mediaListDao::delete)
+            deletedExUser.doChunked(externalUserDao::delete)
             return this
         }
 
