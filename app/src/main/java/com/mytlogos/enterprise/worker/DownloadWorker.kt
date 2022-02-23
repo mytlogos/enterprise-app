@@ -29,7 +29,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 class DownloadWorker(
     context: Context,
     workerParams: WorkerParameters,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): CoroutineWorker(context, workerParams) {
     private val downloadNotificationId = 0x100
     private val notificationManager: NotificationManagerCompat
@@ -43,6 +42,7 @@ class DownloadWorker(
     private var downloadCount = 0
     private var successFull = 0
     private var notSuccessFull = 0
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
     init {
         uuids.add(this.id)
