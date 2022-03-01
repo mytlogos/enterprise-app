@@ -13,7 +13,7 @@ import java.util.regex.Pattern
  * TODO: decide what to do with this, delete it or replace [ListSettings] with this one
  */
 class ListSettingsPreference : PreferenceFragmentCompat() {
-    override fun onCreatePreferences(savedInstanceState: Bundle, rootKey: String) {
+    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.list_preferences, rootKey)
         val arguments = arguments ?: throw IllegalArgumentException("no arguments available")
         val prefix = arguments.getString("prefix")
@@ -23,9 +23,9 @@ class ListSettingsPreference : PreferenceFragmentCompat() {
         require(!(intId == 0 && (stringId == null || stringId.isEmpty()))) { "invalid 'id' argument: zero, empty or null" }
         val manager = this.preferenceManager
         val store: ItemPreferenceDataStore = if (intId != 0) {
-            ItemPreferenceDataStore(this.context, prefix, intId)
+            ItemPreferenceDataStore(this.requireContext(), prefix, intId)
         } else {
-            ItemPreferenceDataStore(this.context, prefix, stringId)
+            ItemPreferenceDataStore(this.requireContext(), prefix, stringId)
         }
         manager.preferenceDataStore = store
     }
@@ -37,7 +37,7 @@ class ListSettingsPreference : PreferenceFragmentCompat() {
         val stringId: String?
         private val prefix: String
 
-        constructor(context: Context?, prefixKey: String, intId: Int) {
+        constructor(context: Context, prefixKey: String, intId: Int) {
             sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
             this.prefixKey = prefixKey
             this.intId = intId
@@ -45,7 +45,7 @@ class ListSettingsPreference : PreferenceFragmentCompat() {
             prefix = getPrefix(prefixKey, intId)
         }
 
-        constructor(context: Context?, prefixKey: String, stringId: String?) {
+        constructor(context: Context, prefixKey: String, stringId: String?) {
             sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
             this.prefixKey = prefixKey
             intId = 0

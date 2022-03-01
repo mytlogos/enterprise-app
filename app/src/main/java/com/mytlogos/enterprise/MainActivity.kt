@@ -351,7 +351,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         val args = pref.extras
         val fragment = supportFragmentManager.fragmentFactory.instantiate(
             classLoader,
-            pref.fragment)
+            pref.fragment!!
+        )
         fragment.setTargetFragment(caller, 0)
         switchWindow(fragment, args, true)
         return true
