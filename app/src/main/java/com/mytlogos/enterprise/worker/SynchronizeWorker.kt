@@ -135,8 +135,9 @@ class SynchronizeWorker(context: Context, workerParams: WorkerParameters) :
         builder
             .setContentTitle(title)
             .setProgress(total, current, false)
+
         if (changeContent) {
-            builder.setContentText(contentText)
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
         }
         notificationManager.notify(syncNotificationId, builder.build())
     }
