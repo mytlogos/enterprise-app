@@ -24,8 +24,25 @@ typealias QuerySuspend<T, R> = suspend (apiImpl: T, url: String) -> Response<R>
 class Client private constructor(private val identificator: NetworkIdentificator, private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) {
     companion object: SingletonHolder<Client, NetworkIdentificator>(::Client)
 
-    private val retrofitMap: MutableMap<Class<*>, Retrofit.Builder?> = HashMap()
+    private val retrofitBuilder: Retrofit.Builder = createRetrofitBuilder()
     private val fullClassPathMap: MutableMap<Class<*>?, String> = HashMap()
+
+    private fun createRetrofitBuilder(): Retrofit.Builder {
+        val gson = GsonBuilder()
+            .registerTypeHierarchyAdapter(DateTime::class.java, DateTimeAdapter())
+            .create()
+        val logger = HttpLoggingInterceptor()
+        logger.setLevel(HttpLoggingInterceptor.Level.BASIC)
+
+        val client = OkHttpClient.Builder()
+            .readTimeout(60, TimeUnit.SECONDS)
+            .addInterceptor(logger)
+            .build()
+
+        return Retrofit.Builder()
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+    }
 
     private fun buildPathMap() {
         val parentClassMap: MutableMap<Class<*>, Class<*>> = HashMap()
@@ -785,27 +802,8 @@ class Client private constructor(private val identificator: NetworkIdentificator
         if (localServer == null) {
             throw NotConnectedException("No Server in reach")
         }
-        // FIXME: reevaluate this retrofitMap, a single instance of the builder should probably suffice
-        var retrofitBuilder = retrofitMap[api]
 
-        if (retrofitBuilder == null) {
-            val gson = GsonBuilder()
-                .registerTypeHierarchyAdapter(DateTime::class.java, DateTimeAdapter())
-                .create()
-            val logger = HttpLoggingInterceptor()
-            logger.setLevel(HttpLoggingInterceptor.Level.BASIC)
-
-            val client = OkHttpClient.Builder()
-                .readTimeout(60, TimeUnit.SECONDS)
-                .addInterceptor(logger)
-                .build()
-            retrofitBuilder = Retrofit.Builder()
-                .client(client)
-                .addConverterFactory(GsonConverterFactory.create(gson))
-
-            retrofitMap[api] = retrofitBuilder
-        }
-        val retrofit = retrofitBuilder!!.baseUrl(localServer.address).build()
+        val retrofit = retrofitBuilder.baseUrl(localServer.address).build()
         val apiImpl = retrofit.create(api)
 
         return buildCall(apiImpl, path)
