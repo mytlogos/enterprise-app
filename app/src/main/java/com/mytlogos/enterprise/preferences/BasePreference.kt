@@ -3,6 +3,15 @@ package com.mytlogos.enterprise.preferences
 import android.content.SharedPreferences
 
 open class BasePreference(val preferences: SharedPreferences) {
+    protected fun getBoolean(key: String, defaultV: Boolean): Boolean {
+        return try {
+            preferences.getBoolean(key, defaultV)
+        } catch (e: ClassCastException) {
+            val string = preferences.getString(key, "") ?: return defaultV
+            string.toBooleanStrict()
+        }
+    }
+
     protected fun getInt(key: String, defaultV: Int): Int {
         return try {
             preferences.getInt(key, defaultV)

@@ -2,7 +2,7 @@ package com.mytlogos.enterprise.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.preference.PreferenceManager
+import androidx.preference.PreferenceManager
 import org.joda.time.DateTime
 
 class UserPreferences private constructor(context: Context) {
@@ -10,6 +10,9 @@ class UserPreferences private constructor(context: Context) {
 
     val downloadPreference: DownloadPreference
         get() = DownloadPreference(sharedPreferences)
+
+    val serverPreference: ServerPreference
+        get() = ServerPreference(sharedPreferences)
 
     companion object {
         private var INSTANCE: UserPreferences? = null

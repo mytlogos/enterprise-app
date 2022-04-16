@@ -2,6 +2,7 @@ package com.mytlogos.enterprise.background.api
 
 import com.google.gson.GsonBuilder
 import com.mytlogos.enterprise.background.api.model.*
+import com.mytlogos.enterprise.preferences.UserPreferences
 import com.mytlogos.enterprise.tools.SingletonHolder
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +24,7 @@ typealias QuerySuspend<T, R> = suspend (apiImpl: T, url: String) -> Response<R>
 class Client private constructor(private val identificator: NetworkIdentificator, private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) {
     companion object: SingletonHolder<Client, NetworkIdentificator>(::Client)
 
-    private val retrofitMap: MutableMap<Class<*>, Retrofit?> = HashMap()
+    private val retrofitMap: MutableMap<Class<*>, Retrofit.Builder?> = HashMap()
     private val fullClassPathMap: MutableMap<Class<*>?, String> = HashMap()
 
     private fun buildPathMap() {
@@ -774,7 +775,6 @@ class Client private constructor(private val identificator: NetworkIdentificator
     }
 
     private suspend fun <T, R> buildSuspend(api: Class<T>, buildCall: QuerySuspend<T, R>): Response<R> {
-        var retrofit = retrofitMap[api]
         val path = fullClassPathMap[api]
             ?: throw IllegalArgumentException("Unknown api class: ${api.canonicalName}")
         @Suppress("BlockingMethodInNonBlockingContext")
@@ -785,7 +785,10 @@ class Client private constructor(private val identificator: NetworkIdentificator
         if (localServer == null) {
             throw NotConnectedException("No Server in reach")
         }
-        if (retrofit == null) {
+        // FIXME: reevaluate this retrofitMap, a single instance of the builder should probably suffice
+        var retrofitBuilder = retrofitMap[api]
+
+        if (retrofitBuilder == null) {
             val gson = GsonBuilder()
                 .registerTypeHierarchyAdapter(DateTime::class.java, DateTimeAdapter())
                 .create()
@@ -796,17 +799,13 @@ class Client private constructor(private val identificator: NetworkIdentificator
                 .readTimeout(60, TimeUnit.SECONDS)
                 .addInterceptor(logger)
                 .build()
-            retrofit = Retrofit.Builder()
-                .baseUrl(localServer.address)
+            retrofitBuilder = Retrofit.Builder()
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create(gson))
-                .build()
-            retrofitMap[api] = retrofit
-        }
-        if (retrofit == null) {
-            throw NullPointerException()
-        }
 
+            retrofitMap[api] = retrofitBuilder
+        }
+        val retrofit = retrofitBuilder!!.baseUrl(localServer.address).build()
         val apiImpl = retrofit.create(api)
 
         return buildCall(apiImpl, path)
@@ -829,7 +828,6 @@ class Client private constructor(private val identificator: NetworkIdentificator
             return false
         }
 
-    @Synchronized
     @Throws(NotConnectedException::class)
     private suspend fun getServer(): Server? = withContext(ioDispatcher) {
         val ssid = identificator.sSID
@@ -837,18 +835,47 @@ class Client private constructor(private val identificator: NetworkIdentificator
         if (ssid.isEmpty()) {
             throw NotConnectedException("Not connected to any network")
         }
+
+        val serverPreference = UserPreferences.get().serverPreference
+        val lastActive = serverPreference.getLastActiveServer()
+        val activeServers = serverPreference.getActiveServer()
+
+        if (lastActive != null && activeServers.contains(lastActive)) {
+            val fromString = Server.fromString(lastActive)
+
+            if (fromString.isReachable) {
+                return@withContext fromString
+            }
+        }
+        if (activeServers.isNotEmpty()) {
+            for (activeServer in activeServers) {
+                val fromString = Server.fromString(activeServer)
+
+                if (fromString.isReachable) {
+                    // remember this one, so it sticks to one server if possible
+                    serverPreference.setLastActiveServer(activeServer)
+                    return@withContext fromString
+                }
+            }
+        }
+
+        if (!serverPreference.autoDiscoverEnabled()) {
+            return@withContext null
+        }
         val discovery = ServerDiscovery()
 
         if (ssid == lastNetworkSSID) {
             if (server == null) {
-                return@withContext discovery.discover(identificator.broadcastAddress)
+                // FIXME: handle multiple server
+                return@withContext discovery.discover(identificator.broadcastAddress).firstOrNull()
             } else if (server!!.isReachable) {
                 return@withContext server
             }
         } else {
             lastNetworkSSID = ssid
         }
-        return@withContext discovery.discover(identificator.broadcastAddress)
+        // FIXME: handle multiple server
+        return@withContext discovery.discover(identificator.broadcastAddress).firstOrNull()
     }
 
 }

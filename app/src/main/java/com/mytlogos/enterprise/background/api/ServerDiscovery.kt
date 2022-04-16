@@ -33,7 +33,7 @@ internal class ServerDiscovery(private val ioDispatcher: CoroutineDispatcher = D
         }
     }
 
-    suspend fun discover(broadcastAddress: InetAddress?): Server? = withContext(ioDispatcher) {
+    suspend fun discover(broadcastAddress: InetAddress?): List<Server> = withContext(ioDispatcher) {
         val discoveredServer = Collections.synchronizedSet(HashSet<Server>())
         val futures: MutableList<Future<Server?>> = ArrayList()
 
@@ -50,7 +50,7 @@ internal class ServerDiscovery(private val ioDispatcher: CoroutineDispatcher = D
             }))
         }
 
-        var server: Server? = null
+        var server: List<Server> = listOf()
 
         val udpExecutor = Executors.newSingleThreadExecutor { Thread(it, "Server-Discovery-${udpId.incrementAndGet()}-UDP") }
         try {
@@ -73,7 +73,7 @@ internal class ServerDiscovery(private val ioDispatcher: CoroutineDispatcher = D
             }
 
             println("${Thread.currentThread()} Total discovered Server: ${discoveredServer.size}")
-            server = discoveredServer.find { it.isLocal && it.isDevServer == isDev }
+            server = discoveredServer.filter { it.isLocal && it.isDevServer == isDev }
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {

@@ -1,0 +1,31 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <SwitchPreferenceCompat
+        android:key="server_auto_discover"
+        android:defaultValue="false"
+        android:title="Use Auto-Discover" />
+
+    <MultiSelectListPreference
+        android:key="client_server"
+        android:title="Server to use" />
+
+    <EditTextPreference
+        android:inputType="textUri"
+        android:key="add_custom"
+        android:maxLines="1"
+        android:persistent="false"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="Add Custom Server" />
+
+    <Preference
+        android:key="discover_server"
+        android:summary="@string/pref_description_social_recommendations"
+        android:title="Discover Server" />
+
+    <MultiSelectListPreference
+        android:key="discovered_server"
+        android:persistent="false"
+        android:title="Discovered Server" />
+
+</PreferenceScreen>

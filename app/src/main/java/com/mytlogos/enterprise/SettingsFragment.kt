@@ -5,10 +5,15 @@ import android.os.Bundle
 import android.text.InputType
 import android.view.MenuItem
 import android.widget.EditText
+import androidx.fragment.app.clearFragmentResultListener
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.*
+import com.mytlogos.enterprise.background.api.AndroidNetworkIdentificator
+import com.mytlogos.enterprise.background.api.ServerDiscovery
+import kotlinx.coroutines.launch
 
 /**
- * A [AppCompatPreferenceActivity] that presents a set of application settings. On
+ * A [PreferenceFragmentCompat] that presents a set of application settings. On
  * handset devices, settings are presented as a single list. On tablets,
  * settings are split by category, with category headers shown to the left of
  * the list of settings.
@@ -139,6 +144,91 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
+
+    /**
+     * This fragment shows preferences for the server.
+     */
+    class ServerPreferenceFragment : PreferenceFragmentCompat() {
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setHasOptionsMenu(true)
+        }
+
+        fun addPossibleServer(toAdd: Collection<String>, pref: MultiSelectListPreference) {
+            val sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(requireContext())
+            val current = sharedPreferences.getStringSet("possible_client_server", mutableSetOf())!!.toMutableSet()
+            current.addAll(toAdd)
+            pref.entries = current.toTypedArray()
+            pref.entryValues = pref.entries
+
+            val editor = sharedPreferences.edit()
+            editor.putStringSet("possible_client_server", current)
+            editor.apply()
+        }
+
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+            addPreferencesFromResource(R.xml.pref_server)
+
+            val discover: Preference? = findPreference("discover_server")
+            val discovered: MultiSelectListPreference? = findPreference("discovered_server")
+            val clientServer: MultiSelectListPreference? = findPreference("client_server")
+            val custom: EditTextPreference? = findPreference("add_custom")
+
+            val sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(requireContext())
+            println(sharedPreferences.all)
+
+            val possibleServer = sharedPreferences.getStringSet("possible_client_server", setOf())
+            clientServer?.entries = possibleServer!!.toTypedArray()
+            clientServer?.entryValues = clientServer?.entries
+
+            custom?.setOnPreferenceChangeListener { _, newValue ->
+                if (newValue is String && newValue.isNotBlank()) {
+                    this.addPossibleServer(setOf(newValue), clientServer!!)
+                }
+                custom.text = ""
+                true
+            }
+
+            discovered?.entries = arrayOf()
+            discovered?.entryValues = arrayOf()
+            discovered?.setOnPreferenceChangeListener { _, newValue ->
+                if (newValue is MutableSet<*>) {
+                    this.addPossibleServer(newValue as Collection<String>, clientServer!!)
+                } else {
+                    println("unknown newvalue for discovered server")
+                }
+                true
+             }
+
+            discover?.setOnPreferenceClickListener {
+                val broadcastAddress =
+                    AndroidNetworkIdentificator(requireContext()).broadcastAddress
+
+                this.lifecycleScope.launch {
+                    val server = ServerDiscovery().discover(broadcastAddress)
+
+                    discovered?.entries = server.map { it.address }.toTypedArray()
+                    discovered?.entryValues = server.map { it.address }.toTypedArray()
+                    discovered?.values = setOf()
+                }
+                true
+            }
+            bindPreferenceSummaryToValue(clientServer)
+            bindPreferenceSummaryToValue(findPreference("server_auto_discover"))
+        }
+
+        override fun onOptionsItemSelected(item: MenuItem): Boolean {
+            val id = item.itemId
+            if (id == android.R.id.home) {
+                startActivity(Intent(activity, SettingsFragment::class.java))
+                return true
+            }
+            return super.onOptionsItemSelected(item)
+        }
+    }
+
     companion object {
         /**
          * A preference value change listener that updates the preference's summary
@@ -189,7 +279,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
          */
         private fun bindPreferenceSummaryToValue(
             preference: Preference?,
-            numeric: Boolean = false
+            numeric: Boolean = false,
         ) {
             if (preference == null) {
                 return
@@ -202,7 +292,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
             sBindPreferenceSummaryToValueListener.onPreferenceChange(preference,
                 PreferenceManager
                     .getDefaultSharedPreferences(preference.context)
-                    .getString(preference.key, ""))
+                    .all
+                    .getOrDefault(preference.key, "").toString())
             if (preference is EditTextPreference && numeric) {
                 preference.setOnBindEditTextListener { editText: EditText ->
                     editText.inputType =

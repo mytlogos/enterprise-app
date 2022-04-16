@@ -23,4 +23,9 @@
         android:icon="@drawable/ic_sync_black_24dp"
         app:title="Data &amp; Sync" />
 
+    <Preference
+        android:fragment="com.mytlogos.enterprise.SettingsFragment$ServerPreferenceFragment"
+        android:icon="@drawable/ic_sync_black_24dp"
+        app:title="Server" />
+
 </PreferenceScreen>

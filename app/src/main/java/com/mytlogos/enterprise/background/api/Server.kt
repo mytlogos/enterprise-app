@@ -1,5 +1,6 @@
 package com.mytlogos.enterprise.background.api
 
+import android.net.Uri
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -41,5 +42,17 @@ internal data class Server(
         var result = ipv4.hashCode()
         result = 31 * result + port
         return result
+    }
+
+    companion object {
+        fun fromString(url: String): Server {
+            val uri = Uri.parse(url)
+            var port = uri.port
+
+            if (port < 0) {
+                port = if (uri.scheme == "https") 443 else 80
+            }
+            return Server(ipv4 = uri.host!!, port = port, isLocal = true, false)
+        }
     }
 }
