@@ -530,7 +530,6 @@ class DownloadWorker(
             val oneTimeWorkRequest = getWorkRequest()
             WorkManager.getInstance(context)
                 .beginUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, oneTimeWorkRequest)
-                .then(CheckSavedWorker.workRequest)
                 .enqueue()
         }
 
@@ -591,7 +590,6 @@ class DownloadWorker(
 
             WorkManager.getInstance(context)
                 .beginUniqueWork(uniqueWorkName, ExistingWorkPolicy.REPLACE, oneTimeWorkRequest)
-                .then(CheckSavedWorker.workRequest)
                 .enqueue()
         }
     }
