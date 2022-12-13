@@ -10,6 +10,6 @@ plugins:
   - "@semantic-release/changelog"
   - - "@semantic-release/github"
     - assets:
-        -  path: app/build/outputs/apk/app-debug.apk
+        -  path: app/build/outputs/apk/debug/app-debug.apk
   # commit changelog and push "release commit"
   - "@semantic-release/git"
