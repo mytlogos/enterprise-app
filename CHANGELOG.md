@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/mytlogos/enterprise-app/compare/v1.0.0...v1.0.1) (2022-12-13)
+
+
+### Bug Fixes
+
+* **ci:** use correct path for apk ([8a30139](https://github.com/mytlogos/enterprise-app/commit/8a3013939d281fe8940c0b8a0c7bfa22b6c80644))
+
 # 1.0.0 (2022-12-13)
 
 
