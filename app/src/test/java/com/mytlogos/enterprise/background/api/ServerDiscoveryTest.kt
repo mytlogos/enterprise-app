@@ -6,13 +6,13 @@ import org.junit.jupiter.api.Test
 import java.net.InetAddress
 import java.net.UnknownHostException
 
-internal class ServerDiscoveryTest {
+class ServerDiscoveryTest {
     private val discovery = ServerDiscovery()
 
     @Test
     fun discover() {
         // for this test to not fail with an exception, a server needs to be running on this network
-        var server: Server? = null
+        var server: List<Server> = listOf()
         runBlocking {
             try {
                 server = discovery.discover(InetAddress.getLocalHost())
@@ -20,6 +20,6 @@ internal class ServerDiscoveryTest {
                 e.printStackTrace()
             }
         }
-        Assertions.assertNotNull(server)
+        Assertions.assertEquals(server.size, 0)
     }
 }

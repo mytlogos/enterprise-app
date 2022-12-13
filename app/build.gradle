@@ -44,6 +44,16 @@ android {
     productFlavors {
     }
     buildToolsVersion = '30.0.3'
+    testOptions {
+        unitTests.all {
+            testLogging {
+                outputs.upToDateWhen { false }
+                events "passed", "failed", "skipped", "standardError"
+                showCauses true
+                showExceptions true
+            }
+       }
+   } 
 }
 
 dependencies {
@@ -109,7 +119,7 @@ dependencies {
     // kotlin dependencies
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2'
     implementation 'androidx.core:core-ktx:1.7.0'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.6.10"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.6.20"
 
 //    debugImplementation "io.objectbox:objectbox-android-objectbrowser:$objectboxVersion"
 //    releaseImplementation "io.objectbox:objectbox-android:$objectboxVersion"
